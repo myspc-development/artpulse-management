@@ -16,6 +16,9 @@ class BadgesEndpointTest extends TestCase
         Stubs::$user_meta = [
             'ead_rsvps' => [1]
         ];
+        Stubs::$meta = [
+            1 => ['event_date' => '2023-08-01']
+        ];
 
         $endpoint = new BadgesEndpoint();
         $ref = new ReflectionClass($endpoint);
@@ -33,6 +36,12 @@ class BadgesEndpointTest extends TestCase
         Stubs::$user_meta = [
             'ead_rsvps' => range(1,10)
         ];
+        Stubs::$meta = [];
+        $date = strtotime('2023-01-01');
+        for ($i = 1; $i <= 10; $i++) {
+            Stubs::$meta[$i] = ['event_date' => date('Y-m-d', $date)];
+            $date = strtotime('+1 day', $date);
+        }
 
         $endpoint = new BadgesEndpoint();
         $ref = new ReflectionClass($endpoint);

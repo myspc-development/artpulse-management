@@ -40,16 +40,40 @@ class BadgesEndpoint extends WP_REST_Controller {
         $count = count( $rsvps );
 
         if ( $count >= 1 ) {
-            $badges[] = [ 'label' => '🎉 Rookie', 'desc' => 'RSVP\'d to 1 event' ];
+            $badges[] = [ 'label' => '🎉 Rookie', 'desc' => "RSVP'd to 1 event" ];
         }
         if ( $count >= 5 ) {
-            $badges[] = [ 'label' => '🧭 Explorer', 'desc' => 'RSVP\'d to 5+ events' ];
+            $badges[] = [ 'label' => '🧭 Explorer', 'desc' => "RSVP'd to 5+ events" ];
         }
         if ( $count >= 10 ) {
-            $badges[] = [ 'label' => '💜 Superfan', 'desc' => 'RSVP\'d to 10+ events' ];
+            $badges[] = [ 'label' => '💜 Superfan', 'desc' => "RSVP'd to 10+ events" ];
         }
-        if ( $count >= 3 ) {
-            $badges[] = [ 'label' => '🔥 Streak Master', 'desc' => 'RSVP\'d to 3 events in a row' ];
+
+        // Determine streaks based on event_date meta
+        $dates = [];
+        foreach ( $rsvps as $event_id ) {
+            $date = get_post_meta( $event_id, 'event_date', true );
+            if ( $date ) {
+                $dates[] = strtotime( $date );
+            }
+        }
+
+        sort( $dates );
+        $streak = 1;
+
+        for ( $i = 1; $i < count( $dates ); $i++ ) {
+            if ( ( $dates[ $i ] - $dates[ $i - 1 ] ) <= 7 * DAY_IN_SECONDS ) {
+                $streak++;
+                if ( $streak >= 3 ) {
+                    $badges[] = [
+                        'label' => '🔥 Streak Master',
+                        'desc'  => "RSVP'd to 3 events in a row",
+                    ];
+                    break;
+                }
+            } else {
+                $streak = 1;
+            }
         }
 
         return $badges;
