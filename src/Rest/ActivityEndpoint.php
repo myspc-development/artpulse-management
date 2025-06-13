@@ -7,8 +7,8 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 class ActivityEndpoint extends WP_REST_Controller {
-    protected string $namespace = 'artpulse/v1';
-    protected string $rest_base = 'activity';
+    protected $namespace = 'artpulse/v1';
+    protected $rest_base = 'activity';
 
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );

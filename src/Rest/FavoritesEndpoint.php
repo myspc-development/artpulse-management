@@ -8,8 +8,8 @@ use WP_REST_Response;
 use WP_Error;
 
 class FavoritesEndpoint extends WP_REST_Controller {
-    protected string $namespace;
-    protected string $rest_base;
+    protected $namespace;
+    protected $rest_base;
 
     public function __construct() {
         $this->namespace = 'artpulse/v1';
