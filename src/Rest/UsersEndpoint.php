@@ -7,8 +7,8 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 class UsersEndpoint extends WP_REST_Controller {
-    protected string $namespace;
-    protected string $rest_base;
+    protected $namespace;
+    protected $rest_base;
 
     public function __construct() {
         $this->namespace = 'artpulse/v1';

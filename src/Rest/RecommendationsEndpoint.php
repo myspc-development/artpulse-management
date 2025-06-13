@@ -9,8 +9,8 @@ use WP_Error;
 use WP_Query;
 
 class RecommendationsEndpoint extends WP_REST_Controller {
-    protected string $namespace;
-    protected string $rest_base;
+    protected $namespace;
+    protected $rest_base;
 
     public function __construct() {
         $this->namespace = 'artpulse/v1';
