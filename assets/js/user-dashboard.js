@@ -782,35 +782,44 @@ function loadUserBadges() {
         });
     });
 
-    $('.ead-tab-button').on('click', function () {
-        const tab = $(this).data('tab');
+    function switchTab(tab) {
+        // Highlight active tab button
+        $('.ead-tab-nav li, .ead-tab-button').removeClass('active');
+        $(`.ead-tab-nav li[data-tab="${tab}"], .ead-tab-button[data-tab="${tab}"]`).addClass('active');
 
-        $('.ead-tab-button').removeClass('active');
-        $(this).addClass('active');
+        // Show relevant content section
+        $('.ead-tab-content').removeClass('active').hide();
+        $(`#ead-tab-${tab}`).addClass('active').fadeIn(150);
 
-        $('.ead-tab-content').removeClass('active');
-        $('#ead-tab-' + tab).addClass('active');
-
-        if (tab === 'favorites') {
-            fetchFavorites();
-        } else if (tab === 'notifications') {
-            fetchNotifications();
-        } else if (tab === 'profile') {
-            fetchUserSummary();
-            loadActivityChart();
-            loadUserBadges();
-        } else if (tab === 'dashboard') {
-            updateDashboardStats();
-        } else if (tab === 'submissions') {
-            fetchSubmissions();
-            loadSubmissionStats();
-        } else if (tab === 'uploads') {
-            loadMyUploads();
-        } else if (tab === 'calendar') {
+        // Optional: trigger tab-specific loaders
+        if (tab === 'calendar') {
             loadEventCalendar();
-            loadEventCategories();
-            loadEventLocations();
-            loadEventTags();
+            loadEventCategories?.();
+            loadEventTags?.();
+            loadEventLocations?.();
+        } else if (tab === 'favorites') {
+            fetchFavorites?.();
+        } else if (tab === 'uploads') {
+            loadMyUploads?.();
+        } else if (tab === 'notifications') {
+            fetchNotifications?.();
+        } else if (tab === 'profile') {
+            fetchUserSummary?.();
+            loadActivityChart?.();
+            loadUserBadges?.();
+        } else if (tab === 'dashboard') {
+            updateDashboardStats?.();
+        } else if (tab === 'submissions') {
+            fetchSubmissions?.();
+            loadSubmissionStats?.();
         }
+    }
+
+    $('.ead-tab-nav li, .ead-tab-button').on('click', function () {
+        const tab = $(this).data('tab');
+        switchTab(tab);
     });
+
+    // Auto-open default tab on page load
+    switchTab('dashboard');
 });
