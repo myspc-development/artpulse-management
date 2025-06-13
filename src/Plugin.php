@@ -48,6 +48,7 @@ class Plugin {
         $recommendations_endpoint = new Rest\RecommendationsEndpoint();
         $summary_endpoint = new Rest\SummaryEndpoint();
         $favorites_endpoint = new Rest\FavoritesEndpoint();
+        $rsvp_endpoint = new Rest\RsvpEndpoint();
         $notifications_endpoint = new Rest\NotificationsEndpoint();
 
         //Dashboards

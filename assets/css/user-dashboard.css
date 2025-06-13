@@ -140,3 +140,18 @@
     margin-top: 0.5rem;
 }
 
+.ead-event-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.ead-rsvp-btn {
+    background: #e0f7ff;
+    border: 1px solid #0073aa;
+    color: #0073aa;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
