@@ -250,6 +250,40 @@ jQuery(document).ready(function($){
         });
     });
 
+    $('#ead-password-form').on('submit', function (e) {
+        e.preventDefault();
+
+        const current = $('#ead-password-current').val();
+        const newPass = $('#ead-password-new').val();
+        const confirm = $('#ead-password-confirm').val();
+
+        if (newPass !== confirm) {
+            showToast('New passwords do not match.', true);
+            return;
+        }
+
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/change-password',
+            method: 'POST',
+            data: {
+                current_password: current,
+                new_password: newPass,
+                confirm_password: confirm,
+            },
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            beforeSend: showLoader,
+            complete: hideLoader,
+            success: function () {
+                showToast('Password updated!');
+                $('#ead-password-form')[0].reset();
+            },
+            error: function (xhr) {
+                const errorMsg = xhr.responseJSON?.error || 'Error updating password.';
+                showToast(errorMsg, true);
+            }
+        });
+    });
+
     fetchEvents();
     fetchRecommendations();
     fetchUserSummary();

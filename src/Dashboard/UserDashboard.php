@@ -111,6 +111,24 @@ class UserDashboard {
                         <button type="submit" class="button"><?php esc_html_e('Save Changes', 'artpulse-management'); ?></button>
                     </form>
                 </div>
+                <div class="ead-profile-password">
+                    <h3><?php esc_html_e('Change Password', 'artpulse-management'); ?></h3>
+                    <form id="ead-password-form">
+                        <label>
+                            <?php esc_html_e('Current Password', 'artpulse-management'); ?>
+                            <input type="password" id="ead-password-current" name="current_password" required />
+                        </label>
+                        <label>
+                            <?php esc_html_e('New Password', 'artpulse-management'); ?>
+                            <input type="password" id="ead-password-new" name="new_password" required minlength="6" />
+                        </label>
+                        <label>
+                            <?php esc_html_e('Confirm New Password', 'artpulse-management'); ?>
+                            <input type="password" id="ead-password-confirm" name="confirm_password" required />
+                        </label>
+                        <button type="submit" class="button"><?php esc_html_e('Update Password', 'artpulse-management'); ?></button>
+                    </form>
+                </div>
             </div>
             <div id="ead-toast" class="ead-toast" style="display: none;"></div>
         </div>

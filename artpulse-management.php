@@ -504,6 +504,7 @@ class Plugin {
             new \EAD\Rest\TaxonomyEndpoint(),
             new \EAD\Rest\UserProfileEndpoint(),
             new \EAD\Rest\ProfileEndpoint(),
+            new \EAD\Rest\ChangePasswordEndpoint(),
             new \EAD\Rest\ArtworkEndpoint(),
             new \EAD\Rest\SyncEndpoint(),
             new \EAD\Rest\SettingsEndpoint(),
