@@ -1,13 +1,90 @@
-.ead-user-dashboard{margin:20px 0;}
-.ead-user-filters label{display:block;margin-bottom:5px;}
-.ead-user-filters input{margin-right:5px;}
-.ead-event-card{border:1px solid #ccc;padding:10px;margin-bottom:10px;}
-@media(max-width:600px){.ead-user-filters label{display:block;width:100%;}}
-.ead-tabs{display:flex;gap:1rem;margin-bottom:1rem;}
-.ead-tab-button{padding:0.5rem 1rem;background:#f0f0f0;border:none;cursor:pointer;}
-.ead-tab-button.active{background:#0073aa;color:#fff;}
-.ead-tab-content{display:none;}
-.ead-tab-content.active{display:block;}
+.ead-user-dashboard {
+    margin: 20px 0;
+    max-width: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.ead-user-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.ead-user-filters label {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.95rem;
+}
+
+.ead-user-filters input {
+    margin-right: 5px;
+}
+
+@media (min-width: 600px) {
+    .ead-user-filters label {
+        flex: 1 1 48%;
+    }
+}
+
+.ead-event-card {
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    font-size: 1rem;
+    line-height: 1.4;
+    touch-action: manipulation;
+}
+
+.ead-event-card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+}
+
+.ead-favorite-btn {
+    margin-top: 0.5rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.25rem;
+}
+
+.ead-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.ead-tab-button {
+    flex: 1 1 auto;
+    padding: 0.5rem;
+    font-size: 1rem;
+    text-align: center;
+    border-radius: 0.4rem;
+    background: #f0f0f0;
+    border: none;
+    cursor: pointer;
+}
+
+.ead-tab-button.active {
+    background: #0073aa;
+    color: #fff;
+}
+
+.ead-tab-content {
+    display: none;
+}
+
+.ead-tab-content.active {
+    display: block;
+}
 
 .ead-loader {
     background: rgba(255, 255, 255, 0.8);
@@ -34,5 +111,15 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     z-index: 9999;
     transition: opacity 0.3s ease;
+}
+
+@media (max-width: 500px) {
+    .ead-toast {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: calc(100% - 2rem);
+        font-size: 0.9rem;
+    }
 }
 
