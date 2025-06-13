@@ -9,6 +9,10 @@
         {
             "name": "phpunit/phpunit",
             "version": "^10"
+        },
+        {
+            "name": "phpstan/phpstan",
+            "version": "^1.11"
         }
     ],
     "plugin-api-version": "2.3.0"
