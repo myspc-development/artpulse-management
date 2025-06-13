@@ -298,3 +298,9 @@
     font-size: 1.5rem;
 }
 
+#ead-bulk-event-list {
+    text-align: left;
+    margin: 1rem 0;
+    list-style: disc inside;
+}
+

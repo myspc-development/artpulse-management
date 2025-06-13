@@ -33,9 +33,20 @@ jQuery(document).ready(function($){
         $('#ead-event-modal').fadeIn(200);
     }
 
-    $(document).on('click', '.ead-modal-close', () => $('#ead-event-modal').fadeOut(150));
+    function openBulkRSVPModal(events) {
+        const listHtml = events.map(e => `<li data-id="${e.id}">${e.title} (${e.startStr || e.start})</li>`).join('');
+        $('#ead-bulk-event-list').html(listHtml);
+        $('#ead-bulk-rsvp-modal').fadeIn(200);
+    }
+
+    $(document).on('click', '.ead-modal-close', function(){
+        $(this).closest('.ead-modal').fadeOut(150);
+    });
     $(document).on('click', '#ead-event-modal', (e) => {
         if (e.target.id === 'ead-event-modal') $('#ead-event-modal').fadeOut(150);
+    });
+    $(document).on('click', '#ead-bulk-rsvp-modal', (e) => {
+        if (e.target.id === 'ead-bulk-rsvp-modal') $('#ead-bulk-rsvp-modal').fadeOut(150);
     });
 
     function loadEventCalendar() {
@@ -82,6 +93,9 @@ jQuery(document).ready(function($){
                 center: 'title',
                 right: 'dayGridMonth,listWeek'
             },
+            selectable: true,
+            selectOverlap: false,
+            selectMirror: true,
             events: events.map(e => ({
                 ...e,
                 color: e.rsvped ? '#0073aa' : '#cccccc',
@@ -90,6 +104,14 @@ jQuery(document).ready(function($){
             eventClick: function(info) {
                 info.jsEvent.preventDefault();
                 openEventModal(info.event.extendedProps);
+            },
+            select: function(info) {
+                const selected = calendar.getEvents().filter(e =>
+                    e.start >= info.start && e.start < info.end
+                );
+                if (selected.length) {
+                    openBulkRSVPModal(selected);
+                }
             }
         });
         calendar.render();
@@ -440,6 +462,29 @@ function loadUserBadges() {
             success: function () {
                 showToast(rsvped ? 'RSVP cancelled' : 'RSVP confirmed');
                 $('#ead-event-modal').fadeOut(150);
+                loadEventCalendar();
+            }
+        });
+    });
+
+    $('#ead-bulk-rsvp, #ead-bulk-unrsvp').on('click', function () {
+        const eventIds = $('#ead-bulk-event-list li').map(function () {
+            return $(this).data('id');
+        }).get();
+
+        const action = this.id === 'ead-bulk-rsvp' ? 'POST' : 'DELETE';
+
+        $.ajax({
+            url: restUrl + '/rsvp/bulk',
+            method: 'POST',
+            headers: { 'X-WP-Nonce': nonce },
+            data: {
+                action: action,
+                event_ids: eventIds
+            },
+            success: function () {
+                showToast('Bulk RSVP updated.');
+                $('#ead-bulk-rsvp-modal').fadeOut(200);
                 loadEventCalendar();
             }
         });
