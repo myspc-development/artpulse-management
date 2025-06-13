@@ -73,13 +73,16 @@ function wp_safe_redirect($location) { \Tests\Stubs::$redirect = $location; }
 function wp_get_referer() { return 'http://example.com/'; }
 
 function add_action($hook, $callback) {}
+function add_filter($tag, $callback) {}
 function add_shortcode($tag, $cb) {}
 function wp_enqueue_style() {}
 function wp_enqueue_script() {}
 function wp_localize_script() {}
+function register_activation_hook($file, $callback) {}
 
 function admin_url($path = '') { return $path; }
 function plugin_dir_path($file) { return dirname($file) . '/'; }
+function plugin_dir_url($file) { return dirname($file) . '/'; }
 function rest_url($path = '') { return $path; }
 
 function add_query_arg($params, $url = '') {
