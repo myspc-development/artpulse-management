@@ -50,21 +50,21 @@ class OrganizationDashboard {
             'ead-organization-dashboard',
             $plugin_url . 'assets/css/organization-dashboard.css',
             [],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0'
+            EAD_MANAGEMENT_VERSION
         );
 
         wp_enqueue_style(
             'ead-organization-gallery',
             $plugin_url . 'assets/css/organization-gallery.css',
             [],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0'
+            EAD_MANAGEMENT_VERSION
         );
 
         wp_enqueue_script(
             'ead-organization-gallery',
             $plugin_url . 'assets/js/organization-gallery.js',
             ['jquery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 
@@ -72,7 +72,7 @@ class OrganizationDashboard {
             'ead-organization-dashboard',
             $plugin_url . 'assets/js/organization-dashboard.js',
             ['jquery', 'ead-organization-gallery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 

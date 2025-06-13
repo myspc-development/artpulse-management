@@ -27,6 +27,10 @@ if ( ! defined( 'EAD_PLUGIN_VERSION' ) ) {
     define( 'EAD_PLUGIN_VERSION', '3.7.2' ); // CORRECTED: Match plugin header version
 }
 
+if ( ! defined( 'EAD_MANAGEMENT_VERSION' ) ) {
+    define( 'EAD_MANAGEMENT_VERSION', EAD_PLUGIN_VERSION );
+}
+
 // Register custom table alias on $wpdb for easier access
 global $wpdb;
 $wpdb->ead_rsvps = $wpdb->prefix . 'ead_rsvps';

@@ -15,7 +15,7 @@ class EventsListShortcode {
             'ead-events-list',
             $plugin_url . 'assets/js/ead-events-list.js',
             ['jquery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
         wp_localize_script(

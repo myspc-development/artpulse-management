@@ -20,13 +20,13 @@ class UserDashboard {
             'ead-user-dashboard',
             $plugin_url . 'assets/css/user-dashboard.css',
             [],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0'
+            EAD_MANAGEMENT_VERSION
         );
         wp_enqueue_script(
             'ead-user-dashboard',
             $plugin_url . 'assets/js/user-dashboard.js',
             ['jquery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
         wp_localize_script(

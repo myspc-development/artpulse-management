@@ -31,7 +31,7 @@ class ArtistRegistrationForm {
             'artist-registration',
             $plugin_url . 'assets/css/artist-registration.css',
             [],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0'
+            EAD_MANAGEMENT_VERSION
         );
 
         wp_enqueue_media();
@@ -40,7 +40,7 @@ class ArtistRegistrationForm {
             'ead-artist-gallery',
             $plugin_url . 'assets/js/artist-gallery.js',
             ['jquery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 
@@ -61,7 +61,7 @@ class ArtistRegistrationForm {
             'ead-address',
             $plugin_url . 'assets/js/ead-address.js',
             ['jquery', 'select2'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 
@@ -83,7 +83,7 @@ class ArtistRegistrationForm {
             'artist-registration',
             $plugin_url . 'assets/js/artist-registration.js',
             ['jquery', 'wp-util', 'ead-address', 'ead-artist-gallery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 
