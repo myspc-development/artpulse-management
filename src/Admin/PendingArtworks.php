@@ -40,7 +40,7 @@ class PendingArtworks {
                 wp_redirect(admin_url('admin.php?page=artpulse-pending-artworks&approval_error=1&post_id=' . $post_id));
             } else {
                 // Success! Redirect back with a success message
-                // The transition_post_status hook in Plugin.php should handle notifications
+                // The transition_post_status hook in the main Plugin class should handle notifications
                 wp_redirect(admin_url('admin.php?page=artpulse-pending-artworks&artwork_approved=1&post_id=' . $post_id));
             }
             exit;
