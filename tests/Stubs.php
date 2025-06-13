@@ -32,6 +32,11 @@ function get_user_meta($user_id, string $key, $single = false) {
     return \Tests\Stubs::$user_meta[$key] ?? '';
 }
 
+function update_user_meta($user_id, string $key, $value) {
+    \Tests\Stubs::$user_meta[$key] = $value;
+    return true;
+}
+
 function get_post_meta($post_id, string $key, $single = false) {
     return \Tests\Stubs::$meta[$post_id][$key] ?? '';
 }
@@ -137,7 +142,11 @@ function get_the_title($id) {
 
 class WP_REST_Controller {}
 class WP_REST_Server { const READABLE = 'GET'; }
-class WP_REST_Request {}
+class WP_REST_Request {
+    private array $params = [];
+    public function set_param($key, $value) { $this->params[$key] = $value; }
+    public function get_param($key) { return $this->params[$key] ?? null; }
+}
 class WP_REST_Response {
     public function __construct(public $data = null, public $status = 200) {}
 }

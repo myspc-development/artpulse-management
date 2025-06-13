@@ -36,7 +36,7 @@ class SummaryEndpoint extends WP_REST_Controller {
         }
 
         $user_id   = get_current_user_id();
-        $favorites = get_user_meta( $user_id, 'ead_likes', true );
+        $favorites = get_user_meta( $user_id, 'ead_favorites', true );
         if ( ! is_array( $favorites ) ) {
             $favorites = [];
         }
