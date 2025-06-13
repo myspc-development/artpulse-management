@@ -287,6 +287,12 @@ class Plugin {
     }
 
     public static function init() {
+        // Load AJAX handlers so actions are registered when the plugin starts.
+        $ajax_file = EAD_PLUGIN_DIR_PATH . 'includes/ajax-handlers.php';
+        if ( file_exists( $ajax_file ) ) {
+            require_once $ajax_file;
+        }
+
         self::get_instance();
     }
 
