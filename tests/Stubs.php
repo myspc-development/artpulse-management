@@ -18,6 +18,8 @@ class Stubs {
     public static bool $logged_in = true;
     public static array $post_terms = [];
     public static array $terms = [];
+    public static array $actions = [];
+    public static array $filters = [];
 }
 
 function is_user_logged_in(): bool {
@@ -95,8 +97,12 @@ function wp_redirect($location) { \Tests\Stubs::$redirect = $location; }
 function wp_safe_redirect($location) { \Tests\Stubs::$redirect = $location; }
 function wp_get_referer() { return 'http://example.com/'; }
 
-function add_action($hook, $callback) {}
-function add_filter($tag, $callback) {}
+function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
+    \Tests\Stubs::$actions[] = [$hook, $callback, $priority, $accepted_args];
+}
+function add_filter($tag, $callback, $priority = 10, $accepted_args = 1) {
+    \Tests\Stubs::$filters[] = [$tag, $callback, $priority, $accepted_args];
+}
 function add_shortcode($tag, $cb) {}
 function wp_enqueue_style() {}
 function wp_enqueue_script() {}
