@@ -184,6 +184,22 @@ class UserDashboard {
                             <option value="all">All Categories</option>
                         </select>
                     </label>
+                    <label>
+                        Search:
+                        <input type="text" id="ead-filter-search" placeholder="Search events...">
+                    </label>
+                    <label>
+                        Location:
+                        <select id="ead-filter-location">
+                            <option value="all">All Locations</option>
+                        </select>
+                    </label>
+                    <label>
+                        Tag:
+                        <select id="ead-filter-tags">
+                            <option value="all">All Tags</option>
+                        </select>
+                    </label>
                 </div>
                 <div id="ead-event-calendar"></div>
             </div>
