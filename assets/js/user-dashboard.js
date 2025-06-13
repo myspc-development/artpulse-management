@@ -245,12 +245,45 @@ function loadUserBadges() {
                 container.html(html);
             }
         });
-    }
+}
 
     function updateDashboardStats() {
         fetchUserSummary();
         loadUserBadges();
         loadActivityChart();
+    }
+
+    function loadSubmissionStats() {
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/submissions/stats',
+            method: 'GET',
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function (res) {
+                $('#widget-pending').text(res.pending);
+                $('#widget-approved').text(res.approved);
+                $('#widget-rejected').text(res.rejected);
+
+                const ctx = document.getElementById('ead-submission-chart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: res.labels,
+                        datasets: [{
+                            label: 'Approved Submissions',
+                            data: res.data,
+                            fill: true,
+                            tension: 0.3,
+                            borderColor: '#0073aa',
+                            backgroundColor: 'rgba(0, 115, 170, 0.2)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+        });
     }
 
     function fetchFavorites() {
@@ -514,6 +547,7 @@ function loadUserBadges() {
     fetchRecommendations();
     updateDashboardStats();
     fetchFavorites();
+    loadSubmissionStats();
 
     $('.ead-tab-button').on('click', function () {
         const tab = $(this).data('tab');
@@ -536,6 +570,7 @@ function loadUserBadges() {
             updateDashboardStats();
         } else if (tab === 'submissions') {
             fetchSubmissions();
+            loadSubmissionStats();
         }
     });
 });
