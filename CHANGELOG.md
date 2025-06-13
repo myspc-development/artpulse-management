@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.3] - 2025-06-14
+### Added
+- Calendar view in the user dashboard to browse events visually.
+
 ## [3.7.2] - 2025-06-13
 ### Added
 - Advanced CSV importer with progress tracking and optional log download.

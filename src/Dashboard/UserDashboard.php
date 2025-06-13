@@ -29,10 +29,21 @@ class UserDashboard {
             null,
             true
         );
+        wp_enqueue_style(
+            'fullcalendar',
+            'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css'
+        );
+        wp_enqueue_script(
+            'fullcalendar',
+            'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js',
+            [],
+            null,
+            true
+        );
         wp_enqueue_script(
             'ead-user-dashboard',
             $plugin_url . 'assets/js/user-dashboard.js',
-            ['jquery', 'chart-js'],
+            ['jquery', 'chart-js', 'fullcalendar'],
             EAD_MANAGEMENT_VERSION,
             true
         );
@@ -139,6 +150,7 @@ class UserDashboard {
                 <button class="ead-tab-button active" data-tab="dashboard">Dashboard</button>
                 <button class="ead-tab-button" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="favorites"><?php esc_html_e( 'Favorites', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="calendar">Calendar</button>
                 <button class="ead-tab-button" data-tab="notifications"><?php esc_html_e('Notifications', 'artpulse-management'); ?></button>
                 <button class="ead-tab-button" data-tab="profile"><?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="uploads"><?php esc_html_e('My Uploads', 'artpulse-management'); ?></button>
@@ -154,6 +166,10 @@ class UserDashboard {
             </div>
             <div class="ead-tab-content" id="ead-tab-favorites">
                 <p><?php esc_html_e( 'Your saved favorite items will appear here.', 'artpulse-management' ); ?></p>
+            </div>
+            <div class="ead-tab-content" id="ead-tab-calendar">
+                <h3>Event Calendar</h3>
+                <div id="ead-event-calendar"></div>
             </div>
             <div class="ead-tab-content" id="ead-tab-notifications">
                 <p><?php esc_html_e( 'Loading notifications...', 'artpulse-management' ); ?></p>

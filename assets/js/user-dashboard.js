@@ -20,6 +20,31 @@ jQuery(document).ready(function($){
         }, 3000);
     }
 
+    function loadEventCalendar() {
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/calendar',
+            method: 'GET',
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function (events) {
+                const calendarEl = document.getElementById('ead-event-calendar');
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,listWeek'
+                    },
+                    events: events,
+                    eventClick: function(info) {
+                        info.jsEvent.preventDefault();
+                        window.open(info.event.url, '_blank');
+                    }
+                });
+                calendar.render();
+            }
+        });
+    }
+
     function renderEvent(event) {
         const location = [event.venue?.city, event.venue?.state, event.venue?.country]
             .filter(Boolean).join(', ');
@@ -571,6 +596,8 @@ function loadUserBadges() {
         } else if (tab === 'submissions') {
             fetchSubmissions();
             loadSubmissionStats();
+        } else if (tab === 'calendar') {
+            loadEventCalendar();
         }
     });
 });
