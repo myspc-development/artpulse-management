@@ -57,6 +57,20 @@ jQuery(document).ready(function($){
         });
     }
 
+    function loadEventLocations() {
+        $.get(eadUserDashboard.restUrl + '/event-locations', function (locs) {
+            const html = locs.map(l => `<option value="${l}">${l}</option>`).join('');
+            $('#ead-filter-location').append(html);
+        });
+    }
+
+    function loadEventTags() {
+        $.get(eadUserDashboard.restUrl + '/event-tags', function (tags) {
+            const html = tags.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+            $('#ead-filter-tags').append(html);
+        });
+    }
+
     function renderCalendar(events) {
         const calendarEl = document.getElementById('ead-event-calendar');
         calendarEl.innerHTML = '';
@@ -633,20 +647,25 @@ function loadUserBadges() {
     fetchFavorites();
     loadSubmissionStats();
 
-    $('#ead-filter-rsvp, #ead-filter-category').on('change', function () {
+    $('#ead-calendar-filters select, #ead-filter-search').on('input change', function () {
         const rsvp = $('#ead-filter-rsvp').val();
         const category = $('#ead-filter-category').val();
+        const location = $('#ead-filter-location').val();
+        const tag = $('#ead-filter-tags').val();
+        const search = $('#ead-filter-search').val().toLowerCase();
 
         let filtered = allCalendarEvents;
 
-        if (rsvp === 'rsvped') {
-            filtered = filtered.filter(e => e.rsvped);
-        } else if (rsvp === 'not-rsvped') {
-            filtered = filtered.filter(e => !e.rsvped);
-        }
-
-        if (category !== 'all') {
-            filtered = filtered.filter(e => e.category === category);
+        if (rsvp === 'rsvped') filtered = filtered.filter(e => e.rsvped);
+        if (rsvp === 'not-rsvped') filtered = filtered.filter(e => !e.rsvped);
+        if (category !== 'all') filtered = filtered.filter(e => e.category === category);
+        if (location !== 'all') filtered = filtered.filter(e => e.location === location);
+        if (tag !== 'all') filtered = filtered.filter(e => (e.tags || []).includes(tag));
+        if (search) {
+            filtered = filtered.filter(e =>
+                e.title.toLowerCase().includes(search) ||
+                (e.description || '').toLowerCase().includes(search)
+            );
         }
 
         renderCalendar(filtered);
@@ -677,6 +696,8 @@ function loadUserBadges() {
         } else if (tab === 'calendar') {
             loadEventCalendar();
             loadEventCategories();
+            loadEventLocations();
+            loadEventTags();
         }
     });
 });

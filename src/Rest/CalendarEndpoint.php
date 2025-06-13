@@ -34,6 +34,26 @@ class CalendarEndpoint extends WP_REST_Controller {
                 'permission_callback' => '__return_true',
             ]
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/event-locations',
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [ $this, 'get_event_locations' ],
+                'permission_callback' => '__return_true',
+            ]
+        );
+
+        register_rest_route(
+            $this->namespace,
+            '/event-tags',
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [ $this, 'get_event_tags' ],
+                'permission_callback' => '__return_true',
+            ]
+        );
     }
 
     public function get_calendar_events( WP_REST_Request $request ) {
@@ -51,6 +71,7 @@ class CalendarEndpoint extends WP_REST_Controller {
             static function ( $post ) use ( $user_rsvps ) {
                 $id    = $post->ID;
                 $terms = wp_get_post_terms( $id, 'ead_event_category', [ 'fields' => 'names' ] );
+                $tags  = wp_get_post_terms( $id, 'post_tag', [ 'fields' => 'names' ] );
 
                 return [
                     'id'        => $id,
@@ -59,6 +80,9 @@ class CalendarEndpoint extends WP_REST_Controller {
                     'url'       => get_permalink( $id ),
                     'rsvped'    => in_array( $id, $user_rsvps, true ),
                     'category'  => $terms[0] ?? 'Uncategorized',
+                    'location'  => get_post_meta( $id, 'event_location', true ) ?: 'Unspecified',
+                    'tags'      => $tags,
+                    'description' => $post->post_content,
                 ];
             },
             $events
@@ -81,6 +105,17 @@ class CalendarEndpoint extends WP_REST_Controller {
         );
 
         return new WP_REST_Response( $data, 200 );
+    }
+
+    public function get_event_locations( WP_REST_Request $request ) {
+        global $wpdb;
+        $results = $wpdb->get_col( "SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'event_location'" );
+        return array_filter( $results );
+    }
+
+    public function get_event_tags( WP_REST_Request $request ) {
+        $terms = get_terms( [ 'taxonomy' => 'post_tag', 'hide_empty' => false ] );
+        return array_map( static fn( $t ) => [ 'name' => $t->name ], $terms );
     }
 
     public function check_user_logged_in( WP_REST_Request $request ) {
