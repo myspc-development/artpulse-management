@@ -261,5 +261,3 @@ See the [Mobile App Development Plan](documents/mobile-app-dev-plan) for a detai
 - [Directory Options](documents/Directory_Options.md)
 - [Admin Help](documents/Admin_Help.md)
 - [Settings Tabs](documents/Settings_Tabs.md)
-# artpulse-management
-# artpulse-management
