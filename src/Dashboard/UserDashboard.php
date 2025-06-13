@@ -243,6 +243,8 @@ class UserDashboard {
                     <button type="submit" class="button"><?php esc_html_e('Submit Artwork', 'artpulse-management'); ?></button>
                 </form>
                 <div id="ead-upload-feedback"></div>
+                <h3><?php esc_html_e('My Uploaded Artworks', 'artpulse-management'); ?></h3>
+                <div id="ead-my-uploads"></div>
             </div>
             <?php if ( $is_admin || $is_org ) : ?>
             <div class="ead-tab-content" id="ead-tab-submissions">
