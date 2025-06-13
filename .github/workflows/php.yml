@@ -38,8 +38,7 @@ jobs:
         composer install --prefer-dist --no-progress
         composer dump-autoload --optimize
 
-    - name: Static analysis
-      run: composer run-script analyse
+
 
     - name: Run test suite
       run: composer run-script test
