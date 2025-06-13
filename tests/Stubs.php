@@ -16,6 +16,8 @@ class Stubs {
     public static array $db_last_query = [];
     public static string $redirect = '';
     public static bool $logged_in = true;
+    public static array $post_terms = [];
+    public static array $terms = [];
 }
 
 function is_user_logged_in(): bool {
@@ -165,6 +167,20 @@ function get_post_field($field, $post_id) {
     return '';
 }
 
+function wp_get_post_terms($post_id, $taxonomy, $args = []) {
+    return \Tests\Stubs::$post_terms[$post_id][$taxonomy] ?? [];
+}
+
+function get_terms($args = []) {
+    $taxonomy = '';
+    if (is_array($args)) {
+        $taxonomy = $args['taxonomy'] ?? '';
+    } else {
+        $taxonomy = $args;
+    }
+    return \Tests\Stubs::$terms[$taxonomy] ?? [];
+}
+
 class WP_REST_Controller {}
 class WP_REST_Server { const READABLE = 'GET'; }
 class WP_REST_Request {
@@ -186,6 +202,9 @@ $GLOBALS['wpdb'] = new class {
         return vsprintf($query, $args);
     }
     public function get_var($sql) {
+        return \Tests\Stubs::$db_result;
+    }
+    public function get_col($sql) {
         return \Tests\Stubs::$db_result;
     }
 };
