@@ -123,3 +123,20 @@
     }
 }
 
+.ead-message-card {
+    border-left: 4px solid #0073aa;
+    background: #f9f9f9;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+}
+
+.ead-message-meta {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.ead-message-body {
+    margin-top: 0.5rem;
+}
+

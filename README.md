@@ -159,6 +159,7 @@ Below is a high-level view of the custom REST endpoints. All routes are prefixed
 | `/events/submit` | `POST` logged-in users |
 | `/likes` | `POST` logged-in users |
 | `/moderation` | `POST` logged-in users |
+| `/notifications` | `GET` logged-in users |
 | `/settings/notification` | `GET` `POST` admins |
 | `/settings` | `GET` `POST` admins |
 | `/taxonomies` | `GET` users with `read` |
