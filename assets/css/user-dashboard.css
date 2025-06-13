@@ -1,0 +1,6 @@
+.ead-user-dashboard{margin:20px 0;}
+.ead-user-filters label{display:block;margin-bottom:5px;}
+.ead-user-filters input{margin-right:5px;}
+.ead-event-card{border:1px solid #ccc;padding:10px;margin-bottom:10px;}
+@media(max-width:600px){.ead-user-filters label{display:block;width:100%;}}
+

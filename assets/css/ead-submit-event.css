@@ -1,0 +1,251 @@
+/*--- General Frontend Event Form Layout ---*/
+.ead-event-form {
+  max-width: 700px;
+  margin: 0 auto 2rem;
+}
+
+.ead-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.ead-form-group {
+  margin-bottom: 1rem;
+}
+
+.ead-two-col {
+  display: flex;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .ead-two-col {
+    flex-direction: column;
+  }
+}
+
+.ead-dropzone {
+  border: 2px dashed #bbb;
+  padding: 1.5rem;
+  text-align: center;
+  border-radius: 6px;
+  background: #f9f9f9;
+  cursor: pointer;
+}
+
+/*--- Form Container ---*/
+.ead-dashboard-card.ead-submit-event-wrapper {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 600px;
+  margin: 2rem auto;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+
+/*--- Fields ---*/
+.ead-submit-event-wrapper label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: .5rem;
+  color: var(--ead-text-color, #222);
+}
+.ead-submit-event-wrapper input[type="text"],
+.ead-submit-event-wrapper input[type="email"],
+.ead-submit-event-wrapper input[type="date"],
+.ead-submit-event-wrapper input[type="url"],
+.ead-submit-event-wrapper textarea,
+.ead-submit-event-wrapper select {
+  width: 100%;
+  padding: .7rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color .2s;
+  margin-bottom: 0.5rem;
+  font-family: inherit;
+}
+.ead-submit-event-wrapper input:focus,
+.ead-submit-event-wrapper textarea:focus,
+.ead-submit-event-wrapper select:focus {
+  border-color: var(--ead-primary-color, #0073aa);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.2);
+}
+
+.ead-submit-event-wrapper ::placeholder {
+  color: #aaa;
+  opacity: 1;
+}
+
+.ead-submit-event-wrapper .required {
+  color: #e02424;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/*--- Error styles (replace .input-error with .ead-input-error for JS compatibility) ---*/
+.ead-input-error {
+  border: 2px solid #e02424 !important;
+  background-color: #ffe9e9 !important;
+}
+.ead-form-error {
+  color: #d10000;
+  font-size: 0.92rem;
+  margin-bottom: 4px;
+  display: block;
+}
+.ead-error-message {
+  color: #c00;
+  margin-bottom: 10px;
+}
+.ead-form-center {
+  text-align: center;
+}
+.ead-hidden-file-input {
+  display: none;
+}
+.ead-map-display {
+  height: 250px;
+  border-radius: 10px;
+}
+
+/*--- Notices ---*/
+.notice-success,
+.notice.notice-success {
+  background-color: #e6fbe9;
+  border-left: 4px solid #3bb34a;
+  padding: 10px 16px;
+  color: #21582b;
+  margin: 14px 0;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+.notice-error,
+.notice.notice-error {
+  background-color: #fff4f4;
+  border-left: 4px solid #e02424;
+  padding: 10px 16px;
+  color: #a20d0d;
+  margin: 14px 0;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+/*--- Spinner (optional: a bit smoother & modern) ---*/
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid #ccc;
+  border-top: 2.5px solid var(--ead-primary-color, #0073aa);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/*--- Drag-drop Gallery Zone ---*/
+.ead-image-preview-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 44px;
+  background: #f6f7f9;
+  border: 1.5px dashed #bbb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  position: relative;
+  min-height: 65px;
+  transition: background .15s, border-color .15s;
+}
+.ead-image-preview-flex.drag-over {
+  background: #dbeffd;
+  border-color: #369cff;
+}
+
+.ead-img-preview-thumb {
+  position: relative;
+  display: inline-block;
+}
+.ead-img-preview-thumb img {
+  max-width: 100px;
+  max-height: 100px;
+  border-radius: 5px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+.ead-img-remove-btn {
+  position: absolute;
+  top: 4px; right: 4px;
+  background: rgba(244,0,0,0.85);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 22px; height: 22px;
+  font-size: 17px;
+  cursor: pointer;
+  line-height: 20px;
+  padding: 0;
+  z-index: 2;
+  opacity: 0.87;
+  transition: background .16s;
+}
+.ead-img-remove-btn:hover,
+.ead-img-remove-btn:focus {
+  background: #d10000;
+  opacity: 1;
+}
+
+/*--- Select2 Tweaks ---*/
+.select2-container--default .select2-selection--single {
+  height: 41px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border-color: #ccc;
+  font-size: 1rem;
+}
+.select2-container--default .select2-selection--single:focus,
+.select2-container--default .select2-selection--single.select2-selection--focus {
+  border-color: var(--ead-primary-color, #0073aa);
+  box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.12);
+}
+
+.select2-results__option--highlighted[aria-selected] {
+  background: var(--ead-primary-color);
+  color: #fff;
+}
+
+/*--- Button ---*/
+.ead-btn-primary,
+.ead-submit-event-wrapper button[type="submit"] {
+  background-color: var(--ead-primary-color, #0073aa);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.8rem 2rem;
+  font-size: 1.05rem;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 6px;
+  transition: background-color 0.16s;
+}
+.ead-btn-primary:hover,
+.ead-submit-event-wrapper button[type="submit"]:hover {
+  background-color: #005f8d;
+}
+
+@media (max-width: 700px) {
+  .ead-dashboard-card.ead-submit-event-wrapper {
+    padding: 1rem;
+    margin: 1rem auto;
+    font-size: 0.95rem;
+  }
+  .ead-image-preview-flex {
+    gap: 6px;
+    padding: 5px 5px;
+  }
+}

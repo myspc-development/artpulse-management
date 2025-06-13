@@ -1,0 +1,39 @@
+{
+  "TIER_1": {
+    "IT": ["Rome", "Florence", "Venice", "Milan"],
+    "FR": ["Paris", "Lyon", "Nice", "Marseille"],
+    "US": ["New York City", "Los Angeles", "Chicago", "Washington D.C.", "San Francisco"],
+    "GB": ["London", "Edinburgh", "Liverpool", "Manchester"],
+    "ES": ["Madrid", "Barcelona", "Seville", "Valencia", "Bilbao"]
+  },
+  "TIER_2": {
+    "DE": ["Berlin", "Munich", "Hamburg", "Frankfurt", "Cologne", "Dresden"],
+    "NL": ["Amsterdam", "Rotterdam", "The Hague", "Utrecht"],
+    "JP": ["Tokyo", "Kyoto", "Osaka", "Naoshima"],
+    "CN": ["Beijing", "Shanghai", "Hangzhou", "Xi'an"],
+    "MX": ["Mexico City", "Oaxaca", "Guadalajara", "San Miguel de Allende"],
+    "GR": ["Athens", "Thessaloniki", "Heraklion"],
+    "EG": ["Cairo", "Luxor", "Alexandria"],
+    "RU": ["Moscow", "Saint Petersburg"]
+  },
+  "TIER_3": {
+    "IN": ["Delhi", "Mumbai", "Kolkata", "Jaipur", "Varanasi"],
+    "CA": ["Toronto", "Montreal", "Vancouver", "Ottawa"],
+    "AU": ["Sydney", "Melbourne", "Canberra", "Brisbane"],
+    "BR": ["São Paulo", "Rio de Janeiro", "Salvador", "Belo Horizonte"],
+    "BE": ["Brussels", "Antwerp", "Bruges", "Ghent"],
+    "AT": ["Vienna", "Salzburg", "Graz", "Innsbruck"],
+    "CH": ["Zurich", "Basel", "Geneva", "Lausanne"],
+    "KR": ["Seoul", "Busan", "Gwangju"],
+    "AR": ["Buenos Aires", "Córdoba", "Rosario"],
+    "TR": ["Istanbul", "Ankara", "Izmir"],
+    "PE": ["Lima", "Cusco", "Arequipa"],
+    "SE": ["Stockholm", "Gothenburg", "Malmö"],
+    "IE": ["Dublin", "Cork", "Galway"],
+    "PT": ["Lisbon", "Porto", "Sintra"],
+    "CZ": ["Prague", "Brno", "Český Krumlov"],
+    "PL": ["Krakow", "Warsaw", "Gdańsk", "Wrocław"],
+    "CO": ["Bogotá", "Medellín", "Cartagena"],
+    "ZA": ["Cape Town", "Johannesburg", "Durban"]
+  }
+}

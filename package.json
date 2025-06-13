@@ -1,0 +1,20 @@
+{
+  "name": "artpulse-management",
+  "version": "1.0.0",
+  "description": "A feature-rich WordPress plugin for managing events, organizations, artists, and artworks.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --mode=production",
+    "watch": "webpack --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0",
+    "sass": "^1.0.0"
+  }
+}

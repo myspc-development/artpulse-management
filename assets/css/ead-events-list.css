@@ -1,0 +1,95 @@
+/* Reset & base styles */
+.ead-events-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Event Card */
+.ead-event-card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  flex: 1 1 calc(33.333% - 16px); /* 3 columns by default */
+  box-sizing: border-box;
+  transition: box-shadow 0.3s ease;
+}
+
+.ead-event-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.ead-event-card h2 {
+  font-size: 1.2rem;
+  margin: 0 0 8px;
+}
+
+.ead-event-card .ead-event-date {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.ead-event-card .ead-event-excerpt {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .ead-event-card {
+    flex: 1 1 calc(50% - 16px); /* 2 columns */
+  }
+}
+
+@media (max-width: 600px) {
+  .ead-event-card {
+    flex: 1 1 100%; /* 1 column */
+  }
+}
+
+/* Pagination */
+.ead-events-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 24px;
+  gap: 8px;
+}
+
+.ead-events-pagination button {
+  background-color: var(--ead-primary-color);
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.ead-events-pagination button:hover {
+  background-color: #005f8d;
+}
+
+.ead-events-pagination button[disabled] {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Filter Form (Optional) */
+.ead-events-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ead-events-filters select,
+.ead-events-filters input[type="date"] {
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}

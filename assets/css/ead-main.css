@@ -1,0 +1,10 @@
+/* Main style variables */
+:root {
+    --ead-primary-color: #0073aa;
+    --ead-secondary-color: #f9f9f9;
+    --ead-text-color: #333;
+}
+
+body {
+    background: var(--ead-secondary-color);
+}
