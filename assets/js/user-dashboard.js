@@ -21,6 +21,23 @@ jQuery(document).ready(function($){
         }, 3000);
     }
 
+    function openEventModal(event) {
+        $('#ead-modal-title').text(event.title);
+        $('#ead-modal-date').text(`Date: ${event.start}`);
+        $('#ead-modal-link').attr('href', event.url);
+        $('#ead-rsvp-btn')
+            .text(event.rsvped ? 'Cancel RSVP' : 'RSVP')
+            .data('id', event.id)
+            .data('rsvped', event.rsvped);
+
+        $('#ead-event-modal').fadeIn(200);
+    }
+
+    $(document).on('click', '.ead-modal-close', () => $('#ead-event-modal').fadeOut(150));
+    $(document).on('click', '#ead-event-modal', (e) => {
+        if (e.target.id === 'ead-event-modal') $('#ead-event-modal').fadeOut(150);
+    });
+
     function loadEventCalendar() {
         $.ajax({
             url: eadUserDashboard.restUrl + '/calendar',
@@ -50,7 +67,13 @@ jQuery(document).ready(function($){
             })),
             eventClick: function(info) {
                 info.jsEvent.preventDefault();
-                window.open(info.event.url, '_blank');
+                openEventModal({
+                    id: info.event.id,
+                    title: info.event.title,
+                    start: info.event.startStr,
+                    url: info.event.url,
+                    rsvped: info.event.extendedProps.rsvped
+                });
             }
         });
         calendar.render();
@@ -387,6 +410,24 @@ function loadUserBadges() {
             }
         });
     }
+
+    $(document).on('click', '#ead-rsvp-btn', function () {
+        const id = $(this).data('id');
+        const rsvped = $(this).data('rsvped');
+        const method = rsvped ? 'DELETE' : 'POST';
+
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/rsvp',
+            method: method,
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            data: { event_id: id },
+            success: function () {
+                showToast(rsvped ? 'RSVP canceled' : 'RSVP confirmed');
+                $('#ead-event-modal').fadeOut(150);
+                loadEventCalendar();
+            }
+        });
+    });
 
     function toggleFavorite(postId, isFavorited) {
         const method = isFavorited ? 'DELETE' : 'POST';

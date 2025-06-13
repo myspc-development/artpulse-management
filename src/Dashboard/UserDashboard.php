@@ -268,6 +268,16 @@ class UserDashboard {
                 <div id="ead-profile-badges"></div>
             </div>
             <div id="ead-toast" class="ead-toast" style="display: none;"></div>
+
+            <div id="ead-event-modal" class="ead-modal" style="display:none;">
+                <div class="ead-modal-content">
+                    <span class="ead-modal-close">&times;</span>
+                    <h3 id="ead-modal-title"></h3>
+                    <p id="ead-modal-date"></p>
+                    <p><a id="ead-modal-link" href="#" target="_blank">View Full Event</a></p>
+                    <button id="ead-rsvp-btn" data-id="" class="button"></button>
+                </div>
+            </div>
         </div>
         <?php
         return ob_get_clean();
