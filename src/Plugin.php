@@ -47,6 +47,7 @@ class Plugin {
         $like_endpoint = new Rest\Like_Endpoint();
         $recommendations_endpoint = new Rest\RecommendationsEndpoint();
         $summary_endpoint = new Rest\SummaryEndpoint();
+        $favorites_endpoint = new Rest\FavoritesEndpoint();
 
         //Dashboards
         Dashboard\OrganizationDashboard::init();

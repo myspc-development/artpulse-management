@@ -21,7 +21,7 @@ class FavoritesList {
         }
 
         $user_id = get_current_user_id();
-        $liked = get_user_meta($user_id, 'ead_likes', true);
+        $liked = get_user_meta($user_id, 'ead_favorites', true);
         if (empty($liked) || !is_array($liked)) {
             return '<p>' . __('You have no favorites yet.', 'event-art-directory') . '</p>';
         }

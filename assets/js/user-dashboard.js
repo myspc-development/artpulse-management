@@ -2,17 +2,23 @@ jQuery(document).ready(function($){
     const restUrl = eadUserDashboard.restUrl;
     const nonce = eadUserDashboard.nonce;
 
-    function renderEvent(event){
-        const location = [
-            event.venue?.city,
-            event.venue?.state,
-            event.venue?.country
-        ].filter(Boolean).join(', ');
-        return `<div class="ead-event-card">
+    function renderEvent(event) {
+        const location = [event.venue?.city, event.venue?.state, event.venue?.country]
+            .filter(Boolean).join(', ');
+
+        const isFavorite = eadUserDashboard.favorites?.includes(event.id);
+        const heartIcon = isFavorite ? '❤️' : '🤍';
+
+        return `
+        <div class="ead-event-card" data-event-id="${event.id}">
             <h3>${event.title}</h3>
             <p>${location}</p>
             <a href="${event.link}">${event.link}</a>
-        </div>`;
+            <button class="ead-favorite-btn" data-id="${event.id}" data-favorited="${isFavorite}">
+                ${heartIcon}
+            </button>
+        </div>
+        `;
     }
 
     function fetchEvents() {
@@ -44,6 +50,13 @@ jQuery(document).ready(function($){
             success: function (response) {
                 const eventsHTML = response.map(renderEvent).join('');
                 $('#ead-user-events').html(eventsHTML || '<p>No events found.</p>');
+
+                $('.ead-favorite-btn').on('click', function () {
+                    const postId = parseInt($(this).data('id'));
+                    const isFavorited = $(this).data('favorited');
+
+                    toggleFavorite(postId, isFavorited);
+                });
             },
             error: function () {
                 $('#ead-user-events').html('<p>Error loading events. Please try again later.</p>');
@@ -85,6 +98,29 @@ jQuery(document).ready(function($){
             },
             error: function () {
                 $('#ead-user-fav-count').text('—');
+            }
+        });
+    }
+
+    function toggleFavorite(postId, isFavorited) {
+        const method = isFavorited ? 'DELETE' : 'POST';
+
+        $.ajax({
+            url: restUrl + '/favorites',
+            method: method,
+            data: { post_id: postId },
+            headers: {
+                'X-WP-Nonce': nonce
+            },
+            success: function (res) {
+                const btn = $(`.ead-favorite-btn[data-id="${postId}"]`);
+                const newFavorited = !isFavorited;
+
+                btn.data('favorited', newFavorited);
+                btn.html(newFavorited ? '❤️' : '🤍');
+
+                eadUserDashboard.favorites = res.favorites;
+                fetchUserSummary();
             }
         });
     }
