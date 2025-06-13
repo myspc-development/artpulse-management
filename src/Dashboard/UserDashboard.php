@@ -33,7 +33,7 @@ class UserDashboard {
             'ead-user-dashboard',
             'eadUserDashboard',
             [
-                'restUrl' => esc_url_raw( rest_url( 'artpulse/v1/events' ) ),
+                'restUrl' => esc_url_raw( rest_url( 'artpulse/v1' ) ),
                 'nonce'   => wp_create_nonce( 'wp_rest' ),
             ]
         );
@@ -87,7 +87,12 @@ class UserDashboard {
                 <p><?php esc_html_e( 'Your saved favorite items will appear here.', 'artpulse-management' ); ?></p>
             </div>
             <div class="ead-tab-content" id="ead-tab-profile">
-                <p><?php esc_html_e( 'User profile details and settings will appear here.', 'artpulse-management' ); ?></p>
+                <div class="ead-profile-summary">
+                    <h3><?php esc_html_e( 'Your Profile', 'artpulse-management' ); ?></h3>
+                    <p><?php printf( esc_html__( 'Logged in as %s', 'artpulse-management' ), esc_html( wp_get_current_user()->display_name ) ); ?></p>
+                    <p><?php esc_html_e( 'Email:', 'artpulse-management' ); ?> <?php echo esc_html( wp_get_current_user()->user_email ); ?></p>
+                    <p><?php esc_html_e( 'Favorites:', 'artpulse-management' ); ?> <span id="ead-user-fav-count">...</span></p>
+                </div>
             </div>
         </div>
         <?php
@@ -136,6 +141,8 @@ class UserDashboard {
             </button>
         </div>
         <div id="ead-user-events"></div>
+        <h3><?php esc_html_e( 'Recommended For You', 'artpulse-management' ); ?></h3>
+        <div id="ead-user-recommendations"></div>
         <h3><?php esc_html_e( 'Your Favorites', 'artpulse-management' ); ?></h3>
         <?php echo do_shortcode('[ead_favorites]'); ?>
         <?php

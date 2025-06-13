@@ -35,7 +35,7 @@ jQuery(document).ready(function($){
         };
 
         $.ajax({
-            url: restUrl,
+            url: restUrl + '/events',
             data,
             method: 'GET',
             beforeSend: function () {
@@ -56,7 +56,42 @@ jQuery(document).ready(function($){
         fetchEvents();
     });
 
+    function fetchRecommendations() {
+        $.ajax({
+            url: restUrl + '/recommendations',
+            method: 'GET',
+            headers: {
+                'X-WP-Nonce': nonce
+            },
+            success: function (response) {
+                const html = response.map(renderEvent).join('');
+                $('#ead-user-recommendations').html(html || '<p>No recommendations yet.</p>');
+            },
+            error: function () {
+                $('#ead-user-recommendations').html('<p>Unable to load recommendations.</p>');
+            }
+        });
+    }
+
+    function fetchUserSummary() {
+        $.ajax({
+            url: restUrl + '/summary',
+            method: 'GET',
+            headers: {
+                'X-WP-Nonce': nonce
+            },
+            success: function (data) {
+                $('#ead-user-fav-count').text(data.favorites || 0);
+            },
+            error: function () {
+                $('#ead-user-fav-count').text('—');
+            }
+        });
+    }
+
     fetchEvents();
+    fetchRecommendations();
+    fetchUserSummary();
 
     $('.ead-tab-button').on('click', function () {
         const tab = $(this).data('tab');

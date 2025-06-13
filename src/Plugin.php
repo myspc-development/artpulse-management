@@ -45,6 +45,8 @@ class Plugin {
         $artistdashboard_endpoint = new Rest\ArtistDashboardEndpoint();
         $comment_endpoint = new Rest\CommentEndpoint();
         $like_endpoint = new Rest\Like_Endpoint();
+        $recommendations_endpoint = new Rest\RecommendationsEndpoint();
+        $summary_endpoint = new Rest\SummaryEndpoint();
 
         //Dashboards
         Dashboard\OrganizationDashboard::init();
