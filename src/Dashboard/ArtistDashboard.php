@@ -134,14 +134,14 @@ class ArtistDashboard {
             'ead-artist-dashboard',
             $plugin_url . 'assets/css/artist-dashboard.css',
             [],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0'
+            EAD_MANAGEMENT_VERSION
         );
 
         wp_enqueue_style(
             'ead-artist-gallery',
             $plugin_url . 'assets/css/artist-gallery.css',
             [],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0'
+            EAD_MANAGEMENT_VERSION
         );
 
         wp_enqueue_media();
@@ -150,7 +150,7 @@ class ArtistDashboard {
             'ead-artist-dashboard',
             $plugin_url . 'assets/js/artist-dashboard.js',
             ['jquery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 
@@ -158,7 +158,7 @@ class ArtistDashboard {
             'ead-artist-gallery',
             $plugin_url . 'assets/js/artist-gallery.js',
             ['jquery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 
@@ -166,7 +166,7 @@ class ArtistDashboard {
             'ead-artist-gallery-sortable',
             $plugin_url . 'assets/js/artist-gallery-sortable.js',
             ['jquery', 'jquery-ui-sortable', 'ead-artist-gallery'],
-            defined('EAD_MANAGEMENT_VERSION') ? EAD_MANAGEMENT_VERSION : '1.0.0',
+            EAD_MANAGEMENT_VERSION,
             true
         );
 
