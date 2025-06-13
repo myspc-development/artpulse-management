@@ -235,6 +235,7 @@ use EAD\Analytics\ListingAnalytics;
 use EAD\Integration\WPBakery;
 use EAD\Integration\WooCommercePayments;
 use EAD\Notifications\PushNotificationService;
+use EAD\Roles\RolesManager;
 
 
 class Plugin {
@@ -1706,11 +1707,16 @@ class Plugin {
 // Initialize the main plugin class
 add_action( 'plugins_loaded', [ Plugin::class, 'init' ] );
 
-// Activation and Deactivation Hooks for RolesManager
-//if ( class_exists( RolesManager::class ) ) {
-//    register_activation_hook( __FILE__, [ Plugin::class, 'add_roles' ] );
-//    register_deactivation_hook( __FILE__, [ Plugin::class, 'remove_roles' ] );
-//}
+// Activation and Deactivation Hooks for custom roles
+if ( class_exists( Plugin::class ) ) {
+    register_activation_hook( __FILE__, [ Plugin::class, 'add_roles' ] );
+    register_deactivation_hook( __FILE__, [ Plugin::class, 'remove_roles' ] );
+}
+
+// Ensure role capabilities are registered on init
+if ( class_exists( RolesManager::class ) ) {
+    add_action( 'init', [ RolesManager::class, 'init' ] );
+}
 
 
 add_action( 'template_redirect', function () {

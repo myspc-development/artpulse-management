@@ -34,7 +34,9 @@ Introduced in version **3.7.0** – see [CHANGELOG.md](CHANGELOG.md) for details
 
 1. Download the plugin .zip or clone this repository into your WordPress `wp-content/plugins` directory.
 2. Activate the plugin via the WordPress admin panel.
-3. Navigate to **ArtPulse Management** in the admin sidebar.
+3. Upon activation the plugin registers custom roles and capabilities.
+4. Navigate to **ArtPulse Management** in the admin sidebar.
+5. When deactivated these roles are removed automatically.
 
 ## Onboarding
 
