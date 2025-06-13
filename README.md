@@ -18,6 +18,7 @@ Version **3.7.2** compatible with **WordPress 6.7.2+**.
 - Roles manager for custom capabilities
 - Flexible shortcodes for registration forms, listings and dashboards
 - Comprehensive REST API
+- User search API for autocomplete fields
 - Mobile routes served via REST endpoints
 - Automated geocoding of addresses
 - Automatic portfolio mirroring for published content

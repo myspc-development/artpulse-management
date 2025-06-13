@@ -436,6 +436,32 @@ jQuery(document).ready(function($){
         });
     });
 
+    $('#ead-user-autocomplete').on('input', function () {
+        const query = $(this).val();
+        if (query.length < 2) return $('#ead-user-suggestions').hide();
+
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/users/search',
+            data: { term: query },
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function (users) {
+                const suggestions = users.map(user => `
+                    <div class="ead-suggestion" data-id="${user.id}">${user.name}</div>
+                `).join('');
+
+                $('#ead-user-suggestions').html(suggestions).show();
+            }
+        });
+    });
+
+    $(document).on('click', '.ead-suggestion', function () {
+        const name = $(this).text();
+        const id = $(this).data('id');
+        $('#ead-user-autocomplete').val(name);
+        $('#ead-user-id').val(id);
+        $('#ead-user-suggestions').hide();
+    });
+
     fetchEvents();
     fetchRecommendations();
     fetchUserSummary();
