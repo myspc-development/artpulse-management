@@ -73,33 +73,57 @@ class UserDashboard {
         ?>
         <div class="ead-user-dashboard">
             <h2><?php esc_html_e( 'User Dashboard', 'artpulse-management' ); ?></h2>
-            <div class="ead-user-filters">
-                <label>
-                    <?php esc_html_e( 'City', 'artpulse-management' ); ?>
-                    <input type="text" id="ead-filter-city" />
-                </label>
-                <label>
-                    <?php esc_html_e( 'State/Region', 'artpulse-management' ); ?>
-                    <input type="text" id="ead-filter-state" />
-                </label>
-                <label>
-                    <?php esc_html_e( 'Country', 'artpulse-management' ); ?>
-                    <input type="text" id="ead-filter-country" />
-                </label>
-                <label>
-                    <?php esc_html_e( 'Event Type', 'artpulse-management' ); ?>
-                    <input type="text" id="ead-filter-type" />
-                </label>
-                <button id="ead-filter-submit" class="button">
-                    <?php esc_html_e( 'Apply Filters', 'artpulse-management' ); ?>
-                </button>
+
+            <div class="ead-tabs">
+                <button class="ead-tab-button active" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="favorites"><?php esc_html_e( 'Favorites', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="profile"><?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
             </div>
-            <div id="ead-user-events"></div>
-            <h3><?php esc_html_e( 'Your Favorites', 'artpulse-management' ); ?></h3>
-            <?php echo do_shortcode('[ead_favorites]'); ?>
+
+            <div class="ead-tab-content active" id="ead-tab-events">
+                <?php self::render_events_section(); ?>
+            </div>
+            <div class="ead-tab-content" id="ead-tab-favorites">
+                <p><?php esc_html_e( 'Your saved favorite items will appear here.', 'artpulse-management' ); ?></p>
+            </div>
+            <div class="ead-tab-content" id="ead-tab-profile">
+                <p><?php esc_html_e( 'User profile details and settings will appear here.', 'artpulse-management' ); ?></p>
+            </div>
         </div>
         <?php
         return ob_get_clean();
+    }
+
+    /**
+     * Render the events section of the dashboard.
+     */
+    public static function render_events_section() {
+        ?>
+        <div class="ead-user-filters">
+            <label>
+                <?php esc_html_e( 'City', 'artpulse-management' ); ?>
+                <input type="text" id="ead-filter-city" />
+            </label>
+            <label>
+                <?php esc_html_e( 'State/Region', 'artpulse-management' ); ?>
+                <input type="text" id="ead-filter-state" />
+            </label>
+            <label>
+                <?php esc_html_e( 'Country', 'artpulse-management' ); ?>
+                <input type="text" id="ead-filter-country" />
+            </label>
+            <label>
+                <?php esc_html_e( 'Event Type', 'artpulse-management' ); ?>
+                <input type="text" id="ead-filter-type" />
+            </label>
+            <button id="ead-filter-submit" class="button">
+                <?php esc_html_e( 'Apply Filters', 'artpulse-management' ); ?>
+            </button>
+        </div>
+        <div id="ead-user-events"></div>
+        <h3><?php esc_html_e( 'Your Favorites', 'artpulse-management' ); ?></h3>
+        <?php echo do_shortcode('[ead_favorites]'); ?>
+        <?php
     }
 }
 
