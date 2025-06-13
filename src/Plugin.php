@@ -52,6 +52,7 @@ class Plugin {
         $notifications_endpoint = new Rest\NotificationsEndpoint();
         $activity_endpoint = new Rest\ActivityEndpoint();
         $badges_endpoint = new Rest\BadgesEndpoint();
+        $users_endpoint = new Rest\UsersEndpoint();
 
         //Dashboards
         Dashboard\OrganizationDashboard::init();

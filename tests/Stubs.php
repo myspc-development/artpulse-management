@@ -3,7 +3,9 @@ namespace Tests;
 
 class Stubs {
     public static array $posts = [];
+    public static array $users = [];
     public static array $last_query_args = [];
+    public static array $last_user_query = [];
     public static array $caps = [];
     public static int $current_user_id = 1;
     public static array $user_meta = [];
@@ -57,6 +59,11 @@ function wp_update_post(array $args) {
 function get_posts(array $args = []) {
     \Tests\Stubs::$last_query_args = $args;
     return \Tests\Stubs::$posts;
+}
+
+function get_users(array $args = []) {
+    \Tests\Stubs::$last_user_query = $args;
+    return \Tests\Stubs::$users;
 }
 
 function get_post($post_id) {
