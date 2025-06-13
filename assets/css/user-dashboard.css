@@ -323,3 +323,14 @@
     margin-top: 1rem;
 }
 
+@media (max-width: 600px) {
+    .ead-tabs {
+        flex-direction: column;
+    }
+
+    .ead-tab-button {
+        margin-bottom: 0.5rem;
+        border-radius: 6px;
+    }
+}
+
