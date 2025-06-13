@@ -154,6 +154,7 @@ class Plugin {
         $plugin_url = EAD_PLUGIN_DIR_URL;
         $version    = self::VERSION;
 
+        wp_enqueue_style( 'font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css' );
         wp_enqueue_style( 'ead-main-style', $plugin_url . 'assets/css/ead-main.css', [], $version );
         wp_enqueue_style( 'ead-badges-style', $plugin_url . 'assets/css/ead-badges.css', [], $version );
         wp_enqueue_style( 'ead-artist-gallery', $plugin_url . 'assets/css/artist-gallery.css', [], $version );

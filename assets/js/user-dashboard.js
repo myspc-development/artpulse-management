@@ -788,8 +788,8 @@ function loadUserBadges() {
         $(`.ead-tab-nav li[data-tab="${tab}"], .ead-tab-button[data-tab="${tab}"]`).addClass('active');
 
         // Show relevant content section
-        $('.ead-tab-content').removeClass('active').hide();
-        $(`#ead-tab-${tab}`).addClass('active').fadeIn(150);
+        $('.ead-tab-content').removeClass('active');
+        $(`#ead-tab-${tab}`).addClass('active');
 
         // Optional: trigger tab-specific loaders
         if (tab === 'calendar') {

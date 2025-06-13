@@ -158,15 +158,15 @@ class UserDashboard {
 
             <?php $current_user = wp_get_current_user(); $roles = $current_user->roles; $is_admin = in_array( 'administrator', $roles, true ); $is_org = in_array( 'organization', $roles, true ); ?>
             <div class="ead-tabs">
-                <button class="ead-tab-button active" data-tab="dashboard">Dashboard</button>
-                <button class="ead-tab-button" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
-                <button class="ead-tab-button" data-tab="favorites"><?php esc_html_e( 'Favorites', 'artpulse-management' ); ?></button>
-                <button class="ead-tab-button" data-tab="calendar">Calendar</button>
-                <button class="ead-tab-button" data-tab="notifications"><?php esc_html_e('Notifications', 'artpulse-management'); ?></button>
-                <button class="ead-tab-button" data-tab="profile"><?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
-                <button class="ead-tab-button" data-tab="uploads"><?php esc_html_e('My Uploads', 'artpulse-management'); ?></button>
+                <button class="ead-tab-button active" data-tab="dashboard"><i class="fa fa-home"></i> Dashboard</button>
+                <button class="ead-tab-button" data-tab="events"><i class="fa fa-calendar"></i> <?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="favorites"><i class="fa fa-star"></i> <?php esc_html_e( 'Favorites', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="calendar"><i class="fa fa-calendar-days"></i> Calendar</button>
+                <button class="ead-tab-button" data-tab="notifications"><i class="fa fa-bell"></i> <?php esc_html_e('Notifications', 'artpulse-management'); ?></button>
+                <button class="ead-tab-button" data-tab="profile"><i class="fa fa-user"></i> <?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="uploads"><i class="fa fa-upload"></i> <?php esc_html_e('My Uploads', 'artpulse-management'); ?></button>
                 <?php if ( $is_admin || $is_org ) : ?>
-                    <button class="ead-tab-button" data-tab="submissions"><?php esc_html_e( 'Submissions', 'artpulse-management' ); ?></button>
+                    <button class="ead-tab-button" data-tab="submissions"><i class="fa fa-tasks"></i> <?php esc_html_e( 'Submissions', 'artpulse-management' ); ?></button>
                 <?php endif; ?>
             </div>
             <div class="ead-tab-content active" id="ead-tab-dashboard">
