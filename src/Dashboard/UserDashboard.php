@@ -23,9 +23,16 @@ class UserDashboard {
             EAD_MANAGEMENT_VERSION
         );
         wp_enqueue_script(
+            'chart-js',
+            'https://cdn.jsdelivr.net/npm/chart.js',
+            [],
+            null,
+            true
+        );
+        wp_enqueue_script(
             'ead-user-dashboard',
             $plugin_url . 'assets/js/user-dashboard.js',
-            ['jquery'],
+            ['jquery', 'chart-js'],
             EAD_MANAGEMENT_VERSION,
             true
         );
@@ -134,6 +141,8 @@ class UserDashboard {
                         <button type="submit" class="button"><?php esc_html_e('Update Password', 'artpulse-management'); ?></button>
                     </form>
                 </div>
+                <h3><?php esc_html_e('Your Activity', 'artpulse-management'); ?></h3>
+                <canvas id="ead-activity-chart" width="400" height="200"></canvas>
             </div>
             <div id="ead-toast" class="ead-toast" style="display: none;"></div>
         </div>
