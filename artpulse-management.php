@@ -273,6 +273,10 @@ class Plugin {
         // Hook for notifying admin of new event submissions
         add_action( 'transition_post_status', [ self::class, 'notify_admin_on_event_pending' ], 10, 3 );
 
+        // Hooks for artwork submission notifications
+        add_action( 'transition_post_status', [ self::class, 'notify_artist_on_artwork_approval' ], 10, 3 );
+        add_action( 'transition_post_status', [ self::class, 'notify_admin_on_artwork_pending' ], 10, 3 );
+
         // Push notifications on updates
         add_action( 'save_post_ead_event', [ self::class, 'notify_event_updated' ], 10, 3 );
         add_action( 'save_post_ead_organization', [ self::class, 'notify_organization_updated' ], 10, 3 );
@@ -369,19 +373,26 @@ class Plugin {
             ]
         );
 
+        $artwork_labels = $default_labels_fn( __( 'Artwork', self::TEXT_DOMAIN ), __( 'Artworks', self::TEXT_DOMAIN ) );
+        $artwork_labels['add_new_item'] = __( 'Add Artwork', self::TEXT_DOMAIN );
+        $artwork_labels['edit_item']    = __( 'Edit Artwork', self::TEXT_DOMAIN );
+        $artwork_labels['all_items']    = __( 'All Submissions', self::TEXT_DOMAIN );
+
         register_post_type(
             'ead_artwork',
             [
-                'labels'          => $default_labels_fn( __( 'Artwork', self::TEXT_DOMAIN ), __( 'Artworks', self::TEXT_DOMAIN ) ),
-                'public'          => true,
-                'has_archive'     => true,
-                'menu_icon'       => 'dashicons-format-image',
-                'show_in_menu'    => true,
-                'menu_position'   => 32,
-                'supports'        => $cpt_support,
-                'rewrite'         => [ 'slug' => 'artworks' ],
-                'show_in_rest'    => true,
-                'capability_type' => 'post',
+                'label'          => __( 'User Artwork', self::TEXT_DOMAIN ),
+                'labels'         => $artwork_labels,
+                'public'         => false,
+                'show_ui'        => true,
+                'has_archive'    => true,
+                'menu_icon'      => 'dashicons-format-image',
+                'show_in_menu'   => true,
+                'menu_position'  => 32,
+                'supports'       => [ 'title', 'thumbnail', 'author' ],
+                'rewrite'        => [ 'slug' => 'artworks' ],
+                'show_in_rest'   => true,
+                'capability_type'=> 'post',
             ]
         );
 
@@ -1173,6 +1184,39 @@ class Plugin {
             $subject     = sprintf( esc_html__( 'New event "%s" awaiting approval', self::TEXT_DOMAIN ), $event_title );
             $body        = sprintf( esc_html__( 'A new event submission titled "%s" is awaiting approval.', self::TEXT_DOMAIN ), $event_title ) . "\n\n";
             $body       .= esc_html__( 'Review it here:', self::TEXT_DOMAIN ) . ' ' . esc_url( admin_url( 'post.php?post=' . $post->ID . '&action=edit' ) );
+
+            $headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
+
+            wp_mail( $admin_email, $subject, $body, $headers );
+        }
+    }
+
+    public static function notify_artist_on_artwork_approval( $new_status, $old_status, $post ) {
+        if ( $post instanceof \WP_Post && $post->post_type === 'ead_artwork' && $old_status === 'pending' && $new_status === 'publish' ) {
+            $user_data = get_userdata( $post->post_author );
+
+            if ( $user_data && ! empty( $user_data->user_email ) ) {
+                $artwork_title = $post->post_title;
+                $subject       = sprintf( esc_html__( 'Your artwork "%s" has been approved!', self::TEXT_DOMAIN ), $artwork_title );
+                $body          = sprintf( esc_html__( "Hello %s,\n\n", self::TEXT_DOMAIN ), esc_html( $user_data->display_name ) );
+                $body         .= esc_html__( "Great news! Your artwork submission:\n\n", self::TEXT_DOMAIN ) . '"' . esc_html( $artwork_title ) . "\"\n\n" . esc_html__( "has been approved and published on our website.\n\n", self::TEXT_DOMAIN );
+                $body         .= sprintf( esc_html__( "You can view it here: %s\n\n", self::TEXT_DOMAIN ), esc_url( get_permalink( $post->ID ) ) );
+                $body         .= esc_html__( "Thank you for sharing your work!\n", self::TEXT_DOMAIN ) . get_bloginfo( 'name' );
+
+                $headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
+
+                wp_mail( $user_data->user_email, $subject, $body, $headers );
+            }
+        }
+    }
+
+    public static function notify_admin_on_artwork_pending( $new_status, $old_status, $post ) {
+        if ( $post instanceof \WP_Post && $post->post_type === 'ead_artwork' && $new_status === 'pending' && $old_status !== 'pending' ) {
+            $admin_email   = get_option( 'admin_email' );
+            $artwork_title = $post->post_title;
+            $subject       = sprintf( esc_html__( 'New artwork "%s" awaiting approval', self::TEXT_DOMAIN ), $artwork_title );
+            $body          = sprintf( esc_html__( 'A new artwork submission titled "%s" is awaiting approval.', self::TEXT_DOMAIN ), $artwork_title ) . "\n\n";
+            $body         .= esc_html__( 'Review it here:', self::TEXT_DOMAIN ) . ' ' . esc_url( admin_url( 'post.php?post=' . $post->ID . '&action=edit' ) );
 
             $headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
 
