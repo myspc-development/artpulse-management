@@ -224,6 +224,32 @@ jQuery(document).ready(function($){
         });
     }
 
+    $('#ead-profile-form').on('submit', function (e) {
+        e.preventDefault();
+
+        const data = {
+            display_name: $('#ead-profile-name').val(),
+            city: $('#ead-profile-city').val(),
+            country: $('#ead-profile-country').val(),
+            newsletter: $('#ead-profile-newsletter').is(':checked'),
+        };
+
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/profile',
+            method: 'POST',
+            data,
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            beforeSend: showLoader,
+            complete: hideLoader,
+            success: function () {
+                showToast('Profile updated successfully!');
+            },
+            error: function () {
+                showToast('Error saving profile.', true);
+            }
+        });
+    });
+
     fetchEvents();
     fetchRecommendations();
     fetchUserSummary();
