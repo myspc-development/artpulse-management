@@ -38,5 +38,19 @@ jobs:
         composer install --prefer-dist --no-progress
         composer dump-autoload --optimize
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install Node dependencies
+      run: npm ci
+
+    - name: Lint JavaScript
+      run: npm run lint
+
+    - name: Run Jest tests
+      run: npm test
+
     - name: Run test suite
       run: composer run-script test
