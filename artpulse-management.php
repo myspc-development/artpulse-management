@@ -469,6 +469,19 @@ class Plugin {
                 'show_in_rest'      => true,
             ]
         );
+
+        register_taxonomy(
+            'ead_event_category',
+            'ead_event',
+            [
+                'labels'           => $default_labels_fn( __( 'Event Category', self::TEXT_DOMAIN ), __( 'Event Categories', self::TEXT_DOMAIN ) ),
+                'public'           => true,
+                'hierarchical'     => false,
+                'show_admin_column'=> true,
+                'show_in_rest'     => true,
+                'rewrite'          => [ 'slug' => 'event-category' ],
+            ]
+        );
     }
 
     public function register_core_modules() {
