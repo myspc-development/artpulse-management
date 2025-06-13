@@ -149,6 +149,15 @@ function get_the_title($id) {
     return "Post $id";
 }
 
+function get_post_field($field, $post_id) {
+    foreach (\Tests\Stubs::$posts as $p) {
+        if (is_object($p) && $p->ID == $post_id && isset($p->$field)) {
+            return $p->$field;
+        }
+    }
+    return '';
+}
+
 class WP_REST_Controller {}
 class WP_REST_Server { const READABLE = 'GET'; }
 class WP_REST_Request {

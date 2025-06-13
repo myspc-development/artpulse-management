@@ -170,6 +170,33 @@ jQuery(document).ready(function($){
         });
     }
 
+    function loadActivityChart() {
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/activity',
+            method: 'GET',
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function (res) {
+                const ctx = document.getElementById('ead-activity-chart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: res.labels,
+                        datasets: [{
+                            label: 'RSVPs per Month',
+                            data: res.data,
+                            backgroundColor: '#0073aa'
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
     function fetchFavorites() {
         $.ajax({
             url: restUrl + '/favorites',
@@ -379,6 +406,9 @@ jQuery(document).ready(function($){
             fetchFavorites();
         } else if (tab === 'notifications') {
             fetchNotifications();
+        } else if (tab === 'profile') {
+            fetchUserSummary();
+            loadActivityChart();
         }
     });
 });
