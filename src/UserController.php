@@ -67,6 +67,16 @@ class UserController extends WP_REST_Controller {
                 'permission_callback' => '__return_true',
             ]
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/upload-artwork',
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => [ $this, 'upload_artwork' ],
+                'permission_callback' => [ $this, 'check_user_logged_in' ],
+            ]
+        );
     }
 
     public function get_calendar_events( WP_REST_Request $request ) {
@@ -167,6 +177,36 @@ class UserController extends WP_REST_Controller {
         );
 
         return new WP_REST_Response( $data, 200 );
+    }
+
+    public function upload_artwork( WP_REST_Request $request ) {
+        $user_id    = get_current_user_id();
+        $title      = sanitize_text_field( $request->get_param( 'title' ) );
+        $description = sanitize_textarea_field( $request->get_param( 'description' ) );
+
+        $post_id = wp_insert_post(
+            [
+                'post_type'   => 'ead_artwork',
+                'post_title'  => $title,
+                'post_content'=> $description,
+                'post_status' => 'publish',
+                'post_author' => $user_id,
+            ]
+        );
+
+        if ( $post_id && ! is_wp_error( $post_id ) && ! empty( $_FILES['image'] ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            $attachment_id = media_handle_upload( 'image', $post_id );
+            if ( ! is_wp_error( $attachment_id ) ) {
+                set_post_thumbnail( $post_id, $attachment_id );
+            }
+        }
+
+        return rest_ensure_response( [ 'id' => $post_id ] );
+    }
+
+    public function check_user_logged_in( WP_REST_Request $request ) {
+        return is_user_logged_in();
     }
 
     public function check_permissions() : bool {

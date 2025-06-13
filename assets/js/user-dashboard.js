@@ -654,13 +654,13 @@ function loadUserBadges() {
         });
     });
 
-    $('#ead-upload-form').on('submit', function (e) {
+    $('#ead-artwork-upload-form').on('submit', function (e) {
         e.preventDefault();
 
         const formData = new FormData(this);
 
         $.ajax({
-            url: eadUserDashboard.restUrl + '/upload',
+            url: eadUserDashboard.restUrl + '/upload-artwork',
             method: 'POST',
             headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
             processData: false,
@@ -670,7 +670,7 @@ function loadUserBadges() {
             complete: hideLoader,
             success: function () {
                 $('#ead-upload-feedback').html('<p>Upload successful!</p>');
-                $('#ead-upload-form')[0].reset();
+                $('#ead-artwork-upload-form')[0].reset();
                 loadMyUploads();
             },
             error: function () {

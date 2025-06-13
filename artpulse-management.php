@@ -1763,6 +1763,13 @@ function enqueue_dashboard_assets() {
         true
     );
 }
+add_shortcode('ead_user_dashboard', function () {
+    ob_start();
+    include plugin_dir_path(__FILE__) . 'templates/UserDashboard.php';
+    return ob_get_clean();
+});
+
+
 
 /*
  * The artpulse_save_cpt_meta_boxes() function was previously defined in
