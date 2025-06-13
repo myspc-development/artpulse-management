@@ -14,8 +14,7 @@ class BadgesEndpointTest extends TestCase
     public function test_get_user_badges_first_rsvp()
     {
         Stubs::$user_meta = [
-            'ead_rsvps' => [1],
-            'ead_favorites' => []
+            'ead_rsvps' => [1]
         ];
 
         $endpoint = new BadgesEndpoint();
@@ -26,14 +25,13 @@ class BadgesEndpointTest extends TestCase
         $badges = $method->invoke($endpoint, 1);
 
         $this->assertCount(1, $badges);
-        $this->assertSame('🎉 First RSVP', $badges[0]['label']);
+        $this->assertSame('🎉 Rookie', $badges[0]['label']);
     }
 
     public function test_get_user_badges_all_badges()
     {
         Stubs::$user_meta = [
-            'ead_rsvps' => [1,2,3,4,5],
-            'ead_favorites' => range(1,10)
+            'ead_rsvps' => range(1,10)
         ];
 
         $endpoint = new BadgesEndpoint();
@@ -44,10 +42,10 @@ class BadgesEndpointTest extends TestCase
         $badges = $method->invoke($endpoint, 1);
 
         $labels = array_column($badges, 'label');
-        $this->assertContains('🎉 First RSVP', $labels);
-        $this->assertContains('🏃 Frequent Attendee', $labels);
-        $this->assertContains('💖 Super Fan', $labels);
-        $this->assertContains('🌟 Power User', $labels);
+        $this->assertContains('🎉 Rookie', $labels);
+        $this->assertContains('🧭 Explorer', $labels);
+        $this->assertContains('💜 Superfan', $labels);
+        $this->assertContains('🔥 Streak Master', $labels);
     }
 }
 
