@@ -143,6 +143,8 @@ class UserDashboard {
                 </div>
                 <h3><?php esc_html_e('Your Activity', 'artpulse-management'); ?></h3>
                 <canvas id="ead-activity-chart" width="400" height="200"></canvas>
+                <h3><?php esc_html_e('Your Badges', 'artpulse-management'); ?></h3>
+                <div id="ead-profile-badges"></div>
             </div>
             <div id="ead-toast" class="ead-toast" style="display: none;"></div>
         </div>

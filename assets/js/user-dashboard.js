@@ -197,6 +197,30 @@ jQuery(document).ready(function($){
         });
     }
 
+    function loadUserBadges() {
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/badges',
+            method: 'GET',
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function (badges) {
+                const container = $('#ead-profile-badges');
+                if (!badges.length) {
+                    container.html('<p>No badges yet. Start exploring!</p>');
+                    return;
+                }
+
+                const html = badges.map(badge => `
+                    <div class="ead-badge">
+                        <span class="ead-badge-icon">${badge.label}</span>
+                        <span class="ead-badge-desc">${badge.desc}</span>
+                    </div>
+                `).join('');
+
+                container.html(html);
+            }
+        });
+    }
+
     function fetchFavorites() {
         $.ajax({
             url: restUrl + '/favorites',
@@ -409,6 +433,7 @@ jQuery(document).ready(function($){
         } else if (tab === 'profile') {
             fetchUserSummary();
             loadActivityChart();
+            loadUserBadges();
         }
     });
 });
