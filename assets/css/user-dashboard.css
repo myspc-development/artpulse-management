@@ -304,3 +304,22 @@
     list-style: disc inside;
 }
 
+#ead-map-filters {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+#ead-map-filters label {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+#ead-event-map {
+    height: 400px;
+    margin-top: 1rem;
+}
+

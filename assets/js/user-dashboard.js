@@ -2,6 +2,8 @@ jQuery(document).ready(function($){
     const restUrl = eadUserDashboard.restUrl;
     const nonce = eadUserDashboard.nonce;
     let allCalendarEvents = [];
+    let map, markerLayer;
+    let userCoords = null;
 
     function showLoader() {
         $('#ead-loader').show();
@@ -57,6 +59,7 @@ jQuery(document).ready(function($){
             success: function (events) {
                 allCalendarEvents = events;
                 renderCalendar(events);
+                initEventMap(events);
             }
         });
     }
@@ -115,6 +118,23 @@ jQuery(document).ready(function($){
             }
         });
         calendar.render();
+    }
+
+    function initEventMap(events) {
+        if (!map) {
+            map = L.map('ead-event-map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            markerLayer = L.layerGroup().addTo(map);
+        }
+
+        markerLayer.clearLayers();
+
+        events.forEach(event => {
+            if (event.latitude && event.longitude) {
+                const marker = L.marker([event.latitude, event.longitude]).addTo(markerLayer);
+                marker.bindPopup(`<strong>${event.title}</strong><br>${event.start}`);
+            }
+        });
     }
 
     function renderEvent(event) {
@@ -687,12 +707,17 @@ function loadUserBadges() {
     fetchFavorites();
     loadSubmissionStats();
 
-    $('#ead-calendar-filters select, #ead-filter-search').on('input change', function () {
+    function deg2rad(deg){
+        return deg * (Math.PI/180);
+    }
+
+    function applyFilters() {
         const rsvp = $('#ead-filter-rsvp').val();
         const category = $('#ead-filter-category').val();
         const location = $('#ead-filter-location').val();
         const tag = $('#ead-filter-tags').val();
         const search = $('#ead-filter-search').val().toLowerCase();
+        const radius = $('#ead-distance-radius').val();
 
         let filtered = allCalendarEvents;
 
@@ -708,7 +733,33 @@ function loadUserBadges() {
             );
         }
 
+        if (userCoords && radius !== 'all') {
+            const R = 6371; // km
+            filtered = filtered.filter(e => {
+                if (!e.latitude || !e.longitude) return false;
+                const dLat = deg2rad(e.latitude - userCoords[0]);
+                const dLon = deg2rad(e.longitude - userCoords[1]);
+                const a = Math.sin(dLat/2)**2 +
+                    Math.cos(deg2rad(userCoords[0])) *
+                    Math.cos(deg2rad(e.latitude)) *
+                    Math.sin(dLon/2)**2;
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const d = R * c;
+                return d <= parseFloat(radius);
+            });
+        }
+
         renderCalendar(filtered);
+        initEventMap(filtered);
+    }
+
+    $('#ead-calendar-filters select, #ead-filter-search').on('input change', applyFilters);
+    $('#ead-distance-radius').on('change', applyFilters);
+    $('#ead-locate-btn').on('click', function(){
+        navigator.geolocation.getCurrentPosition(pos => {
+            userCoords = [pos.coords.latitude, pos.coords.longitude];
+            applyFilters();
+        });
     });
 
     $('.ead-tab-button').on('click', function () {
