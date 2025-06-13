@@ -40,9 +40,9 @@ jQuery(document).ready(function($){
 
     function loadEventCalendar() {
         $.ajax({
-            url: eadUserDashboard.restUrl + '/calendar',
+            url: restUrl + '/calendar',
             method: 'GET',
-            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            headers: { 'X-WP-Nonce': nonce },
             success: function (events) {
                 allCalendarEvents = events;
                 renderCalendar(events);
@@ -85,16 +85,11 @@ jQuery(document).ready(function($){
             events: events.map(e => ({
                 ...e,
                 color: e.rsvped ? '#0073aa' : '#cccccc',
+                extendedProps: e
             })),
             eventClick: function(info) {
                 info.jsEvent.preventDefault();
-                openEventModal({
-                    id: info.event.id,
-                    title: info.event.title,
-                    start: info.event.startStr,
-                    url: info.event.url,
-                    rsvped: info.event.extendedProps.rsvped
-                });
+                openEventModal(info.event.extendedProps);
             }
         });
         calendar.render();
@@ -438,12 +433,12 @@ function loadUserBadges() {
         const method = rsvped ? 'DELETE' : 'POST';
 
         $.ajax({
-            url: eadUserDashboard.restUrl + '/rsvp',
-            method: method,
-            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            url: restUrl + '/rsvp',
+            method,
+            headers: { 'X-WP-Nonce': nonce },
             data: { event_id: id },
             success: function () {
-                showToast(rsvped ? 'RSVP canceled' : 'RSVP confirmed');
+                showToast(rsvped ? 'RSVP cancelled' : 'RSVP confirmed');
                 $('#ead-event-modal').fadeOut(150);
                 loadEventCalendar();
             }
