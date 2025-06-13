@@ -179,3 +179,8 @@
     font-weight: bold;
 }
 
+#ead-tab-uploads label {
+    display: block;
+    margin-bottom: 1rem;
+}
+

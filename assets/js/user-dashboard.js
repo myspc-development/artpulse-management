@@ -412,6 +412,30 @@ jQuery(document).ready(function($){
         });
     });
 
+    $('#ead-upload-form').on('submit', function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/upload',
+            method: 'POST',
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            processData: false,
+            contentType: false,
+            data: formData,
+            beforeSend: showLoader,
+            complete: hideLoader,
+            success: function () {
+                $('#ead-upload-feedback').html('<p>Upload successful!</p>');
+                $('#ead-upload-form')[0].reset();
+            },
+            error: function () {
+                $('#ead-upload-feedback').html('<p>Upload failed. Try again.</p>');
+            }
+        });
+    });
+
     fetchEvents();
     fetchRecommendations();
     fetchUserSummary();

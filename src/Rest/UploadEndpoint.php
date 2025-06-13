@@ -1,0 +1,64 @@
+<?php
+namespace EAD\Rest;
+
+use WP_REST_Controller;
+use WP_REST_Server;
+use WP_REST_Request;
+use WP_REST_Response;
+
+class UploadEndpoint extends WP_REST_Controller {
+    protected string $namespace = 'artpulse/v1';
+    protected string $rest_base = 'upload';
+
+    public function __construct() {
+        add_action('rest_api_init', [ $this, 'register_routes' ]);
+    }
+
+    public function register_routes() {
+        register_rest_route(
+            $this->namespace,
+            '/' . $this->rest_base,
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => [ $this, 'handle_upload' ],
+                'permission_callback' => [ $this, 'check_user_logged_in' ],
+            ]
+        );
+    }
+
+    public function handle_upload( WP_REST_Request $request ) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+
+        $user_id = get_current_user_id();
+        $title   = sanitize_text_field( $request->get_param( 'title' ) );
+
+        if ( empty( $_FILES['file'] ) ) {
+            return new WP_REST_Response( [ 'error' => 'No file received' ], 400 );
+        }
+
+        $upload_id = media_handle_upload( 'file', 0 );
+
+        if ( is_wp_error( $upload_id ) ) {
+            return new WP_REST_Response( [ 'error' => 'Upload failed' ], 400 );
+        }
+
+        wp_update_post([
+            'ID'         => $upload_id,
+            'post_title' => $title,
+            'post_author'=> $user_id,
+        ]);
+
+        return new WP_REST_Response(
+            [
+                'success'       => true,
+                'attachment_id' => $upload_id,
+            ],
+            200
+        );
+    }
+
+    public function check_user_logged_in( WP_REST_Request $request ) {
+        return is_user_logged_in();
+    }
+}

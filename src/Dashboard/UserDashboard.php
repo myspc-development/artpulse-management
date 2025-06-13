@@ -89,6 +89,7 @@ class UserDashboard {
                 <button class="ead-tab-button" data-tab="favorites"><?php esc_html_e( 'Favorites', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="notifications"><?php esc_html_e('Notifications', 'artpulse-management'); ?></button>
                 <button class="ead-tab-button" data-tab="profile"><?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="uploads"><?php esc_html_e('My Uploads', 'artpulse-management'); ?></button>
             </div>
 
             <div class="ead-tab-content active" id="ead-tab-events">
@@ -99,6 +100,21 @@ class UserDashboard {
             </div>
             <div class="ead-tab-content" id="ead-tab-notifications">
                 <p><?php esc_html_e( 'Loading notifications...', 'artpulse-management' ); ?></p>
+            </div>
+            <div class="ead-tab-content" id="ead-tab-uploads">
+                <h3><?php esc_html_e('Upload Your Artwork', 'artpulse-management'); ?></h3>
+                <form id="ead-upload-form" enctype="multipart/form-data">
+                    <label>
+                        <?php esc_html_e('Title', 'artpulse-management'); ?>
+                        <input type="text" name="title" required />
+                    </label>
+                    <label>
+                        <?php esc_html_e('Upload Image or File', 'artpulse-management'); ?>
+                        <input type="file" name="file" accept="image/*,.pdf" required />
+                    </label>
+                    <button type="submit" class="button"><?php esc_html_e('Submit Artwork', 'artpulse-management'); ?></button>
+                </form>
+                <div id="ead-upload-feedback"></div>
             </div>
             <div class="ead-tab-content" id="ead-tab-profile">
                 <div class="ead-profile-summary">
