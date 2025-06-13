@@ -40,10 +40,21 @@ class UserDashboard {
             null,
             true
         );
+        wp_enqueue_style(
+            'leaflet',
+            'https://unpkg.com/leaflet/dist/leaflet.css'
+        );
+        wp_enqueue_script(
+            'leaflet',
+            'https://unpkg.com/leaflet/dist/leaflet.js',
+            [],
+            null,
+            true
+        );
         wp_enqueue_script(
             'ead-user-dashboard',
             $plugin_url . 'assets/js/user-dashboard.js',
-            ['jquery', 'chart-js', 'fullcalendar'],
+            ['jquery', 'chart-js', 'fullcalendar', 'leaflet'],
             EAD_MANAGEMENT_VERSION,
             true
         );
@@ -202,6 +213,18 @@ class UserDashboard {
                     </label>
                 </div>
                 <div id="ead-event-calendar"></div>
+                <div id="ead-map-filters">
+                    <button id="ead-locate-btn">📍 Use My Location</button>
+                    <label>Distance:
+                        <select id="ead-distance-radius">
+                            <option value="all">All</option>
+                            <option value="10">10 km</option>
+                            <option value="25">25 km</option>
+                            <option value="50">50 km</option>
+                        </select>
+                    </label>
+                </div>
+                <div id="ead-event-map" style="height: 400px; margin-top: 1rem;"></div>
             </div>
             <div class="ead-tab-content" id="ead-tab-notifications">
                 <p><?php esc_html_e( 'Loading notifications...', 'artpulse-management' ); ?></p>

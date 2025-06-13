@@ -24,8 +24,18 @@ class CalendarEndpointTest extends TestCase
         ];
 
         Stubs::$meta = [
-            1 => ['event_date' => '2023-10-01', 'event_location' => 'Loc1'],
-            2 => ['event_date' => '2023-11-05', 'event_location' => 'Loc2'],
+            1 => [
+                'event_date'      => '2023-10-01',
+                'event_location'  => 'Loc1',
+                'event_latitude'  => '40.7128',
+                'event_longitude' => '-74.0060',
+            ],
+            2 => [
+                'event_date'      => '2023-11-05',
+                'event_location'  => 'Loc2',
+                'event_latitude'  => '34.0522',
+                'event_longitude' => '-118.2437',
+            ],
         ];
 
         Stubs::$post_terms = [
@@ -56,8 +66,12 @@ class CalendarEndpointTest extends TestCase
         $this->assertSame('Loc1', $e1['location']);
         $this->assertSame(['tag1'], $e1['tags']);
         $this->assertSame('Desc1', $e1['description']);
+        $this->assertSame(40.7128, $e1['latitude']);
+        $this->assertSame(-74.0060, $e1['longitude']);
 
         $this->assertFalse($e2['rsvped']);
+        $this->assertSame(34.0522, $e2['latitude']);
+        $this->assertSame(-118.2437, $e2['longitude']);
     }
 
     public function test_get_event_categories_returns_array()
