@@ -175,6 +175,22 @@ class UserDashboard {
             </div>
             <?php if ( $is_admin || $is_org ) : ?>
             <div class="ead-tab-content" id="ead-tab-submissions">
+                <div class="ead-dashboard-widgets">
+                    <div class="ead-widget">
+                        <h4>🕓 Pending</h4>
+                        <p id="widget-pending">&ndash;</p>
+                    </div>
+                    <div class="ead-widget">
+                        <h4>✅ Approved (30d)</h4>
+                        <p id="widget-approved">&ndash;</p>
+                    </div>
+                    <div class="ead-widget">
+                        <h4>❌ Rejected (30d)</h4>
+                        <p id="widget-rejected">&ndash;</p>
+                    </div>
+                </div>
+                <h3><?php esc_html_e( 'Submissions This Month', 'artpulse-management' ); ?></h3>
+                <canvas id="ead-submission-chart" height="150"></canvas>
                 <h3><?php esc_html_e( 'Pending Submissions', 'artpulse-management' ); ?></h3>
                 <div id="ead-submission-list"><?php esc_html_e( 'Loading...', 'artpulse-management' ); ?></div>
             </div>

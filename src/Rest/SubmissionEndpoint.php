@@ -30,6 +30,16 @@ class SubmissionEndpoint extends WP_REST_Controller {
 
         register_rest_route(
             $this->namespace,
+            '/' . $this->rest_base . '/stats',
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [ $this, 'get_submission_stats' ],
+                'permission_callback' => [ $this, 'permissions_check' ],
+            ]
+        );
+
+        register_rest_route(
+            $this->namespace,
             '/submission/(?P<id>\d+)',
             [
                 'methods'             => WP_REST_Server::EDITABLE,
@@ -86,5 +96,42 @@ class SubmissionEndpoint extends WP_REST_Controller {
         wp_update_post( [ 'ID' => $id, 'post_status' => $new_status ] );
 
         return new WP_REST_Response( [ 'success' => true, 'new_status' => $new_status ], 200 );
+    }
+
+    public function get_submission_stats( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $month_start = date( 'Y-m-01 00:00:00' );
+
+        $pending = wp_count_posts( 'ead_artwork' )->pending;
+
+        $approved = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'publish' AND post_date >= %s",
+            $month_start
+        ) );
+
+        $rejected = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'trash' AND post_date >= %s",
+            $month_start
+        ) );
+
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT DATE(post_date) as date, COUNT(*) as count FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'publish' AND post_date >= %s GROUP BY DATE(post_date)",
+            date( 'Y-m-d', strtotime( '-30 days' ) )
+        ) );
+
+        $labels = array_map( static fn( $r ) => $r->date, $rows );
+        $data   = array_map( static fn( $r ) => (int) $r->count, $rows );
+
+        return new WP_REST_Response(
+            [
+                'pending'  => (int) $pending,
+                'approved' => $approved,
+                'rejected' => $rejected,
+                'labels'   => $labels,
+                'data'     => $data,
+            ],
+            200
+        );
     }
 }
