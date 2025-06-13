@@ -86,6 +86,34 @@ jQuery(document).ready(function($){
         });
     }
 
+    function fetchFavorites() {
+        $('#ead-tab-favorites').html('<p>Loading your favorites...</p>');
+
+        $.ajax({
+            url: restUrl + '/favorites',
+            method: 'GET',
+            headers: {
+                'X-WP-Nonce': nonce
+            },
+            success: function (events) {
+                const html = events.length
+                    ? events.map(renderEvent).join('')
+                    : '<p>You haven\u2019t favorited any events yet.</p>';
+
+                $('#ead-tab-favorites').html(html);
+
+                $('.ead-favorite-btn').on('click', function () {
+                    const postId = parseInt($(this).data('id'));
+                    const isFavorited = $(this).data('favorited');
+                    toggleFavorite(postId, isFavorited);
+                });
+            },
+            error: function () {
+                $('#ead-tab-favorites').html('<p>Error loading favorites.</p>');
+            }
+        });
+    }
+
     function fetchUserSummary() {
         $.ajax({
             url: restUrl + '/summary',
@@ -137,5 +165,9 @@ jQuery(document).ready(function($){
 
         $('.ead-tab-content').removeClass('active');
         $('#ead-tab-' + tab).addClass('active');
+
+        if (tab === 'favorites') {
+            fetchFavorites();
+        }
     });
 });

@@ -52,13 +52,38 @@ class FavoritesEndpoint extends WP_REST_Controller {
     }
 
     public function getFavorites( WP_REST_Request $request ) {
-        $user_id   = get_current_user_id();
-        $favorites = get_user_meta( $user_id, 'ead_favorites', true );
-        if ( ! is_array( $favorites ) ) {
-            $favorites = [];
+        $user_id      = get_current_user_id();
+        $favorite_ids = get_user_meta( $user_id, 'ead_favorites', true );
+
+        if ( ! is_array( $favorite_ids ) || empty( $favorite_ids ) ) {
+            return new WP_REST_Response( [], 200 );
         }
 
-        return new WP_REST_Response( $favorites, 200 );
+        $events = get_posts(
+            [
+                'post_type'      => 'ead_event',
+                'post__in'       => $favorite_ids,
+                'posts_per_page' => -1,
+            ]
+        );
+
+        $results = array_map(
+            static function ( $post ) {
+                return [
+                    'id'    => $post->ID,
+                    'title' => get_the_title( $post ),
+                    'link'  => get_permalink( $post ),
+                    'venue' => [
+                        'city'    => get_post_meta( $post->ID, 'event_city', true ),
+                        'state'   => get_post_meta( $post->ID, 'event_state', true ),
+                        'country' => get_post_meta( $post->ID, 'event_country', true ),
+                    ],
+                ];
+            },
+            $events
+        );
+
+        return new WP_REST_Response( $results, 200 );
     }
 
     public function addFavorite( WP_REST_Request $request ) {
