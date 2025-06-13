@@ -90,10 +90,26 @@ class UserDashboard {
             </div>
             <div class="ead-tab-content" id="ead-tab-profile">
                 <div class="ead-profile-summary">
-                    <h3><?php esc_html_e( 'Your Profile', 'artpulse-management' ); ?></h3>
-                    <p><?php printf( esc_html__( 'Logged in as %s', 'artpulse-management' ), esc_html( wp_get_current_user()->display_name ) ); ?></p>
-                    <p><?php esc_html_e( 'Email:', 'artpulse-management' ); ?> <?php echo esc_html( wp_get_current_user()->user_email ); ?></p>
-                    <p><?php esc_html_e( 'Favorites:', 'artpulse-management' ); ?> <span id="ead-user-fav-count">...</span></p>
+                    <h3><?php esc_html_e('Your Profile', 'artpulse-management'); ?></h3>
+                    <form id="ead-profile-form">
+                        <label>
+                            <?php esc_html_e('Display Name', 'artpulse-management'); ?>
+                            <input type="text" id="ead-profile-name" name="display_name" value="<?php echo esc_attr(wp_get_current_user()->display_name); ?>" />
+                        </label>
+                        <label>
+                            <?php esc_html_e('City', 'artpulse-management'); ?>
+                            <input type="text" id="ead-profile-city" name="city" value="<?php echo esc_attr(get_user_meta(get_current_user_id(), 'ead_city', true)); ?>" />
+                        </label>
+                        <label>
+                            <?php esc_html_e('Country', 'artpulse-management'); ?>
+                            <input type="text" id="ead-profile-country" name="country" value="<?php echo esc_attr(get_user_meta(get_current_user_id(), 'ead_country', true)); ?>" />
+                        </label>
+                        <label>
+                            <input type="checkbox" id="ead-profile-newsletter" name="newsletter" <?php checked(get_user_meta(get_current_user_id(), 'ead_newsletter', true), 'yes'); ?> />
+                            <?php esc_html_e('Subscribe to email updates', 'artpulse-management'); ?>
+                        </label>
+                        <button type="submit" class="button"><?php esc_html_e('Save Changes', 'artpulse-management'); ?></button>
+                    </form>
                 </div>
             </div>
             <div id="ead-toast" class="ead-toast" style="display: none;"></div>
