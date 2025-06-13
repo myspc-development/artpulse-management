@@ -59,6 +59,15 @@ function get_posts(array $args = []) {
     return \Tests\Stubs::$posts;
 }
 
+function get_post($post_id) {
+    foreach (\Tests\Stubs::$posts as $p) {
+        if (is_object($p) && $p->ID == $post_id) {
+            return $p;
+        }
+    }
+    return null;
+}
+
 function wp_nonce_field($action, $name = '_wpnonce') {
     echo "<input type='hidden' name='" . htmlspecialchars($name, ENT_QUOTES) . "' value='nonce'>";
 }

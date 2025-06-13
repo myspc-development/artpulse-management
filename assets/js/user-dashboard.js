@@ -26,15 +26,22 @@ jQuery(document).ready(function($){
 
         const isFavorite = eadUserDashboard.favorites?.includes(event.id);
         const heartIcon = isFavorite ? '❤️' : '🤍';
+        const isRSVP = eadUserDashboard.rsvps?.includes(event.id);
+        const rsvpLabel = isRSVP ? '✅ Going' : '📅 RSVP';
 
         return `
         <div class="ead-event-card" data-event-id="${event.id}">
             <h3>${event.title}</h3>
             <p>${location}</p>
             <a href="${event.link}">${event.link}</a>
-            <button class="ead-favorite-btn" data-id="${event.id}" data-favorited="${isFavorite}">
-                ${heartIcon}
-            </button>
+            <div class="ead-event-actions">
+                <button class="ead-rsvp-btn" data-id="${event.id}" data-rsvped="${isRSVP}">
+                    ${rsvpLabel}
+                </button>
+                <button class="ead-favorite-btn" data-id="${event.id}" data-favorited="${isFavorite}">
+                    ${heartIcon}
+                </button>
+            </div>
         </div>
         `;
     }
@@ -70,6 +77,12 @@ jQuery(document).ready(function($){
                     ? response.map(renderEvent).join('')
                     : '<p class="ead-empty-state">No events found matching your filters.</p>';
                 $('#ead-user-events').html(html);
+
+                $('.ead-rsvp-btn').on('click', function () {
+                    const postId = parseInt($(this).data('id'));
+                    const isGoing = $(this).data('rsvped');
+                    toggleRSVP(postId, isGoing);
+                });
 
                 $('.ead-favorite-btn').on('click', function () {
                     const postId = parseInt($(this).data('id'));
@@ -124,6 +137,11 @@ jQuery(document).ready(function($){
 
                 $('#ead-tab-favorites').html(html);
 
+                $('.ead-rsvp-btn').on('click', function () {
+                    const postId = parseInt($(this).data('id'));
+                    const isGoing = $(this).data('rsvped');
+                    toggleRSVP(postId, isGoing);
+                });
                 $('.ead-favorite-btn').on('click', function () {
                     const postId = parseInt($(this).data('id'));
                     const isFavorited = $(this).data('favorited');
@@ -172,6 +190,11 @@ jQuery(document).ready(function($){
                     const events = Array.from(arguments).map(res => res[0]);
                     const html = events.map(renderEvent).join('');
                     $('#ead-tab-favorites').html(html);
+                    $('.ead-rsvp-btn').on('click', function () {
+                        const postId = parseInt($(this).data('id'));
+                        const isGoing = $(this).data('rsvped');
+                        toggleRSVP(postId, isGoing);
+                    });
                     $('.ead-favorite-btn').on('click', function () {
                         const postId = parseInt($(this).data('id'));
                         const isFavorited = $(this).data('favorited');
@@ -185,6 +208,31 @@ jQuery(document).ready(function($){
                 $('#ead-tab-favorites').html('<p class="ead-empty-state">You haven\u2019t favorited any events yet.</p>');
             },
             complete: hideLoader
+        });
+    }
+
+    function toggleRSVP(postId, isGoing) {
+        const btn = $(`.ead-rsvp-btn[data-id="${postId}"]`);
+        btn.prop('disabled', true);
+
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/rsvp',
+            method: 'POST',
+            data: { event_id: postId },
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function (res) {
+                const going = res.status === 'added';
+                btn.data('rsvped', going);
+                btn.text(going ? '✅ Going' : '📅 RSVP');
+                eadUserDashboard.rsvps = res.rsvps;
+                showToast(going ? 'RSVP confirmed!' : 'RSVP removed.');
+            },
+            error: function () {
+                showToast('RSVP failed.', true);
+            },
+            complete: function () {
+                btn.prop('disabled', false);
+            }
         });
     }
 

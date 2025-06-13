@@ -36,6 +36,7 @@ class UserDashboard {
                 'restUrl'  => esc_url_raw( rest_url( 'artpulse/v1' ) ),
                 'nonce'    => wp_create_nonce( 'wp_rest' ),
                 'favorites' => get_user_meta( get_current_user_id(), 'ead_favorites', true ) ?: [],
+                'rsvps'    => get_user_meta( get_current_user_id(), 'ead_rsvps', true ) ?: [],
             ]
         );
     }
