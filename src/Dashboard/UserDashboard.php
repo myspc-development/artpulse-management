@@ -178,6 +178,12 @@ class UserDashboard {
                             <option value="not-rsvped">Not RSVPed</option>
                         </select>
                     </label>
+                    <label>
+                        Category:
+                        <select id="ead-filter-category">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </label>
                 </div>
                 <div id="ead-event-calendar"></div>
             </div>

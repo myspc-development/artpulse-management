@@ -50,6 +50,13 @@ jQuery(document).ready(function($){
         });
     }
 
+    function loadEventCategories() {
+        $.get(eadUserDashboard.restUrl + '/event-categories', function (cats) {
+            const options = cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            $('#ead-filter-category').append(options);
+        });
+    }
+
     function renderCalendar(events) {
         const calendarEl = document.getElementById('ead-event-calendar');
         calendarEl.innerHTML = '';
@@ -626,14 +633,20 @@ function loadUserBadges() {
     fetchFavorites();
     loadSubmissionStats();
 
-    $('#ead-filter-rsvp').on('change', function () {
-        const filter = $(this).val();
+    $('#ead-filter-rsvp, #ead-filter-category').on('change', function () {
+        const rsvp = $('#ead-filter-rsvp').val();
+        const category = $('#ead-filter-category').val();
+
         let filtered = allCalendarEvents;
 
-        if (filter === 'rsvped') {
-            filtered = allCalendarEvents.filter(e => e.rsvped);
-        } else if (filter === 'not-rsvped') {
-            filtered = allCalendarEvents.filter(e => !e.rsvped);
+        if (rsvp === 'rsvped') {
+            filtered = filtered.filter(e => e.rsvped);
+        } else if (rsvp === 'not-rsvped') {
+            filtered = filtered.filter(e => !e.rsvped);
+        }
+
+        if (category !== 'all') {
+            filtered = filtered.filter(e => e.category === category);
         }
 
         renderCalendar(filtered);
@@ -663,6 +676,7 @@ function loadUserBadges() {
             loadSubmissionStats();
         } else if (tab === 'calendar') {
             loadEventCalendar();
+            loadEventCategories();
         }
     });
 });

@@ -24,6 +24,16 @@ class CalendarEndpoint extends WP_REST_Controller {
                 'permission_callback' => [ $this, 'check_user_logged_in' ],
             ]
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/event-categories',
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [ $this, 'get_event_categories' ],
+                'permission_callback' => '__return_true',
+            ]
+        );
     }
 
     public function get_calendar_events( WP_REST_Request $request ) {
@@ -39,16 +49,35 @@ class CalendarEndpoint extends WP_REST_Controller {
 
         $data = array_map(
             static function ( $post ) use ( $user_rsvps ) {
-                $id = $post->ID;
+                $id    = $post->ID;
+                $terms = wp_get_post_terms( $id, 'ead_event_category', [ 'fields' => 'names' ] );
+
                 return [
-                    'id'     => $id,
-                    'title'  => $post->post_title,
-                    'start'  => get_post_meta( $id, 'event_date', true ),
-                    'url'    => get_permalink( $id ),
-                    'rsvped' => in_array( $id, $user_rsvps, true ),
+                    'id'        => $id,
+                    'title'     => $post->post_title,
+                    'start'     => get_post_meta( $id, 'event_date', true ),
+                    'url'       => get_permalink( $id ),
+                    'rsvped'    => in_array( $id, $user_rsvps, true ),
+                    'category'  => $terms[0] ?? 'Uncategorized',
                 ];
             },
             $events
+        );
+
+        return new WP_REST_Response( $data, 200 );
+    }
+
+    public function get_event_categories( WP_REST_Request $request ) {
+        $terms = get_terms( [ 'taxonomy' => 'ead_event_category', 'hide_empty' => false ] );
+
+        $data = array_map(
+            static function ( $term ) {
+                return [
+                    'slug' => $term->slug,
+                    'name' => $term->name,
+                ];
+            },
+            is_array( $terms ) ? $terms : []
         );
 
         return new WP_REST_Response( $data, 200 );
