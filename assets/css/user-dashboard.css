@@ -79,11 +79,16 @@
 }
 
 .ead-tab-content {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
     display: none;
 }
 
 .ead-tab-content.active {
     display: block;
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .ead-loader {
@@ -331,6 +336,52 @@
     .ead-tab-button {
         margin-bottom: 0.5rem;
         border-radius: 6px;
+    }
+}
+
+.ead-status-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    padding: 0.25em 0.5em;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.ead-status-badge.pending {
+    background: #ffc107;
+    color: #000;
+}
+
+.ead-status-badge.approved {
+    background: #4caf50;
+    color: #fff;
+}
+
+.ead-status-badge.rejected {
+    background: #f44336;
+    color: #fff;
+}
+
+.ead-upload-card {
+    transition: transform 0.2s ease, box-shadow 0.2s;
+}
+
+.ead-upload-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 768px) {
+    .ead-upload-card {
+        padding: 0.5rem;
+    }
+
+    .ead-tab-nav li {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.75rem;
     }
 }
 
