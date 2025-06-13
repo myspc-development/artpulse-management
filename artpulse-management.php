@@ -518,6 +518,7 @@ class Plugin {
             new \EAD\Rest\ProfileEndpoint(),
             new \EAD\Rest\ChangePasswordEndpoint(),
             new \EAD\Rest\ArtworkEndpoint(),
+            new \EAD\Rest\UploadEndpoint(),
             new \EAD\Rest\SyncEndpoint(),
             new \EAD\Rest\SettingsEndpoint(),
         ];
