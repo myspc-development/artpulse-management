@@ -49,4 +49,34 @@ class RsvpEndpointTest extends TestCase
         $this->assertSame(400, $response->status);
         $this->assertArrayHasKey('error', $response->data);
     }
+
+    public function test_bulk_rsvp_adds_ids()
+    {
+        Stubs::$posts[] = (object)['ID' => 6, 'post_type' => 'ead_event'];
+
+        $endpoint = new RsvpEndpoint();
+        $request = new WP_REST_Request();
+        $request->set_param('event_ids', [5,6]);
+        $request->set_param('action', 'POST');
+
+        $response = $endpoint->bulk_rsvp($request);
+
+        $this->assertSame([5,6], $response->data['rsvps']);
+        $this->assertSame([5,6], Stubs::$user_meta['ead_rsvps']);
+    }
+
+    public function test_bulk_rsvp_removes_ids()
+    {
+        Stubs::$user_meta = ['ead_rsvps' => [5,6]];
+
+        $endpoint = new RsvpEndpoint();
+        $request = new WP_REST_Request();
+        $request->set_param('event_ids', [5]);
+        $request->set_param('action', 'DELETE');
+
+        $response = $endpoint->bulk_rsvp($request);
+
+        $this->assertSame([6], $response->data['rsvps']);
+        $this->assertSame([6], Stubs::$user_meta['ead_rsvps']);
+    }
 }

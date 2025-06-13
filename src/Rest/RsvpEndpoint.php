@@ -48,6 +48,16 @@ class RsvpEndpoint extends WP_REST_Controller {
                 ],
             ]
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/' . $this->rest_base . '/bulk',
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => [ $this, 'bulk_rsvp' ],
+                'permission_callback' => [ $this, 'check_user_logged_in' ],
+            ]
+        );
     }
 
     public function add_rsvp( WP_REST_Request $request ) {
@@ -99,6 +109,25 @@ class RsvpEndpoint extends WP_REST_Controller {
             ],
             200
         );
+    }
+
+    public function bulk_rsvp( WP_REST_Request $request ) {
+        $user_id = get_current_user_id();
+        $ids     = array_map('intval', (array) $request->get_param('event_ids'));
+        $action  = $request->get_param('action');
+
+        $rsvps = get_user_meta( $user_id, 'ead_rsvps', true );
+        $rsvps = is_array( $rsvps ) ? $rsvps : [];
+
+        if ( $action === 'POST' ) {
+            $rsvps = array_unique( array_merge( $rsvps, $ids ) );
+        } elseif ( $action === 'DELETE' ) {
+            $rsvps = array_values( array_diff( $rsvps, $ids ) );
+        }
+
+        update_user_meta( $user_id, 'ead_rsvps', $rsvps );
+
+        return rest_ensure_response( [ 'rsvps' => $rsvps ] );
     }
 
     public function check_user_logged_in( WP_REST_Request $request ) {

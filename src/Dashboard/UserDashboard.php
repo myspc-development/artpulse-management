@@ -300,6 +300,15 @@ class UserDashboard {
                     <button id="ead-rsvp-btn" data-id="" class="button"></button>
                 </div>
             </div>
+            <div id="ead-bulk-rsvp-modal" class="ead-modal" style="display:none;">
+                <div class="ead-modal-content">
+                    <span class="ead-modal-close">&times;</span>
+                    <h3>Bulk RSVP</h3>
+                    <ul id="ead-bulk-event-list"></ul>
+                    <button id="ead-bulk-rsvp" class="button">RSVP All</button>
+                    <button id="ead-bulk-unrsvp" class="button">Cancel RSVP All</button>
+                </div>
+            </div>
         </div>
         <?php
         return ob_get_clean();
