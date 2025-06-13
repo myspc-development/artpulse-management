@@ -134,6 +134,7 @@ class UserDashboard {
             <h2><?php esc_html_e( 'User Dashboard', 'artpulse-management' ); ?></h2>
             <div id="ead-loader" class="ead-loader" style="display: none;">Loading...</div>
 
+            <?php $current_user = wp_get_current_user(); $roles = $current_user->roles; $is_admin = in_array( 'administrator', $roles, true ); $is_org = in_array( 'organization', $roles, true ); ?>
             <div class="ead-tabs">
                 <button class="ead-tab-button active" data-tab="dashboard">Dashboard</button>
                 <button class="ead-tab-button" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
@@ -141,8 +142,10 @@ class UserDashboard {
                 <button class="ead-tab-button" data-tab="notifications"><?php esc_html_e('Notifications', 'artpulse-management'); ?></button>
                 <button class="ead-tab-button" data-tab="profile"><?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="uploads"><?php esc_html_e('My Uploads', 'artpulse-management'); ?></button>
+                <?php if ( $is_admin || $is_org ) : ?>
+                    <button class="ead-tab-button" data-tab="submissions"><?php esc_html_e( 'Submissions', 'artpulse-management' ); ?></button>
+                <?php endif; ?>
             </div>
-            <?php $current_user = wp_get_current_user(); $roles = $current_user->roles; ?>
             <div class="ead-tab-content active" id="ead-tab-dashboard">
                 <?php echo self::render_dashboard_home( $roles ); ?>
             </div>
@@ -170,6 +173,12 @@ class UserDashboard {
                 </form>
                 <div id="ead-upload-feedback"></div>
             </div>
+            <?php if ( $is_admin || $is_org ) : ?>
+            <div class="ead-tab-content" id="ead-tab-submissions">
+                <h3><?php esc_html_e( 'Pending Submissions', 'artpulse-management' ); ?></h3>
+                <div id="ead-submission-list"><?php esc_html_e( 'Loading...', 'artpulse-management' ); ?></div>
+            </div>
+            <?php endif; ?>
             <div class="ead-tab-content" id="ead-tab-profile">
                 <div class="ead-profile-summary">
                     <h3><?php esc_html_e('Your Profile', 'artpulse-management'); ?></h3>

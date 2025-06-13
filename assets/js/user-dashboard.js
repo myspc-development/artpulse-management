@@ -46,6 +46,32 @@ jQuery(document).ready(function($){
         `;
     }
 
+    function fetchSubmissions() {
+        $.ajax({
+            url: restUrl + '/submissions',
+            method: 'GET',
+            headers: { 'X-WP-Nonce': nonce },
+            success: function(items) {
+                if (!items.length) {
+                    $('#ead-submission-list').html('<p>No pending submissions.</p>');
+                    return;
+                }
+
+                const html = items.map(item => `
+                    <div class="ead-submission-card" data-id="${item.id}">
+                        <img src="${item.thumb}" alt="${item.title}" />
+                        <h4>${item.title}</h4>
+                        <p>By ${item.author} on ${item.date}</p>
+                        <button class="approve-submission" data-action="approve">✅ Approve</button>
+                        <button class="reject-submission" data-action="reject">❌ Reject</button>
+                    </div>
+                `).join('');
+
+                $('#ead-submission-list').html(html);
+            }
+        });
+    }
+
     function fetchEvents() {
         const city = $('#ead-filter-city').val();
         const state = $('#ead-filter-state').val();
@@ -468,6 +494,22 @@ function loadUserBadges() {
         $('#ead-user-suggestions').hide();
     });
 
+    $(document).on('click', '.approve-submission, .reject-submission', function () {
+        const postId = $(this).closest('.ead-submission-card').data('id');
+        const action = $(this).data('action');
+
+        $.ajax({
+            url: `${eadUserDashboard.restUrl}/submission/${postId}`,
+            method: 'POST',
+            data: { action },
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function () {
+                showToast(`Submission ${action}d.`);
+                fetchSubmissions();
+            }
+        });
+    });
+
     fetchEvents();
     fetchRecommendations();
     updateDashboardStats();
@@ -492,6 +534,8 @@ function loadUserBadges() {
             loadUserBadges();
         } else if (tab === 'dashboard') {
             updateDashboardStats();
+        } else if (tab === 'submissions') {
+            fetchSubmissions();
         }
     });
 });
