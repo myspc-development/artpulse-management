@@ -79,6 +79,7 @@ class UserDashboard {
             <div class="ead-tabs">
                 <button class="ead-tab-button active" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="favorites"><?php esc_html_e( 'Favorites', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button" data-tab="notifications"><?php esc_html_e('Notifications', 'artpulse-management'); ?></button>
                 <button class="ead-tab-button" data-tab="profile"><?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
             </div>
 
@@ -87,6 +88,9 @@ class UserDashboard {
             </div>
             <div class="ead-tab-content" id="ead-tab-favorites">
                 <p><?php esc_html_e( 'Your saved favorite items will appear here.', 'artpulse-management' ); ?></p>
+            </div>
+            <div class="ead-tab-content" id="ead-tab-notifications">
+                <p><?php esc_html_e( 'Loading notifications...', 'artpulse-management' ); ?></p>
             </div>
             <div class="ead-tab-content" id="ead-tab-profile">
                 <div class="ead-profile-summary">

@@ -432,6 +432,18 @@ class Plugin {
             ]
         );
 
+        register_post_type(
+            'ead_notification',
+            [
+                'labels'       => $default_labels_fn( __( 'Notification', self::TEXT_DOMAIN ), __( 'Notifications', self::TEXT_DOMAIN ) ),
+                'public'       => false,
+                'show_ui'      => true,
+                'supports'     => [ 'title', 'editor' ],
+                'capability_type' => 'post',
+                'has_archive'  => false,
+            ]
+        );
+
         register_taxonomy(
             'ead_event_type',
             'ead_event',

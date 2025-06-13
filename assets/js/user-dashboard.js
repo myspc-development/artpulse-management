@@ -224,6 +224,35 @@ jQuery(document).ready(function($){
         });
     }
 
+    function fetchNotifications() {
+        $('#ead-tab-notifications').html('<p>Loading...</p>');
+
+        $.ajax({
+            url: restUrl + '/notifications',
+            method: 'GET',
+            headers: { 'X-WP-Nonce': nonce },
+            success: function (msgs) {
+                if (!msgs.length) {
+                    $('#ead-tab-notifications').html('<p>You have no new messages.</p>');
+                    return;
+                }
+
+                const html = msgs.map(msg => `
+                    <div class="ead-message-card">
+                        <h4>${msg.title}</h4>
+                        <p class="ead-message-meta">${msg.date}</p>
+                        <div class="ead-message-body">${msg.content}</div>
+                    </div>
+                `).join('');
+
+                $('#ead-tab-notifications').html(html);
+            },
+            error: function () {
+                $('#ead-tab-notifications').html('<p>Error loading messages.</p>');
+            }
+        });
+    }
+
     $('#ead-profile-form').on('submit', function (e) {
         e.preventDefault();
 
@@ -300,6 +329,8 @@ jQuery(document).ready(function($){
 
         if (tab === 'favorites') {
             fetchFavorites();
+        } else if (tab === 'notifications') {
+            fetchNotifications();
         }
     });
 });
