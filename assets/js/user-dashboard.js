@@ -15,34 +15,38 @@ jQuery(document).ready(function($){
         </div>`;
     }
 
-    function fetchEvents(){
+    function fetchEvents() {
         const city = $('#ead-filter-city').val();
         const state = $('#ead-filter-state').val();
         const country = $('#ead-filter-country').val();
         const type = $('#ead-filter-type').val();
+        const startDate = $('#ead-filter-start-date').val();
+        const endDate = $('#ead-filter-end-date').val();
+        const sort = $('#ead-filter-sort').val();
+
         const data = {
-            city: city,
-            state: state,
-            country: country,
-            event_type: type
+            city,
+            state,
+            country,
+            event_type: type,
+            start_date: startDate,
+            end_date: endDate,
+            sort
         };
+
         $.ajax({
             url: restUrl,
-            data: data,
+            data,
             method: 'GET',
-            beforeSend: function(xhr){
-                xhr.setRequestHeader('X-WP-Nonce', nonce);
+            beforeSend: function () {
+                $('#ead-user-events').html('<p>Loading events...</p>');
             },
-            success: function(res){
-                if(!res || !Array.isArray(res) || res.length === 0){
-                    $('#ead-user-events').html('<p>No events found.</p>');
-                    return;
-                }
-                const html = res.map(renderEvent).join('');
-                $('#ead-user-events').html(html);
+            success: function (response) {
+                const eventsHTML = response.map(renderEvent).join('');
+                $('#ead-user-events').html(eventsHTML || '<p>No events found.</p>');
             },
-            error: function(){
-                $('#ead-user-events').html('<p>Error loading events.</p>');
+            error: function () {
+                $('#ead-user-events').html('<p>Error loading events. Please try again later.</p>');
             }
         });
     }

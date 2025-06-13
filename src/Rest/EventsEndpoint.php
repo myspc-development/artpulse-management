@@ -92,21 +92,33 @@ class EventsEndpoint extends WP_REST_Controller {
     }
 
     public function getEvents(WP_REST_Request $request) {
-        $perPage = $request->get_param('per_page') ?: 10;
-        $page    = $request->get_param('page') ?: 1;
-        $event_type = sanitize_text_field($request->get_param('event_type'));
-        $city       = sanitize_text_field($request->get_param('city'));
-        $state      = sanitize_text_field($request->get_param('state'));
-        $country    = sanitize_text_field($request->get_param('country'));
+        $perPage    = $request->get_param('per_page') ?: 10;
+        $page       = $request->get_param('page') ?: 1;
+        $event_type = sanitize_text_field( $request->get_param( 'event_type' ) );
+        $city       = sanitize_text_field( $request->get_param( 'city' ) );
+        $state      = sanitize_text_field( $request->get_param( 'state' ) );
+        $country    = sanitize_text_field( $request->get_param( 'country' ) );
+        $start_date = sanitize_text_field( $request->get_param( 'start_date' ) );
+        $end_date   = sanitize_text_field( $request->get_param( 'end_date' ) );
+        $sort       = sanitize_text_field( $request->get_param( 'sort' ) );
 
         $args = [
             'post_type'      => 'ead_event',
             'post_status'    => 'publish',
             'posts_per_page' => absint( $perPage ),
             'paged'          => absint( $page ),
-            'orderby'        => 'date',
-            'order'          => 'DESC',
         ];
+
+        if ( $sort === 'popularity' ) {
+            $args['meta_key'] = '_ead_view_count';
+            $args['orderby']  = 'meta_value_num';
+            $args['order']    = 'DESC';
+        } else {
+            $args['meta_key'] = 'event_start_date';
+            $args['orderby']  = 'meta_value';
+            $args['meta_type'] = 'DATE';
+            $args['order']    = 'ASC';
+        }
 
         $cache_key = 'ead_events_' . md5( serialize( $args ) );
         $cached    = get_transient( $cache_key );
@@ -128,7 +140,7 @@ class EventsEndpoint extends WP_REST_Controller {
             ]];
         }
 
-        // Meta query for location filters
+        // Meta query for location and date filters
         $meta_query = [];
         if (!empty($city)) {
             $meta_query[] = [
@@ -149,6 +161,22 @@ class EventsEndpoint extends WP_REST_Controller {
                 'key'     => 'event_country',
                 'value'   => $country,
                 'compare' => 'LIKE',
+            ];
+        }
+        if ( ! empty( $start_date ) ) {
+            $meta_query[] = [
+                'key'     => 'event_start_date',
+                'value'   => $start_date,
+                'compare' => '>=',
+                'type'    => 'DATE',
+            ];
+        }
+        if ( ! empty( $end_date ) ) {
+            $meta_query[] = [
+                'key'     => 'event_start_date',
+                'value'   => $end_date,
+                'compare' => '<=',
+                'type'    => 'DATE',
             ];
         }
 
@@ -362,6 +390,21 @@ class EventsEndpoint extends WP_REST_Controller {
             ],
             'country' => [
                 'description'       => __('Filter by country.', 'artpulse-management'),
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'start_date' => [
+                'description'       => __('Filter events starting on or after this date (YYYY-MM-DD).', 'artpulse-management'),
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'end_date' => [
+                'description'       => __('Filter events starting on or before this date (YYYY-MM-DD).', 'artpulse-management'),
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'sort' => [
+                'description'       => __('Sort results by "date" or "popularity".', 'artpulse-management'),
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
             ],

@@ -116,6 +116,21 @@ class UserDashboard {
                 <?php esc_html_e( 'Event Type', 'artpulse-management' ); ?>
                 <input type="text" id="ead-filter-type" />
             </label>
+            <label>
+                <?php esc_html_e( 'Start Date', 'artpulse-management' ); ?>
+                <input type="date" id="ead-filter-start-date" />
+            </label>
+            <label>
+                <?php esc_html_e( 'End Date', 'artpulse-management' ); ?>
+                <input type="date" id="ead-filter-end-date" />
+            </label>
+            <label>
+                <?php esc_html_e( 'Sort By', 'artpulse-management' ); ?>
+                <select id="ead-filter-sort">
+                    <option value="date"><?php esc_html_e( 'Date', 'artpulse-management' ); ?></option>
+                    <option value="popularity"><?php esc_html_e( 'Popularity', 'artpulse-management' ); ?></option>
+                </select>
+            </label>
             <button id="ead-filter-submit" class="button">
                 <?php esc_html_e( 'Apply Filters', 'artpulse-management' ); ?>
             </button>
