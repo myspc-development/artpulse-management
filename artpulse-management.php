@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ArtPulse Management
  * Description: A feature-rich directory plugin for managing events, organizations, artists, artworks, dashboards, reviews, mobile API, roles, and data exports.
- * Version: 3.7.2
+ * Version: 3.7.3
  * Author: ArtPulse
  * Text Domain: artpulse-management
  */
@@ -24,7 +24,7 @@ if ( ! defined( 'EAD_PLUGIN_DIR_URL' ) ) {
 }
 
 if ( ! defined( 'EAD_PLUGIN_VERSION' ) ) {
-    define( 'EAD_PLUGIN_VERSION', '3.7.2' ); // CORRECTED: Match plugin header version
+    define( 'EAD_PLUGIN_VERSION', '3.7.3' ); // CORRECTED: Match plugin header version
 }
 
 if ( ! defined( 'EAD_MANAGEMENT_VERSION' ) ) {
@@ -533,6 +533,7 @@ class Plugin {
             new \EAD\Rest\SubmissionEndpoint(),
             new \EAD\Rest\SyncEndpoint(),
             new \EAD\Rest\SettingsEndpoint(),
+            new \EAD\Rest\CalendarEndpoint(),
         ];
 
         foreach ( $endpoints as $endpoint ) {
