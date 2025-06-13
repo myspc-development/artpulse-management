@@ -43,16 +43,30 @@ class UploadEndpoint extends WP_REST_Controller {
             return new WP_REST_Response( [ 'error' => 'Upload failed' ], 400 );
         }
 
-        wp_update_post([
-            'ID'         => $upload_id,
-            'post_title' => $title,
-            'post_author'=> $user_id,
-        ]);
+        $artwork_id = wp_insert_post(
+            [
+                'post_type'   => 'ead_artwork',
+                'post_status' => 'pending',
+                'post_title'  => $title,
+                'post_author' => $user_id,
+                'meta_input'  => [
+                    '_ead_attachment_id' => $upload_id,
+                ],
+            ],
+            true
+        );
+
+        if ( is_wp_error( $artwork_id ) ) {
+            return new WP_REST_Response( [ 'error' => 'Could not create artwork' ], 500 );
+        }
+
+        set_post_thumbnail( $artwork_id, $upload_id );
 
         return new WP_REST_Response(
             [
                 'success'       => true,
                 'attachment_id' => $upload_id,
+                'artwork_id'    => $artwork_id,
             ],
             200
         );
