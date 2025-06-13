@@ -575,6 +575,25 @@ function loadUserBadges() {
         });
     }
 
+    function loadMyUploads() {
+        $.ajax({
+            url: eadUserDashboard.restUrl + '/uploads',
+            method: 'GET',
+            headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
+            success: function (data) {
+                const html = data.map(item => `
+                    <div class="ead-upload-card">
+                        <img src="${item.image_url}" alt="${item.title}" />
+                        <h4>${item.title}</h4>
+                        <p>${item.description || ''}</p>
+                    </div>
+                `).join('');
+
+                $('#ead-my-uploads').html(html || '<p>No uploads yet.</p>');
+            }
+        });
+    }
+
     $('#ead-profile-form').on('submit', function (e) {
         e.preventDefault();
 
@@ -652,6 +671,7 @@ function loadUserBadges() {
             success: function () {
                 $('#ead-upload-feedback').html('<p>Upload successful!</p>');
                 $('#ead-upload-form')[0].reset();
+                loadMyUploads();
             },
             error: function () {
                 $('#ead-upload-feedback').html('<p>Upload failed. Try again.</p>');
@@ -784,6 +804,8 @@ function loadUserBadges() {
         } else if (tab === 'submissions') {
             fetchSubmissions();
             loadSubmissionStats();
+        } else if (tab === 'uploads') {
+            loadMyUploads();
         } else if (tab === 'calendar') {
             loadEventCalendar();
             loadEventCategories();

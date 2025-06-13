@@ -24,6 +24,16 @@ class UploadEndpoint extends WP_REST_Controller {
                 'permission_callback' => [ $this, 'check_user_logged_in' ],
             ]
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/uploads',
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [ $this, 'get_user_uploads' ],
+                'permission_callback' => [ $this, 'check_user_logged_in' ],
+            ]
+        );
     }
 
     public function handle_upload( WP_REST_Request $request ) {
@@ -70,6 +80,32 @@ class UploadEndpoint extends WP_REST_Controller {
             ],
             200
         );
+    }
+
+    public function get_user_uploads( WP_REST_Request $request ) {
+        $user_id = get_current_user_id();
+
+        $uploads = get_posts(
+            [
+                'post_type'      => 'ead_artwork',
+                'author'         => $user_id,
+                'post_status'    => 'publish',
+                'posts_per_page' => -1,
+            ]
+        );
+
+        $items = array_map(
+            static function ( $post ) {
+                return [
+                    'title'       => $post->post_title,
+                    'description' => $post->post_content,
+                    'image_url'   => get_the_post_thumbnail_url( $post->ID, 'medium' ),
+                ];
+            },
+            $uploads
+        );
+
+        return new WP_REST_Response( $items, 200 );
     }
 
     public function check_user_logged_in( WP_REST_Request $request ) {
