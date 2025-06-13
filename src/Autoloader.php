@@ -20,13 +20,21 @@ class Autoloader {
      * @param string $class The fully-qualified class name.
      */
     public static function autoload($class) {
-        // Only load classes from this namespace
-        if (strpos($class, __NAMESPACE__ . '\\') !== 0) {
+        $prefixes = [ __NAMESPACE__ . '\\', 'Artpulse\\' ];
+
+        $matched = null;
+        foreach ( $prefixes as $prefix ) {
+            if ( strpos( $class, $prefix ) === 0 ) {
+                $matched = $prefix;
+                break;
+            }
+        }
+
+        if ( ! $matched ) {
             return;
         }
 
-        // Remove the namespace prefix
-        $relative_class = substr($class, strlen(__NAMESPACE__) + 1);
+        $relative_class = substr( $class, strlen( $matched ) );
 
         // Convert namespace separators to directory separators
         $relative_path = str_replace('\\', '/', $relative_class);
