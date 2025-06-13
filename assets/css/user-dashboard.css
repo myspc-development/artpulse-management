@@ -3,4 +3,9 @@
 .ead-user-filters input{margin-right:5px;}
 .ead-event-card{border:1px solid #ccc;padding:10px;margin-bottom:10px;}
 @media(max-width:600px){.ead-user-filters label{display:block;width:100%;}}
+.ead-tabs{display:flex;gap:1rem;margin-bottom:1rem;}
+.ead-tab-button{padding:0.5rem 1rem;background:#f0f0f0;border:none;cursor:pointer;}
+.ead-tab-button.active{background:#0073aa;color:#fff;}
+.ead-tab-content{display:none;}
+.ead-tab-content.active{display:block;}
 

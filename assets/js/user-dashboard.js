@@ -53,4 +53,14 @@ jQuery(document).ready(function($){
     });
 
     fetchEvents();
+
+    $('.ead-tab-button').on('click', function () {
+        const tab = $(this).data('tab');
+
+        $('.ead-tab-button').removeClass('active');
+        $(this).addClass('active');
+
+        $('.ead-tab-content').removeClass('active');
+        $('#ead-tab-' + tab).addClass('active');
+    });
 });
