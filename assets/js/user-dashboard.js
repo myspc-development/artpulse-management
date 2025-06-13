@@ -1,6 +1,7 @@
 jQuery(document).ready(function($){
     const restUrl = eadUserDashboard.restUrl;
     const nonce = eadUserDashboard.nonce;
+    let allCalendarEvents = [];
 
     function showLoader() {
         $('#ead-loader').show();
@@ -26,23 +27,33 @@ jQuery(document).ready(function($){
             method: 'GET',
             headers: { 'X-WP-Nonce': eadUserDashboard.nonce },
             success: function (events) {
-                const calendarEl = document.getElementById('ead-event-calendar');
-                const calendar = new FullCalendar.Calendar(calendarEl, {
-                    initialView: 'dayGridMonth',
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'dayGridMonth,listWeek'
-                    },
-                    events: events,
-                    eventClick: function(info) {
-                        info.jsEvent.preventDefault();
-                        window.open(info.event.url, '_blank');
-                    }
-                });
-                calendar.render();
+                allCalendarEvents = events;
+                renderCalendar(events);
             }
         });
+    }
+
+    function renderCalendar(events) {
+        const calendarEl = document.getElementById('ead-event-calendar');
+        calendarEl.innerHTML = '';
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,listWeek'
+            },
+            events: events.map(e => ({
+                ...e,
+                color: e.rsvped ? '#0073aa' : '#cccccc',
+            })),
+            eventClick: function(info) {
+                info.jsEvent.preventDefault();
+                window.open(info.event.url, '_blank');
+            }
+        });
+        calendar.render();
     }
 
     function renderEvent(event) {
@@ -573,6 +584,19 @@ function loadUserBadges() {
     updateDashboardStats();
     fetchFavorites();
     loadSubmissionStats();
+
+    $('#ead-filter-rsvp').on('change', function () {
+        const filter = $(this).val();
+        let filtered = allCalendarEvents;
+
+        if (filter === 'rsvped') {
+            filtered = allCalendarEvents.filter(e => e.rsvped);
+        } else if (filter === 'not-rsvped') {
+            filtered = allCalendarEvents.filter(e => !e.rsvped);
+        }
+
+        renderCalendar(filtered);
+    });
 
     $('.ead-tab-button').on('click', function () {
         const tab = $(this).data('tab');
