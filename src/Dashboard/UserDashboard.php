@@ -73,6 +73,56 @@ class UserDashboard {
         echo '</div>';
     }
 
+    /**
+     * Render the dashboard home panel based on user roles.
+     *
+     * @param array $roles Current user roles.
+     * @return string HTML output for the dashboard landing panel.
+     */
+    public static function render_dashboard_home( $roles ) {
+        ob_start();
+
+        if ( in_array( 'administrator', $roles, true ) ) {
+            ?>
+            <h3>Admin Overview</h3>
+            <ul>
+                <li>Pending Artwork: <?php echo wp_count_posts( 'ead_artwork' )->pending; ?></li>
+                <li>Total Users: <?php echo count_users()['total_users']; ?></li>
+                <li>Recent Messages: <a href="#">View Inbox</a></li>
+            </ul>
+            <?php
+        } elseif ( in_array( 'artist', $roles, true ) ) {
+            ?>
+            <h3>Welcome, Artist</h3>
+            <ul>
+                <li>Artworks Uploaded: <?php echo count_user_posts( get_current_user_id(), 'ead_artwork' ); ?></li>
+                <li>Badges Earned: [Load via JS]</li>
+                <li><a href="#" class="button">Upload New Artwork</a></li>
+            </ul>
+            <?php
+        } elseif ( in_array( 'organization', $roles, true ) ) {
+            ?>
+            <h3>Organization Dashboard</h3>
+            <ul>
+                <li>Upcoming Events: <?php echo wp_count_posts( 'ead_event' )->publish; ?></li>
+                <li>Total RSVPs: [Load via JS]</li>
+                <li><a href="#" class="button">Create New Event</a></li>
+            </ul>
+            <?php
+        } else {
+            ?>
+            <h3>Welcome to Your Dashboard</h3>
+            <ul>
+                <li>Favorites: [Load via JS]</li>
+                <li>RSVPs This Month: [Load via JS]</li>
+                <li>Recommended Events: <a href="#">Explore</a></li>
+            </ul>
+            <?php
+        }
+
+        return ob_get_clean();
+    }
+
     public static function render() {
         if ( ! is_user_logged_in() ) {
             return '<p>' . esc_html__( 'Please log in to view your dashboard.', 'artpulse-management' ) . '</p>';
@@ -85,14 +135,18 @@ class UserDashboard {
             <div id="ead-loader" class="ead-loader" style="display: none;">Loading...</div>
 
             <div class="ead-tabs">
-                <button class="ead-tab-button active" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
+                <button class="ead-tab-button active" data-tab="dashboard">Dashboard</button>
+                <button class="ead-tab-button" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="favorites"><?php esc_html_e( 'Favorites', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="notifications"><?php esc_html_e('Notifications', 'artpulse-management'); ?></button>
                 <button class="ead-tab-button" data-tab="profile"><?php esc_html_e( 'Profile', 'artpulse-management' ); ?></button>
                 <button class="ead-tab-button" data-tab="uploads"><?php esc_html_e('My Uploads', 'artpulse-management'); ?></button>
             </div>
-
-            <div class="ead-tab-content active" id="ead-tab-events">
+            <?php $current_user = wp_get_current_user(); $roles = $current_user->roles; ?>
+            <div class="ead-tab-content active" id="ead-tab-dashboard">
+                <?php echo self::render_dashboard_home( $roles ); ?>
+            </div>
+            <div class="ead-tab-content" id="ead-tab-events">
                 <?php self::render_events_section(); ?>
             </div>
             <div class="ead-tab-content" id="ead-tab-favorites">

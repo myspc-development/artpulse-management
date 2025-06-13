@@ -197,7 +197,7 @@ jQuery(document).ready(function($){
         });
     }
 
-    function loadUserBadges() {
+function loadUserBadges() {
         $.ajax({
             url: eadUserDashboard.restUrl + '/badges',
             method: 'GET',
@@ -219,6 +219,12 @@ jQuery(document).ready(function($){
                 container.html(html);
             }
         });
+    }
+
+    function updateDashboardStats() {
+        fetchUserSummary();
+        loadUserBadges();
+        loadActivityChart();
     }
 
     function fetchFavorites() {
@@ -464,7 +470,7 @@ jQuery(document).ready(function($){
 
     fetchEvents();
     fetchRecommendations();
-    fetchUserSummary();
+    updateDashboardStats();
     fetchFavorites();
 
     $('.ead-tab-button').on('click', function () {
@@ -484,6 +490,8 @@ jQuery(document).ready(function($){
             fetchUserSummary();
             loadActivityChart();
             loadUserBadges();
+        } else if (tab === 'dashboard') {
+            updateDashboardStats();
         }
     });
 });
