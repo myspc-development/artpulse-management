@@ -547,6 +547,7 @@ class Plugin {
             new \EAD\Rest\SyncEndpoint(),
             new \EAD\Rest\SettingsEndpoint(),
             new \EAD\Rest\CalendarEndpoint(),
+            new \Artpulse\UserController(),
         ];
 
         foreach ( $endpoints as $endpoint ) {
