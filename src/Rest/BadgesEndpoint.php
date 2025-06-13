@@ -35,23 +35,21 @@ class BadgesEndpoint extends WP_REST_Controller {
     public function get_user_badges( int $user_id ) : array {
         $badges = [];
 
-        $favorites = get_user_meta( $user_id, 'ead_favorites', true );
-        $favorites = is_array( $favorites ) ? $favorites : [];
-
         $rsvps = get_user_meta( $user_id, 'ead_rsvps', true );
         $rsvps = is_array( $rsvps ) ? $rsvps : [];
+        $count = count( $rsvps );
 
-        if ( count( $rsvps ) >= 1 ) {
-            $badges[] = [ 'label' => '🎉 First RSVP', 'desc' => 'Thanks for joining an event!' ];
+        if ( $count >= 1 ) {
+            $badges[] = [ 'label' => '🎉 Rookie', 'desc' => 'RSVP\'d to 1 event' ];
         }
-        if ( count( $rsvps ) >= 5 ) {
-            $badges[] = [ 'label' => '🏃 Frequent Attendee', 'desc' => 'RSVPed to 5+ events' ];
+        if ( $count >= 5 ) {
+            $badges[] = [ 'label' => '🧭 Explorer', 'desc' => 'RSVP\'d to 5+ events' ];
         }
-        if ( count( $favorites ) >= 10 ) {
-            $badges[] = [ 'label' => '💖 Super Fan', 'desc' => 'Favorited 10+ items' ];
+        if ( $count >= 10 ) {
+            $badges[] = [ 'label' => '💜 Superfan', 'desc' => 'RSVP\'d to 10+ events' ];
         }
-        if ( count( $rsvps ) >= 5 && count( $favorites ) >= 10 ) {
-            $badges[] = [ 'label' => '🌟 Power User', 'desc' => 'You’re all in!' ];
+        if ( $count >= 3 ) {
+            $badges[] = [ 'label' => '🔥 Streak Master', 'desc' => 'RSVP\'d to 3 events in a row' ];
         }
 
         return $badges;

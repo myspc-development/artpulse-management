@@ -103,6 +103,7 @@ class OrganizerDashboard {
         ?>
         <div class="ead-dashboard-card">
             <h2>Your Events</h2>
+            <div id="ead-badges" class="ead-badges"></div>
             <a href="<?php echo esc_url(add_query_arg('create', '1', $dashboard_url)); ?>" class="button" style="margin-bottom: 16px;">+ Submit New Event</a>
 
             <?php if ($events): ?>

@@ -14,3 +14,33 @@
     font-weight: bold;
     margin-left: 8px;
 }
+.ead-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ead-badge {
+    font-size: 0.85rem;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: #eee;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    animation: popIn 0.4s ease forwards;
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.ead-badge.rookie { background: #a2d5f2; }
+.ead-badge.explorer { background: #b6f0c3; }
+.ead-badge.superfan { background: #e6c5f7; }
+.ead-badge.streak { background: #ffc107; }
+
+@keyframes popIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

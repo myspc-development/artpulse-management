@@ -27,3 +27,22 @@ function submitRequest(endpoint, data, method = 'POST') {
 
 // Make the function available globally if needed
 window.submitRequest = submitRequest;
+
+jQuery(function($){
+    const container = $('#ead-badges');
+    if(!container.length || typeof eadFrontend === 'undefined') return;
+
+    fetch(eadFrontend.restUrl + 'artpulse/v1/badges', {
+        headers: { 'X-WP-Nonce': eadFrontend.nonce_wp_rest || '' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(!Array.isArray(data)) return;
+        container.empty();
+        data.forEach(b => {
+            const cls = b.label.toLowerCase().replace(/[^a-z]/g,'');
+            container.append(`<div class="ead-badge ${cls}">${b.label}</div>`);
+        });
+    })
+    .catch(()=>{});
+});
