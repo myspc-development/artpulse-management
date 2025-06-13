@@ -169,6 +169,16 @@ class UserDashboard {
             </div>
             <div class="ead-tab-content" id="ead-tab-calendar">
                 <h3>Event Calendar</h3>
+                <div id="ead-calendar-filters">
+                    <label>
+                        Show:
+                        <select id="ead-filter-rsvp">
+                            <option value="all">All Events</option>
+                            <option value="rsvped">Only RSVPed</option>
+                            <option value="not-rsvped">Not RSVPed</option>
+                        </select>
+                    </label>
+                </div>
                 <div id="ead-event-calendar"></div>
             </div>
             <div class="ead-tab-content" id="ead-tab-notifications">

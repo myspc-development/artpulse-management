@@ -245,6 +245,15 @@
     margin: 0;
 }
 
+#ead-calendar-filters {
+    margin-bottom: 1rem;
+}
+
+#ead-calendar-filters select {
+    padding: 0.4rem;
+    border-radius: 4px;
+}
+
 #ead-event-calendar {
     margin-top: 1rem;
     background: #fff;
