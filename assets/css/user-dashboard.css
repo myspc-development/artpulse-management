@@ -9,3 +9,30 @@
 .ead-tab-content{display:none;}
 .ead-tab-content.active{display:block;}
 
+.ead-loader {
+    background: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    font-weight: bold;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ead-empty-state {
+    font-style: italic;
+    color: #666;
+    padding: 1rem;
+}
+
+.ead-toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: #0073aa;
+    color: #fff;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+

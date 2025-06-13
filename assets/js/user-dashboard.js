@@ -2,6 +2,24 @@ jQuery(document).ready(function($){
     const restUrl = eadUserDashboard.restUrl;
     const nonce = eadUserDashboard.nonce;
 
+    function showLoader() {
+        $('#ead-loader').show();
+    }
+
+    function hideLoader() {
+        $('#ead-loader').hide();
+    }
+
+    function showToast(message, isError = false) {
+        const toast = $('#ead-toast');
+        toast.text(message);
+        toast.css('background', isError ? '#d63638' : '#0073aa');
+        toast.fadeIn(200);
+        setTimeout(() => {
+            toast.fadeOut(300);
+        }, 3000);
+    }
+
     function renderEvent(event) {
         const location = [event.venue?.city, event.venue?.state, event.venue?.country]
             .filter(Boolean).join(', ');
@@ -45,11 +63,13 @@ jQuery(document).ready(function($){
             data,
             method: 'GET',
             beforeSend: function () {
-                $('#ead-user-events').html('<p>Loading events...</p>');
+                showLoader();
             },
             success: function (response) {
-                const eventsHTML = response.map(renderEvent).join('');
-                $('#ead-user-events').html(eventsHTML || '<p>No events found.</p>');
+                const html = response.length
+                    ? response.map(renderEvent).join('')
+                    : '<p class="ead-empty-state">No events found matching your filters.</p>';
+                $('#ead-user-events').html(html);
 
                 $('.ead-favorite-btn').on('click', function () {
                     const postId = parseInt($(this).data('id'));
@@ -61,6 +81,8 @@ jQuery(document).ready(function($){
             error: function () {
                 $('#ead-user-events').html('<p>Error loading events. Please try again later.</p>');
             }
+        }).always(function(){
+            hideLoader();
         });
     }
 
@@ -102,8 +124,46 @@ jQuery(document).ready(function($){
         });
     }
 
+    function fetchFavorites() {
+        $.ajax({
+            url: restUrl + '/favorites',
+            method: 'GET',
+            headers: {
+                'X-WP-Nonce': nonce
+            },
+            beforeSend: showLoader,
+            success: function (ids) {
+                if (!ids.length) {
+                    $('#ead-tab-favorites').html('<p class="ead-empty-state">You haven\u2019t favorited any events yet.</p>');
+                    return;
+                }
+
+                const requests = ids.map(id => $.ajax({ url: restUrl + '/events/' + id, method: 'GET' }));
+
+                $.when.apply($, requests).done(function () {
+                    const events = Array.from(arguments).map(res => res[0]);
+                    const html = events.map(renderEvent).join('');
+                    $('#ead-tab-favorites').html(html);
+                    $('.ead-favorite-btn').on('click', function () {
+                        const postId = parseInt($(this).data('id'));
+                        const isFavorited = $(this).data('favorited');
+                        toggleFavorite(postId, isFavorited);
+                    });
+                }).fail(function(){
+                    $('#ead-tab-favorites').html('<p class="ead-empty-state">You haven\u2019t favorited any events yet.</p>');
+                });
+            },
+            error: function () {
+                $('#ead-tab-favorites').html('<p class="ead-empty-state">You haven\u2019t favorited any events yet.</p>');
+            },
+            complete: hideLoader
+        });
+    }
+
     function toggleFavorite(postId, isFavorited) {
         const method = isFavorited ? 'DELETE' : 'POST';
+        const btn = $(`.ead-favorite-btn[data-id="${postId}"]`);
+        btn.prop('disabled', true);
 
         $.ajax({
             url: restUrl + '/favorites',
@@ -112,8 +172,10 @@ jQuery(document).ready(function($){
             headers: {
                 'X-WP-Nonce': nonce
             },
+            beforeSend: function () {
+                showLoader();
+            },
             success: function (res) {
-                const btn = $(`.ead-favorite-btn[data-id="${postId}"]`);
                 const newFavorited = !isFavorited;
 
                 btn.data('favorited', newFavorited);
@@ -121,6 +183,15 @@ jQuery(document).ready(function($){
 
                 eadUserDashboard.favorites = res.favorites;
                 fetchUserSummary();
+                fetchFavorites();
+                showToast('Favorites updated!');
+            },
+            error: function () {
+                showToast('Error updating favorites.', true);
+            },
+            complete: function () {
+                btn.prop('disabled', false);
+                hideLoader();
             }
         });
     }
@@ -128,6 +199,7 @@ jQuery(document).ready(function($){
     fetchEvents();
     fetchRecommendations();
     fetchUserSummary();
+    fetchFavorites();
 
     $('.ead-tab-button').on('click', function () {
         const tab = $(this).data('tab');

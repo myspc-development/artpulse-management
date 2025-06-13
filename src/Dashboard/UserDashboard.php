@@ -74,6 +74,7 @@ class UserDashboard {
         ?>
         <div class="ead-user-dashboard">
             <h2><?php esc_html_e( 'User Dashboard', 'artpulse-management' ); ?></h2>
+            <div id="ead-loader" class="ead-loader" style="display: none;">Loading...</div>
 
             <div class="ead-tabs">
                 <button class="ead-tab-button active" data-tab="events"><?php esc_html_e( 'Events', 'artpulse-management' ); ?></button>
@@ -95,6 +96,7 @@ class UserDashboard {
                     <p><?php esc_html_e( 'Favorites:', 'artpulse-management' ); ?> <span id="ead-user-fav-count">...</span></p>
                 </div>
             </div>
+            <div id="ead-toast" class="ead-toast" style="display: none;"></div>
         </div>
         <?php
         return ob_get_clean();
