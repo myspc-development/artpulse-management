@@ -35,10 +35,19 @@ Introduced in version **3.7.0** – see [CHANGELOG.md](CHANGELOG.md) for details
 ## Installation
 
 1. Download the plugin .zip or clone this repository into your WordPress `wp-content/plugins` directory.
-2. Activate the plugin via the WordPress admin panel.
-3. Upon activation the plugin registers custom roles and capabilities.
-4. Navigate to **ArtPulse Management** in the admin sidebar.
-5. When deactivated these roles are removed automatically.
+2. Install dependencies and build the assets **before activating** the plugin:
+
+   ```bash
+   composer install
+   npm install
+   npm run build
+   ```
+
+   This compiles `build/user-dashboard.bundle.js` used by the `UserDashboard` component.
+3. Activate the plugin via the WordPress admin panel.
+4. Upon activation the plugin registers custom roles and capabilities.
+5. Navigate to **ArtPulse Management** in the admin sidebar.
+6. When deactivated these roles are removed automatically.
 
 ## Onboarding
 
