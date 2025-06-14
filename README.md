@@ -169,6 +169,9 @@ Below is a high-level view of the custom REST endpoints. All routes are prefixed
 | `/taxonomies` | `GET` users with `read` |
 | `/taxonomies/{taxonomy}` | `GET` users with `read` |
 | `/user/profile` | `GET` `POST` logged-in users |
+| `/user-profile` | `GET` `POST` pro members (`POST` also org) |
+| `/user-badges` | `GET` pro members |
+| `/membership-status` | `GET` pro members |
 | `/artworks` | `GET` users with `read`, `POST` users with `edit_posts` |
 | `/artwork/{id}` | `GET` users with `read`, `PUT/DELETE` author or editors |
 | `/auth/token` | `POST` | credentials |
