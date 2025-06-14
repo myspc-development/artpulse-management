@@ -147,6 +147,14 @@ class SettingsPage {
             'id'          => 'google_places_api_key',
             'description' => __( 'Enter your Google Places API key.', 'artpulse-management' ),
         ] );
+        add_settings_field( 'enable_google_places_api', __( 'Enable Google Places Autocomplete', 'artpulse-management' ), [
+            self::class,
+            'render_checkbox_field_callback',
+        ], $api_tab_slug, 'artpulse_api_keys_section', [ 'id' => 'enable_google_places_api' ] );
+        add_settings_field( 'enable_geonames_api', __( 'Enable GeoNames Lookups', 'artpulse-management' ), [
+            self::class,
+            'render_checkbox_field_callback',
+        ], $api_tab_slug, 'artpulse_api_keys_section', [ 'id' => 'enable_geonames_api' ] );
         // ... (other API settings)
 
         // --- Social Auto-Posting Tab ---
@@ -546,6 +554,16 @@ class SettingsPage {
         }
         if ( isset( $input['google_places_api_key'] ) ) {
             $output['google_places_api_key'] = sanitize_text_field( $input['google_places_api_key'] );
+        }
+        if ( isset( $input['enable_google_places_api'] ) ) {
+            $output['enable_google_places_api'] = (bool) $input['enable_google_places_api'];
+        } else {
+            $output['enable_google_places_api'] = false;
+        }
+        if ( isset( $input['enable_geonames_api'] ) ) {
+            $output['enable_geonames_api'] = (bool) $input['enable_geonames_api'];
+        } else {
+            $output['enable_geonames_api'] = false;
         }
 
         // ... (other API settings)

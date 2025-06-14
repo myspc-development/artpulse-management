@@ -9,6 +9,8 @@ Configure third‑party service credentials used throughout the plugin.
 - **Google Maps API Key** – Enables map displays and geocoding.
 - **GeoNames Username** – Required for country and city lookups.
 - **Google Places API Key** – Used for place autocompletion and details.
+- **Enable Google Places Autocomplete** – Toggle usage of the Google Places service.
+- **Enable GeoNames API** – Toggle remote lookups when fallback data is missing.
 
 ## Social Auto-Posting
 
@@ -79,7 +81,7 @@ The plugin ships with fallback JSON files inside the `data/` folder:
 
 These files populate the country, state and city select boxes used in registration forms and address metaboxes. If a requested state or city is not found locally, ArtPulse queries the GeoNames API using the username provided on the **API Keys & Services** tab. The response is cached as a transient and written back to the JSON file so future lookups work offline.
 
-When a Google Maps key is entered you may also enable Google Places autocomplete. This enhances the address field, filling latitude and longitude and suggesting complete addresses.
+When a Google Maps key is entered you may optionally check **Enable Google Places Autocomplete**. This enhances the address field, filling latitude and longitude and suggesting complete addresses. Checking **Enable GeoNames API** allows remote lookups for states and cities when they aren't available locally.
 
 Cached location files update automatically whenever new data is retrieved, provided **Auto-update fallback JSON** is enabled in the **Data Management** tab. You can manually clear these files from the same tab.
 
@@ -87,5 +89,5 @@ Cached location files update automatically whenever new data is retrieved, provi
 
 1. Go to **ArtPulse › Settings** in the WordPress admin.
 2. Open the **API Keys & Services** tab.
-3. Enter your **Google Maps API Key**, optional **Google Places API Key** and **GeoNames Username**.
+3. Enter your **Google Maps API Key**, optional **Google Places API Key** and **GeoNames Username**. Then tick **Enable Google Places Autocomplete** or **Enable GeoNames API** if you wish to use those services.
 4. Click **Save Changes**.
