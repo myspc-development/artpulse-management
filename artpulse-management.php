@@ -105,6 +105,11 @@ if ( file_exists( $membership_core_file ) ) {
     require_once $membership_core_file;
 }
 
+$functions_file = EAD_PLUGIN_DIR_PATH . 'functions.php';
+if ( file_exists( $functions_file ) ) {
+    require_once $functions_file;
+}
+
 // Ensure membership settings are loaded
 require_once plugin_dir_path(__FILE__) . 'admin_membership_settings.php';
 

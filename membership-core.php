@@ -351,3 +351,38 @@ function artpulse_lookup_location($request) {
     $output  = array_map(fn($r) => $r['name'], $results['geonames'] ?? []);
     return $output;
 }
+
+// Load registration form shortcode
+require_once plugin_dir_path(__FILE__) . 'includes/shortcodes/register-member.php';
+
+// Handle registration form submission
+add_action('init', function () {
+    if (!isset($_POST['register_member_submit'])) {
+        return;
+    }
+    if (!isset($_POST['register_member_nonce']) ||
+        !wp_verify_nonce($_POST['register_member_nonce'], 'register_member_action')) {
+        return;
+    }
+
+    $username = sanitize_user($_POST['username']);
+    $email    = sanitize_email($_POST['email']);
+    $password = $_POST['password'];
+    $level    = sanitize_text_field($_POST['membership_level']);
+
+    $user_id = wp_create_user($username, $password, $email);
+    if (is_wp_error($user_id)) {
+        return;
+    }
+
+    wp_update_user(['ID' => $user_id, 'display_name' => $username]);
+    update_user_meta($user_id, 'membership_level', $level);
+    update_user_meta($user_id, 'membership_start_date', current_time('mysql'));
+    update_user_meta($user_id, 'membership_end_date', date('Y-m-d H:i:s', strtotime('+1 month')));
+    update_user_meta($user_id, 'membership_auto_renew', false);
+
+    artpulse_send_welcome_email($user_id);
+
+    wp_redirect(home_url('/membership-success/'));
+    exit;
+});
