@@ -86,6 +86,7 @@ class MembershipEndpoint extends WP_REST_Controller {
     }
 
     public function permissions_check( WP_REST_Request $request ) {
-        return current_user_can('read');
+        $user = wp_get_current_user();
+        return in_array( 'member_pro', $user->roles, true );
     }
 }
