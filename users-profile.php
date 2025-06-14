@@ -40,7 +40,7 @@ add_action('show_user_profile', 'artpulse_extra_user_profile_fields');
 add_action('edit_user_profile', 'artpulse_extra_user_profile_fields');
 
 function artpulse_save_extra_user_profile_fields($user_id) {
-    if (!current_user_can('edit_user', $user_id)) return false;
+    if (!current_user_can('edit_user', $user_id)) return;
 
     update_user_meta($user_id, 'user_bio', sanitize_textarea_field($_POST['user_bio'] ?? ''));
     update_user_meta($user_id, 'profile_links', array_map('esc_url_raw', $_POST['profile_links'] ?? []));
@@ -60,13 +60,13 @@ function artpulse_user_profile_shortcode($atts) {
     $featured = get_user_meta($user->ID, 'featured_artist', true);
 
     ob_start();
-    echo '<div class="user-profile">';
-    echo '<h2>' . esc_html($user->display_name) . ($featured ? ' \xF0\x9F\x8C\x9F' : '') . '</h2>';
-    echo '<p>' . esc_html($bio) . '</p>';
-    if ($links) {
-        echo '<ul>';
+    echo '<div class="user-profile space-y-4 p-4 border rounded">';
+    echo '<h2 class="text-xl font-bold">' . esc_html($user->display_name) . ($featured ? ' 🌟' : '') . '</h2>';
+    if ($bio) echo '<p>' . esc_html($bio) . '</p>';
+    if (!empty($links)) {
+        echo '<ul class="list-disc list-inside">';
         foreach ($links as $label => $url) {
-            echo '<li><a href="' . esc_url($url) . '" target="_blank">' . ucfirst($label) . '</a></li>';
+            echo '<li><a href="' . esc_url($url) . '" target="_blank" rel="noopener">' . ucfirst(esc_html($label)) . '</a></li>';
         }
         echo '</ul>';
     }
@@ -74,3 +74,4 @@ function artpulse_user_profile_shortcode($atts) {
     return ob_get_clean();
 }
 add_shortcode('user_profile', 'artpulse_user_profile_shortcode');
+
