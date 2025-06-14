@@ -317,11 +317,15 @@ function artpulse_event_card_shortcode($atts) {
         <div class="mt-4">
             <p><strong>Total RSVPs:</strong> <?php echo $total_rsvps; ?></p>
             <?php if (!empty($attendees)): ?>
-                <ul class="list-disc pl-5 text-sm">
+                <ul class="list-disc pl-5 text-sm space-y-1 text-gray-800">
                     <?php foreach ($attendees as $uid):
-                        $user = get_user_by('ID', $uid);
+                        $user  = get_user_by('ID', $uid);
+                        $guest = $guests[$uid] ?? '';
                         if ($user): ?>
-                        <li><?php echo esc_html($user->display_name); ?><?php if (!empty($guests[$uid])) { echo ' + Guest: ' . esc_html($guests[$uid]); } ?></li>
+                        <li class="flex justify-between">
+                            <span class="font-medium"><?php echo esc_html($user->display_name); ?></span>
+                            <?php if ($guest): ?><span class="italic"><?php echo esc_html($guest); ?></span><?php endif; ?>
+                        </li>
                     <?php endif; endforeach; ?>
                 </ul>
             <?php endif; ?>
@@ -334,10 +338,10 @@ function artpulse_event_card_shortcode($atts) {
                 $start_gcal   = urlencode(gmdate('Ymd\THis\Z', strtotime($start)));
                 $end_gcal     = $end ? urlencode(gmdate('Ymd\THis\Z', strtotime($end))) : '';
                 $gcal_url     = "https://calendar.google.com/calendar/render?action=TEMPLATE&text={$title}&dates={$start_gcal}/{$end_gcal}&location={$location_str}";
-                $ics_url      = rest_url('artpulse/v1/events/' . $post->ID . '/ics');
+                $ics_url      = add_query_arg('generate_ics', $post->ID);
             ?>
-            <a href="<?php echo esc_url($gcal_url); ?>" class="underline text-blue-700" target="_blank">Add to Google Calendar</a>
-            <a href="<?php echo esc_url($ics_url); ?>" class="underline text-blue-700">Download ICS</a>
+            <a href="<?php echo esc_url($gcal_url); ?>" class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition" target="_blank">Add to Google Calendar</a>
+            <a href="<?php echo esc_url($ics_url); ?>" class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 transition">Download ICS</a>
             <?php endif; ?>
         </div>
     </div>
@@ -345,3 +349,40 @@ function artpulse_event_card_shortcode($atts) {
     return ob_get_clean();
 }
 add_shortcode('event_card', 'artpulse_event_card_shortcode');
+
+// Output a downloadable ICS file when ?generate_ics=ID is present
+add_action('template_redirect', function () {
+    if (!isset($_GET['generate_ics'])) {
+        return;
+    }
+
+    $event_id = absint($_GET['generate_ics']);
+    $post     = get_post($event_id);
+    if (!$post || $post->post_type !== 'event') {
+        return;
+    }
+
+    $start    = get_post_meta($event_id, 'event_start_datetime', true);
+    $end      = get_post_meta($event_id, 'event_end_datetime', true);
+    $location = get_post_meta($event_id, 'event_location', true);
+
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Content-Disposition: attachment; filename=event-' . $event_id . '.ics');
+
+    echo "BEGIN:VCALENDAR\r\n";
+    echo "VERSION:2.0\r\n";
+    echo "BEGIN:VEVENT\r\n";
+    echo "UID:event-{$event_id}@artpulse\r\n";
+    echo 'DTSTAMP:' . gmdate('Ymd\THis\Z') . "\r\n";
+    echo 'DTSTART:' . gmdate('Ymd\THis\Z', strtotime($start)) . "\r\n";
+    if ($end) {
+        echo 'DTEND:' . gmdate('Ymd\THis\Z', strtotime($end)) . "\r\n";
+    }
+    echo 'SUMMARY:' . esc_html($post->post_title) . "\r\n";
+    echo 'LOCATION:' . esc_html($location) . "\r\n";
+    echo 'DESCRIPTION:' . esc_html(strip_tags($post->post_content)) . "\r\n";
+    echo "END:VEVENT\r\n";
+    echo "END:VCALENDAR\r\n";
+
+    exit;
+});
