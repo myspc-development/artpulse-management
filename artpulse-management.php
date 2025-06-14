@@ -79,6 +79,9 @@ if ( file_exists( $membership_settings_file ) ) {
     require_once $membership_settings_file;
 }
 
+// Ensure membership settings are loaded
+require_once plugin_dir_path(__FILE__) . 'admin_membership_settings.php';
+
 
 /**
  * Copies plugin templates to the child theme directory on activation,
