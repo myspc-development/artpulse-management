@@ -10,6 +10,7 @@ use EAD\Admin\PendingArtists;
 use EAD\Admin\PendingArtworks;
 use EAD\Admin\ReviewsModerator;
 use EAD\Admin\AdminEventForm; // <-- Add this import
+use EAD\Admin\ManageMembers;
 
 /**
  * Admin Menu Registration.
@@ -142,6 +143,15 @@ class Menu {
             'edit_others_posts',
             'artpulse-bookings',
             [\EAD\Admin\BookingsAdmin::class, 'render_admin_page']
+        );
+
+        add_submenu_page(
+            'artpulse-main-menu',
+            __('Manage Members', 'artpulse-management'),
+            __('Manage Members', 'artpulse-management'),
+            'manage_options',
+            'artpulse-manage-members',
+            [ManageMembers::class, 'render_admin_page']
         );
 
         add_submenu_page(
