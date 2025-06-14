@@ -19,3 +19,11 @@ Artists and organizers can manage their listings through a set of self-service t
 ## Reviews
 - Visitors submit reviews using `[ead_reviews_form]` or `[ead_org_review_form]`.
 - Members can respond to feedback directly from their dashboards.
+
+## Managing Members
+Site administrators can manage accounts from **Manage Members** under the ArtPulse menu.
+- Filter by membership level or expiration status.
+- Sort members by level or expiration date.
+- Apply bulk actions to change level or send reminders.
+- Use the **Edit Membership** links to update a user's level and expiry.
+- Click **Export CSV** to download all member data.
