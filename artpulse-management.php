@@ -228,8 +228,8 @@ register_activation_hook( __FILE__, 'EAD\artpulse_copy_templates_to_child_theme'
 register_activation_hook( __FILE__, 'EAD\ead_register_default_event_types' ); // ADDED: Hook for event type registration
 register_activation_hook( __FILE__, 'EAD\ead_create_rsvp_table' );
 register_activation_hook( __FILE__, 'EAD\ead_migrate_org_logo_meta' );
-register_activation_hook( __FILE__, [ RolesManager::class, 'register_membership_roles' ] );
-register_deactivation_hook( __FILE__, [ RolesManager::class, 'remove_membership_roles' ] );
+register_activation_hook( __FILE__, [ \EAD\Roles\RolesManager::class, 'register_membership_roles' ] );
+register_deactivation_hook( __FILE__, [ \EAD\Roles\RolesManager::class, 'remove_membership_roles' ] );
 
 /**
  * Daily cron task to remove expired memberships.
