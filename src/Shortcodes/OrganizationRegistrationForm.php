@@ -108,6 +108,11 @@ class OrganizationRegistrationForm {
             return '<p>' . esc_html__( 'Please log in to register an organization.', 'artpulse-management' ) . '</p>';
         }
 
+        $level = get_user_meta( get_current_user_id(), 'membership_level', true );
+        if ( 'org' !== $level ) {
+            return '<p>' . esc_html__( 'Only Organization members may submit this form.', 'artpulse-management' ) . '</p>';
+        }
+
         $org_types = [
             'gallery'             => __( 'Art Gallery', 'artpulse-management' ),
             'museum'              => __( 'Museum', 'artpulse-management' ),
