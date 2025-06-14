@@ -150,9 +150,9 @@ add_shortcode('organization_profile', 'artpulse_organization_profile_shortcode')
 
 // 5. Permission filter: allow only org admins to edit their orgs
 add_filter('user_has_cap', function ($caps, $cap, $args) {
-    if ($cap[0] === 'edit_post') {
+    if (is_array($cap) && isset($cap[0]) && $cap[0] === 'edit_post') {
         $post_id = $args[2] ?? null;
-        if (get_post_type($post_id) === 'organization') {
+        if ($post_id && get_post_type($post_id) === 'organization') {
             $org_admins = get_post_meta($post_id, 'org_admin_users', true) ?: [];
             if (in_array(get_current_user_id(), $org_admins)) {
                 $caps[$cap[0]] = true;
