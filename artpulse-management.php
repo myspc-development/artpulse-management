@@ -96,6 +96,9 @@ require_once plugin_dir_path(__FILE__) . 'users-profile.php';
 // Load organization management functionality
 require_once plugin_dir_path(__FILE__) . 'organizations.php';
 
+// Load basic events functionality
+require_once plugin_dir_path(__FILE__) . 'events.php';
+
 
 /**
  * Copies plugin templates to the child theme directory on activation,
