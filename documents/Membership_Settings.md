@@ -1,6 +1,6 @@
 # Membership Settings
 
-The **Membership Settings** page controls fees and payment integrations for paid memberships. Access it from **ArtPulse › Membership Settings** in the WordPress admin menu.
+The **Membership** tab under **ArtPulse Settings** controls fees and payment integrations for paid memberships. Open **ArtPulse Settings** in the admin menu and select the **Membership** tab.
 
 ## Fields
 
