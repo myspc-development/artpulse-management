@@ -35,7 +35,7 @@ if ( ! defined( 'EAD_MANAGEMENT_VERSION' ) ) {
  * Ensure the RolesManager class is loaded and the legacy alias exists.
  */
 function ead_load_roles_manager() {
-    $roles_manager_path = EAD_PLUGIN_DIR_PATH . 'src/Roles/RolesManager.php';
+    $roles_manager_path = EAD_PLUGIN_DIR_PATH . 'src/RolesManager.php';
     if ( file_exists( $roles_manager_path ) ) {
         require_once $roles_manager_path;
     }
