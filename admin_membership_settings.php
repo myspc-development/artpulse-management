@@ -13,7 +13,11 @@ add_action('admin_menu', function () {
 });
 
 add_action('admin_init', function () {
-    register_setting('ead_membership_settings', 'ead_membership_fees');
+    register_setting(
+        'ead_membership_settings',
+        'ead_membership_fees',
+        ['sanitize_callback' => 'ead_sanitize_membership_fees']
+    );
 
     add_settings_section('ead_fees_section', 'Membership Fee Settings', null, 'ead_membership_settings');
 
@@ -47,6 +51,17 @@ add_action('admin_init', function () {
         echo '<input type="checkbox" name="ead_membership_fees[notify_on_change]" value="1" ' . checked($opts['notify_on_change'] ?? '', '1', false) . '> Notify admins';
     }, 'ead_membership_settings', 'ead_fees_section');
 });
+
+function ead_sanitize_membership_fees($input) {
+    $sanitized = [];
+    $sanitized['basic_fee'] = isset($input['basic_fee']) ? floatval($input['basic_fee']) : 0;
+    $sanitized['pro_fee']   = isset($input['pro_fee'])   ? floatval($input['pro_fee'])   : 0;
+    $sanitized['org_fee']   = isset($input['org_fee'])   ? floatval($input['org_fee'])   : 0;
+    $sanitized['enable_stripe'] = empty($input['enable_stripe']) ? '' : '1';
+    $sanitized['enable_woocommerce'] = empty($input['enable_woocommerce']) ? '' : '1';
+    $sanitized['notify_on_change'] = empty($input['notify_on_change']) ? '' : '1';
+    return $sanitized;
+}
 
 function ead_membership_settings_page() {
     echo '<div class="wrap">';

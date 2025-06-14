@@ -45,6 +45,7 @@ Newcomers can follow the [Onboarding Guide](documents/Onboarding_Guide.md) for a
 ## Usage
 
 - Access features through the WordPress Admin Menu:
+  - **Membership Settings** — set fees and payment options.
   - **ArtPulse Settings › CSV Import/Export** — manage bulk data with a progress bar.
     After uploading a file you will preview the columns and confirm the field mapping.
     During the import a progress indicator shows completion and the raw log can be downloaded when finished.
@@ -267,6 +268,7 @@ See the [Mobile App Development Plan](documents/mobile-app-dev-plan) for a detai
 ## Help Guides
 
 - [Member Help](documents/Member_Help.md)
+- [Membership Settings](documents/Membership_Settings.md)
 - [Directory Options](documents/Directory_Options.md)
 - [Admin Help](documents/Admin_Help.md)
 - [Settings Tabs](documents/Settings_Tabs.md)
