@@ -93,6 +93,9 @@ require_once plugin_dir_path(__FILE__) . 'admin_artpulse_settings.php';
 // Load user profile enhancements
 require_once plugin_dir_path(__FILE__) . 'users-profile.php';
 
+// Load organization management functionality
+require_once plugin_dir_path(__FILE__) . 'organizations.php';
+
 
 /**
  * Copies plugin templates to the child theme directory on activation,
