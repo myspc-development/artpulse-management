@@ -59,15 +59,16 @@ add_shortcode('artist_card', function ($atts) {
             'post_type'      => 'artwork',
             'meta_key'       => 'artwork_artist_id',
             'meta_value'     => $post->ID,
-            'posts_per_page' => -1
+            'posts_per_page' => -1,
         ]);
 
         if ($artworks) {
-            echo '<ul class="list-disc ml-5">';
+            echo '<div class="mt-4"><h4 class="text-lg font-semibold">Artworks:</h4>';
+            echo '<ul class="list-disc ml-6">';
             foreach ($artworks as $art) {
                 echo '<li><a href="' . get_permalink($art) . '" class="text-blue-600 underline">' . esc_html($art->post_title) . '</a></li>';
             }
-            echo '</ul>';
+            echo '</ul></div>';
         }
         ?>
     </div>
