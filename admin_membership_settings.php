@@ -5,7 +5,7 @@ add_action('admin_menu', function () {
         'Membership Settings',
         'Membership',
         'manage_options',
-        'ead-membership-settings',
+        'artpulse-membership-management',
         'ead_render_membership_settings'
     );
 });
