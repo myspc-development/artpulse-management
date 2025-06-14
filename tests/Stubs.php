@@ -8,6 +8,9 @@ class Stubs {
     public static array $last_user_query = [];
     public static array $caps = [];
     public static int $current_user_id = 1;
+    public static string $current_user_email = 'user@example.com';
+    public static string $current_user_display_name = 'User';
+    public static array $current_user_roles = [];
     public static array $user_meta = [];
     public static array $meta = [];
     public static array $updated_posts = [];
@@ -32,6 +35,15 @@ function current_user_can(string $cap): bool {
 
 function get_current_user_id(): int {
     return \Tests\Stubs::$current_user_id;
+}
+
+function wp_get_current_user() {
+    return (object) [
+        'ID'           => \Tests\Stubs::$current_user_id,
+        'user_email'   => \Tests\Stubs::$current_user_email,
+        'display_name' => \Tests\Stubs::$current_user_display_name,
+        'roles'        => \Tests\Stubs::$current_user_roles,
+    ];
 }
 
 function get_user_meta($user_id, string $key, $single = false) {
