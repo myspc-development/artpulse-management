@@ -53,7 +53,7 @@ class UserDashboard {
         );
         wp_enqueue_script(
             'ead-user-dashboard',
-            $plugin_url . 'assets/js/user-dashboard.js',
+            $plugin_url . 'assets/js/user-dashboard/main.js',
             ['jquery', 'chart-js', 'fullcalendar', 'leaflet'],
             EAD_MANAGEMENT_VERSION,
             true
