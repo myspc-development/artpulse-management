@@ -53,6 +53,23 @@ function ead_membership_admin_page()
             .membership-table button {
                 margin-left: 4px;
             }
+            @media (max-width: 768px) {
+                .membership-table td, .membership-table th {
+                    font-size: 12px;
+                    padding: 6px 8px;
+                }
+                .membership-table td input[type="text"] {
+                    width: 80px;
+                }
+            }
+            .role-label-pro {
+                color: #0073aa;
+                font-weight: bold;
+            }
+            .role-label-org {
+                color: #d54e21;
+                font-weight: bold;
+            }
         </style>';
     echo '<h1>📋 Membership Overview</h1>';
     echo '<form method="get" style="margin-bottom: 20px;">';
@@ -66,9 +83,7 @@ function ead_membership_admin_page()
     echo '<button class="button">Filter</button>';
     echo '</form>';
 
-    echo '<form method="post">';
-    submit_button('📤 Export CSV', 'primary', 'export_csv', false);
-    echo '</form>';
+    echo '<form method="post"><button class="button button-primary" name="export_csv">📤 Export CSV</button></form>';
 
     echo '<table class="widefat fixed striped membership-table">';
     echo '<thead><tr><th>User</th><th>Email</th><th>Role</th><th>Level</th><th>Badge</th><th>Joined</th><th>Actions</th></tr></thead><tbody>';
@@ -81,39 +96,41 @@ function ead_membership_admin_page()
         echo '<tr>';
         echo '<td>' . esc_html($user->display_name) . '</td>';
         echo '<td>' . esc_html($user->user_email) . '</td>';
-        echo '<td>' . esc_html(implode(', ', $user->roles)) . '</td>';
+        echo '<td>';
+        foreach ($user->roles as $role) {
+            $class = ($role === 'member_pro') ? 'role-label-pro' : (($role === 'member_org') ? 'role-label-org' : '');
+            echo '<span class="' . esc_attr($class) . '">' . esc_html($role) . '</span> ';
+        }
+        echo '</td>';
         echo '<td>' . esc_html(ucfirst($level)) . '</td>';
         echo '<td>';
         if (in_array('member_org', $user->roles)) {
-            echo '<form method="post" style="display:inline;">';
-            wp_nonce_field('edit_badge_' . $user->ID);
-            echo '<input type="text" name="badge_label" value="' . esc_attr($badge) . '" size="12" />';
-            echo '<input type="hidden" name="badge_user_id" value="' . $user->ID . '" />';
-            echo '<button class="button small">💾</button>';
-            echo '</form>';
+            echo '<form method="post" style="display:inline;">' .
+                wp_nonce_field('edit_badge_' . $user->ID, '_wpnonce', true, false) .
+                '<input type="text" name="badge_label" value="' . esc_attr($badge) . '" size="12" />' .
+                '<input type="hidden" name="badge_user_id" value="' . $user->ID . '" />' .
+                '<button class="button small">💾</button></form>';
         } else {
             echo esc_html($badge);
         }
         echo '</td>';
         echo '<td>' . esc_html(date('Y-m-d', strtotime($joined))) . '</td>';
         echo '<td>';
-        echo '<form method="post" style="display:inline;">';
-        wp_nonce_field('promote_member_action_' . $user->ID);
-        echo '<input type="hidden" name="promote_user_id" value="' . $user->ID . '" />';
-        echo '<select name="new_role">';
-        echo '<option value="member_basic">Basic</option>';
-        echo '<option value="member_pro">Pro</option>';
-        echo '<option value="member_org">Org</option>';
-        echo '</select>';
-        echo '<button class="button small">Promote</button>';
-        echo '</form>';
+        echo '<form method="post" style="display:inline;">' .
+            wp_nonce_field('promote_member_action_' . $user->ID, '_wpnonce', true, false) .
+            '<input type="hidden" name="promote_user_id" value="' . $user->ID . '" />' .
+            '<select name="new_role">' .
+                '<option value="member_basic">Basic</option>' .
+                '<option value="member_pro">Pro</option>' .
+                '<option value="member_org">Org</option>' .
+            '</select>' .
+            '<button class="button small">Promote</button></form>';
 
         if (get_user_meta($user->ID, 'previous_role', true)) {
-            echo '<form method="post" style="display:inline; margin-left: 5px;">';
-            wp_nonce_field('revert_role_action_' . $user->ID);
-            echo '<input type="hidden" name="revert_user_id" value="' . $user->ID . '" />';
-            echo '<button class="button small">↩️ Undo</button>';
-            echo '</form>';
+            echo '<form method="post" style="display:inline; margin-left: 5px;">' .
+                wp_nonce_field('revert_role_action_' . $user->ID, '_wpnonce', true, false) .
+                '<input type="hidden" name="revert_user_id" value="' . $user->ID . '" />' .
+                '<button class="button small">↩️ Undo</button></form>';
         }
         echo '</td>';
         echo '</tr>';
