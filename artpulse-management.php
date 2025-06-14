@@ -216,8 +216,9 @@ function ead_check_membership_expiry() {
         'meta_query' => [
             [
                 'key'     => 'membership_expires',
-                'value'   => current_time('timestamp'),
-                'compare' => '<='
+                'value'   => current_time('mysql'),
+                'compare' => '<=',
+                'type'    => 'DATETIME',
             ],
         ],
     ]);

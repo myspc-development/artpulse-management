@@ -92,8 +92,8 @@ class MembershipEndpointTest extends TestCase
         $this->assertSame('Elite', Stubs::$user_meta['org_badge_label']);
         $this->assertSame('pro', Stubs::$user_meta['membership_level']);
         $this->assertSame('1', Stubs::$user_meta['is_member']);
-        $this->assertArrayHasKey('membership_joined', Stubs::$user_meta);
-        $this->assertArrayHasKey('membership_expires', Stubs::$user_meta);
+        $this->assertSame('2023-01-01 00:00:00', Stubs::$user_meta['membership_joined']);
+        $this->assertMatchesRegularExpression('/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/', Stubs::$user_meta['membership_expires']);
         $this->assertSame(['member_pro'], Stubs::$current_user_roles);
     }
 }
