@@ -44,6 +44,11 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 if ( file_exists( EAD_PLUGIN_DIR_PATH . 'src/Autoloader.php' ) ) {
     require_once EAD_PLUGIN_DIR_PATH . 'src/Autoloader.php';
     Autoloader::register();
+
+    // Backward compatibility: older code references `EAD\\RolesManager`
+    if ( ! class_exists( '\\EAD\\RolesManager' ) && class_exists( '\\EAD\\Roles\\RolesManager' ) ) {
+        class_alias( '\\EAD\\Roles\\RolesManager', '\\EAD\\RolesManager' );
+    }
 } else {
     // Fallback or error handling if autoloader is missing
     add_action(
