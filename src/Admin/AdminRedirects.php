@@ -8,8 +8,8 @@ class AdminRedirects {
 
     public static function redirect_clean_admin_urls() {
         $routes = [
-            'ead-membership-settings'  => 'ead-membership-settings',
-            'ead-membership-overview' => 'ead-membership-overview',
+            'ead-membership-settings'  => 'artpulse-settings&tab=membership',
+            'ead-membership-overview' => 'artpulse-settings&tab=membership',
         ];
 
         $uri = $_SERVER['REQUEST_URI'] ?? '';
