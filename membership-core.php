@@ -304,3 +304,50 @@ function artpulse_render_membership_cancel_template() {
     echo '</main>';
     get_footer();
 }
+
+// Location selector assets
+add_action('admin_enqueue_scripts', function ($hook) {
+    if (strpos($hook, 'artpulse') === false) {
+        return;
+    }
+
+    wp_enqueue_style('select2-css', plugins_url('assets/select2/css/select2.min.css', __FILE__));
+    wp_enqueue_script('select2-js', plugins_url('assets/select2/js/select2.min.js', __FILE__), ['jquery'], null, true);
+    wp_enqueue_script('location-cascade', plugins_url('assets/js/location-cascade.js', __FILE__), ['select2-js'], null, true);
+
+    wp_localize_script('location-cascade', 'LocationData', [
+        'countries' => json_decode(file_get_contents(plugin_dir_path(__FILE__) . 'data/countries.json')),
+        'states'    => json_decode(file_get_contents(plugin_dir_path(__FILE__) . 'data/states.json')),
+        'cities'    => json_decode(file_get_contents(plugin_dir_path(__FILE__) . 'data/cities.json')),
+    ]);
+});
+
+// Optional GeoNames fallback REST endpoint
+add_action('rest_api_init', function () {
+    register_rest_route('artpulse/v1', '/fetch-location', [
+        'methods'             => 'GET',
+        'callback'            => 'artpulse_lookup_location',
+        'permission_callback' => '__return_true',
+    ]);
+});
+
+function artpulse_lookup_location($request) {
+    $type    = sanitize_text_field($request['type']);
+    $country = sanitize_text_field($request['country']);
+    $query   = sanitize_text_field($request['q']);
+
+    $url = match ($type) {
+        'state' => "http://api.geonames.org/searchJSON?country=$country&featureCode=ADM1&maxRows=10&username=demo",
+        'city'  => "http://api.geonames.org/searchJSON?q=$query&country=$country&featureClass=P&maxRows=10&username=demo",
+        default => ''
+    };
+
+    $response = wp_remote_get($url);
+    if (is_wp_error($response)) {
+        return [];
+    }
+
+    $results = json_decode(wp_remote_retrieve_body($response), true);
+    $output  = array_map(fn($r) => $r['name'], $results['geonames'] ?? []);
+    return $output;
+}
