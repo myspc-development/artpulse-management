@@ -24,8 +24,26 @@ function artpulse_register_organization_meta() {
     register_post_meta('organization', 'org_website', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
     register_post_meta('organization', 'org_logo_url', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
     register_post_meta('organization', 'org_mission', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
-    register_post_meta('organization', 'org_admin_users', ['type' => 'array', 'single' => true, 'show_in_rest' => true]);
-    register_post_meta('organization', 'org_team_members', ['type' => 'array', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_admin_users', [
+        'type'        => 'array',
+        'single'      => true,
+        'show_in_rest' => [
+            'schema' => [
+                'type'  => 'array',
+                'items' => [ 'type' => 'integer' ],
+            ],
+        ],
+    ]);
+    register_post_meta('organization', 'org_team_members', [
+        'type'        => 'array',
+        'single'      => true,
+        'show_in_rest' => [
+            'schema' => [
+                'type'  => 'array',
+                'items' => [ 'type' => 'integer' ],
+            ],
+        ],
+    ]);
     register_post_meta('organization', 'org_address', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
     register_post_meta('organization', 'org_phone', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
 }

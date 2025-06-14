@@ -1,7 +1,16 @@
 <?php
 function artpulse_register_user_profile_meta() {
     register_meta('user', 'user_bio', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
-    register_meta('user', 'profile_links', ['type' => 'array', 'single' => true, 'show_in_rest' => true]);
+    register_meta('user', 'profile_links', [
+        'type'        => 'array',
+        'single'      => true,
+        'show_in_rest' => [
+            'schema' => [
+                'type'  => 'array',
+                'items' => [ 'type' => 'string' ],
+            ],
+        ],
+    ]);
     register_meta('user', 'featured_artist', ['type' => 'boolean', 'single' => true, 'show_in_rest' => true]);
     register_meta('user', 'profile_visibility', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
 }
