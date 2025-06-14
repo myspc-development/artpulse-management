@@ -79,6 +79,11 @@ if ( file_exists( $membership_settings_file ) ) {
     require_once $membership_settings_file;
 }
 
+$membership_signup_file = EAD_PLUGIN_DIR_PATH . 'membership_signup.php';
+if ( file_exists( $membership_signup_file ) ) {
+    require_once $membership_signup_file;
+}
+
 /**
  * Copies plugin templates to the child theme directory on activation,
  * only if they don't already exist in the child theme.

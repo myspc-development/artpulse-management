@@ -133,6 +133,7 @@ During development you can run `npm run watch` to continuously build assets as f
 | `[ead_artist_dashboard]` | – | `[ead_artist_dashboard]` |
 | `[ead_organization_dashboard]` | – | `[ead_organization_dashboard]` |
 | `[ead_user_dashboard]` | – | `[ead_user_dashboard]` |
+| `[ead_membership_status]` | – | `[ead_membership_status]` |
 Use `[ead_organization_registration_form]` to display a front-end organization registration form. The form submits via JavaScript to the `artpulse/v1/organizations` endpoint.
 
 ### Organization Dashboard
