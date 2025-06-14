@@ -1,6 +1,7 @@
 <?php
 add_action('admin_menu', function () {
-    add_menu_page(
+    add_submenu_page(
+        'artpulse-main-menu',
         'Membership Settings',
         'Membership',
         'manage_options',
