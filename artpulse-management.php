@@ -204,6 +204,24 @@ register_activation_hook( __FILE__, 'EAD\ead_create_rsvp_table' );
 register_activation_hook( __FILE__, 'EAD\ead_migrate_org_logo_meta' );
 register_activation_hook( __FILE__, [ RolesManager::class, 'register_membership_roles' ] );
 
+/**
+ * Registers CPTs/endpoints and flushes rewrites on activation.
+ */
+function ead_flush_rewrites() {
+    // Ensure post types and taxonomies are registered.
+    if ( class_exists( Plugin::class ) ) {
+        Plugin::register_post_types_and_taxonomies();
+    }
+
+    // Register custom endpoints needed for the plugin.
+    add_rewrite_endpoint( 'organization-confirmation', EP_ROOT | EP_PAGES );
+
+    flush_rewrite_rules();
+}
+
+register_activation_hook( __FILE__, 'EAD\ead_flush_rewrites' );
+register_deactivation_hook( __FILE__, 'flush_rewrite_rules' );
+
 // --- Consolidated Use Statements (Grouped for better readability) ---
 // Admin
 use EAD\Admin\Menu;
