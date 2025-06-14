@@ -71,8 +71,20 @@ add_shortcode('artwork_card', function ($atts) {
     return ob_get_clean();
 });
 
+add_action('wp_enqueue_scripts', function () {
+    wp_register_script(
+        'artwork-gallery-filter',
+        plugins_url('assets/js/artwork-gallery-filter.js', __FILE__),
+        ['jquery'],
+        EAD_MANAGEMENT_VERSION,
+        true
+    );
+});
+
 add_shortcode('artwork_gallery', function ($atts) {
     $atts = shortcode_atts(['artist' => ''], $atts);
+
+    global $wpdb;
 
     $args = [
         'post_type'      => 'artwork',
@@ -90,22 +102,68 @@ add_shortcode('artwork_gallery', function ($atts) {
         return '<p>No artworks found.</p>';
     }
 
+    // Collect dropdown data
+    $mediums = $wpdb->get_col(
+        "SELECT DISTINCT pm.meta_value
+         FROM {$wpdb->postmeta} pm
+         INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
+         WHERE pm.meta_key = 'artwork_medium'
+         AND p.post_type = 'artwork'
+         AND pm.meta_value <> ''
+         ORDER BY pm.meta_value ASC"
+    );
+
+    $artists = get_posts([
+        'post_type'   => 'artist',
+        'numberposts' => -1,
+        'orderby'     => 'title',
+        'order'       => 'ASC',
+    ]);
+
+    wp_enqueue_script('artwork-gallery-filter');
+
     ob_start();
-    echo '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">';
+    ?>
+    <div class="flex flex-wrap gap-4 items-center mb-4">
+        <label class="text-sm font-medium">Artist:
+            <select id="filter-artist" class="ml-2 border px-2 py-1 rounded">
+                <option value="">All Artists</option>
+                <?php foreach ($artists as $artist) : ?>
+                    <option value="<?php echo esc_attr($artist->ID); ?>"><?php echo esc_html($artist->post_title); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <label class="text-sm font-medium">Medium:
+            <select id="filter-medium" class="ml-2 border px-2 py-1 rounded">
+                <option value="">All Mediums</option>
+                <?php foreach ($mediums as $medium) : ?>
+                    <option value="<?php echo esc_attr($medium); ?>"><?php echo esc_html($medium); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <?php
     while ($query->have_posts()) {
         $query->the_post();
-        $price = get_post_meta(get_the_ID(), 'artwork_price', true);
-        echo '<div class="border p-2 rounded shadow text-center">';
-        if (has_post_thumbnail()) {
-            echo '<a href="' . get_permalink() . '">' . get_the_post_thumbnail(null, 'medium', ['class' => 'rounded mx-auto']) . '</a>';
-        }
-        echo '<h4 class="font-medium mt-2 text-sm">' . get_the_title() . '</h4>';
-        if ($price) {
-            echo '<p class="text-xs text-gray-600">Price: ' . esc_html($price) . '</p>';
-        }
-        echo '</div>';
+        $price      = get_post_meta(get_the_ID(), 'artwork_price', true);
+        $artist_id  = get_post_meta(get_the_ID(), 'artwork_artist_id', true);
+        $medium     = get_post_meta(get_the_ID(), 'artwork_medium', true);
+        ?>
+        <div class="artwork-gallery-card border p-2 rounded shadow text-center" data-artist-id="<?php echo esc_attr($artist_id); ?>" data-medium="<?php echo esc_attr($medium); ?>">
+            <?php if (has_post_thumbnail()) {
+                echo '<a href="' . get_permalink() . '">' . get_the_post_thumbnail(null, 'medium', ['class' => 'rounded mx-auto']) . '</a>';
+            } ?>
+            <h4 class="font-medium mt-2 text-sm"><?php echo get_the_title(); ?></h4>
+            <?php if ($price) {
+                echo '<p class="text-xs text-gray-600">Price: ' . esc_html($price) . '</p>';
+            } ?>
+        </div>
+        <?php
     }
-    echo '</div>';
+    ?>
+    </div>
+    <?php
     wp_reset_postdata();
     return ob_get_clean();
 });
