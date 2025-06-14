@@ -39,6 +39,9 @@ function artpulse_extra_user_profile_fields($user) {
 add_action('show_user_profile', 'artpulse_extra_user_profile_fields');
 add_action('edit_user_profile', 'artpulse_extra_user_profile_fields');
 
+add_action('show_user_profile', 'ap_user_org_meta');
+add_action('edit_user_profile', 'ap_user_org_meta');
+
 function artpulse_save_extra_user_profile_fields($user_id) {
     if (!current_user_can('edit_user', $user_id)) return;
 
@@ -74,4 +77,30 @@ function artpulse_user_profile_shortcode($atts) {
     return ob_get_clean();
 }
 add_shortcode('user_profile', 'artpulse_user_profile_shortcode');
+
+function ap_user_org_meta($user) {
+    $selected   = get_user_meta($user->ID, 'user_org_id', true);
+    $args       = ['post_type' => 'organization', 'numberposts' => -1];
+    if (!current_user_can('manage_options')) {
+        $args['meta_query'] = [[
+            'key'     => 'org_admin_users',
+            'value'   => get_current_user_id(),
+            'compare' => 'LIKE',
+        ]];
+    }
+    $orgs = get_posts($args);
+    echo '<h3>Organization Assignment</h3><select name="user_org_id">';
+    echo '<option value="">— None —</option>';
+    foreach ($orgs as $org) {
+        echo '<option value="' . $org->ID . '"' . selected($selected, $org->ID, false) . '>' . esc_html($org->post_title) . '</option>';
+    }
+    echo '</select>';
+}
+
+add_action('personal_options_update', 'ap_save_user_org_meta');
+add_action('edit_user_profile_update', 'ap_save_user_org_meta');
+
+function ap_save_user_org_meta($user_id) {
+    update_user_meta($user_id, 'user_org_id', absint($_POST['user_org_id'] ?? 0));
+}
 

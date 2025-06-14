@@ -110,6 +110,28 @@ function artpulse_membership_settings_page() {
     echo '</form></div>';
 }
 
+// Simple settings page for Stripe test mode
+add_action('admin_menu', function () {
+    add_options_page('Membership Settings', 'Membership', 'manage_options', 'membership_settings', function () {
+        ?>
+        <form method="post" action="options.php">
+            <?php settings_fields('membership_settings'); ?>
+            <?php do_settings_sections('membership_settings'); ?>
+            <h2>Stripe Test Mode</h2>
+            <label>
+                <input type="checkbox" name="stripe_test_mode" value="1" <?php checked(get_option('stripe_test_mode'), 1); ?>>
+                Enable Test Mode (use test keys)
+            </label>
+            <?php submit_button(); ?>
+        </form>
+        <?php
+    });
+});
+
+add_action('admin_init', function () {
+    register_setting('membership_settings', 'stripe_test_mode');
+});
+
 // 5. Shortcode: [membership_status]
 function artpulse_membership_status_shortcode() {
     if (!is_user_logged_in()) return '<p>Please <a href="' . wp_login_url() . '">log in</a> to view your membership status.</p>';
@@ -133,9 +155,9 @@ add_shortcode('membership_status', 'artpulse_membership_status_shortcode');
 function artpulse_membership_checkout_shortcode() {
     if (!is_user_logged_in()) return '<p>Please <a href="' . wp_login_url() . '">log in</a> to upgrade your membership.</p>';
 
-    $opts            = get_option('artpulse_membership_options');
-    $stripe_price_id = 'price_test_123';
-    $stripe_pk       = $opts['stripe_pk'] ?? '';
+    $use_test        = get_option('stripe_test_mode');
+    $stripe_price_id = $use_test ? 'price_test_123' : 'price_live_456';
+    $stripe_pk       = $use_test ? 'pk_test_123' : 'pk_live_456';
 
     ob_start();
     echo '<script src="https://js.stripe.com/v3/"></script>';
@@ -207,11 +229,11 @@ add_action('wp_ajax_nopriv_artpulse_create_checkout_session', 'artpulse_create_c
 
 function artpulse_create_checkout_session() {
     require_once ABSPATH . 'vendor/autoload.php';
-    $opts            = get_option('artpulse_membership_options');
-    $stripe_sk       = $opts['stripe_sk'] ?? '';
-    $stripe_price_id = 'price_test_123';
+    $use_test        = get_option('stripe_test_mode');
+    $stripe_secret   = $use_test ? 'sk_test_123' : 'sk_live_456';
+    $stripe_price_id = $use_test ? 'price_test_123' : 'price_live_456';
 
-    \Stripe\Stripe::setApiKey($stripe_sk);
+    \Stripe\Stripe::setApiKey($stripe_secret);
 
     $session = \Stripe\Checkout\Session::create([
         'payment_method_types' => ['card'],
