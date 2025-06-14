@@ -171,3 +171,49 @@ function artpulse_send_rsvp_email($event_id, $user_id) {
 
     wp_mail($to, $subject, $message);
 }
+
+// 4. Enqueue FullCalendar assets for [event_calendar]
+function artpulse_enqueue_event_calendar_assets() {
+    if (!is_singular()) {
+        return;
+    }
+
+    global $post;
+    if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'event_calendar')) {
+        return;
+    }
+
+    wp_enqueue_style('fullcalendar-css', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css');
+    wp_enqueue_script('fullcalendar-js', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js', [], null, true);
+    wp_enqueue_script('artpulse-calendar-init', plugin_dir_url(__FILE__) . 'js/event-calendar-init.js', ['fullcalendar-js'], null, true);
+
+    // Pass events to JavaScript
+    $events = [];
+    $query  = new WP_Query([
+        'post_type'      => 'event',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+    ]);
+
+    foreach ($query->posts as $post) {
+        $start   = get_post_meta($post->ID, 'event_start_datetime', true);
+        $end     = get_post_meta($post->ID, 'event_end_datetime', true);
+        $events[] = [
+            'title' => get_the_title($post),
+            'start' => $start,
+            'end'   => $end,
+            'url'   => get_permalink($post),
+        ];
+    }
+
+    wp_localize_script('artpulse-calendar-init', 'artpulseCalendarData', [
+        'events' => $events,
+    ]);
+}
+add_action('wp_enqueue_scripts', 'artpulse_enqueue_event_calendar_assets');
+
+// 5. Shortcode output container for event calendar
+function artpulse_event_calendar_shortcode() {
+    return '<div id="event-calendar" class="my-6"></div>';
+}
+add_shortcode('event_calendar', 'artpulse_event_calendar_shortcode');
