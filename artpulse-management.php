@@ -208,7 +208,7 @@ register_deactivation_hook( __FILE__, [ RolesManager::class, 'remove_membership_
 /**
  * Daily cron task to remove expired memberships.
  */
-function ead_check_expired_memberships() {
+function ead_check_membership_expiry() {
     $users = get_users([
         'meta_query' => [
             [
@@ -226,11 +226,11 @@ function ead_check_expired_memberships() {
 }
 
 register_activation_hook( __FILE__, function() {
-    if ( ! wp_next_scheduled( 'ead_check_expired_memberships' ) ) {
-        wp_schedule_event( time(), 'daily', 'ead_check_expired_memberships' );
+    if ( ! wp_next_scheduled( 'ead_membership_expiry_check' ) ) {
+        wp_schedule_event( time(), 'daily', 'ead_membership_expiry_check' );
     }
 } );
-add_action( 'ead_check_expired_memberships', __NAMESPACE__ . '\\ead_check_expired_memberships' );
+add_action( 'ead_membership_expiry_check', __NAMESPACE__ . '\\ead_check_membership_expiry' );
 
 /**
  * Registers CPTs/endpoints and flushes rewrites on activation.

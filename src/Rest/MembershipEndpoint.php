@@ -172,3 +172,13 @@ class MembershipEndpoint extends WP_REST_Controller {
         return is_user_logged_in();
     }
 }
+
+add_action( 'rest_api_init', function () {
+    register_rest_route( 'artpulse/v1', '/membership/update', [
+        'methods'  => 'POST',
+        'callback' => [ \EAD\Shortcodes\MembershipSignupForm::class, 'handle_rest_submit' ],
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        },
+    ] );
+} );
