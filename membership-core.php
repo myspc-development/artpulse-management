@@ -89,6 +89,19 @@ function artpulse_membership_settings_init() {
 }
 add_action('admin_menu', 'artpulse_membership_settings_init');
 
+// Extend membership admin settings: Stripe keys
+add_action('admin_init', function () {
+    add_settings_field('stripe_pk', 'Stripe Publishable Key', function () {
+        $options = get_option('artpulse_membership_options');
+        echo '<input type="text" name="artpulse_membership_options[stripe_pk]" value="' . esc_attr($options['stripe_pk'] ?? '') . '" style="width: 100%;" />';
+    }, 'artpulse-membership', 'artpulse_membership_main');
+
+    add_settings_field('stripe_sk', 'Stripe Secret Key', function () {
+        $options = get_option('artpulse_membership_options');
+        echo '<input type="text" name="artpulse_membership_options[stripe_sk]" value="' . esc_attr($options['stripe_sk'] ?? '') . '" style="width: 100%;" />';
+    }, 'artpulse-membership', 'artpulse_membership_main');
+});
+
 function artpulse_membership_settings_page() {
     echo '<div class="wrap"><h1>Membership Settings</h1><form method="post" action="options.php">';
     settings_fields('artpulse_membership');
@@ -118,12 +131,11 @@ add_shortcode('membership_status', 'artpulse_membership_status_shortcode');
 
 // Stripe Test Checkout Button Shortcode
 function artpulse_membership_checkout_shortcode() {
-    if (!is_user_logged_in()) {
-        return '<p>Please <a href="' . wp_login_url() . '">log in</a> to upgrade your membership.</p>';
-    }
+    if (!is_user_logged_in()) return '<p>Please <a href="' . wp_login_url() . '">log in</a> to upgrade your membership.</p>';
 
+    $opts            = get_option('artpulse_membership_options');
     $stripe_price_id = 'price_test_123';
-    $stripe_pk       = 'pk_test_XXXXXXXXXXXXXXXXXXXX';
+    $stripe_pk       = $opts['stripe_pk'] ?? '';
 
     ob_start();
     echo '<script src="https://js.stripe.com/v3/"></script>';
@@ -149,14 +161,17 @@ add_action('wp_ajax_nopriv_artpulse_create_checkout_session', 'artpulse_create_c
 
 function artpulse_create_checkout_session() {
     require_once ABSPATH . 'vendor/autoload.php';
+    $opts            = get_option('artpulse_membership_options');
+    $stripe_sk       = $opts['stripe_sk'] ?? '';
+    $stripe_price_id = 'price_test_123';
 
-    \Stripe\Stripe::setApiKey('sk_test_XXXXXXXXXXXXXXXXXXXX');
+    \Stripe\Stripe::setApiKey($stripe_sk);
 
     $session = \Stripe\Checkout\Session::create([
         'payment_method_types' => ['card'],
         'mode'                 => 'payment',
         'line_items'           => [[
-            'price'    => 'price_test_123',
+            'price'    => $stripe_price_id,
             'quantity' => 1,
         ]],
         'success_url' => home_url('/membership-success/'),
@@ -164,4 +179,39 @@ function artpulse_create_checkout_session() {
     ]);
 
     wp_send_json(['id' => $session->id]);
+}
+
+// Webhook listener endpoint (manual route)
+add_action('rest_api_init', function () {
+    register_rest_route('artpulse/v1', '/stripe-webhook', [
+        'methods'             => 'POST',
+        'callback'            => 'artpulse_stripe_webhook_handler',
+        'permission_callback' => '__return_true',
+    ]);
+});
+
+function artpulse_stripe_webhook_handler(WP_REST_Request $request) {
+    $opts           = get_option('artpulse_membership_options');
+    $payload        = $request->get_body();
+    $sig_header     = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
+    $endpoint_secret = $opts['stripe_webhook_secret'] ?? '';
+
+    try {
+        $event = \Stripe\Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
+        if ($event->type === 'checkout.session.completed') {
+            $session        = $event->data->object;
+            $customer_email = $session->customer_details->email;
+            $user           = get_user_by('email', $customer_email);
+            if ($user) {
+                update_user_meta($user->ID, 'membership_level', 'pro');
+                update_user_meta($user->ID, 'membership_start_date', current_time('mysql'));
+                update_user_meta($user->ID, 'membership_end_date', date('Y-m-d H:i:s', strtotime('+1 year')));
+                update_user_meta($user->ID, 'membership_auto_renew', true);
+            }
+        }
+    } catch (Exception $e) {
+        return new WP_REST_Response(['error' => $e->getMessage()], 400);
+    }
+
+    return new WP_REST_Response(['status' => 'success'], 200);
 }
