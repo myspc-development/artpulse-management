@@ -108,6 +108,7 @@ function wp_verify_nonce($nonce, $action = '') { return true; }
 
 function sanitize_text_field($text) { return is_string($text) ? trim($text) : $text; }
 function sanitize_key($key) { return preg_replace('/[^a-z0-9_]/', '', strtolower($key)); }
+function current_time($type = 'mysql') { return '2023-01-01 00:00:00'; }
 
 function set_transient($key, $value, $expiration = 0) { \Tests\Stubs::$transients[$key] = $value; }
 function get_transient($key) { return \Tests\Stubs::$transients[$key] ?? false; }
@@ -219,6 +220,12 @@ class WP_REST_Response {
 }
 class WP_Error {
     public function __construct(public $code = '', public $message = '', public $data = null) {}
+}
+class WP_User {
+    public function __construct(public $ID = 0) {}
+    public function set_role(string $role) {
+        \Tests\Stubs::$current_user_roles = [$role];
+    }
 }
 
 $GLOBALS['wpdb'] = new class {
