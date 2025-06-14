@@ -30,11 +30,11 @@ add_action('artpulse_event_reminder_cron', function () {
     ]);
 
     foreach ($query->posts as $event) {
-        $attendees = get_post_meta($event->ID, 'event_rsvp_users', true) ?: [];
-        $title     = get_the_title($event);
-        $start     = get_post_meta($event->ID, 'event_start_datetime', true);
+        $rsvps = get_post_meta($event->ID, 'event_rsvps', true) ?: [];
+        $title = get_the_title($event);
+        $start = get_post_meta($event->ID, 'event_start_datetime', true);
 
-        foreach ($attendees as $user_id) {
+        foreach (array_keys($rsvps) as $user_id) {
             $user = get_user_by('ID', $user_id);
             if (!$user) {
                 continue;
@@ -124,18 +124,12 @@ function artpulse_event_rsvp_shortcode($atts) {
         isset($_POST['artpulse_rsvp_nonce']) &&
         wp_verify_nonce($_POST['artpulse_rsvp_nonce'], 'rsvp_event_' . $post_id)
     ) {
-        $attendees = get_post_meta($post_id, 'event_rsvp_users', true) ?: [];
-        $guests    = get_post_meta($post_id, 'event_rsvp_guests', true) ?: [];
+        $rsvps = get_post_meta($post_id, 'event_rsvps', true) ?: [];
 
-        if (!in_array($user_id, $attendees, true)) {
-            $attendees[] = $user_id;
-            update_post_meta($post_id, 'event_rsvp_users', $attendees);
-
-            $guest_name = sanitize_text_field($_POST['guest_name'] ?? '');
-            if ($guest_name !== '') {
-                $guests[$user_id] = $guest_name;
-                update_post_meta($post_id, 'event_rsvp_guests', $guests);
-            }
+        if (!array_key_exists($user_id, $rsvps)) {
+            $guest_name       = sanitize_text_field($_POST['guest_name'] ?? '');
+            $rsvps[$user_id] = $guest_name;
+            update_post_meta($post_id, 'event_rsvps', $rsvps);
 
             artpulse_send_rsvp_email($post_id, $user_id);
             echo '<div class="p-2 bg-green-100 text-green-700 border border-green-300 rounded">RSVP confirmed!</div>';
@@ -161,8 +155,8 @@ function artpulse_send_rsvp_email($event_id, $user_id) {
     $user   = get_user_by('ID', $user_id);
     $event  = get_post($event_id);
     $start  = get_post_meta($event_id, 'event_start_datetime', true);
-    $guests = get_post_meta($event_id, 'event_rsvp_guests', true) ?: [];
-    $guest  = $guests[$user_id] ?? '';
+    $rsvps = get_post_meta($event_id, 'event_rsvps', true) ?: [];
+    $guest = $rsvps[$user_id] ?? '';
 
     if (!$user || !$event) {
         return;
@@ -287,9 +281,8 @@ function artpulse_event_card_shortcode($atts) {
     $organizer    = get_post_meta($post->ID, 'event_organizer', true);
     $recurring    = get_post_meta($post->ID, 'event_is_recurring', true);
     $rsvp_enabled = get_post_meta($post->ID, 'event_rsvp_enabled', true);
-    $attendees    = get_post_meta($post->ID, 'event_rsvp_users', true) or [];
-    $guests       = get_post_meta($post->ID, 'event_rsvp_guests', true) or [];
-    $total_rsvps  = count($attendees);
+    $rsvps        = get_post_meta($post->ID, 'event_rsvps', true) ?: [];
+    $total_rsvps  = count($rsvps);
     ob_start();
     ?>
     <div class="event-card border p-4 rounded shadow space-y-4">
@@ -308,19 +301,23 @@ function artpulse_event_card_shortcode($atts) {
 
         <div class="mt-3"><?php echo wpautop($post->post_content); ?></div>
 
-        <?php if ($rsvp_enabled === '1'): ?>
-            <div class="mt-4">
-                <a href="<?php echo esc_url(add_query_arg(['rsvp' => $post->ID], site_url('/rsvp/'))); ?>" class="inline-block px-4 py-2 bg-blue-600 text-white rounded">RSVP</a>
-            </div>
-        <?php endif; ?>
+        <?php
+        $current_user = wp_get_current_user();
+        if ($rsvp_enabled && is_user_logged_in()) {
+            echo '<form method="post">';
+            echo '<input type="hidden" name="event_rsvp_id" value="' . esc_attr($post->ID) . '">';
+            echo '<p><label>Your Guest Name (optional):<br><input type="text" name="guest_name" class="input"></label></p>';
+            echo '<button type="submit" class="button">RSVP</button>';
+            echo '</form>';
+        }
+        ?>
 
         <div class="mt-4">
             <p><strong>Total RSVPs:</strong> <?php echo $total_rsvps; ?></p>
-            <?php if (!empty($attendees)): ?>
+            <?php if (!empty($rsvps)): ?>
                 <ul class="list-disc pl-5 text-sm space-y-1 text-gray-800">
-                    <?php foreach ($attendees as $uid):
-                        $user  = get_user_by('ID', $uid);
-                        $guest = $guests[$uid] ?? '';
+                    <?php foreach ($rsvps as $uid => $guest):
+                        $user = get_user_by('ID', $uid);
                         if ($user): ?>
                         <li class="flex justify-between">
                             <span class="font-medium"><?php echo esc_html($user->display_name); ?></span>
@@ -385,4 +382,17 @@ add_action('template_redirect', function () {
     echo "END:VCALENDAR\r\n";
 
     exit;
+});
+
+// Handle RSVP form submissions
+add_action('init', function () {
+    if (!empty($_POST['event_rsvp_id']) && is_user_logged_in()) {
+        $event_id  = absint($_POST['event_rsvp_id']);
+        $user_id   = get_current_user_id();
+        $guest_name = sanitize_text_field($_POST['guest_name'] ?? '');
+
+        $rsvps = get_post_meta($event_id, 'event_rsvps', true) ?: [];
+        $rsvps[$user_id] = $guest_name;
+        update_post_meta($event_id, 'event_rsvps', $rsvps);
+    }
 });
