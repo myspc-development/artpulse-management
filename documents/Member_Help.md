@@ -5,7 +5,7 @@ Artists and organizers can manage their listings through a set of self-service t
 ## Registration Forms
 - Use `[ap_artist_registration_form]` or `[ead_organization_registration_form]` to create accounts.
 - Registration pages collect basic details like contact information and profile images.
-- Both shortcodes require the user to be logged in. `[ap_artist_registration_form]` is limited to members with the **Pro Artist** level, while `[ead_organization_registration_form]` requires an **Organization** membership.
+- Both shortcodes require the user to be logged in. `[ap_artist_registration_form]` is limited to members with the **Pro Artist** level, while `[ead_organization_registration_form]` requires an **Organization** membership. Administrators automatically bypass these membership checks.
 
 ## Dashboards
 - After registering, members log in to their artist or organizer dashboard.

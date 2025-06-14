@@ -110,7 +110,7 @@ class ArtistRegistrationForm {
         }
 
         $level = get_user_meta( get_current_user_id(), 'membership_level', true );
-        if ( 'pro' !== $level ) {
+        if ( 'pro' !== $level && ! current_user_can( 'manage_options' ) ) {
             return '<p>' . esc_html__( 'You must be a Pro Artist member to apply.', 'artpulse-management' ) . '</p>';
         }
 

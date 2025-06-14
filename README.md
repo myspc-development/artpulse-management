@@ -47,7 +47,7 @@ Newcomers can follow the [Onboarding Guide](documents/Onboarding_Guide.md) for a
 ## Usage
 
 - Access features through the WordPress Admin Menu:
-  - **ArtPulse Settings › Membership** — configure membership fees and payment options. The tab lives at `/wp-admin/admin.php?page=artpulse-settings&tab=membership`. Legacy slugs such as `ead-membership-settings` now redirect to the correct page.
+  - **ArtPulse Settings › Membership** — configure membership fees and payment options. The tab lives at `/wp-admin/admin.php?page=artpulse-settings&tab=membership`. Legacy slugs such as `ead-membership-settings` now redirect to the correct page. If you encounter a 404 on the Membership Overview screen, access it via `/wp-admin/admin.php?page=ead-membership-overview` and ensure the plugin is active so `AdminRedirects::init()` can handle old URLs.
   - **ArtPulse Settings › CSV Import/Export** — manage bulk data with a progress bar.
     After uploading a file you will preview the columns and confirm the field mapping.
     During the import a progress indicator shows completion and the raw log can be downloaded when finished.

@@ -109,7 +109,7 @@ class OrganizationRegistrationForm {
         }
 
         $level = get_user_meta( get_current_user_id(), 'membership_level', true );
-        if ( 'org' !== $level ) {
+        if ( 'org' !== $level && ! current_user_can( 'manage_options' ) ) {
             return '<p>' . esc_html__( 'Only Organization members may submit this form.', 'artpulse-management' ) . '</p>';
         }
 
