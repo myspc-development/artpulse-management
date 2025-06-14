@@ -2,7 +2,8 @@
 // File: admin_membership_settings.php
 
 add_action('admin_menu', function () {
-    add_options_page(
+    add_submenu_page(
+        'artpulse-settings',
         'Membership Settings',
         'Membership Settings',
         'manage_options',
