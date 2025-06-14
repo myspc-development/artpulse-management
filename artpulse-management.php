@@ -63,6 +63,22 @@ if ( file_exists( $registration_gate_file ) ) {
     require_once $registration_gate_file;
 }
 
+// Load role-based helpers
+$redirect_by_role_file = EAD_PLUGIN_DIR_PATH . 'redirect_user_by_role.php';
+if ( file_exists( $redirect_by_role_file ) ) {
+    require_once $redirect_by_role_file;
+}
+
+$user_profile_tab_file = EAD_PLUGIN_DIR_PATH . 'user_profile_tab.php';
+if ( file_exists( $user_profile_tab_file ) ) {
+    require_once $user_profile_tab_file;
+}
+
+$membership_settings_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_settings.php';
+if ( file_exists( $membership_settings_file ) ) {
+    require_once $membership_settings_file;
+}
+
 /**
  * Copies plugin templates to the child theme directory on activation,
  * only if they don't already exist in the child theme.
