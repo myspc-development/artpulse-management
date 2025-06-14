@@ -7,8 +7,11 @@ if ( ! class_exists( '\\WP_List_Table', false ) ) {
 
 class ManageMembersListTable extends \WP_List_Table {
 
+    /**
+     * Available membership levels for filtering and bulk actions.
+     * 'Free' was removed to match the simplified dropdown options.
+     */
     private array $levels = [
-        'free'    => 'Free',
         'basic'   => 'Basic',
         'pro'     => 'Pro',
         'org'     => 'Organization',
@@ -95,18 +98,20 @@ class ManageMembersListTable extends \WP_List_Table {
 
     public function get_columns() {
         return [
-            'name'    => __('Name', 'artpulse-management'),
-            'email'   => __('Email', 'artpulse-management'),
-            'level'   => __('Level', 'artpulse-management'),
-            'expires' => __('Expires', 'artpulse-management'),
+            'name'   => __('Name', 'artpulse-management'),
+            'email'  => __('Email', 'artpulse-management'),
+            'level'  => __('Level', 'artpulse-management'),
+            'start'  => __('Start Date', 'artpulse-management'),
+            'expires'=> __('End Date', 'artpulse-management'),
         ];
     }
 
     public function get_sortable_columns() {
         return [
-            'name'    => 'display_name',
-            'level'   => 'membership_level',
-            'expires' => 'membership_end_date',
+            'name'   => 'display_name',
+            'level'  => 'membership_level',
+            'start'  => 'membership_start_date',
+            'expires'=> 'membership_end_date',
         ];
     }
 
@@ -128,12 +133,15 @@ class ManageMembersListTable extends \WP_List_Table {
                     'compare' => 'EXISTS',
                 ],
             ],
-            'orderby' => in_array( $orderby, [ 'membership_end_date', 'membership_level' ], true ) ? 'meta_value' : $orderby,
+            'orderby' => in_array( $orderby, [ 'membership_end_date', 'membership_start_date', 'membership_level' ], true ) ? 'meta_value' : $orderby,
             'order'   => $order,
         ];
 
         if ( $orderby === 'membership_end_date' ) {
             $args['meta_key']  = 'membership_end_date';
+            $args['meta_type'] = 'DATETIME';
+        } elseif ( $orderby === 'membership_start_date' ) {
+            $args['meta_key']  = 'membership_start_date';
             $args['meta_type'] = 'DATETIME';
         } elseif ( $orderby === 'membership_level' ) {
             $args['meta_key']  = 'membership_level';
@@ -203,8 +211,12 @@ class ManageMembersListTable extends \WP_List_Table {
                 return esc_html($item->user_email);
             case 'level':
                 return esc_html(get_user_meta($item->ID, 'membership_level', true));
+            case 'start':
+                $start = get_user_meta($item->ID, 'membership_start_date', true);
+                return $start ? esc_html( substr( $start, 0, 10 ) ) : '';
             case 'expires':
-                return esc_html(get_user_meta($item->ID, 'membership_end_date', true));
+                $end = get_user_meta($item->ID, 'membership_end_date', true);
+                return $end ? esc_html( substr( $end, 0, 10 ) ) : '';
             default:
                 return '';
         }
@@ -280,19 +292,37 @@ class ManageMembers {
     }
 
     private static function export_csv() {
-        $users = get_users([
+        $filter_level = sanitize_text_field( $_GET['filter_level'] ?? '' );
+
+        $args = [
             'meta_query' => [
                 [ 'key' => 'membership_level', 'compare' => 'EXISTS' ],
             ],
             'number' => -1,
-        ]);
+        ];
+
+        if ( $filter_level ) {
+            $args['meta_query'][] = [
+                'key'   => 'membership_level',
+                'value' => $filter_level,
+            ];
+        }
+
+        $users = get_users( $args );
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename=members.csv');
-        echo "Name,Email,Level,Expires\n";
+        echo "Name,Email,Level,Start,End\n";
         foreach ( $users as $u ) {
             $level   = get_user_meta( $u->ID, 'membership_level', true );
+            $start   = get_user_meta( $u->ID, 'membership_start_date', true );
             $expires = get_user_meta( $u->ID, 'membership_end_date', true );
-            printf("\"%s\",\"%s\",\"%s\",\"%s\"\n", $u->display_name, $u->user_email, $level, $expires);
+            printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+                $u->display_name,
+                $u->user_email,
+                $level,
+                substr( (string) $start, 0, 10 ),
+                substr( (string) $expires, 0, 10 )
+            );
         }
         exit;
     }
