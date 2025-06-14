@@ -156,6 +156,52 @@ function artpulse_membership_checkout_shortcode() {
 }
 add_shortcode('membership_checkout', 'artpulse_membership_checkout_shortcode');
 
+// Create placeholder pages for success and cancel states if missing
+function artpulse_membership_create_placeholder_pages() {
+    $pages = [
+        'membership-success' => [
+            'title'   => 'Membership Upgrade Successful',
+            'content' => '<h1>🎉 Welcome to Pro!</h1><p>Your membership upgrade was successful. You now have access to exclusive features.</p><p><a href="' . esc_url(home_url('/dashboard')) . '">View Your Dashboard</a></p>[membership_success_status]'
+        ],
+        'membership-cancel' => [
+            'title'   => 'Checkout Cancelled',
+            'content' => '<h1>⚠️ Checkout Cancelled</h1><p>It looks like your payment was not completed. You can try again at any time.</p><p><a href="' . esc_url(home_url('/membership')) . '">Return to Membership Page</a></p>[membership_cancel_status]'
+        ],
+    ];
+
+    foreach ($pages as $slug => $page) {
+        if (!get_page_by_path($slug)) {
+            wp_insert_post([
+                'post_title'   => $page['title'],
+                'post_name'    => $slug,
+                'post_content' => $page['content'],
+                'post_status'  => 'publish',
+                'post_type'    => 'page',
+            ]);
+        }
+    }
+}
+add_action('init', 'artpulse_membership_create_placeholder_pages');
+
+// Shortcode for success message display
+function artpulse_membership_success_message_shortcode() {
+    if (!is_user_logged_in()) return '';
+    $level = get_user_meta(get_current_user_id(), 'membership_level', true);
+
+    if ($level === 'pro') {
+        return '<div class="notice updated"><strong>✅ Success:</strong> Your Pro membership is active!</div>';
+    } else {
+        return '<div class="notice warning"><strong>Note:</strong> Your membership status is ' . esc_html(ucfirst($level)) . '.</div>';
+    }
+}
+add_shortcode('membership_success_status', 'artpulse_membership_success_message_shortcode');
+
+// Shortcode for cancel/failure message
+function artpulse_membership_cancel_message_shortcode() {
+    return '<div class="notice error"><strong>⚠️ Payment Cancelled:</strong> You can try again or choose a different plan.</div>';
+}
+add_shortcode('membership_cancel_status', 'artpulse_membership_cancel_message_shortcode');
+
 add_action('wp_ajax_artpulse_create_checkout_session', 'artpulse_create_checkout_session');
 add_action('wp_ajax_nopriv_artpulse_create_checkout_session', 'artpulse_create_checkout_session');
 
