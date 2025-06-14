@@ -53,6 +53,23 @@ add_shortcode('artist_card', function ($atts) {
             <?php if ($website): ?><a href="<?php echo esc_url($website); ?>" class="underline text-blue-600" target="_blank">Website</a><?php endif; ?>
             <?php if ($social): ?><a href="<?php echo esc_url($social); ?>" class="underline text-blue-600" target="_blank">Social</a><?php endif; ?>
         </div>
+
+        <?php
+        $artworks = get_posts([
+            'post_type'      => 'artwork',
+            'meta_key'       => 'artwork_artist_id',
+            'meta_value'     => $post->ID,
+            'posts_per_page' => -1
+        ]);
+
+        if ($artworks) {
+            echo '<ul class="list-disc ml-5">';
+            foreach ($artworks as $art) {
+                echo '<li><a href="' . get_permalink($art) . '" class="text-blue-600 underline">' . esc_html($art->post_title) . '</a></li>';
+            }
+            echo '</ul>';
+        }
+        ?>
     </div>
     <?php
     return ob_get_clean();
