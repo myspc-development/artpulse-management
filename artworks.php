@@ -12,6 +12,13 @@ add_action('init', function () {
         'menu_icon'   => 'dashicons-format-image',
         'show_in_rest'=> true
     ]);
+
+    register_taxonomy('artwork_style', 'artwork', [
+        'label'        => 'Style',
+        'public'       => true,
+        'hierarchical' => true,
+        'show_in_rest' => true,
+    ]);
 });
 
 // 2. Meta Box for Artist Link
@@ -39,6 +46,23 @@ add_action('add_meta_boxes', function () {
         <p><label>Availability:<br><input type="text" name="artwork_availability" value="<?php echo esc_attr($availability); ?>" class="widefat"></label></p>
         <?php
     }, 'artwork', 'normal', 'default');
+
+    add_meta_box('artwork_gallery_meta', 'Gallery Images', function ($post) {
+        $ids = get_post_meta($post->ID, 'artwork_gallery_images', true);
+        if (!is_array($ids)) {
+            $ids = $ids ? array_map('intval', explode(',', $ids)) : [];
+        }
+        echo '<input type="hidden" id="ead_artwork_image_ids" name="ead_artwork_image_ids" value="' . esc_attr(implode(',', $ids)) . '" />';
+        echo '<p><button type="button" class="button ead-upload-images">Select Images</button></p>';
+        echo '<div id="ead-image-preview">';
+        foreach ($ids as $id) {
+            $thumb = wp_get_attachment_image_url($id, 'thumbnail');
+            if ($thumb) {
+                echo '<img src="' . esc_url($thumb) . '" style="width:75px;height:75px;object-fit:cover;margin:4px;" />';
+            }
+        }
+        echo '</div>';
+    }, 'artwork', 'normal');
 });
 
 add_action('save_post_artwork', function ($post_id) {
@@ -46,6 +70,11 @@ add_action('save_post_artwork', function ($post_id) {
     update_post_meta($post_id, 'artwork_price', sanitize_text_field($_POST['artwork_price'] ?? ''));
     update_post_meta($post_id, 'artwork_medium', sanitize_text_field($_POST['artwork_medium'] ?? ''));
     update_post_meta($post_id, 'artwork_availability', sanitize_text_field($_POST['artwork_availability'] ?? ''));
+
+    if (isset($_POST['ead_artwork_image_ids'])) {
+        $ids = array_filter(array_map('intval', explode(',', $_POST['ead_artwork_image_ids'])));
+        update_post_meta($post_id, 'artwork_gallery_images', $ids);
+    }
 });
 
 // 3. Shortcode: [artwork_card id="123"]
@@ -56,6 +85,13 @@ add_shortcode('artwork_card', function ($atts) {
 
     $artist_id   = get_post_meta($post->ID, 'artwork_artist_id', true);
     $artist_name = $artist_id ? get_the_title($artist_id) : '—';
+    $gallery_ids = get_post_meta($post->ID, 'artwork_gallery_images', true);
+    if (!is_array($gallery_ids)) {
+        $gallery_ids = $gallery_ids ? array_map('intval', explode(',', $gallery_ids)) : [];
+    }
+
+    wp_enqueue_style('lightbox2', 'https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/css/lightbox.min.css', [], '2.11.4');
+    wp_enqueue_script('lightbox2', 'https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/js/lightbox.min.js', [], '2.11.4', true);
 
     ob_start();
     ?>
@@ -66,6 +102,17 @@ add_shortcode('artwork_card', function ($atts) {
         <h3 class="text-xl font-bold"><?php echo esc_html($post->post_title); ?></h3>
         <p class="text-sm text-gray-600 mb-2">Artist: <?php echo esc_html($artist_name); ?></p>
         <div class="text-gray-800 text-sm"><?php echo wpautop($post->post_content); ?></div>
+        <?php if ($gallery_ids) : ?>
+            <div class="artwork-lightbox mt-2">
+                <?php foreach ($gallery_ids as $gid) :
+                    $url = wp_get_attachment_image_url($gid, 'large');
+                    if ($url) : ?>
+                        <a href="<?php echo esc_url($url); ?>" data-lightbox="artwork-<?php echo esc_attr($post->ID); ?>">
+                            <?php echo wp_get_attachment_image($gid, 'thumbnail', false, ['class' => 'rounded']); ?>
+                        </a>
+                    <?php endif; endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
     <?php
     return ob_get_clean();
@@ -88,6 +135,7 @@ add_action('wp_ajax_nopriv_filter_artworks', 'ead_filter_artworks_ajax');
 function ead_filter_artworks_ajax() {
     $artist = absint($_POST['artist'] ?? 0);
     $medium = sanitize_text_field($_POST['medium'] ?? '');
+    $style  = sanitize_text_field($_POST['style'] ?? '');
 
     $meta = [];
     if ($artist) {
@@ -103,11 +151,20 @@ function ead_filter_artworks_ajax() {
         ];
     }
 
-    $query = new WP_Query([
+    $args = [
         'post_type'      => 'artwork',
         'posts_per_page' => -1,
         'meta_query'     => $meta,
-    ]);
+    ];
+    if ($style) {
+        $args['tax_query'] = [[
+            'taxonomy' => 'artwork_style',
+            'field'    => 'slug',
+            'terms'    => $style,
+        ]];
+    }
+
+    $query = new WP_Query($args);
 
     ob_start();
     while ($query->have_posts()) {
@@ -115,8 +172,10 @@ function ead_filter_artworks_ajax() {
         $price      = get_post_meta(get_the_ID(), 'artwork_price', true);
         $artist_id  = get_post_meta(get_the_ID(), 'artwork_artist_id', true);
         $medium_val = get_post_meta(get_the_ID(), 'artwork_medium', true);
+        $style_terms = wp_get_post_terms(get_the_ID(), 'artwork_style', ['fields' => 'slugs']);
+        $style_slug = $style_terms ? $style_terms[0] : '';
         ?>
-        <div class="artwork-gallery-card border p-2 rounded shadow text-center" data-artist-id="<?php echo esc_attr($artist_id); ?>" data-medium="<?php echo esc_attr($medium_val); ?>">
+        <div class="artwork-gallery-card border p-2 rounded shadow text-center" data-artist-id="<?php echo esc_attr($artist_id); ?>" data-medium="<?php echo esc_attr($medium_val); ?>" data-style="<?php echo esc_attr($style_slug); ?>">
             <?php if (has_post_thumbnail()) {
                 echo '<a href="' . get_permalink() . '">' . get_the_post_thumbnail(null, 'medium', ['class' => 'rounded mx-auto']) . '</a>';
             } ?>
@@ -176,6 +235,11 @@ add_shortcode('artwork_gallery', function ($atts) {
         'order'       => 'ASC',
     ]);
 
+    $styles = get_terms([
+        'taxonomy'   => 'artwork_style',
+        'hide_empty' => false,
+    ]);
+
     wp_enqueue_script('artwork-gallery-filter');
 
     wp_localize_script(
@@ -206,6 +270,14 @@ add_shortcode('artwork_gallery', function ($atts) {
                 <?php endforeach; ?>
             </select>
         </label>
+        <label class="text-sm font-medium">Style:
+            <select id="filter-style" class="ml-2 border px-2 py-1 rounded">
+                <option value="">All Styles</option>
+                <?php foreach ($styles as $style) : ?>
+                    <option value="<?php echo esc_attr($style->slug); ?>"><?php echo esc_html($style->name); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
     </div>
     <div id="artwork-grid" data-ajax="<?php echo $ajax_enabled ? '1' : '0'; ?>" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
     <?php
@@ -214,8 +286,10 @@ add_shortcode('artwork_gallery', function ($atts) {
         $price      = get_post_meta(get_the_ID(), 'artwork_price', true);
         $artist_id  = get_post_meta(get_the_ID(), 'artwork_artist_id', true);
         $medium     = get_post_meta(get_the_ID(), 'artwork_medium', true);
+        $style_terms = wp_get_post_terms(get_the_ID(), 'artwork_style', ['fields' => 'slugs']);
+        $style_slug = $style_terms ? $style_terms[0] : '';
         ?>
-        <div class="artwork-gallery-card border p-2 rounded shadow text-center" data-artist-id="<?php echo esc_attr($artist_id); ?>" data-medium="<?php echo esc_attr($medium); ?>">
+        <div class="artwork-gallery-card border p-2 rounded shadow text-center" data-artist-id="<?php echo esc_attr($artist_id); ?>" data-medium="<?php echo esc_attr($medium); ?>" data-style="<?php echo esc_attr($style_slug); ?>">
             <?php if (has_post_thumbnail()) {
                 echo '<a href="' . get_permalink() . '">' . get_the_post_thumbnail(null, 'medium', ['class' => 'rounded mx-auto']) . '</a>';
             } ?>
