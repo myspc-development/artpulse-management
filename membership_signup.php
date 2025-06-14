@@ -1,7 +1,6 @@
 <?php
 // File: membership_signup.php
 
-// Membership selection form (shortcode)
 add_shortcode('ead_membership_status', function () {
     if (!is_user_logged_in()) return '<p>Please log in to select your membership.</p>';
 
@@ -45,7 +44,6 @@ function ead_assign_membership_role($user_id, $level) {
     }
 }
 
-// Handles form submission and redirect
 add_action('init', function () {
     if (
         isset($_POST['ead_join_membership']) &&
@@ -64,6 +62,18 @@ add_action('init', function () {
         $level = sanitize_text_field($_POST['membership_level']);
         update_user_meta($uid, 'is_member', '1');
         update_user_meta($uid, 'membership_level', $level);
+
+        $fees = get_option('ead_membership_fees');
+        $fee_amount = 0;
+        if ($level === 'pro') $fee_amount = floatval($fees['pro_fee'] ?? 0);
+        if ($level === 'org') $fee_amount = floatval($fees['org_fee'] ?? 0);
+
+        if ($fee_amount > 0 && !empty($fees['enable_stripe'])) {
+            update_user_meta($uid, 'pending_membership_level', $level);
+            wp_redirect('/mock-stripe-checkout?membership=' . $level); // placeholder redirect
+            exit;
+        }
+
         ead_assign_membership_role($uid, $level);
 
         $redirect = '/dashboard';
