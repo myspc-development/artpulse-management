@@ -1,108 +1,137 @@
 <?php
-// Register Custom Post Type: organization
+// Module: ArtPulse Organizations
+
+// 1. Register Custom Post Type: Organization
 function artpulse_register_organization_cpt() {
     register_post_type('organization', [
         'labels' => [
-            'name'          => 'Organizations',
+            'name' => 'Organizations',
             'singular_name' => 'Organization',
         ],
-        'public'       => true,
-        'has_archive'  => true,
+        'public' => true,
+        'has_archive' => true,
         'show_in_rest' => true,
-        'supports'     => ['title', 'editor', 'thumbnail'],
-        'rewrite'      => ['slug' => 'organizations'],
+        'supports' => ['title', 'editor', 'thumbnail'],
+        'capability_type' => 'post',
+        'map_meta_cap' => true,
+        'rewrite' => ['slug' => 'organizations'],
     ]);
 }
 add_action('init', 'artpulse_register_organization_cpt');
 
-// Register Custom Fields for Organization Meta
+// 2. Register Meta Fields
 function artpulse_register_organization_meta() {
-    register_post_meta('organization', 'org_website', [
-        'type'         => 'string',
-        'single'       => true,
-        'show_in_rest' => true,
-    ]);
-    register_post_meta('organization', 'org_logo_url', [
-        'type'         => 'string',
-        'single'       => true,
-        'show_in_rest' => true,
-    ]);
-    register_post_meta('organization', 'org_mission', [
-        'type'         => 'string',
-        'single'       => true,
-        'show_in_rest' => true,
-    ]);
-    register_post_meta('organization', 'org_admin_users', [
-        'type'         => 'array',
-        'single'       => true,
-        'show_in_rest' => true,
-    ]);
+    register_post_meta('organization', 'org_website', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_logo_url', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_mission', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_admin_users', ['type' => 'array', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_team_members', ['type' => 'array', 'single' => true, 'show_in_rest' => true]);
 }
 add_action('init', 'artpulse_register_organization_meta');
 
-// Add Fields to Admin UI (Meta Box)
+// 3. Meta Boxes
 function artpulse_add_organization_meta_boxes() {
-    add_meta_box(
-        'org_details',
-        'Organization Details',
-        'artpulse_org_meta_box_callback',
-        'organization',
-        'normal',
-        'high'
-    );
+    add_meta_box('org_details', 'Organization Details', 'artpulse_org_meta_box_callback', 'organization', 'normal', 'high');
 }
 add_action('add_meta_boxes', 'artpulse_add_organization_meta_boxes');
 
 function artpulse_org_meta_box_callback($post) {
     $website = get_post_meta($post->ID, 'org_website', true);
-    $logo    = get_post_meta($post->ID, 'org_logo_url', true);
+    $logo = get_post_meta($post->ID, 'org_logo_url', true);
     $mission = get_post_meta($post->ID, 'org_mission', true);
-    $admins  = get_post_meta($post->ID, 'org_admin_users', true) ?: [];
+    $admins = get_post_meta($post->ID, 'org_admin_users', true) ?: [];
+    $team = get_post_meta($post->ID, 'org_team_members', true) ?: [];
     ?>
     <p><label>Website: <input type="url" name="org_website" value="<?php echo esc_attr($website); ?>" style="width:100%;" /></label></p>
     <p><label>Logo URL: <input type="text" name="org_logo_url" value="<?php echo esc_attr($logo); ?>" style="width:100%;" /></label></p>
     <p><label>Mission:<br><textarea name="org_mission" rows="4" style="width:100%;"><?php echo esc_textarea($mission); ?></textarea></label></p>
-    <p><label>Org Admin Users (comma-separated user IDs):<br>
+    <p><label>Org Admin User IDs (comma-separated):<br>
         <input type="text" name="org_admin_users" value="<?php echo esc_attr(implode(',', $admins)); ?>" style="width:100%;" />
+    </label></p>
+    <p><label>Team Member User IDs (comma-separated):<br>
+        <input type="text" name="org_team_members" value="<?php echo esc_attr(implode(',', $team)); ?>" style="width:100%;" />
     </label></p>
     <?php
 }
 
 function artpulse_save_organization_meta($post_id) {
-    if (get_post_type($post_id) !== 'organization') {
-        return;
-    }
+    if (get_post_type($post_id) !== 'organization') return;
     update_post_meta($post_id, 'org_website', sanitize_text_field($_POST['org_website'] ?? ''));
     update_post_meta($post_id, 'org_logo_url', esc_url_raw($_POST['org_logo_url'] ?? ''));
     update_post_meta($post_id, 'org_mission', sanitize_textarea_field($_POST['org_mission'] ?? ''));
-    $admins = array_filter(array_map('intval', explode(',', $_POST['org_admin_users'] ?? '')));
-    update_post_meta($post_id, 'org_admin_users', $admins);
+    update_post_meta($post_id, 'org_admin_users', array_filter(array_map('intval', explode(',', $_POST['org_admin_users'] ?? ''))));
+    update_post_meta($post_id, 'org_team_members', array_filter(array_map('intval', explode(',', $_POST['org_team_members'] ?? ''))));
 }
 add_action('save_post', 'artpulse_save_organization_meta');
 
-// Frontend Shortcode: [organization_profile id="123"]
+// 4. Shortcode to Render Organization Profile
 function artpulse_organization_profile_shortcode($atts) {
     $atts = shortcode_atts(['id' => null], $atts);
     $post = get_post($atts['id']);
-    if (!$post || $post->post_type !== 'organization') {
-        return '<p>Organization not found.</p>';
-    }
+    if (!$post || $post->post_type !== 'organization') return '<p>Organization not found.</p>';
 
     $website = get_post_meta($post->ID, 'org_website', true);
-    $logo    = get_post_meta($post->ID, 'org_logo_url', true);
+    $logo = get_post_meta($post->ID, 'org_logo_url', true);
     $mission = get_post_meta($post->ID, 'org_mission', true);
+    $team = get_post_meta($post->ID, 'org_team_members', true);
 
     ob_start();
-    echo '<div class="organization-profile">';
-    if ($logo) {
-        echo '<img src="' . esc_url($logo) . '" alt="Logo" style="max-width:150px;" />';
-    }
-    echo '<h2>' . esc_html($post->post_title) . '</h2>';
-    echo '<p>' . esc_html($mission) . '</p>';
-    if ($website) {
-        echo '<p><a href="' . esc_url($website) . '" target="_blank">Visit Website</a></p>';
+    echo '<div class="organization-profile p-4 border rounded">';
+    if ($logo) echo '<img src="' . esc_url($logo) . '" alt="Logo" class="mb-2" style="max-width:150px;" />';
+    echo '<h2 class="text-xl font-bold">' . esc_html($post->post_title) . '</h2>';
+    echo '<p class="mb-3">' . esc_html($mission) . '</p>';
+    if ($website) echo '<p><a href="' . esc_url($website) . '" class="text-blue-500 underline" target="_blank">Visit Website</a></p>';
+
+    if (!empty($team)) {
+        echo '<h3 class="mt-4 font-semibold">Team Members</h3><ul class="list-disc list-inside">';
+        foreach ($team as $uid) {
+            $u = get_user_by('ID', $uid);
+            if ($u) echo '<li>' . esc_html($u->display_name) . '</li>';
+        }
+        echo '</ul>';
     }
     echo '</div>';
     return ob_get_clean();
 }
 add_shortcode('organization_profile', 'artpulse_organization_profile_shortcode');
+
+// 5. Permission filter: allow only org admins to edit their orgs
+add_filter('user_has_cap', function ($caps, $cap, $args) {
+    if ($cap[0] === 'edit_post') {
+        $post_id = $args[2] ?? null;
+        if (get_post_type($post_id) === 'organization') {
+            $org_admins = get_post_meta($post_id, 'org_admin_users', true) ?: [];
+            if (in_array(get_current_user_id(), $org_admins)) {
+                $caps[$cap[0]] = true;
+            }
+        }
+    }
+    return $caps;
+}, 10, 3);
+
+// 6. Shortcode: Frontend Org Selector for current user
+function artpulse_organization_selector_shortcode() {
+    if (!is_user_logged_in()) return '<p>Please log in to manage your organization.</p>';
+    $user_id = get_current_user_id();
+
+    $orgs = get_posts([
+        'post_type' => 'organization',
+        'posts_per_page' => -1,
+        'meta_query' => [[
+            'key' => 'org_admin_users',
+            'value' => $user_id,
+            'compare' => 'LIKE'
+        ]]
+    ]);
+
+    if (empty($orgs)) return '<p>You are not an administrator of any organization.</p>';
+
+    ob_start();
+    echo '<ul class="list-disc list-inside">';
+    foreach ($orgs as $org) {
+        echo '<li><a href="' . get_edit_post_link($org->ID) . '">' . esc_html($org->post_title) . '</a></li>';
+    }
+    echo '</ul>';
+    return ob_get_clean();
+}
+add_shortcode('organization_selector', 'artpulse_organization_selector_shortcode');
