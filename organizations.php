@@ -135,3 +135,47 @@ function artpulse_organization_selector_shortcode() {
     return ob_get_clean();
 }
 add_shortcode('organization_selector', 'artpulse_organization_selector_shortcode');
+
+// 7. Frontend Form to Edit Organization
+function artpulse_organization_edit_form_shortcode($atts) {
+    if (!is_user_logged_in()) {
+        return '<p>Please log in to edit your organization.</p>';
+    }
+
+    $atts    = shortcode_atts(['id' => null], $atts);
+    $post_id = intval($atts['id']);
+    $user_id = get_current_user_id();
+
+    if (!$post_id || get_post_type($post_id) !== 'organization') {
+        return '<p>Invalid organization.</p>';
+    }
+
+    $admins = get_post_meta($post_id, 'org_admin_users', true) ?: [];
+    if (!in_array($user_id, $admins)) {
+        return '<p>You are not an admin for this organization.</p>';
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artpulse_org_edit_nonce']) && wp_verify_nonce($_POST['artpulse_org_edit_nonce'], 'edit_org')) {
+        update_post_meta($post_id, 'org_website', sanitize_text_field($_POST['org_website'] ?? ''));
+        update_post_meta($post_id, 'org_logo_url', esc_url_raw($_POST['org_logo_url'] ?? ''));
+        update_post_meta($post_id, 'org_mission', sanitize_textarea_field($_POST['org_mission'] ?? ''));
+        echo '<div class="p-2 bg-green-100 text-green-700 border border-green-300 rounded">Changes saved.</div>';
+    }
+
+    $website = get_post_meta($post_id, 'org_website', true);
+    $logo    = get_post_meta($post_id, 'org_logo_url', true);
+    $mission = get_post_meta($post_id, 'org_mission', true);
+
+    ob_start();
+    ?>
+    <form method="post">
+        <?php wp_nonce_field('edit_org', 'artpulse_org_edit_nonce'); ?>
+        <p><label>Website:<br><input type="url" name="org_website" value="<?php echo esc_attr($website); ?>" style="width:100%"></label></p>
+        <p><label>Logo URL:<br><input type="text" name="org_logo_url" value="<?php echo esc_attr($logo); ?>" style="width:100%"></label></p>
+        <p><label>Mission:<br><textarea name="org_mission" rows="4" style="width:100%"><?php echo esc_textarea($mission); ?></textarea></label></p>
+        <p><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Save Changes</button></p>
+    </form>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('organization_edit_form', 'artpulse_organization_edit_form_shortcode');
