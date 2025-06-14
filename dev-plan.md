@@ -68,9 +68,10 @@ To make ArtPulse the most comprehensive WordPress plugin for managing art events
 
 ### 📚 Docs & Support Enhancements (post v3.7.1 - Q1 2026)
 **1. Expanded Help Docs**  
-- Improve README with REST API usage examples.  
-- Add screenshots and step-by-step guides.  
+- Improve README with REST API usage examples.
+- Add screenshots and step-by-step guides.
 - Develop onboarding guides for artists/organizations.
+- Publish membership roadmap in [Membership Development Plan](documents/membership-dev-plan.md).
 
 **2. Admin Help Panels**  
 - Integrate context-sensitive help panels into admin screens.  
