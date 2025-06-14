@@ -47,14 +47,14 @@ Newcomers can follow the [Onboarding Guide](documents/Onboarding_Guide.md) for a
 ## Usage
 
 - Access features through the WordPress Admin Menu:
-  - **ArtPulse Settings › Membership** — configure membership fees and payment options. The tab lives at `/wp-admin/admin.php?page=artpulse-settings&tab=membership`. Legacy slugs such as `ead-membership-settings` now redirect to the correct page.
-  - **ArtPulse Settings › CSV Import/Export** — manage bulk data with a progress bar.
+  - **ArtPulse › Settings › Membership** — configure membership fees and payment options. The tab lives at `/wp-admin/admin.php?page=artpulse-settings&tab=membership`. Legacy slugs such as `ead-membership-settings` now redirect to the correct page.
+  - **ArtPulse › Settings › CSV Import/Export** — manage bulk data with a progress bar.
     After uploading a file you will preview the columns and confirm the field mapping.
     During the import a progress indicator shows completion and the raw log can be downloaded when finished.
   - **Pending Events** — approve or reject events.
   - **Moderate Reviews** — moderate reviews submitted by users.
   - **Bookings** — manage bookings submitted via the REST API.
-  - **ArtPulse Settings** — plugin settings. See [Settings Tabs](documents/Settings_Tabs.md) for a breakdown of each section.
+  - **ArtPulse › Settings** — plugin settings. See [Settings Tabs](documents/Settings_Tabs.md) for a breakdown of each section.
   - **Notifications** — toggle options like the new event submission email.
 
 ### RSVP Form
@@ -239,7 +239,7 @@ To enable auto-posting to social networks you must create access tokens in each 
 
 ### Configuring Email Providers
 
-From the **ArtPulse Settings** page, open the **Email Providers** tab to select the default service used for outgoing emails. Supported providers include **SendGrid** and **Mailgun**. Enter the corresponding API keys and domain settings to enable delivery through these platforms.
+From the **ArtPulse › Settings** page, open the **Email Providers** tab to select the default service used for outgoing emails. Supported providers include **SendGrid** and **Mailgun**. Enter the corresponding API keys and domain settings to enable delivery through these platforms.
 
 ### Mobile Authentication
 
