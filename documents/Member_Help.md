@@ -23,7 +23,7 @@ Artists and organizers can manage their listings through a set of self-service t
 ## Managing Members
 Site administrators can manage accounts from **Manage Members** under the ArtPulse menu.
 - Filter by membership level or expiration status.
-- Sort members by level or expiration date.
+- Sort members by level, start date or expiration date.
 - Apply bulk actions to change level or send reminders.
 - Use the **Edit Membership** links to update a user's level and expiry.
-- Click **Export CSV** to download all member data.
+- Click **Export CSV** to download the current list including start and end dates.
