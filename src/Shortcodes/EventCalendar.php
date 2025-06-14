@@ -40,18 +40,38 @@ class EventCalendar {
             'order'          => 'ASC',
         ]);
 
-        $events = [];
+        $events     = [];
+        $organizers = [];
         foreach ($query->posts as $event) {
-            $events[] = [
-                'title' => get_the_title($event),
-                'start' => get_post_meta($event->ID, 'event_date', true),
-                'url'   => get_permalink($event->ID),
+            $organizer = get_post_meta($event->ID, 'event_organizer_name', true);
+            $events[]  = [
+                'title'     => get_the_title($event),
+                'start'     => get_post_meta($event->ID, 'event_date', true),
+                'url'       => get_permalink($event->ID),
+                'organizer' => $organizer,
             ];
+            if ($organizer) {
+                $organizers[$organizer] = $organizer;
+            }
         }
         wp_reset_postdata();
 
-        wp_localize_script('ead-event-calendar', 'eventCalendarData', $events);
+        wp_localize_script(
+            'ead-event-calendar',
+            'eventCalendarData',
+            [ 'events' => $events ]
+        );
 
-        return '<div id="event-calendar"></div>';
+        ob_start();
+        ?>
+        <select id="event-organizer-filter" class="ead-calendar-filter">
+            <option value=""><?php esc_html_e('All Organizers', 'artpulse-management'); ?></option>
+            <?php foreach ($organizers as $org) : ?>
+                <option value="<?php echo esc_attr($org); ?>"><?php echo esc_html($org); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <div id="event-calendar"></div>
+        <?php
+        return ob_get_clean();
     }
 }
