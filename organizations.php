@@ -79,16 +79,43 @@ function artpulse_organization_profile_shortcode($atts) {
     if (!$post || $post->post_type !== 'organization') return '<p>Organization not found.</p>';
 
     $website = get_post_meta($post->ID, 'org_website', true);
-    $logo = get_post_meta($post->ID, 'org_logo_url', true);
+    $logo    = get_post_meta($post->ID, 'org_logo_url', true);
     $mission = get_post_meta($post->ID, 'org_mission', true);
-    $team = get_post_meta($post->ID, 'org_team_members', true);
+    $address = get_post_meta($post->ID, 'org_address', true);
+    $phone   = get_post_meta($post->ID, 'org_phone', true);
+    $email   = get_post_meta($post->ID, 'org_email', true);
+    $social  = get_post_meta($post->ID, 'org_social_links', true) ?: [];
+    $team    = get_post_meta($post->ID, 'org_team_members', true);
 
     ob_start();
     echo '<div class="organization-profile p-4 border rounded">';
     if ($logo) echo '<img src="' . esc_url($logo) . '" alt="Logo" class="mb-2" style="max-width:150px;" />';
     echo '<h2 class="text-xl font-bold">' . esc_html($post->post_title) . '</h2>';
     echo '<p class="mb-3">' . esc_html($mission) . '</p>';
+    if ($address) echo '<p><strong>Address:</strong> ' . esc_html($address) . '</p>';
+    if ($phone) echo '<p><strong>Phone:</strong> <a href="tel:' . esc_attr($phone) . '" class="text-blue-600 underline">' . esc_html($phone) . '</a></p>';
+    if ($email) echo '<p><strong>Email:</strong> <a href="mailto:' . antispambot($email) . '" class="text-blue-600 underline">' . antispambot($email) . '</a></p>';
     if ($website) echo '<p><a href="' . esc_url($website) . '" class="text-blue-500 underline" target="_blank">Visit Website</a></p>';
+
+    if (!empty($social)) {
+        echo '<div class="mt-2"><strong>Social:</strong><div class="flex gap-2 mt-1">';
+        foreach ($social as $link) {
+            $icon = '';
+            if (strpos($link, 'facebook.com') !== false) {
+                $icon = '📘';
+            } elseif (strpos($link, 'twitter.com') !== false || strpos($link, 'x.com') !== false) {
+                $icon = '🐦';
+            } elseif (strpos($link, 'instagram.com') !== false) {
+                $icon = '📸';
+            } elseif (strpos($link, 'linkedin.com') !== false) {
+                $icon = '💼';
+            } else {
+                $icon = '🔗';
+            }
+            echo '<a href="' . esc_url($link) . '" target="_blank" class="text-blue-600 text-lg">' . $icon . '</a>';
+        }
+        echo '</div></div>';
+    }
 
     if (!empty($team)) {
         echo '<h3 class="mt-4 font-semibold">Team Members</h3><ul class="list-disc list-inside">';
