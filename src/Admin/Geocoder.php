@@ -49,7 +49,7 @@ class Geocoder {
     }
 
     public static function geocode_address($address) {
-        $api_key = defined('EAD_GOOGLE_MAPS_API_KEY') ? EAD_GOOGLE_MAPS_API_KEY : '';
+        $api_key = SettingsPage::get_setting('google_maps_api_key');
 
         if ($api_key) {
             $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&key=' . $api_key;
