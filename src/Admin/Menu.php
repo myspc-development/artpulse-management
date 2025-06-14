@@ -163,27 +163,9 @@ class Menu {
             [\EAD\Admin\NotificationSettingsAdmin::class, 'render_admin_page']
         );
 
-        add_submenu_page(
-            'artpulse-main-menu',
-            __('Settings', 'artpulse-management'),
-            __('Settings', 'artpulse-management'),
-            'manage_options',
-            'artpulse-settings',
-            [SettingsPage::class, 'render_settings_page_with_tabs']
-        );
+        // The Settings page is registered separately by SettingsPage::add_settings_page_menu_item
 
-        // ------------------------------
-        // ADD THIS: Admin Event Form
-        // ------------------------------
-        add_submenu_page(
-            'artpulse-main-menu',
-            __('Add Event (Admin)', 'artpulse-management'),
-            __('Add Event (Admin)', 'artpulse-management'),
-            'manage_options',
-            'ead-admin-add-event',
-            [AdminEventForm::class, 'render_admin_form']
-        );
-        // ------------------------------
+        // AdminEventForm registers its own submenu page, so don't duplicate it here
 
         // Add CSS for pending badges
         add_action('admin_head', [self::class, 'admin_menu_badge_css']);
