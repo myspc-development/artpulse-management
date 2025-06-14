@@ -57,11 +57,6 @@ if ( file_exists( EAD_PLUGIN_DIR_PATH . 'src/Autoloader.php' ) ) {
     return; // Stop further execution if autoloader is critical
 }
 
-// Load custom registration gate to restrict artist and organization forms
-$registration_gate_file = EAD_PLUGIN_DIR_PATH . 'registration_gate.php';
-if ( file_exists( $registration_gate_file ) ) {
-    require_once $registration_gate_file;
-}
 
 // Load role-based helpers
 $redirect_by_role_file = EAD_PLUGIN_DIR_PATH . 'redirect_user_by_role.php';
