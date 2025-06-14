@@ -99,8 +99,8 @@ npm run build
 ```
 
 The source files are located in `assets/js` and `assets/css`. Running the build
-command bundles the JavaScript from `assets/js` into `build/bundle.js` using
-Webpack.
+command bundles the JavaScript from `assets/js/user-dashboard/main.js` into
+`build/user-dashboard.bundle.js` using Webpack.
 
 ### Running Tests
 

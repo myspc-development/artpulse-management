@@ -52,14 +52,14 @@ class UserDashboard {
             true
         );
         wp_enqueue_script(
-            'ead-user-dashboard',
-            $plugin_url . 'assets/js/user-dashboard/main.js',
-            ['jquery', 'chart-js', 'fullcalendar', 'leaflet'],
+            'ead-bundle',
+            $plugin_url . 'build/user-dashboard.bundle.js',
+            [],
             EAD_MANAGEMENT_VERSION,
             true
         );
         wp_localize_script(
-            'ead-user-dashboard',
+            'ead-bundle',
             'eadUserDashboard',
             [
                 'restUrl'  => esc_url_raw( rest_url( 'artpulse/v1' ) ),
