@@ -10,6 +10,7 @@ Version **3.7.3** compatible with **WordPress 6.7.2+**.
 - Featured listings with bulk admin actions
 - Reviews system with moderation tools
 - Favorites list shortcode
+- FullCalendar-powered calendar grid via `[event_calendar]`
 - CSV Import/Export tools
 - Field Mapping settings in the CSV Import/Export page with reusable mapping presets
 - Mapping confirmation step during CSV imports and option to save presets
@@ -125,6 +126,7 @@ During development you can run `npm run watch` to continuously build assets as f
 | `[ead_org_review_form]` | `org_id` | `[ead_org_review_form org_id="123"]` |
 | `[ead_organization_registration_form]` | – | `[ead_organization_registration_form]` |
 | `[ead_events_list]` | – | `[ead_events_list]` |
+| `[event_calendar]` | – | `[event_calendar]` |
 | `[ead_edit_event_form]` | – | `[ead_edit_event_form]` |
 | `[ead_favorites]` | – | `[ead_favorites]` |
 | `[ead_organization_list]` | – | `[ead_organization_list]` |
