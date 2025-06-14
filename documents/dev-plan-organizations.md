@@ -18,6 +18,8 @@ This module supports grouping of users into organizations (e.g., collectives, ga
 - Organization membership plan management (bulk upgrades, per-seat pricing)
 - Admin hierarchy (Owner > Manager > Member)
 - API endpoints for managing organizations externally (e.g., external CRM)
+- Sortable event table with status badges and quick links
+- RSVP tracking integration in org dashboard
 
 ## Technical Considerations
 - Store organizations as custom post types or in custom database tables
@@ -30,6 +32,8 @@ This module supports grouping of users into organizations (e.g., collectives, ga
 - Member management with role assignment and filters
 - Bulk invite or upload members via CSV
 - Visual overview of membership usage and billing status
+- Events table: sortable, filterable by status/date, with quick edit/view links
+- RSVP summary per event, visible from org dashboard
 
 ## Testing Strategy
 - Functional tests for org creation, deletion, and editing
