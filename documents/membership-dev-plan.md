@@ -2,9 +2,11 @@
 
 ## Current Functionality
 
-The plugin offers a **Membership** tab in the admin area. Administrators set pricing for Basic, Pro Artist and Organization levels and can toggle payment integrations. See [Membership Settings](Membership_Settings.md) for field descriptions. Key options include:
+The plugin offers a **Membership** tab in the admin area. Administrators set pricing for Basic, Pro Artist and Organization levels and can toggle payment integrations. A simplified **ArtPulse Settings** page (`/wp-admin/admin.php?page=artpulse-settings`) now exposes core membership options. See [Membership Settings](Membership_Settings.md) for field descriptions. Key options include:
 
 - **Basic Member Fee**, **Pro Artist Fee** and **Organization Fee**
+- **Pro Plan Price** and **Org Plan Price** on the ArtPulse Settings page
+- **Membership Duration (days)** and **Upgrade Policy** (auto or manual approval)
 - **Enable Stripe Integration** and **Enable WooCommerce Integration**
 - **Email Notification on Fee Change**
 - Exporting all fee settings as a JSON file

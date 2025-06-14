@@ -82,6 +82,9 @@ if ( file_exists( $membership_settings_file ) ) {
 // Ensure membership settings are loaded
 require_once plugin_dir_path(__FILE__) . 'admin_membership_settings.php';
 
+// Load ArtPulse Settings admin page
+require_once plugin_dir_path(__FILE__) . 'admin_artpulse_settings.php';
+
 
 /**
  * Copies plugin templates to the child theme directory on activation,
