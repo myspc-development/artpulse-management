@@ -116,14 +116,17 @@ class MetaBoxesAddress {
         if (wp_script_is('ead-address', 'enqueued')) { // Prevent double enqueueing
             return;
         }
-        wp_enqueue_style('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css', [], '4.1.0-rc.0');
-        wp_enqueue_script('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
-
         // Path to artpulse-management.php (main plugin file)
         // Assuming this MetaBoxesAddress.php is in wp-content/plugins/artpulse-management/src/Admin/
         // Compute path to the main plugin file. This file lives two directories
         // above this admin class within the plugin root.
         $main_plugin_file = dirname(__DIR__, 2) . '/artpulse-management.php';
+
+        // Use bundled Select2 assets instead of CDN
+        $select2_css = plugins_url('assets/select2/css/select2.min.css', $main_plugin_file);
+        $select2_js  = plugins_url('assets/select2/js/select2.min.js', $main_plugin_file);
+        wp_enqueue_style('select2', $select2_css, [], '4.1.0');
+        wp_enqueue_script('select2', $select2_js, ['jquery'], '4.1.0', true);
 
         $assets_url_js = plugins_url('assets/js/ead-address.js', $main_plugin_file);
         $countries_json_url = plugins_url('data/countries.json', $main_plugin_file);

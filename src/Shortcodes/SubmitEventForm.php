@@ -31,8 +31,8 @@ class SubmitEventForm {
         wp_enqueue_style('ead-submit-event-css', $plugin_url . 'assets/css/ead-submit-event.css', [], defined('EAD_PLUGIN_VERSION') ? EAD_PLUGIN_VERSION : '1.0.0');
         // Needed for the WordPress media modal
         wp_enqueue_media();
-        wp_enqueue_style('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css');
-        wp_enqueue_script('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', ['jquery'], null, true);
+        wp_enqueue_style('select2', $plugin_url . 'assets/select2/css/select2.min.css');
+        wp_enqueue_script('select2', $plugin_url . 'assets/select2/js/select2.min.js', ['jquery'], null, true);
 
         // Address loader (shared with org registration)
         wp_enqueue_script('ead-address', $plugin_url . 'assets/js/ead-address.js', ['jquery', 'select2'], defined('EAD_PLUGIN_VERSION') ? EAD_PLUGIN_VERSION : '1.0.0', true);
