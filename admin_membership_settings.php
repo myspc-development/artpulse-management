@@ -1,4 +1,8 @@
 <?php
+// Admin membership settings are now handled by the ManageMembers class.
+// The previous submenu registration is kept here for reference only and
+// has been commented out to prevent duplicate menu items.
+/*
 add_action('admin_menu', function () {
     add_submenu_page(
         'artpulse-main-menu',
@@ -9,6 +13,7 @@ add_action('admin_menu', function () {
         'ead_render_membership_settings'
     );
 });
+*/
 
 function ead_render_membership_settings() {
     echo '<div class="wrap"><h1>Membership Management</h1>';

@@ -439,7 +439,13 @@ add_shortcode('finalize_registration', function () {
   return '<div class="text-green-600">✅ Registration complete. Welcome to ArtPulse!</div>';
 });
 
-// === Admin: Membership Manager Interface ===
+// === Admin: Membership Manager Interface (Disabled, handled in src/Admin) ===
+// The legacy admin page registration and rendering logic have been removed
+// in favor of the ManageMembers class located under src/Admin. The code
+// remains commented out for reference should any functionality need to be
+// restored in the future.
+
+/*
 add_action('admin_menu', function () {
     add_menu_page(
         'Membership Manager',
@@ -489,3 +495,4 @@ function artpulse_render_membership_list_page() {
     }
     echo '</tbody></table></div>';
 }
+*/

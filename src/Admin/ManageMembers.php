@@ -101,8 +101,10 @@ class ManageMembersListTable extends \WP_List_Table {
             'name'   => __('Name', 'artpulse-management'),
             'email'  => __('Email', 'artpulse-management'),
             'level'  => __('Level', 'artpulse-management'),
+            'role'   => __('Role', 'artpulse-management'),
             'start'  => __('Start Date', 'artpulse-management'),
             'expires'=> __('End Date', 'artpulse-management'),
+            'renew'  => __('Auto-Renew', 'artpulse-management'),
         ];
     }
 
@@ -112,6 +114,7 @@ class ManageMembersListTable extends \WP_List_Table {
             'level'  => 'membership_level',
             'start'  => 'membership_start_date',
             'expires'=> 'membership_end_date',
+            'renew'  => 'membership_auto_renew',
         ];
     }
 
@@ -132,8 +135,12 @@ class ManageMembersListTable extends \WP_List_Table {
                     'key'     => 'membership_level',
                     'compare' => 'EXISTS',
                 ],
+                [
+                    'key'   => 'is_member',
+                    'value' => '1',
+                ],
             ],
-            'orderby' => in_array( $orderby, [ 'membership_end_date', 'membership_start_date', 'membership_level' ], true ) ? 'meta_value' : $orderby,
+            'orderby' => in_array( $orderby, [ 'membership_end_date', 'membership_start_date', 'membership_level', 'membership_auto_renew' ], true ) ? 'meta_value' : $orderby,
             'order'   => $order,
         ];
 
@@ -145,6 +152,8 @@ class ManageMembersListTable extends \WP_List_Table {
             $args['meta_type'] = 'DATETIME';
         } elseif ( $orderby === 'membership_level' ) {
             $args['meta_key']  = 'membership_level';
+        } elseif ( $orderby === 'membership_auto_renew' ) {
+            $args['meta_key'] = 'membership_auto_renew';
         }
 
         if ( ! empty( $_REQUEST['s'] ) ) {
@@ -211,12 +220,17 @@ class ManageMembersListTable extends \WP_List_Table {
                 return esc_html($item->user_email);
             case 'level':
                 return esc_html(get_user_meta($item->ID, 'membership_level', true));
+            case 'role':
+                return esc_html(implode(', ', $item->roles));
             case 'start':
                 $start = get_user_meta($item->ID, 'membership_start_date', true);
                 return $start ? esc_html( substr( $start, 0, 10 ) ) : '';
             case 'expires':
                 $end = get_user_meta($item->ID, 'membership_end_date', true);
                 return $end ? esc_html( substr( $end, 0, 10 ) ) : '';
+            case 'renew':
+                $renew = get_user_meta($item->ID, 'membership_auto_renew', true);
+                return $renew ? __('Yes', 'artpulse-management') : __('No', 'artpulse-management');
             default:
                 return '';
         }
