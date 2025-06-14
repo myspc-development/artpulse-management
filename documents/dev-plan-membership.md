@@ -30,12 +30,14 @@ The Membership module manages user subscriptions, roles, and access privileges b
 - Track membership history as a custom table or post type (optional)
 - Leverage WordPress roles and capabilities
 - Ensure compatibility with multisite (if relevant)
+- Admin settings: define membership levels, fees, currency, Stripe keys, renewal preference
 
 ## UI/UX Plans
 - Dashboard widgets for admins (active members, expiring soon, growth rate)
 - Member view with expiration date, plan details, and feature access
 - Filters and bulk actions by level and status
 - Public membership benefits comparison table
+- Settings tab in admin panel for membership configuration (fees, currencies, integrations)
 
 ## Testing Strategy
 - Unit tests for role assignment and expiration
