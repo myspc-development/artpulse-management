@@ -107,8 +107,6 @@ if ( file_exists( $membership_core_file ) ) {
 // Ensure membership settings are loaded
 require_once plugin_dir_path(__FILE__) . 'admin_membership_settings.php';
 
-// Load ArtPulse Settings admin page
-require_once plugin_dir_path(__FILE__) . 'admin_artpulse_settings.php';
 
 // Load user profile enhancements
 require_once plugin_dir_path(__FILE__) . 'users-profile.php';
