@@ -20,5 +20,4 @@ function ead_register_membership_roles() {
         'access_org_dashboard' => true
     ]);
 }
-register_activation_hook(__FILE__, 'ead_register_membership_roles');
 
