@@ -148,9 +148,9 @@ class MembershipSignupForm {
         // Update profile fields.
         wp_update_user([
             'ID'           => $uid,
-            'display_name' => sanitize_text_field( $_POST['display_name'] ?? '' ),
+            'display_name' => sanitize_text_field( $_POST['name'] ?? '' ),
         ]);
-        update_user_meta( $uid, 'description', sanitize_textarea_field( $_POST['user_bio'] ?? '' ) );
+        update_user_meta( $uid, 'description', sanitize_textarea_field( $_POST['bio'] ?? '' ) );
 
         update_user_meta( $uid, 'is_member', '1' );
         update_user_meta( $uid, 'membership_level', $level );
