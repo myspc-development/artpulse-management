@@ -72,6 +72,14 @@ function wp_update_post(array $args) {
     return 0;
 }
 
+function wp_update_user(array $args) {
+    if (isset($args['ID'])) {
+        \Tests\Stubs::$updated_posts[$args['ID']] = $args;
+        return $args['ID'];
+    }
+    return 0;
+}
+
 function get_posts(array $args = []) {
     \Tests\Stubs::$last_query_args = $args;
     return \Tests\Stubs::$posts;
