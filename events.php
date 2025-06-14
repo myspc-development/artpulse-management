@@ -273,3 +273,75 @@ function artpulse_event_calendar_shortcode() {
         . '<div id="event-calendar" class="my-6"></div>';
 }
 add_shortcode('event_calendar', 'artpulse_event_calendar_shortcode');
+function artpulse_event_card_shortcode($atts) {
+    $atts = shortcode_atts(['id' => null], $atts);
+    $post = get_post($atts['id']);
+
+    if (!$post || $post->post_type != 'event') {
+        return '<p>Event not found.</p>';
+    }
+
+    $start        = get_post_meta($post->ID, 'event_start_datetime', true);
+    $end          = get_post_meta($post->ID, 'event_end_datetime', true);
+    $location     = get_post_meta($post->ID, 'event_location', true);
+    $organizer    = get_post_meta($post->ID, 'event_organizer', true);
+    $recurring    = get_post_meta($post->ID, 'event_is_recurring', true);
+    $rsvp_enabled = get_post_meta($post->ID, 'event_rsvp_enabled', true);
+    $attendees    = get_post_meta($post->ID, 'event_rsvp_users', true) or [];
+    $guests       = get_post_meta($post->ID, 'event_rsvp_guests', true) or [];
+    $total_rsvps  = count($attendees);
+    ob_start();
+    ?>
+    <div class="event-card border p-4 rounded shadow space-y-4">
+        <?php if (has_post_thumbnail($post->ID)) {
+            echo get_the_post_thumbnail($post->ID, 'large', ['class' => 'rounded']);
+        } ?>
+
+        <h2 class="text-xl font-bold"><?php echo esc_html($post->post_title); ?></h2>
+
+
+        <?php if ($start): ?><p><strong>Start:</strong> <?php echo esc_html(date('F j, Y, g:i a', strtotime($start))); ?></p><?php endif; ?>
+        <?php if ($end): ?><p><strong>End:</strong> <?php echo esc_html(date('F j, Y, g:i a', strtotime($end))); ?></p><?php endif; ?>
+        <?php if ($location): ?><p><strong>Location:</strong> <?php echo esc_html($location); ?></p><?php endif; ?>
+        <?php if ($organizer): ?><p><strong>Organizer ID:</strong> <?php echo esc_html($organizer); ?></p><?php endif; ?>
+        <?php if ($recurring === '1'): ?><p><em>This event recurs.</em></p><?php endif; ?>
+
+        <div class="mt-3"><?php echo wpautop($post->post_content); ?></div>
+
+        <?php if ($rsvp_enabled === '1'): ?>
+            <div class="mt-4">
+                <a href="<?php echo esc_url(add_query_arg(['rsvp' => $post->ID], site_url('/rsvp/'))); ?>" class="inline-block px-4 py-2 bg-blue-600 text-white rounded">RSVP</a>
+            </div>
+        <?php endif; ?>
+
+        <div class="mt-4">
+            <p><strong>Total RSVPs:</strong> <?php echo $total_rsvps; ?></p>
+            <?php if (!empty($attendees)): ?>
+                <ul class="list-disc pl-5 text-sm">
+                    <?php foreach ($attendees as $uid):
+                        $user = get_user_by('ID', $uid);
+                        if ($user): ?>
+                        <li><?php echo esc_html($user->display_name); ?><?php if (!empty($guests[$uid])) { echo ' + Guest: ' . esc_html($guests[$uid]); } ?></li>
+                    <?php endif; endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-4 text-sm">
+            <?php if ($start):
+                $title        = urlencode($post->post_title);
+                $location_str = urlencode($location);
+                $start_gcal   = urlencode(gmdate('Ymd\THis\Z', strtotime($start)));
+                $end_gcal     = $end ? urlencode(gmdate('Ymd\THis\Z', strtotime($end))) : '';
+                $gcal_url     = "https://calendar.google.com/calendar/render?action=TEMPLATE&text={$title}&dates={$start_gcal}/{$end_gcal}&location={$location_str}";
+                $ics_url      = rest_url('artpulse/v1/events/' . $post->ID . '/ics');
+            ?>
+            <a href="<?php echo esc_url($gcal_url); ?>" class="underline text-blue-700" target="_blank">Add to Google Calendar</a>
+            <a href="<?php echo esc_url($ics_url); ?>" class="underline text-blue-700">Download ICS</a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('event_card', 'artpulse_event_card_shortcode');
