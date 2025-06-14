@@ -311,6 +311,7 @@ use EAD\Shortcodes\OrganizationRegistrationForm;
 use EAD\Shortcodes\ArtistRegistrationForm;
 use EAD\Shortcodes\FavoritesList;
 use EAD\Shortcodes\MembershipSignupForm;
+use EAD\Shortcodes\EventCalendar;
 add_action( 'init', function() {
     \EAD\Shortcodes\ArtworkSubmissionForm::register();
 });
@@ -631,6 +632,7 @@ class Plugin {
         OrgReviewForm::register();
         FavoritesList::register();
         MembershipSignupForm::register();
+        EventCalendar::register();
     }
 
     public static function register_rest_endpoints() { // **FIXED: Added `static` keyword**
