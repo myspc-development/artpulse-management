@@ -84,3 +84,28 @@ add_action('init', function () {
         exit;
     }
 });
+
+// Handle simulated Stripe checkout success
+add_action('mock_stripe_webhook_success', function ($user_id, $level) {
+    if (!$user_id || !$level) {
+        return;
+    }
+
+    // Assign membership role based on level
+    ead_assign_membership_role($user_id, $level);
+
+    // Update membership meta
+    update_user_meta($user_id, 'is_member', '1');
+    update_user_meta($user_id, 'membership_level', $level);
+    delete_user_meta($user_id, 'pending_membership_level');
+
+    // Send confirmation email
+    $user = get_userdata($user_id);
+    if ($user) {
+        wp_mail(
+            $user->user_email,
+            '🎉 Membership Activated',
+            "Hi {$user->display_name},\n\nYour membership as a '{$level}' has been successfully activated.\n\nThanks for supporting ArtPulse!"
+        );
+    }
+});
