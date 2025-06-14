@@ -271,6 +271,7 @@ See the [Mobile App Development Plan](documents/mobile-app-dev-plan) for a detai
 
 - [Member Help](documents/Member_Help.md)
 - [Membership Settings](documents/Membership_Settings.md)
+- [Membership Development Plan](documents/membership-dev-plan.md)
 - [Directory Options](documents/Directory_Options.md)
 - [Admin Help](documents/Admin_Help.md)
 - [Settings Tabs](documents/Settings_Tabs.md)
