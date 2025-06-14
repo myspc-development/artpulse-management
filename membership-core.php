@@ -109,4 +109,59 @@ function artpulse_membership_status_shortcode() {
     ob_start();
     echo '<div class="membership-status">';
     echo '<p><strong>Membership Level:</strong> ' . esc_html(ucfirst($level)) . '</p>';
-    echo '<p><strong>Valid Until:</strong> ' . esc_html(date('F j, Y_
+    echo '<p><strong>Valid Until:</strong> ' . esc_html(date('F j, Y', strtotime($end))) . '</p>';
+    echo '<p><strong>Auto Renew:</strong> ' . ($renew ? 'Enabled' : 'Off') . '</p>';
+    echo '</div>';
+    return ob_get_clean();
+}
+add_shortcode('membership_status', 'artpulse_membership_status_shortcode');
+
+// Stripe Test Checkout Button Shortcode
+function artpulse_membership_checkout_shortcode() {
+    if (!is_user_logged_in()) {
+        return '<p>Please <a href="' . wp_login_url() . '">log in</a> to upgrade your membership.</p>';
+    }
+
+    $stripe_price_id = 'price_test_123';
+    $stripe_pk       = 'pk_test_XXXXXXXXXXXXXXXXXXXX';
+
+    ob_start();
+    echo '<script src="https://js.stripe.com/v3/"></script>';
+    echo '<button id="checkout-button">Upgrade to Pro</button>';
+    echo '<script>
+        var stripe = Stripe("' . esc_js($stripe_pk) . '");
+        document.getElementById("checkout-button").addEventListener("click", function () {
+            fetch("' . admin_url('admin-ajax.php') . '?action=artpulse_create_checkout_session")
+                .then(function (response) { return response.json(); })
+                .then(function (session) {
+                    return stripe.redirectToCheckout({ sessionId: session.id });
+                })
+                .then(function (result) {
+                    if (result.error) alert(result.error.message);
+                });
+    });</script>';
+    return ob_get_clean();
+}
+add_shortcode('membership_checkout', 'artpulse_membership_checkout_shortcode');
+
+add_action('wp_ajax_artpulse_create_checkout_session', 'artpulse_create_checkout_session');
+add_action('wp_ajax_nopriv_artpulse_create_checkout_session', 'artpulse_create_checkout_session');
+
+function artpulse_create_checkout_session() {
+    require_once ABSPATH . 'vendor/autoload.php';
+
+    \Stripe\Stripe::setApiKey('sk_test_XXXXXXXXXXXXXXXXXXXX');
+
+    $session = \Stripe\Checkout\Session::create([
+        'payment_method_types' => ['card'],
+        'mode'                 => 'payment',
+        'line_items'           => [[
+            'price'    => 'price_test_123',
+            'quantity' => 1,
+        ]],
+        'success_url' => home_url('/membership-success/'),
+        'cancel_url'  => home_url('/membership-cancel/'),
+    ]);
+
+    wp_send_json(['id' => $session->id]);
+}
