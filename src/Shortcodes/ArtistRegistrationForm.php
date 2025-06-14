@@ -105,8 +105,13 @@ class ArtistRegistrationForm {
      * @return string
      */
     public static function render_form( $atts = [] ) {
-        if (is_user_logged_in()) {
-            return '<p>' . esc_html__('You are already logged in.', 'artpulse-management') . '</p>';
+        if ( ! is_user_logged_in() ) {
+            return '<p>' . esc_html__( 'Please log in.', 'artpulse-management' ) . '</p>';
+        }
+
+        $level = get_user_meta( get_current_user_id(), 'membership_level', true );
+        if ( 'pro' !== $level ) {
+            return '<p>' . esc_html__( 'You must be a Pro Artist member to apply.', 'artpulse-management' ) . '</p>';
         }
 
         ob_start();
