@@ -249,7 +249,7 @@ The response includes a `token` which remains valid for one week. Pass this valu
 
 ## Mobile App Development
 
-See the [Mobile App Development Plan](documents/mobile-app-dev-plan) for a detailed schedule. According to [dev-plan.md](dev-plan.md), **Phase&nbsp;4** begins the mobile companion app with requirements gathering, API refinements, and UX/UI planning. The dedicated plan expands this work into seven phases:
+See the [Mobile Development Overview](documents/dev-plan-overview.md) for a high-level timeline. A dedicated `dev-plan-mobile.md` will define the exact milestones once the mobile companion app is fully scoped. According to the roadmap, **Phase&nbsp;4** covers early planning and API refinements followed by these phases:
 
 1. **Planning** – requirements, user stories, API audit.
 2. **UI/UX** – wireframes and prototypes.
@@ -271,7 +271,7 @@ See the [Mobile App Development Plan](documents/mobile-app-dev-plan) for a detai
 
 - [Member Help](documents/Member_Help.md)
 - [Membership Settings](documents/Membership_Settings.md)
-- [Membership Development Plan](documents/membership-dev-plan.md)
+- [Membership Development Plan](documents/dev-plan-membership.md)
 - [Directory Options](documents/Directory_Options.md)
 - [Admin Help](documents/Admin_Help.md)
 - [Settings Tabs](documents/Settings_Tabs.md)
