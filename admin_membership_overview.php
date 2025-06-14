@@ -38,6 +38,22 @@ function ead_membership_admin_page()
     $users = get_users($args);
 
     echo '<div class="wrap">';
+    echo '<style>
+            .membership-table td input[type="text"] {
+                width: 100px;
+                padding: 2px 6px;
+            }
+            .membership-table td form {
+                display: inline-block;
+                margin: 0;
+            }
+            .membership-table select {
+                padding: 2px 6px;
+            }
+            .membership-table button {
+                margin-left: 4px;
+            }
+        </style>';
     echo '<h1>📋 Membership Overview</h1>';
     echo '<form method="get" style="margin-bottom: 20px;">';
     echo '<input type="hidden" name="page" value="membership-overview" />';
@@ -54,7 +70,7 @@ function ead_membership_admin_page()
     submit_button('📤 Export CSV', 'primary', 'export_csv', false);
     echo '</form>';
 
-    echo '<table class="widefat fixed striped">';
+    echo '<table class="widefat fixed striped membership-table">';
     echo '<thead><tr><th>User</th><th>Email</th><th>Role</th><th>Level</th><th>Badge</th><th>Joined</th><th>Actions</th></tr></thead><tbody>';
 
     foreach ($users as $user) {
