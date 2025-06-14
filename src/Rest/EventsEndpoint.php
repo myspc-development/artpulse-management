@@ -187,7 +187,7 @@ class EventsEndpoint extends WP_REST_Controller {
         $query = new WP_Query($args);
 
         if (!$query->have_posts()) {
-            return new WP_Error('no_events_found', __('No events found.', 'artpulse-management'), ['status' => 404]);
+            return new WP_REST_Response([], 200);
         }
 
         $events = [];
