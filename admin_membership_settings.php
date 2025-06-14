@@ -3,7 +3,7 @@
 
 add_action('admin_menu', function () {
     add_submenu_page(
-        'artpulse-settings',
+        'artpulse-main-menu',
         'Membership Settings',
         'Membership Settings',
         'manage_options',
