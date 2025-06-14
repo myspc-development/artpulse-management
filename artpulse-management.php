@@ -225,6 +225,8 @@ function ead_check_membership_expiry() {
 
     foreach ( $users as $user ) {
         delete_user_meta( $user->ID, 'is_member' );
+        delete_user_meta( $user->ID, 'membership_level' );
+        delete_user_meta( $user->ID, 'membership_expires' );
         $user->set_role( 'member_registered' );
     }
 }
