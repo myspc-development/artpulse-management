@@ -27,3 +27,4 @@ Site administrators can manage accounts from **Manage Members** under the ArtPul
 - Apply bulk actions to change level or send reminders.
 - Use the **Edit Membership** links to update a user's level and expiry.
 - Click **Export CSV** to download the current list including start and end dates.
+- A new **Quick Edit** option lets admins modify level, expiry and auto-renew inline directly within the table.

@@ -683,6 +683,7 @@ class Plugin {
             new \EAD\Rest\SyncEndpoint(),
             new \EAD\Rest\SettingsEndpoint(),
             new \EAD\Rest\CalendarEndpoint(),
+            new \EAD\Rest\ManageMembersEndpoint(),
             new \EAD\Rest\MembershipEndpoint(),
             new \Artpulse\UserController(),
         ];
