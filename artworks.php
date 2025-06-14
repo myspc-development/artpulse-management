@@ -28,10 +28,24 @@ add_action('add_meta_boxes', function () {
         }
         echo '</select>';
     }, 'artwork', 'side');
+
+    add_meta_box('artwork_info_meta', 'Artwork Info', function ($post) {
+        $price        = get_post_meta($post->ID, 'artwork_price', true);
+        $medium       = get_post_meta($post->ID, 'artwork_medium', true);
+        $availability = get_post_meta($post->ID, 'artwork_availability', true);
+        ?>
+        <p><label>Price:<br><input type="text" name="artwork_price" value="<?php echo esc_attr($price); ?>" class="widefat"></label></p>
+        <p><label>Medium:<br><input type="text" name="artwork_medium" value="<?php echo esc_attr($medium); ?>" class="widefat"></label></p>
+        <p><label>Availability:<br><input type="text" name="artwork_availability" value="<?php echo esc_attr($availability); ?>" class="widefat"></label></p>
+        <?php
+    }, 'artwork', 'normal', 'default');
 });
 
 add_action('save_post_artwork', function ($post_id) {
     update_post_meta($post_id, 'artwork_artist_id', absint($_POST['artwork_artist_id'] ?? 0));
+    update_post_meta($post_id, 'artwork_price', sanitize_text_field($_POST['artwork_price'] ?? ''));
+    update_post_meta($post_id, 'artwork_medium', sanitize_text_field($_POST['artwork_medium'] ?? ''));
+    update_post_meta($post_id, 'artwork_availability', sanitize_text_field($_POST['artwork_availability'] ?? ''));
 });
 
 // 3. Shortcode: [artwork_card id="123"]
@@ -54,5 +68,44 @@ add_shortcode('artwork_card', function ($atts) {
         <div class="text-gray-800 text-sm"><?php echo wpautop($post->post_content); ?></div>
     </div>
     <?php
+    return ob_get_clean();
+});
+
+add_shortcode('artwork_gallery', function ($atts) {
+    $atts = shortcode_atts(['artist' => ''], $atts);
+
+    $args = [
+        'post_type'      => 'artwork',
+        'posts_per_page' => -1,
+    ];
+    if ($atts['artist']) {
+        $args['meta_query'] = [[
+            'key'   => 'artwork_artist_id',
+            'value' => $atts['artist'],
+        ]];
+    }
+
+    $query = new WP_Query($args);
+    if (!$query->have_posts()) {
+        return '<p>No artworks found.</p>';
+    }
+
+    ob_start();
+    echo '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">';
+    while ($query->have_posts()) {
+        $query->the_post();
+        $price = get_post_meta(get_the_ID(), 'artwork_price', true);
+        echo '<div class="border p-2 rounded shadow text-center">';
+        if (has_post_thumbnail()) {
+            echo '<a href="' . get_permalink() . '">' . get_the_post_thumbnail(null, 'medium', ['class' => 'rounded mx-auto']) . '</a>';
+        }
+        echo '<h4 class="font-medium mt-2 text-sm">' . get_the_title() . '</h4>';
+        if ($price) {
+            echo '<p class="text-xs text-gray-600">Price: ' . esc_html($price) . '</p>';
+        }
+        echo '</div>';
+    }
+    echo '</div>';
+    wp_reset_postdata();
     return ob_get_clean();
 });
