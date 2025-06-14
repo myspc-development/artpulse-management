@@ -1837,6 +1837,39 @@ class Plugin {
                 'delete_posts' => false, // Allows user to delete their own posts
             ]
         );
+
+        // Membership roles for the directory
+        add_role(
+            'member_basic',
+            'Basic Member',
+            [
+                'read'         => true,
+                'edit_posts'   => false,
+                'delete_posts' => false,
+            ]
+        );
+
+        add_role(
+            'member_pro',
+            'Pro Member',
+            [
+                'read'         => true,
+                'upload_files' => true,
+                'edit_posts'   => true,
+                'delete_posts' => false,
+            ]
+        );
+
+        add_role(
+            'member_org',
+            'Organization Member',
+            [
+                'read'          => true,
+                'edit_posts'    => true,
+                'upload_files'  => true,
+                'publish_posts' => false,
+            ]
+        );
     }
 
     public static function remove_roles() {
