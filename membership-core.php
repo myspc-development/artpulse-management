@@ -64,73 +64,6 @@ add_action('artpulse_check_memberships', function () {
     }
 });
 
-// 4. Admin settings page for membership fees & config
-function artpulse_membership_settings_init() {
-    add_options_page('Membership Settings', 'Membership Settings', 'manage_options', 'artpulse-membership-settings', 'artpulse_membership_settings_page');
-    add_action('admin_init', function () {
-        register_setting('artpulse_membership', 'artpulse_membership_options');
-        add_settings_section('artpulse_membership_main', 'Membership Options', null, 'artpulse-membership');
-
-        add_settings_field('basic_fee', 'Basic Member Fee ($)', function () {
-            $options = get_option('artpulse_membership_options');
-            echo '<input type="number" name="artpulse_membership_options[basic_fee]" value="' . esc_attr($options['basic_fee'] ?? '') . '" />';
-        }, 'artpulse-membership', 'artpulse_membership_main');
-
-        add_settings_field('pro_fee', 'Pro Artist Fee ($)', function () {
-            $options = get_option('artpulse_membership_options');
-            echo '<input type="number" name="artpulse_membership_options[pro_fee]" value="' . esc_attr($options['pro_fee'] ?? '') . '" />';
-        }, 'artpulse-membership', 'artpulse_membership_main');
-
-        add_settings_field('currency', 'Currency', function () {
-            $options = get_option('artpulse_membership_options');
-            echo '<input type="text" name="artpulse_membership_options[currency]" value="' . esc_attr($options['currency'] ?? 'USD') . '" />';
-        }, 'artpulse-membership', 'artpulse_membership_main');
-    });
-}
-add_action('admin_menu', 'artpulse_membership_settings_init');
-
-// Extend membership admin settings: Stripe keys
-add_action('admin_init', function () {
-    add_settings_field('stripe_pk', 'Stripe Publishable Key', function () {
-        $options = get_option('artpulse_membership_options');
-        echo '<input type="text" name="artpulse_membership_options[stripe_pk]" value="' . esc_attr($options['stripe_pk'] ?? '') . '" style="width: 100%;" />';
-    }, 'artpulse-membership', 'artpulse_membership_main');
-
-    add_settings_field('stripe_sk', 'Stripe Secret Key', function () {
-        $options = get_option('artpulse_membership_options');
-        echo '<input type="text" name="artpulse_membership_options[stripe_sk]" value="' . esc_attr($options['stripe_sk'] ?? '') . '" style="width: 100%;" />';
-    }, 'artpulse-membership', 'artpulse_membership_main');
-});
-
-function artpulse_membership_settings_page() {
-    echo '<div class="wrap"><h1>Membership Settings</h1><form method="post" action="options.php">';
-    settings_fields('artpulse_membership');
-    do_settings_sections('artpulse-membership');
-    submit_button();
-    echo '</form></div>';
-}
-
-// Simple settings page for Stripe test mode
-add_action('admin_menu', function () {
-    add_options_page('Membership Settings', 'Membership', 'manage_options', 'membership_settings', function () {
-        ?>
-        <form method="post" action="options.php">
-            <?php settings_fields('membership_settings'); ?>
-            <?php do_settings_sections('membership_settings'); ?>
-            <h2>Stripe Test Mode</h2>
-            <label>
-                <input type="checkbox" name="stripe_test_mode" value="1" <?php checked(get_option('stripe_test_mode'), 1); ?>>
-                Enable Test Mode (use test keys)
-            </label>
-            <?php submit_button(); ?>
-        </form>
-        <?php
-    });
-});
-
-add_action('admin_init', function () {
-    register_setting('membership_settings', 'stripe_test_mode');
-});
 
 // 5. Shortcode: [membership_status]
 function artpulse_membership_status_shortcode() {
@@ -165,7 +98,8 @@ function artpulse_membership_checkout_shortcode() {
 
     require_once ABSPATH . 'vendor/autoload.php';
 
-    $use_test      = get_option('stripe_test_mode');
+    $settings      = get_option('artpulse_plugin_settings', []);
+    $use_test      = ! empty($settings['stripe_test_mode']);
     $stripe_secret = $use_test ? 'sk_test_123' : 'sk_live_456';
 
     \Stripe\Stripe::setApiKey($stripe_secret);
@@ -248,7 +182,8 @@ function artpulse_create_checkout_session() {
     }
 
     require_once ABSPATH . 'vendor/autoload.php';
-    $use_test      = get_option('stripe_test_mode');
+    $settings      = get_option('artpulse_plugin_settings', []);
+    $use_test      = ! empty($settings['stripe_test_mode']);
     $stripe_secret = $use_test ? 'sk_test_123' : 'sk_live_456';
 
     \Stripe\Stripe::setApiKey($stripe_secret);
@@ -277,7 +212,7 @@ add_action('rest_api_init', function () {
 });
 
 function artpulse_stripe_webhook_handler(WP_REST_Request $request) {
-    $opts           = get_option('artpulse_membership_options');
+    $opts           = get_option('artpulse_plugin_settings', []);
     $payload        = $request->get_body();
     $sig_header     = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
     $endpoint_secret = $opts['stripe_webhook_secret'] ?? '';

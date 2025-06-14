@@ -95,8 +95,6 @@ if ( file_exists( $user_profile_tab_file ) ) {
 //     require_once $membership_overview_file;
 // }
 
-$membership_settings_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_settings.php';
-// Legacy membership admin screens are no longer loaded.
 
 $membership_core_file = EAD_PLUGIN_DIR_PATH . 'membership-core.php';
 // Legacy membership functionality has been replaced by classes under src/.
