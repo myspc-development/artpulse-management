@@ -96,22 +96,15 @@ if ( file_exists( $user_profile_tab_file ) ) {
 // }
 
 $membership_settings_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_settings.php';
-if ( file_exists( $membership_settings_file ) ) {
-    require_once $membership_settings_file;
-}
+// Legacy membership admin screens are no longer loaded.
 
 $membership_core_file = EAD_PLUGIN_DIR_PATH . 'membership-core.php';
-if ( file_exists( $membership_core_file ) ) {
-    require_once $membership_core_file;
-}
+// Legacy membership functionality has been replaced by classes under src/.
 
 $functions_file = EAD_PLUGIN_DIR_PATH . 'functions.php';
 if ( file_exists( $functions_file ) ) {
     require_once $functions_file;
 }
-
-// Ensure membership settings are loaded
-require_once plugin_dir_path(__FILE__) . 'admin_membership_settings.php';
 
 
 // Load user profile enhancements
