@@ -4,7 +4,9 @@ namespace EAD\Shortcodes;
 class MembershipSignupForm {
     public static function register() {
         add_shortcode( 'ead_membership_status', [ self::class, 'render' ] );
-        add_action( 'wp_loaded', [ self::class, 'handle_submit' ] );
+        // Handle form submission during the init hook so user redirects work
+        // before template output.
+        add_action( 'init', [ self::class, 'handle_submit' ] );
     }
 
     /**
@@ -32,20 +34,36 @@ class MembershipSignupForm {
     }
 
     public static function render() {
-        if (!is_user_logged_in()) {
+        if ( ! is_user_logged_in() ) {
             return '<p>Login to select your membership.</p>';
         }
 
+        $u      = wp_get_current_user();
+        $message = '';
+
+        if ( isset( $_GET['joined'] ) && '1' === $_GET['joined'] ) {
+            $message = '<p style="color: green; font-weight: bold;">✅ Membership updated successfully!</p>';
+        }
+
         ob_start();
+        echo $message;
         ?>
         <form method="post">
-            <?php wp_nonce_field('ead_membership_join_action', 'ead_membership_nonce'); ?>
-            <select name="membership_level">
-                <option value="basic">Basic</option>
+            <?php wp_nonce_field( 'ead_membership_join_action', 'ead_membership_nonce' ); ?>
+            <label><strong>Name:</strong></label><br>
+            <input type="text" name="display_name" value="<?php echo esc_attr( $u->display_name ); ?>" required><br><br>
+
+            <label><strong>Short Bio:</strong></label><br>
+            <textarea name="user_bio" rows="3"><?php echo esc_textarea( get_user_meta( $u->ID, 'description', true ) ); ?></textarea><br><br>
+
+            <label for="membership_level"><strong>Select Membership Level:</strong></label><br>
+            <select name="membership_level" id="membership_level" required>
+                <option value="basic">Basic Member</option>
                 <option value="pro">Pro Artist</option>
                 <option value="org">Organization</option>
             </select>
-            <button type="submit" name="ead_join_membership">Join</button>
+            <br><br>
+            <button type="submit" name="ead_join_membership">Join Membership</button>
         </form>
         <?php
         return ob_get_clean();
@@ -66,12 +84,26 @@ class MembershipSignupForm {
 
         $uid = get_current_user_id();
 
+        // Update profile fields.
+        wp_update_user([
+            'ID'           => $uid,
+            'display_name' => sanitize_text_field( $_POST['display_name'] ?? '' ),
+        ]);
+        update_user_meta( $uid, 'description', sanitize_textarea_field( $_POST['user_bio'] ?? '' ) );
+
         update_user_meta( $uid, 'is_member', '1' );
         update_user_meta( $uid, 'membership_level', $level );
 
         self::assign_role( $uid, $level );
 
-        wp_redirect( add_query_arg( 'joined', '1', wp_get_referer() ) );
+        $redirect_url = '/dashboard';
+        if ( 'pro' === $level ) {
+            $redirect_url = '/artist-dashboard';
+        } elseif ( 'org' === $level ) {
+            $redirect_url = '/organization-dashboard';
+        }
+
+        wp_redirect( add_query_arg( 'joined', '1', $redirect_url ) );
         exit;
     }
 }
