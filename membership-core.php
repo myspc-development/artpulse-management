@@ -436,5 +436,56 @@ add_shortcode('finalize_registration', function () {
 
     artpulse_send_welcome_email($user_id);
 
-    return '<div class="text-green-600">✅ Registration complete. Welcome to ArtPulse!</div>';
+  return '<div class="text-green-600">✅ Registration complete. Welcome to ArtPulse!</div>';
 });
+
+// === Admin: Membership Manager Interface ===
+add_action('admin_menu', function () {
+    add_menu_page(
+        'Membership Manager',
+        'Membership Manager',
+        'manage_options',
+        'artpulse-membership-manager',
+        'artpulse_render_membership_list_page',
+        'dashicons-groups',
+        25
+    );
+});
+
+function artpulse_render_membership_list_page() {
+    echo '<div class="wrap"><h1>Membership Manager</h1>';
+    echo '<p>This will display a full list of members with options to edit, upgrade, or assign organizations.</p>';
+    echo '<table class="wp-list-table widefat fixed striped">';
+    echo '<thead><tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Level</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Auto-Renew</th>
+        <th>Actions</th>
+    </tr></thead><tbody>';
+
+    $users = get_users();
+    foreach ($users as $user) {
+        $level = get_user_meta($user->ID, 'membership_level', true);
+        $start = get_user_meta($user->ID, 'membership_start_date', true);
+        $end = get_user_meta($user->ID, 'membership_end_date', true);
+        $renew = get_user_meta($user->ID, 'membership_auto_renew', true);
+
+        echo '<tr>
+            <td>' . esc_html($user->display_name) . '</td>
+            <td>' . esc_html($user->user_email) . '</td>
+            <td>' . esc_html(ucfirst($level)) . '</td>
+            <td>' . esc_html($start) . '</td>
+            <td>' . esc_html($end) . '</td>
+            <td>' . ($renew ? 'Yes' : 'No') . '</td>
+            <td>
+                <a href="#" class="button button-small">Edit</a> |
+                <a href="#" class="button button-small">Upgrade</a> |
+                <a href="#" class="button button-small delete">Delete</a>
+            </td>
+        </tr>';
+    }
+    echo '</tbody></table></div>';
+}
