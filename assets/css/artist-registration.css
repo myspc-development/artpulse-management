@@ -1,0 +1,78 @@
+.ap-artist-registration-form {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 600px;
+    margin: 2rem auto;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+
+.ap-artist-registration-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.ap-artist-registration-form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: .5rem;
+}
+
+.ap-artist-registration-form input[type="text"],
+.ap-artist-registration-form input[type="email"],
+.ap-artist-registration-form input[type="password"],
+.ap-artist-registration-form input[type="tel"],
+.ap-artist-registration-form input[type="url"],
+.ap-artist-registration-form textarea {
+    width: 100%;
+    padding: .75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color .2s;
+}
+
+.ap-artist-registration-form input:focus,
+.ap-artist-registration-form textarea:focus {
+    border-color: var(--ead-primary-color);
+    outline: none;
+}
+
+#artist-profile-image-preview {
+    /* Style for the selected profile image preview */
+    max-width: 150px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 10px;
+    display: block;
+}
+/* Gallery uploader */
+.ead-artist-image-upload-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+.ead-image-upload-container {
+    text-align: center;
+}
+.ead-image-upload-container .ead-image-preview {
+    width: 100px;
+    height: 100px;
+    background: #f6f7f9;
+    border: 1px dashed #bbb;
+    border-radius: 6px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 6px;
+}
+.ead-image-upload-container .ead-image-preview.has-image {
+    border-style: solid;
+}
+.ead-image-upload-container .hidden {
+    display: none;
+}

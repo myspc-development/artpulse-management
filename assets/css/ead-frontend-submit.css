@@ -1,0 +1,83 @@
+.ead-frontend-submit-form {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 600px;
+    margin: 2rem auto;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+
+.ead-frontend-submit-form h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.ead-frontend-submit-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.ead-frontend-submit-form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: .5rem;
+}
+
+.ead-frontend-submit-form input[type="text"],
+.ead-frontend-submit-form input[type="email"],
+.ead-frontend-submit-form input[type="number"],
+.ead-frontend-submit-form input[type="url"],
+.ead-frontend-submit-form textarea,
+.ead-frontend-submit-form select {
+    width: 100%;
+    padding: .75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color .2s;
+}
+
+.ead-frontend-submit-form input:focus,
+.ead-frontend-submit-form textarea:focus,
+.ead-frontend-submit-form select:focus {
+    border-color: var(--ead-primary-color);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.2);
+}
+
+.ead-frontend-submit-form input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.ead-frontend-submit-form textarea {
+    min-height: 150px;
+}
+
+.ead-frontend-submit-form button[type="submit"] {
+    background-color: var(--ead-primary-color);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.ead-frontend-submit-form button[type="submit"]:hover {
+    background-color: #005f8d;
+}
+
+.ead-frontend-submit-form .ead-form-error {
+    color: red;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.ead-frontend-submit-form img#artwork-image-preview {
+    max-width: 200px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 10px;
+    display: block;
+}

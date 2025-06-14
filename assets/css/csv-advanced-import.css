@@ -1,0 +1,7 @@
+#ead-csv-preview-wrapper{margin-top:15px}
+#ead-csv-preview-wrapper table{border-collapse:collapse;width:100%;margin-bottom:10px}
+#ead-csv-preview-wrapper th,#ead-csv-preview-wrapper td{border:1px solid #ccc;padding:4px 6px;text-align:left}
+#ead-csv-mapping input.ead-mapping-input{width:100%}
+#ead-confirm-mapping{margin-top:10px}
+#ead-import-progress{width:100%;margin-top:10px;display:none}
+#ead-import-log-download{margin-top:10px;display:none}

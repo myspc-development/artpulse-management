@@ -1,0 +1,46 @@
+/* Gallery layout for single artwork page */
+.single-artwork-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.single-artwork-gallery .artwork-single-img {
+  flex: 1 1 calc(33.333% - 12px);
+  max-width: calc(33.333% - 12px);
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Artwork metadata details list */
+.artwork-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  margin: 2rem 0;
+}
+
+.artwork-details dt {
+  font-weight: 600;
+  color: #333;
+}
+
+.artwork-details dd {
+  margin: 0;
+  color: #555;
+}
+
+/* Portfolio meta for archive grid */
+.portfolio-meta {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.portfolio-meta span {
+  display: inline-block;
+  margin-right: 0.5rem;
+}

@@ -1,0 +1,85 @@
+/* EAD Admin Event CSS */
+
+.ead-event-admin-wrapper {
+    background: var(--ead-secondary-color);
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-top: 20px;
+    border-radius: 4px;
+}
+
+.ead-event-admin-wrapper h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: var(--ead-text-color);
+}
+
+.ead-event-admin-field {
+    margin-bottom: 15px;
+}
+
+.ead-event-admin-field label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+.ead-event-admin-field input[type="text"],
+.ead-event-admin-field input[type="number"],
+.ead-event-admin-field textarea {
+    width: 100%;
+    max-width: 600px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #fff;
+}
+
+.ead-event-admin-field textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.ead-event-admin-field .description {
+    font-size: 12px;
+    color: #777;
+    margin-top: 5px;
+}
+
+.ead-event-admin-actions {
+    margin-top: 20px;
+}
+
+.ead-event-admin-actions button {
+    background-color: var(--ead-primary-color);
+    color: #fff;
+    border: none;
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.ead-event-admin-actions button:hover {
+    background-color: #005177;
+}
+
+.ead-event-notice {
+    background-color: #ffffe0;
+    border-left: 4px solid #ffba00;
+    padding: 10px 15px;
+    margin-top: 15px;
+    border-radius: 3px;
+    color: var(--ead-text-color);
+}
+
+.ead-event-notice.success {
+    border-left-color: #46b450;
+    background-color: #e7f7e7;
+}
+
+.ead-event-notice.error {
+    border-left-color: #dc3232;
+    background-color: #fbeaea;
+}

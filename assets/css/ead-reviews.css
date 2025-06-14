@@ -1,0 +1,31 @@
+/*
+ * ArtPulse Reviews Styles
+ * Use this file to style organization, artist, or event reviews and review forms.
+ */
+
+.ead-review {
+    /* Example: review box styling */
+    /* background: #f8f9fa; */
+    /* border: 1px solid #e5e5e5; */
+    /* border-radius: 4px; */
+    /* padding: 16px; */
+    /* margin-bottom: 18px; */
+}
+
+.ead-review-author {
+    /* Example: reviewer name styling */
+    /* font-weight: 600; */
+    /* color: #1a1a1a; */
+}
+
+.ead-review-rating {
+    /* Example: star rating display */
+    /* color: #eab308; */
+}
+
+.ead-review-form {
+    /* Example: review form container */
+    /* margin-top: 24px; */
+}
+
+/* Add your review-specific styles here */

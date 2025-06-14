@@ -1,0 +1,87 @@
+.single-event {
+  background: #fff;
+  border-radius: 1.5rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+.single-event-thumb img {
+  border-radius: 1rem;
+  max-width: 100%;
+  margin-bottom: 1.5rem;
+}
+.event-title {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+.event-meta-block {
+  margin-bottom: 1.2rem;
+}
+.event-meta {
+  color: var(--ead-text-color);
+  font-size: 1.08rem;
+  margin-bottom: 0.3rem;
+}
+.event-description {
+  margin-top: 1.6rem;
+  font-size: 1.12rem;
+  line-height: 1.7;
+}
+
+.event-sharing {
+    margin: 1.6rem 0 0.6rem 0;
+    font-size: 1rem;
+}
+.share-btn {
+    display: inline-block;
+    margin-right: 0.6rem;
+    color: #fff;
+    background: var(--ead-primary-color);
+    border-radius: 6px;
+    padding: 0.35rem 0.9rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.18s;
+}
+.share-btn.fb { background: #4267B2; }
+.share-btn.tw { background: #1DA1F2; }
+.share-btn.li { background: #0077b5; }
+.share-btn:hover { opacity: 0.82; }
+
+
+.event-rsvp {
+    background: #f8faff;
+    border-radius: 10px;
+    padding: 1.3rem 1.5rem;
+    margin-top: 2rem;
+    max-width: 450px;
+}
+.event-rsvp input[type="email"] {
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    margin-right: 0.5rem;
+    border: 1px solid #cbd6ee;
+    font-size: 1rem;
+}
+.event-rsvp button[type="submit"] {
+    background: var(--ead-primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.42rem 1.2rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.18s;
+}
+.event-rsvp button[type="submit"]:hover {
+    background: #183aa5;
+}
+.rsvp-success {
+    margin-top: 0.8rem;
+    color: #3d721d;
+    background: #e9f6e7;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+}
+

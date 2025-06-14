@@ -1,0 +1,17 @@
+{
+  "name": "ead/artpulse-management",
+  "description": "ArtPulse Management WordPress plugin",
+  "type": "wordpress-plugin",
+  "require": {
+    "php": ">=8.2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10"
+  },
+  "autoload": {
+    "psr-4": { "EAD\\": "src/" }
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit"
+  }
+}

@@ -1,0 +1,14 @@
+# Dependency directories
+vendor/
+node_modules/
+
+# Build output
+build/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

@@ -1,0 +1,387 @@
+.ead-user-dashboard {
+    margin: 20px 0;
+    max-width: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.ead-user-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.ead-user-filters label {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.95rem;
+}
+
+.ead-user-filters input {
+    margin-right: 5px;
+}
+
+@media (min-width: 600px) {
+    .ead-user-filters label {
+        flex: 1 1 48%;
+    }
+}
+
+.ead-event-card {
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    font-size: 1rem;
+    line-height: 1.4;
+    touch-action: manipulation;
+}
+
+.ead-event-card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+}
+
+.ead-favorite-btn {
+    margin-top: 0.5rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.25rem;
+}
+
+.ead-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.ead-tab-button {
+    flex: 1 1 auto;
+    padding: 0.5rem;
+    font-size: 1rem;
+    text-align: center;
+    border-radius: 0.4rem;
+    background: #f0f0f0;
+    border: none;
+    cursor: pointer;
+}
+
+.ead-tab-button.active {
+    background: #0073aa;
+    color: #fff;
+}
+
+.ead-tab-content {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    display: none;
+}
+
+.ead-tab-content.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.ead-loader {
+    background: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    font-weight: bold;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ead-empty-state {
+    font-style: italic;
+    color: #666;
+    padding: 1rem;
+}
+
+.ead-toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: #0073aa;
+    color: #fff;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+
+@media (max-width: 500px) {
+    .ead-toast {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: calc(100% - 2rem);
+        font-size: 0.9rem;
+    }
+}
+
+.ead-message-card {
+    border-left: 4px solid #0073aa;
+    background: #f9f9f9;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+}
+
+.ead-message-meta {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.ead-message-body {
+    margin-top: 0.5rem;
+}
+
+.ead-event-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.ead-rsvp-btn {
+    background: #e0f7ff;
+    border: 1px solid #0073aa;
+    color: #0073aa;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#ead-profile-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.ead-badge {
+    background: #f0f8ff;
+    border: 1px solid #0073aa;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    width: 160px;
+    text-align: center;
+}
+
+.ead-badge-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+#ead-tab-uploads label {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.ead-suggestions {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    z-index: 999;
+    max-height: 150px;
+    overflow-y: auto;
+    width: 100%;
+}
+
+.ead-suggestion {
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+.ead-suggestion:hover {
+    background: #f0f0f0;
+}
+
+.ead-submission-card {
+    border: 1px solid #ddd;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ead-submission-card img {
+    max-width: 100%;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.ead-dashboard-widgets {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.ead-widget {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    flex: 1;
+}
+
+.ead-widget h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.ead-widget p {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+#ead-calendar-filters {
+    margin-bottom: 1rem;
+}
+
+#ead-calendar-filters select {
+    padding: 0.4rem;
+    border-radius: 4px;
+}
+
+#ead-calendar-filters input {
+    padding: 0.4rem;
+    border-radius: 4px;
+}
+
+#ead-event-calendar {
+    margin-top: 1rem;
+    background: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ead-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.ead-modal-content {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    text-align: center;
+}
+
+.ead-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    cursor: pointer;
+    font-size: 1.5rem;
+}
+
+#ead-bulk-event-list {
+    text-align: left;
+    margin: 1rem 0;
+    list-style: disc inside;
+}
+
+#ead-map-filters {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+#ead-map-filters label {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+#ead-event-map {
+    height: 400px;
+    margin-top: 1rem;
+}
+
+@media (max-width: 600px) {
+    .ead-tabs {
+        flex-direction: column;
+    }
+
+    .ead-tab-button {
+        margin-bottom: 0.5rem;
+        border-radius: 6px;
+    }
+}
+
+.ead-status-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    padding: 0.25em 0.5em;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.ead-status-badge.pending {
+    background: #ffc107;
+    color: #000;
+}
+
+.ead-status-badge.approved {
+    background: #4caf50;
+    color: #fff;
+}
+
+.ead-status-badge.rejected {
+    background: #f44336;
+    color: #fff;
+}
+
+.ead-upload-card {
+    transition: transform 0.2s ease, box-shadow 0.2s;
+}
+
+.ead-upload-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 768px) {
+    .ead-upload-card {
+        padding: 0.5rem;
+    }
+
+    .ead-tab-nav li {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.75rem;
+    }
+}
+

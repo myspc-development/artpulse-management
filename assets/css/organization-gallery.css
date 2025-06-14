@@ -1,0 +1,62 @@
+.ead-image-preview-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 65px;
+  background: #f6f7f9;
+  border: 1.5px dashed #bbb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  position: relative;
+  transition: background .15s, border-color .15s;
+}
+
+.ead-image-preview-flex.drag-over {
+  background: #dbeffd;
+  border-color: #369cff;
+}
+
+.ead-img-preview-thumb {
+  position: relative;
+  display: inline-block;
+}
+
+.ead-img-preview-thumb img {
+  max-width: 100px;
+  max-height: 100px;
+  border-radius: 5px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+
+.ead-img-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(244,0,0,0.85);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 17px;
+  cursor: pointer;
+  line-height: 20px;
+  padding: 0;
+  z-index: 2;
+  opacity: 0.87;
+  transition: background .16s;
+}
+
+.ead-img-remove-btn:hover,
+.ead-img-remove-btn:focus {
+  background: #d10000;
+  opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .ead-image-preview-flex {
+    gap: 6px;
+    padding: 5px 5px;
+  }
+}
