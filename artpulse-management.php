@@ -645,6 +645,22 @@ class Plugin {
 
         wp_enqueue_script( 'ead-main-js', $plugin_url . 'assets/js/ead-main.js', [ 'jquery' ], $version, true );
 
+        // Membership profile UI script
+        wp_enqueue_script(
+            'ead-membership-ui',
+            $plugin_url . 'assets/js/membership-profile.js',
+            [ 'wp-api-fetch' ],
+            '1.0',
+            true
+        );
+        wp_localize_script(
+            'ead-membership-ui',
+            'artpulse_vars',
+            [
+                'rest_nonce' => wp_create_nonce( 'wp_rest' ),
+            ]
+        );
+
         wp_localize_script(
             'ead-main-js',
             'eadFrontend',

@@ -38,32 +38,28 @@ class MembershipSignupForm {
             return '<p>Login to select your membership.</p>';
         }
 
-        $u      = wp_get_current_user();
-        $message = '';
+        $u = wp_get_current_user();
 
-        if ( isset( $_GET['joined'] ) && '1' === $_GET['joined'] ) {
-            $message = '<p style="color: green; font-weight: bold;">✅ Membership updated successfully!</p>';
-        }
-
+        $level = get_user_meta( $u->ID, 'membership_level', true );
         ob_start();
-        echo $message;
         ?>
-        <form method="post">
-            <?php wp_nonce_field( 'ead_membership_join_action', 'ead_membership_nonce' ); ?>
-            <label><strong>Name:</strong></label><br>
-            <input type="text" name="display_name" value="<?php echo esc_attr( $u->display_name ); ?>" required><br><br>
+        <div id="membership-message" class="message" style="display: none;"></div>
 
-            <label><strong>Short Bio:</strong></label><br>
-            <textarea name="user_bio" rows="3"><?php echo esc_textarea( get_user_meta( $u->ID, 'description', true ) ); ?></textarea><br><br>
-
-            <label for="membership_level"><strong>Select Membership Level:</strong></label><br>
-            <select name="membership_level" id="membership_level" required>
-                <option value="basic">Basic Member</option>
-                <option value="pro">Pro Artist</option>
-                <option value="org">Organization</option>
-            </select>
-            <br><br>
-            <button type="submit" name="ead_join_membership">Join Membership</button>
+        <form id="membership-form">
+            <label>Name: <input type="text" name="name" value="<?php echo esc_attr( $u->display_name ); ?>" required></label><br>
+            <label>Bio: <textarea name="bio" rows="3"><?php echo esc_textarea( get_user_meta( $u->ID, 'description', true ) ); ?></textarea></label><br>
+            <?php if ( in_array( 'member_org', $u->roles, true ) ) : ?>
+                <label>Badge Label: <input type="text" name="badge_label" value="<?php echo esc_attr( get_user_meta( $u->ID, 'org_badge_label', true ) ); ?>"></label><br>
+            <?php endif; ?>
+            <label>
+                Membership Level:
+                <select name="membership_level" required>
+                    <option value="basic" <?php selected( $level, 'basic' ); ?>>Basic</option>
+                    <option value="pro" <?php selected( $level, 'pro' ); ?>>Pro</option>
+                    <option value="org" <?php selected( $level, 'org' ); ?>>Organization</option>
+                </select>
+            </label><br><br>
+            <button type="submit">Update Membership</button>
         </form>
         <?php
         return ob_get_clean();
