@@ -236,6 +236,10 @@ register_activation_hook( __FILE__, function() {
 } );
 add_action( 'ead_membership_expiry_check', __NAMESPACE__ . '\\ead_check_membership_expiry' );
 
+register_deactivation_hook( __FILE__, function() {
+    wp_clear_scheduled_hook( 'ead_membership_expiry_check' );
+} );
+
 /**
  * Registers CPTs/endpoints and flushes rewrites on activation.
  */
