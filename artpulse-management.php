@@ -45,6 +45,12 @@ if ( file_exists( EAD_PLUGIN_DIR_PATH . 'src/Autoloader.php' ) ) {
     require_once EAD_PLUGIN_DIR_PATH . 'src/Autoloader.php';
     Autoloader::register();
 
+    // Ensure roles manager class is loaded so the alias below always succeeds
+    $roles_manager_path = EAD_PLUGIN_DIR_PATH . 'src/Roles/RolesManager.php';
+    if ( file_exists( $roles_manager_path ) ) {
+        require_once $roles_manager_path;
+    }
+
     // Backward compatibility: older code references `EAD\\RolesManager`
     if ( ! class_exists( '\\EAD\\RolesManager' ) && class_exists( '\\EAD\\Roles\\RolesManager' ) ) {
         class_alias( '\\EAD\\Roles\\RolesManager', '\\EAD\\RolesManager' );
