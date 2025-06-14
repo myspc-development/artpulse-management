@@ -16,6 +16,7 @@ Version **3.7.3** compatible with **WordPress 6.7.2+**.
 - Data export page for CSV downloads
 - Pending Events moderation with approve and reject actions
 - Roles manager for custom capabilities
+- Core membership system with auto-renew and expiry checks
 - Flexible shortcodes for registration forms, listings and dashboards
 - Comprehensive REST API
 - User search API for autocomplete fields
