@@ -309,6 +309,9 @@ class Plugin {
         $this->setup_admin_features();
         $this->register_ajax_handlers();
 
+        // Check for registration pages during admin init
+        add_action( 'admin_init', [ self::class, 'check_registration_pages' ] );
+
         // Hook for organization approval notification
         add_action( 'transition_post_status', [ self::class, 'notify_user_on_organization_approval' ], 10, 3 );
 
@@ -1741,6 +1744,81 @@ class Plugin {
 
         wp_reset_postdata();
         wp_send_json_success( [ 'orgs' => $orgs_data ] );
+    }
+
+    /**
+     * Check that required registration pages exist and optionally create them.
+     */
+    public static function check_registration_pages() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( isset( $_GET['ead_create_registration_pages'] ) ) {
+            check_admin_referer( 'ead_create_registration_pages' );
+            self::create_registration_page_if_missing( 'ap_artist_registration_form', __( 'Artist Registration', self::TEXT_DOMAIN ) );
+            self::create_registration_page_if_missing( 'ead_organization_registration_form', __( 'Organization Registration', self::TEXT_DOMAIN ) );
+
+            wp_safe_redirect( remove_query_arg( [ 'ead_create_registration_pages', '_wpnonce' ] ) . '&ead_pages_created=1' );
+            exit;
+        }
+
+        $missing = [];
+        if ( ! self::find_page_with_shortcode( 'ap_artist_registration_form' ) ) {
+            $missing[] = '[ap_artist_registration_form]';
+        }
+        if ( ! self::find_page_with_shortcode( 'ead_organization_registration_form' ) ) {
+            $missing[] = '[ead_organization_registration_form]';
+        }
+
+        if ( $missing ) {
+            add_action( 'admin_notices', function () use ( $missing ) {
+                $create_url = wp_nonce_url( add_query_arg( 'ead_create_registration_pages', 1 ), 'ead_create_registration_pages' );
+                echo '<div class="notice notice-warning"><p>';
+                printf(
+                    esc_html__( 'Pages containing the following shortcodes are missing: %s', self::TEXT_DOMAIN ),
+                    esc_html( implode( ', ', $missing ) )
+                );
+                echo ' '; // space before button
+                echo '<a href="' . esc_url( $create_url ) . '" class="button button-primary">' . esc_html__( 'Create Pages', self::TEXT_DOMAIN ) . '</a>';
+                echo '</p></div>';
+            } );
+        } elseif ( isset( $_GET['ead_pages_created'] ) ) {
+            add_action( 'admin_notices', function () {
+                echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Registration pages created.', self::TEXT_DOMAIN ) . '</p></div>';
+            } );
+        }
+    }
+
+    private static function find_page_with_shortcode( $shortcode ) {
+        $pages = get_posts([
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ]);
+
+        foreach ( $pages as $page_id ) {
+            $content = get_post_field( 'post_content', $page_id );
+            if ( has_shortcode( $content, $shortcode ) ) {
+                return $page_id;
+            }
+        }
+
+        return 0;
+    }
+
+    private static function create_registration_page_if_missing( $shortcode, $title ) {
+        if ( self::find_page_with_shortcode( $shortcode ) ) {
+            return;
+        }
+
+        wp_insert_post([
+            'post_title'   => $title,
+            'post_content' => '[' . $shortcode . ']',
+            'post_status'  => 'publish',
+            'post_type'    => 'page',
+        ]);
     }
 
     public static function add_roles() {
