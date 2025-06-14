@@ -28,7 +28,29 @@ function artpulse_schedule_membership_check() {
 }
 add_action('wp', 'artpulse_schedule_membership_check');
 
+// Extend cron: Expiration warnings (3 days before end)
 add_action('artpulse_check_memberships', function () {
+    $now = current_time('timestamp');
+    $expire_users = get_users([
+        'meta_query' => [
+            [
+                'key' => 'membership_end_date',
+                'value' => date('Y-m-d H:i:s', strtotime('+3 days', $now)),
+                'compare' => 'LIKE'
+            ]
+        ]
+    ]);
+
+    foreach ($expire_users as $user) {
+        $email = $user->user_email;
+        $name = $user->display_name;
+        $subject = 'Your ArtPulse Membership is Expiring Soon';
+        $message = "Hi $name,\n\nJust a reminder \xE2\x80\x94 your membership will expire in 3 days.\n\nTo avoid interruption, please renew or upgrade your membership.\n\nVisit your account to take action.\n\nThank you,\nArtPulse Team";
+
+        wp_mail($email, $subject, $message);
+    }
+
+    // Expiration enforcement
     $users = get_users([
         'meta_key' => 'membership_end_date',
         'meta_compare' => '<=',
