@@ -76,7 +76,13 @@ function artpulse_render_membership_manager() {
 
 add_action('admin_enqueue_scripts', function ($hook) {
     if ($hook === 'artpulse-settings_page_artpulse-membership-manager') {
-        // wp_enqueue_script('artpulse-membership-manager', plugins_url('assets/js/membership-manager.js', __FILE__), ['jquery'], null, true);
+        wp_enqueue_script(
+            'artpulse-membership-manager',
+            plugins_url('assets/js/membership-manager.js', __FILE__),
+            ['jquery'],
+            null,
+            true
+        );
     }
 });
 
