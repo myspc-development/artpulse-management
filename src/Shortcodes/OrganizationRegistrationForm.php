@@ -60,7 +60,7 @@ class OrganizationRegistrationForm {
             true
         );
 
-        $settings = get_option('artpulse_settings', []);
+        $settings = get_option('artpulse_plugin_settings', []);
         $gmaps_api_key = isset($settings['google_maps_api_key']) ? $settings['google_maps_api_key'] : '';
         $gmaps_places_enabled = !empty($settings['enable_google_places_api']);
         $geonames_enabled = !empty($settings['enable_geonames_api']);
