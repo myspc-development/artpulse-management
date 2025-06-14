@@ -74,12 +74,6 @@ if ( file_exists( $user_profile_tab_file ) ) {
     require_once $user_profile_tab_file;
 }
 
-$membership_settings_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_settings.php';
-if ( file_exists( $membership_settings_file ) ) {
-    require_once $membership_settings_file;
-}
-
-
 $membership_overview_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_overview.php';
 if ( file_exists( $membership_overview_file ) ) {
     require_once $membership_overview_file;
