@@ -1,4 +1,5 @@
 <?php
+namespace EAD;
 function ead_register_membership_roles() {
     add_role('member_basic', 'Basic Member', [
         'read' => true,
