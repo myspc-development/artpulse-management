@@ -74,6 +74,11 @@ if ( file_exists( $membership_overview_file ) ) {
     require_once $membership_overview_file;
 }
 
+$membership_settings_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_settings.php';
+if ( file_exists( $membership_settings_file ) ) {
+    require_once $membership_settings_file;
+}
+
 
 /**
  * Copies plugin templates to the child theme directory on activation,
@@ -198,6 +203,34 @@ register_activation_hook( __FILE__, 'EAD\ead_register_default_event_types' ); //
 register_activation_hook( __FILE__, 'EAD\ead_create_rsvp_table' );
 register_activation_hook( __FILE__, 'EAD\ead_migrate_org_logo_meta' );
 register_activation_hook( __FILE__, [ RolesManager::class, 'register_membership_roles' ] );
+register_deactivation_hook( __FILE__, [ RolesManager::class, 'remove_membership_roles' ] );
+
+/**
+ * Daily cron task to remove expired memberships.
+ */
+function ead_check_expired_memberships() {
+    $users = get_users([
+        'meta_query' => [
+            [
+                'key'     => 'membership_expires',
+                'value'   => current_time('timestamp'),
+                'compare' => '<='
+            ],
+        ],
+    ]);
+
+    foreach ( $users as $user ) {
+        delete_user_meta( $user->ID, 'is_member' );
+        $user->set_role( 'member_registered' );
+    }
+}
+
+register_activation_hook( __FILE__, function() {
+    if ( ! wp_next_scheduled( 'ead_check_expired_memberships' ) ) {
+        wp_schedule_event( time(), 'daily', 'ead_check_expired_memberships' );
+    }
+} );
+add_action( 'ead_check_expired_memberships', __NAMESPACE__ . '\\ead_check_expired_memberships' );
 
 /**
  * Registers CPTs/endpoints and flushes rewrites on activation.
