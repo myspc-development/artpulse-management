@@ -453,22 +453,6 @@ class SettingsPage {
             'artpulse_payments_section',
             [ 'id' => 'featured_duration_days', 'description' => __( 'Number of days a listing stays featured after payment.', 'artpulse-management' ) ]
         );
-        add_settings_field(
-            'stripe_publishable_key',
-            __( 'Stripe Publishable Key', 'artpulse-management' ),
-            [ self::class, 'render_text_field_callback' ],
-            $payments_tab_slug,
-            'artpulse_payments_section',
-            [ 'id' => 'stripe_publishable_key' ]
-        );
-        add_settings_field(
-            'stripe_secret_key',
-            __( 'Stripe Secret Key', 'artpulse-management' ),
-            [ self::class, 'render_text_field_callback' ],
-            $payments_tab_slug,
-            'artpulse_payments_section',
-            [ 'id' => 'stripe_secret_key' ]
-        );
 
         // --- Membership Tab ---
         $membership_tab_slug = self::$settings_page_slug . '-membership';
@@ -503,12 +487,44 @@ class SettingsPage {
             [ 'id' => 'org_fee', 'step' => '0.01' ]
         );
         add_settings_field(
+            'currency',
+            __( 'Currency', 'artpulse-management' ),
+            [ self::class, 'render_text_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'currency' ]
+        );
+        add_settings_field(
             'enable_stripe',
             __( 'Enable Stripe Integration', 'artpulse-management' ),
             [ self::class, 'render_checkbox_field_callback' ],
             $membership_tab_slug,
             'ead_fees_section',
             [ 'id' => 'enable_stripe' ]
+        );
+        add_settings_field(
+            'stripe_publishable_key',
+            __( 'Stripe Publishable Key', 'artpulse-management' ),
+            [ self::class, 'render_text_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'stripe_publishable_key' ]
+        );
+        add_settings_field(
+            'stripe_secret_key',
+            __( 'Stripe Secret Key', 'artpulse-management' ),
+            [ self::class, 'render_text_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'stripe_secret_key' ]
+        );
+        add_settings_field(
+            'stripe_test_mode',
+            __( 'Stripe Test Mode', 'artpulse-management' ),
+            [ self::class, 'render_checkbox_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'stripe_test_mode' ]
         );
         add_settings_field(
             'enable_woocommerce',
@@ -730,9 +746,13 @@ class SettingsPage {
         if ( isset( $input['org_fee'] ) ) {
             $output['org_fee'] = floatval( $input['org_fee'] );
         }
+        if ( isset( $input['currency'] ) ) {
+            $output['currency'] = sanitize_text_field( $input['currency'] );
+        }
         $output['enable_stripe']      = ! empty( $input['enable_stripe'] );
         $output['enable_woocommerce']  = ! empty( $input['enable_woocommerce'] );
         $output['notify_on_change']    = ! empty( $input['notify_on_change'] );
+        $output['stripe_test_mode']    = ! empty( $input['stripe_test_mode'] );
 
         // Sanitize Data Management settings
         if ( isset( $input['enable_fallback_updates'] ) ) {
@@ -1030,7 +1050,11 @@ class SettingsPage {
             'basic_fee'         => $options['basic_fee'] ?? 0,
             'pro_fee'           => $options['pro_fee'] ?? 0,
             'org_fee'           => $options['org_fee'] ?? 0,
+            'currency'          => $options['currency'] ?? 'USD',
             'enable_stripe'     => $options['enable_stripe'] ?? false,
+            'stripe_publishable_key' => $options['stripe_publishable_key'] ?? '',
+            'stripe_secret_key'     => $options['stripe_secret_key'] ?? '',
+            'stripe_test_mode'     => $options['stripe_test_mode'] ?? false,
             'enable_woocommerce'=> $options['enable_woocommerce'] ?? false,
             'notify_on_change'  => $options['notify_on_change'] ?? false,
         ];
@@ -1049,7 +1073,17 @@ class SettingsPage {
             return;
         }
 
-        $keys  = [ 'basic_fee', 'pro_fee', 'org_fee', 'enable_stripe', 'enable_woocommerce' ];
+        $keys  = [
+            'basic_fee',
+            'pro_fee',
+            'org_fee',
+            'currency',
+            'enable_stripe',
+            'stripe_publishable_key',
+            'stripe_secret_key',
+            'stripe_test_mode',
+            'enable_woocommerce'
+        ];
         $diff  = [];
 
         foreach ( $keys as $key ) {
