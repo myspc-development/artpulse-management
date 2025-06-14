@@ -84,10 +84,7 @@ $membership_overview_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_overview.php
 if ( file_exists( $membership_overview_file ) ) {
     require_once $membership_overview_file;
 }
-$membership_roles_file = EAD_PLUGIN_DIR_PATH . 'register_membership_roles.php';
-if ( file_exists( $membership_roles_file ) ) {
-    require_once $membership_roles_file;
-}
+
 
 /**
  * Copies plugin templates to the child theme directory on activation,
@@ -211,7 +208,7 @@ register_activation_hook( __FILE__, 'EAD\artpulse_copy_templates_to_child_theme'
 register_activation_hook( __FILE__, 'EAD\ead_register_default_event_types' ); // ADDED: Hook for event type registration
 register_activation_hook( __FILE__, 'EAD\ead_create_rsvp_table' );
 register_activation_hook( __FILE__, 'EAD\ead_migrate_org_logo_meta' );
-register_activation_hook( __FILE__, 'EAD\\ead_register_membership_roles' );
+register_activation_hook( __FILE__, [ RolesManager::class, 'register_membership_roles' ] );
 
 // --- Consolidated Use Statements (Grouped for better readability) ---
 // Admin

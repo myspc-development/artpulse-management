@@ -78,6 +78,60 @@ class RolesManager {
     }
 
     /**
+     * Register membership related roles.
+     */
+    public static function register_membership_roles() {
+        add_role(
+            'member_basic',
+            __('Basic Member', 'artpulse-management'),
+            [
+                'read'         => true,
+                'rsvp_events'  => true,
+                'view_dashboard' => true,
+            ]
+        );
+
+        add_role(
+            'member_registered',
+            __('Registered Member', 'artpulse-management'),
+            [
+                'read'                   => true,
+                'view_exclusive_content' => true,
+            ]
+        );
+
+        add_role(
+            'member_pro',
+            __('Pro Artist', 'artpulse-management'),
+            [
+                'read'                    => true,
+                'submit_artwork'          => true,
+                'access_artist_dashboard' => true,
+            ]
+        );
+
+        add_role(
+            'member_org',
+            __('Organization Member', 'artpulse-management'),
+            [
+                'read'                     => true,
+                'submit_organization'      => true,
+                'access_org_dashboard'     => true,
+            ]
+        );
+    }
+
+    /**
+     * Remove membership related roles.
+     */
+    public static function remove_membership_roles() {
+        remove_role('member_basic');
+        remove_role('member_registered');
+        remove_role('member_pro');
+        remove_role('member_org');
+    }
+
+    /**
      * Register capabilities to existing roles.
      */
     public static function register_roles() {
