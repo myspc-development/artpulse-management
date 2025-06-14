@@ -25,12 +25,14 @@ The Core module contains the foundational logic and utilities required across al
 - Define a clear module registration API (e.g., `register_module()` with metadata)
 - Use class autoloading and namespaces for maintainability
 - Bootstrap critical services (e.g., auth, routing, i18n) before module init
+- Support external APIs configuration (e.g., Google Maps, Places, GeoNames)
 
 ## UI/UX Plans
 - General settings page for site-wide configuration
 - Admin notices and banners for system errors, upgrades, debug alerts
 - Toggle for developer mode and debugging tools
 - Module status and dependency check dashboard (optional)
+- Settings tabs UI: API Keys (Maps, Places), defaults (event duration, geolocation), debug mode toggle
 
 ## Testing Strategy
 - Activation/deactivation edge case testing
