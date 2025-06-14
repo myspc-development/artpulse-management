@@ -316,6 +316,7 @@ use EAD\Admin\PendingArtists;
 use EAD\Admin\PendingArtworks;
 use EAD\Admin\ReviewsModerator;
 use EAD\Admin\NotificationSettingsAdmin;
+use EAD\Admin\ManageMembers;
 use EAD\Admin\AdminEventForm;
 use EAD\Admin\Geocoder;
 use EAD\Admin\AdminRedirects;
@@ -629,6 +630,7 @@ class Plugin {
             PendingOrganizations::register();
             PendingArtists::register();
             PendingArtworks::register();
+            ManageMembers::register();
             MetaBoxesOrganisation::register();
             MetaBoxesArtist::register();
             MetaBoxesEvent::register();
