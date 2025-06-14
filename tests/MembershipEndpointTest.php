@@ -69,4 +69,21 @@ class MembershipEndpointTest extends TestCase
         $this->assertSame('silver', $response->data['membership_level']);
         $this->assertSame('subscriber', $response->data['role']);
     }
+
+    public function test_update_user_profile_updates_fields()
+    {
+        Stubs::$current_user_roles = ['member_org'];
+        $endpoint = new MembershipEndpoint();
+        $request = new WP_REST_Request();
+        $request->set_param('name', 'New User');
+        $request->set_param('bio', 'New bio');
+        $request->set_param('badge_label', 'Elite');
+
+        $response = $endpoint->update_user_profile($request);
+
+        $this->assertTrue($response->data['success']);
+        $this->assertSame('New User', Stubs::$updated_posts[1]['display_name']);
+        $this->assertSame('New bio', Stubs::$user_meta['description']);
+        $this->assertSame('Elite', Stubs::$user_meta['org_badge_label']);
+    }
 }

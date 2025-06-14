@@ -26,6 +26,16 @@ class MembershipEndpoint extends WP_REST_Controller {
 
         register_rest_route(
             $this->namespace,
+            '/user-profile',
+            [
+                'methods'             => WP_REST_Server::EDITABLE,
+                'callback'            => [ $this, 'update_user_profile' ],
+                'permission_callback' => [ $this, 'update_permissions_check' ],
+            ]
+        );
+
+        register_rest_route(
+            $this->namespace,
             '/user-badges',
             [
                 'methods'             => WP_REST_Server::READABLE,
@@ -54,6 +64,7 @@ class MembershipEndpoint extends WP_REST_Controller {
             'role'             => $u->roles[0] ?? 'guest',
             'membership_level' => get_user_meta( $u->ID, 'membership_level', true ),
             'badge_label'      => get_user_meta( $u->ID, 'org_badge_label', true ),
+            'bio'              => get_user_meta( $u->ID, 'description', true ),
         ], 200 );
     }
 
@@ -85,8 +96,47 @@ class MembershipEndpoint extends WP_REST_Controller {
         ], 200 );
     }
 
+    public function update_user_profile( WP_REST_Request $request ) {
+        $user = wp_get_current_user();
+        $uid  = $user->ID;
+
+        $name  = sanitize_text_field( $request->get_param( 'name' ) );
+        $bio   = sanitize_textarea_field( $request->get_param( 'bio' ) );
+        $badge = sanitize_text_field( $request->get_param( 'badge_label' ) );
+
+        if ( $name ) {
+            wp_update_user([
+                'ID'           => $uid,
+                'display_name' => $name,
+            ]);
+        }
+
+        if ( $bio !== null ) {
+            update_user_meta( $uid, 'description', $bio );
+        }
+
+        if ( in_array( 'member_org', $user->roles, true ) ) {
+            update_user_meta( $uid, 'org_badge_label', $badge );
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'Profile updated.',
+            'data'    => [
+                'name'        => $name,
+                'bio'         => $bio,
+                'badge_label' => $badge,
+            ],
+        ], 200 );
+    }
+
     public function permissions_check( WP_REST_Request $request ) {
         $user = wp_get_current_user();
         return in_array( 'member_pro', $user->roles, true );
+    }
+
+    public function update_permissions_check( WP_REST_Request $request ) {
+        $user = wp_get_current_user();
+        return in_array( 'member_pro', $user->roles, true ) || in_array( 'member_org', $user->roles, true );
     }
 }
