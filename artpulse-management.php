@@ -79,10 +79,6 @@ if ( file_exists( $membership_settings_file ) ) {
     require_once $membership_settings_file;
 }
 
-$membership_signup_file = EAD_PLUGIN_DIR_PATH . 'membership_signup.php';
-if ( file_exists( $membership_signup_file ) ) {
-    require_once $membership_signup_file;
-}
 
 $membership_overview_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_overview.php';
 if ( file_exists( $membership_overview_file ) ) {
