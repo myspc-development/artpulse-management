@@ -183,22 +183,22 @@ function artpulse_membership_create_placeholder_pages() {
 }
 add_action('init', 'artpulse_membership_create_placeholder_pages');
 
-// Shortcode for success message display
+// Shortcode: styled success message
 function artpulse_membership_success_message_shortcode() {
     if (!is_user_logged_in()) return '';
     $level = get_user_meta(get_current_user_id(), 'membership_level', true);
 
     if ($level === 'pro') {
-        return '<div class="notice updated"><strong>✅ Success:</strong> Your Pro membership is active!</div>';
+        return '<div class="p-4 bg-green-100 text-green-800 border border-green-300 rounded">✅ <strong>Success:</strong> Your Pro membership is now active!</div>';
     } else {
-        return '<div class="notice warning"><strong>Note:</strong> Your membership status is ' . esc_html(ucfirst($level)) . '.</div>';
+        return '<div class="p-4 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded">⚠️ <strong>Note:</strong> Your membership is currently: ' . esc_html(ucfirst($level)) . '.</div>';
     }
 }
 add_shortcode('membership_success_status', 'artpulse_membership_success_message_shortcode');
 
-// Shortcode for cancel/failure message
+// Shortcode: styled cancel message
 function artpulse_membership_cancel_message_shortcode() {
-    return '<div class="notice error"><strong>⚠️ Payment Cancelled:</strong> You can try again or choose a different plan.</div>';
+    return '<div class="p-4 bg-red-100 text-red-800 border border-red-300 rounded">⚠️ <strong>Payment Cancelled:</strong> You can try again or choose a different plan below.</div>';
 }
 add_shortcode('membership_cancel_status', 'artpulse_membership_cancel_message_shortcode');
 
@@ -260,4 +260,25 @@ function artpulse_stripe_webhook_handler(WP_REST_Request $request) {
     }
 
     return new WP_REST_Response(['status' => 'success'], 200);
+}
+
+// Optional template functions (for theme integration)
+function artpulse_render_membership_success_template() {
+    get_header();
+    echo '<main class="max-w-3xl mx-auto p-6">';
+    echo '<h1 class="text-2xl font-bold mb-4">Membership Upgrade Successful</h1>';
+    echo do_shortcode('[membership_success_status]');
+    echo '<a href="/dashboard" class="inline-block mt-6 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Go to Dashboard</a>';
+    echo '</main>';
+    get_footer();
+}
+
+function artpulse_render_membership_cancel_template() {
+    get_header();
+    echo '<main class="max-w-3xl mx-auto p-6">';
+    echo '<h1 class="text-2xl font-bold mb-4">Checkout Cancelled</h1>';
+    echo do_shortcode('[membership_cancel_status]');
+    echo '<a href="/membership" class="inline-block mt-6 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Return to Membership Page</a>';
+    echo '</main>';
+    get_footer();
 }

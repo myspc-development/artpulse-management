@@ -140,6 +140,7 @@ During development you can run `npm run watch` to continuously build assets as f
 | `[membership_cancel_status]` | – | `[membership_cancel_status]` |
 Use `[ead_organization_registration_form]` to display a front-end organization registration form. The form submits via JavaScript to the `artpulse/v1/organizations` endpoint.
 Place `[ead_membership_status]` on a page to let logged-in users choose or update their membership level.
+`[membership_success_status]` and `[membership_cancel_status]` output the styled success or cancellation messages used on checkout result pages.
 
 `[ap_artist_registration_form]` and `[ead_organization_registration_form]` are restricted to logged-in users. The current user must have a membership level of **Pro Artist** or **Organization** respectively to view the form.
 
