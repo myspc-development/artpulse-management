@@ -90,9 +90,11 @@ class MembershipEndpoint extends WP_REST_Controller {
     public function get_membership_status( WP_REST_Request $request ) {
         $uid = get_current_user_id();
         return new WP_REST_Response([
-            'is_member'       => get_user_meta( $uid, 'is_member', true ) === '1',
-            'membership_level'=> get_user_meta( $uid, 'membership_level', true ),
-            'role'            => wp_get_current_user()->roles[0] ?? 'guest',
+            'is_member'         => get_user_meta( $uid, 'is_member', true ) === '1',
+            'membership_level'  => get_user_meta( $uid, 'membership_level', true ),
+            'membership_joined' => get_user_meta( $uid, 'membership_joined', true ),
+            'membership_expires'=> get_user_meta( $uid, 'membership_expires', true ),
+            'role'              => wp_get_current_user()->roles[0] ?? 'guest',
         ], 200 );
     }
 
@@ -100,7 +102,6 @@ class MembershipEndpoint extends WP_REST_Controller {
         $user = wp_get_current_user();
         $uid  = $user->ID;
 
-        // Sanitize input fields
         $name   = sanitize_text_field( $request->get_param( 'name' ) );
         $bio    = sanitize_textarea_field( $request->get_param( 'bio' ) );
         $badge  = sanitize_text_field( $request->get_param( 'badge_label' ) );
@@ -121,29 +122,20 @@ class MembershipEndpoint extends WP_REST_Controller {
             update_user_meta( $uid, 'org_badge_label', $badge );
         }
 
-        // Handle membership updates
         if ( $level ) {
             update_user_meta( $uid, 'membership_level', $level );
             update_user_meta( $uid, 'is_member', '1' );
+            update_user_meta( $uid, 'membership_joined', current_time('mysql') );
 
-            switch ( $level ) {
-                case 'basic':
-                    $user->set_role( 'member_basic' );
-                    break;
-                case 'pro':
-                    $user->set_role( 'member_pro' );
-                    break;
-                case 'org':
-                    $user->set_role( 'member_org' );
-                    break;
-                default:
-                    $user->set_role( 'member_registered' );
-            }
+            $expires = strtotime('+1 year');
+            update_user_meta( $uid, 'membership_expires', date('Y-m-d H:i:s', $expires) );
+
+            $this->assign_role( $uid, $level );
         }
 
-        return new WP_REST_Response([
+        return new \WP_REST_Response([
             'success' => true,
-            'message' => 'Profile updated.',
+            'message' => 'Profile and membership updated.',
             'data'    => [
                 'name'             => $name,
                 'bio'              => $bio,
@@ -151,6 +143,24 @@ class MembershipEndpoint extends WP_REST_Controller {
                 'membership_level' => $level,
             ],
         ], 200 );
+    }
+
+    private function assign_role( $user_id, $level ) {
+        $user = new \WP_User( $user_id );
+
+        switch ( $level ) {
+            case 'basic':
+                $user->set_role( 'member_basic' );
+                break;
+            case 'pro':
+                $user->set_role( 'member_pro' );
+                break;
+            case 'org':
+                $user->set_role( 'member_org' );
+                break;
+            default:
+                $user->set_role( 'member_registered' );
+        }
     }
 
     public function permissions_check( WP_REST_Request $request ) {

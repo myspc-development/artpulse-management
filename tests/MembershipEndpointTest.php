@@ -57,6 +57,8 @@ class MembershipEndpointTest extends TestCase
         Stubs::$user_meta = [
             'is_member' => '1',
             'membership_level' => 'silver',
+            'membership_joined' => '2023-01-01 00:00:00',
+            'membership_expires' => '2024-01-01 00:00:00',
         ];
         $endpoint = new MembershipEndpoint();
         $ref = new ReflectionClass($endpoint);
@@ -67,6 +69,8 @@ class MembershipEndpointTest extends TestCase
 
         $this->assertTrue($response->data['is_member']);
         $this->assertSame('silver', $response->data['membership_level']);
+        $this->assertSame('2023-01-01 00:00:00', $response->data['membership_joined']);
+        $this->assertSame('2024-01-01 00:00:00', $response->data['membership_expires']);
         $this->assertSame('subscriber', $response->data['role']);
     }
 
@@ -78,6 +82,7 @@ class MembershipEndpointTest extends TestCase
         $request->set_param('name', 'New User');
         $request->set_param('bio', 'New bio');
         $request->set_param('badge_label', 'Elite');
+        $request->set_param('membership_level', 'pro');
 
         $response = $endpoint->update_user_profile($request);
 
@@ -85,5 +90,10 @@ class MembershipEndpointTest extends TestCase
         $this->assertSame('New User', Stubs::$updated_posts[1]['display_name']);
         $this->assertSame('New bio', Stubs::$user_meta['description']);
         $this->assertSame('Elite', Stubs::$user_meta['org_badge_label']);
+        $this->assertSame('pro', Stubs::$user_meta['membership_level']);
+        $this->assertSame('1', Stubs::$user_meta['is_member']);
+        $this->assertArrayHasKey('membership_joined', Stubs::$user_meta);
+        $this->assertArrayHasKey('membership_expires', Stubs::$user_meta);
+        $this->assertSame(['member_pro'], Stubs::$current_user_roles);
     }
 }
