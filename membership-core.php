@@ -153,28 +153,36 @@ add_shortcode('membership_status', 'artpulse_membership_status_shortcode');
 
 // Stripe Test Checkout Button Shortcode
 function artpulse_membership_checkout_shortcode() {
-    if (!is_user_logged_in()) return '<p>Please <a href="' . wp_login_url() . '">log in</a> to upgrade your membership.</p>';
+    $level = $_GET['level'] ?? '';
+    $map   = [
+        'pro' => 'prod_ABC123',
+        'org' => 'prod_XYZ789',
+    ];
 
-    $use_test        = get_option('stripe_test_mode');
-    $stripe_price_id = $use_test ? 'price_test_123' : 'price_live_456';
-    $stripe_pk       = $use_test ? 'pk_test_123' : 'pk_live_456';
+    if (!isset($map[$level])) {
+        return '<p>Invalid membership level.</p>';
+    }
 
-    ob_start();
-    echo '<script src="https://js.stripe.com/v3/"></script>';
-    echo '<button id="checkout-button">Upgrade to Pro</button>';
-    echo '<script>
-        var stripe = Stripe("' . esc_js($stripe_pk) . '");
-        document.getElementById("checkout-button").addEventListener("click", function () {
-            fetch("' . admin_url('admin-ajax.php') . '?action=artpulse_create_checkout_session")
-                .then(function (response) { return response.json(); })
-                .then(function (session) {
-                    return stripe.redirectToCheckout({ sessionId: session.id });
-                })
-                .then(function (result) {
-                    if (result.error) alert(result.error.message);
-                });
-    });</script>';
-    return ob_get_clean();
+    require_once ABSPATH . 'vendor/autoload.php';
+
+    $use_test      = get_option('stripe_test_mode');
+    $stripe_secret = $use_test ? 'sk_test_123' : 'sk_live_456';
+
+    \Stripe\Stripe::setApiKey($stripe_secret);
+
+    $session = \Stripe\Checkout\Session::create([
+        'payment_method_types' => ['card'],
+        'mode'                 => 'payment',
+        'line_items'           => [[
+            'price'    => $map[$level],
+            'quantity' => 1,
+        ]],
+        'success_url' => home_url('/registration-complete/'),
+        'cancel_url'  => home_url('/membership-cancel/'),
+    ]);
+
+    wp_redirect($session->url);
+    exit;
 }
 add_shortcode('membership_checkout', 'artpulse_membership_checkout_shortcode');
 
@@ -228,10 +236,20 @@ add_action('wp_ajax_artpulse_create_checkout_session', 'artpulse_create_checkout
 add_action('wp_ajax_nopriv_artpulse_create_checkout_session', 'artpulse_create_checkout_session');
 
 function artpulse_create_checkout_session() {
+    $level = sanitize_text_field($_GET['level'] ?? '');
+
+    $map = [
+        'pro' => 'prod_ABC123',
+        'org' => 'prod_XYZ789',
+    ];
+
+    if (!isset($map[$level])) {
+        wp_send_json(['error' => 'invalid level'], 400);
+    }
+
     require_once ABSPATH . 'vendor/autoload.php';
-    $use_test        = get_option('stripe_test_mode');
-    $stripe_secret   = $use_test ? 'sk_test_123' : 'sk_live_456';
-    $stripe_price_id = $use_test ? 'price_test_123' : 'price_live_456';
+    $use_test      = get_option('stripe_test_mode');
+    $stripe_secret = $use_test ? 'sk_test_123' : 'sk_live_456';
 
     \Stripe\Stripe::setApiKey($stripe_secret);
 
@@ -239,10 +257,10 @@ function artpulse_create_checkout_session() {
         'payment_method_types' => ['card'],
         'mode'                 => 'payment',
         'line_items'           => [[
-            'price'    => $stripe_price_id,
+            'price'    => $map[$level],
             'quantity' => 1,
         ]],
-        'success_url' => home_url('/membership-success/'),
+        'success_url' => home_url('/registration-complete/'),
         'cancel_url'  => home_url('/membership-cancel/'),
     ]);
 
@@ -370,6 +388,14 @@ add_action('init', function () {
     $password = $_POST['password'];
     $level    = sanitize_text_field($_POST['membership_level']);
 
+    if (in_array($level, ['pro', 'org'], true)) {
+        // Store data for post-checkout account creation
+        session_start();
+        $_SESSION['pending_registration'] = compact('username', 'email', 'password', 'level');
+        wp_redirect(home_url("/checkout/?level=$level"));
+        exit;
+    }
+
     $user_id = wp_create_user($username, $password, $email);
     if (is_wp_error($user_id)) {
         return;
@@ -385,4 +411,30 @@ add_action('init', function () {
 
     wp_redirect(home_url('/membership-success/'));
     exit;
+});
+
+// Finalize registration after successful Stripe checkout
+add_shortcode('finalize_registration', function () {
+    session_start();
+    if (!isset($_SESSION['pending_registration'])) {
+        return 'Missing registration session.';
+    }
+
+    $data = $_SESSION['pending_registration'];
+    unset($_SESSION['pending_registration']);
+
+    $user_id = wp_create_user($data['username'], $data['password'], $data['email']);
+    if (is_wp_error($user_id)) {
+        return 'User creation failed.';
+    }
+
+    wp_update_user(['ID' => $user_id, 'display_name' => $data['username']]);
+    update_user_meta($user_id, 'membership_level', $data['level']);
+    update_user_meta($user_id, 'membership_start_date', current_time('mysql'));
+    update_user_meta($user_id, 'membership_end_date', date('Y-m-d H:i:s', strtotime('+1 month')));
+    update_user_meta($user_id, 'membership_auto_renew', true);
+
+    artpulse_send_welcome_email($user_id);
+
+    return '<div class="text-green-600">✅ Registration complete. Welcome to ArtPulse!</div>';
 });

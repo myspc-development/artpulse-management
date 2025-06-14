@@ -10,8 +10,9 @@ function artpulse_register_member_shortcode() {
         <input type="password" name="password" placeholder="Password" required class="w-full p-2 border rounded" />
         <label class="block font-medium">Membership Level:</label>
         <select name="membership_level" required class="w-full p-2 border rounded">
-            <option value="basic">Basic</option>
-            <option value="pro">Pro</option>
+            <option value="basic">Basic (Free)</option>
+            <option value="pro">Pro ($9/mo)</option>
+            <option value="org">Organization ($49/mo)</option>
         </select>
         <?php wp_nonce_field('register_member_action', 'register_member_nonce'); ?>
         <button type="submit" name="register_member_submit" class="bg-blue-600 text-white px-4 py-2 rounded">Register</button>
