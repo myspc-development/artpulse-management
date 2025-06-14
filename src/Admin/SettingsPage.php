@@ -18,7 +18,9 @@ class SettingsPage {
         add_action( 'wp_ajax_ead_save_email_template', [ self::class, 'ajax_save_email_template' ] );
         add_action( 'wp_ajax_nopriv_ead_save_email_template', [ self::class, 'ajax_save_email_template' ] );
         add_action( 'admin_post_ead_clear_fallback_json_action', [ self::class, 'process_clear_fallback_json_data' ] );
+        add_action( 'admin_post_ead_export_membership_json', [ self::class, 'export_membership_fees' ] );
         add_action( 'admin_notices', [ self::class, 'admin_notices' ] ); // Add admin notices action
+        add_action( 'update_option_' . self::$main_option_name, [ self::class, 'maybe_notify_membership_change' ], 10, 2 );
     }
 
     public static function add_settings_page_menu_item() {
@@ -46,6 +48,7 @@ class SettingsPage {
             'data_management'  => __( 'Data Management', 'artpulse-management' ),
             'import_export'   => __( 'CSV Import/Export', 'artpulse-management' ),
             'email_templates'  => __( 'Email Templates', 'artpulse-management' ),
+            'membership'      => __( 'Membership', 'artpulse-management' ),
             'payments'        => __( 'Payment Integration', 'artpulse-management' ),
             'uninstall'        => __( 'Uninstall Settings', 'artpulse-management' ), // Added Uninstall Settings tab
         ] );
@@ -93,6 +96,17 @@ class SettingsPage {
         do_settings_sections( self::$settings_page_slug . '-' . $active_tab );
         submit_button();
         echo '</form>';
+
+        // Membership Tab - Export Fees
+        if ( $active_tab === 'membership' ) {
+            echo '<hr>';
+            echo '<h2>' . esc_html__( 'Export Membership Fees', 'artpulse-management' ) . '</h2>';
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="ead_export_membership_json">';
+            wp_nonce_field( 'ead_export_membership_json_action', '_ead_export_membership_nonce' );
+            submit_button( __( 'Export as JSON', 'artpulse-management' ) );
+            echo '</form>';
+        }
 
         // Data Management Tab - Clear Fallback JSON
         if ( $active_tab === 'data_management' ) {
@@ -456,6 +470,63 @@ class SettingsPage {
             [ 'id' => 'stripe_secret_key' ]
         );
 
+        // --- Membership Tab ---
+        $membership_tab_slug = self::$settings_page_slug . '-membership';
+        add_settings_section(
+            'ead_fees_section',
+            __( 'Membership Fee Settings', 'artpulse-management' ),
+            null,
+            $membership_tab_slug
+        );
+        add_settings_field(
+            'basic_fee',
+            __( 'Basic Member Fee ($)', 'artpulse-management' ),
+            [ self::class, 'render_number_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'basic_fee', 'step' => '0.01' ]
+        );
+        add_settings_field(
+            'pro_fee',
+            __( 'Pro Artist Fee ($)', 'artpulse-management' ),
+            [ self::class, 'render_number_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'pro_fee', 'step' => '0.01' ]
+        );
+        add_settings_field(
+            'org_fee',
+            __( 'Organization Fee ($)', 'artpulse-management' ),
+            [ self::class, 'render_number_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'org_fee', 'step' => '0.01' ]
+        );
+        add_settings_field(
+            'enable_stripe',
+            __( 'Enable Stripe Integration', 'artpulse-management' ),
+            [ self::class, 'render_checkbox_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'enable_stripe' ]
+        );
+        add_settings_field(
+            'enable_woocommerce',
+            __( 'Enable WooCommerce Integration', 'artpulse-management' ),
+            [ self::class, 'render_checkbox_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'enable_woocommerce' ]
+        );
+        add_settings_field(
+            'notify_on_change',
+            __( 'Email Notification on Fee Change', 'artpulse-management' ),
+            [ self::class, 'render_checkbox_field_callback' ],
+            $membership_tab_slug,
+            'ead_fees_section',
+            [ 'id' => 'notify_on_change' ]
+        );
+
         // --- Uninstall Settings Tab ---
         $uninstall_tab_slug = self::$settings_page_slug . '-uninstall';
         add_settings_section(
@@ -499,6 +570,17 @@ class SettingsPage {
         echo '<input type="checkbox" id="' . esc_attr( $id ) . '" name="' . esc_attr( self::$main_option_name . '[' . $id . ']' ) . '" value="1" ' . $checked . '>';
         echo $description;
         echo '</label>';
+    }
+
+    public static function render_number_field_callback( $args ) {
+        $options     = get_option( self::$main_option_name, [] );
+        $id          = $args['id'];
+        $value       = isset( $options[ $id ] ) ? esc_attr( $options[ $id ] ) : '';
+        $step        = isset( $args['step'] ) ? esc_attr( $args['step'] ) : '1';
+        $description = isset( $args['description'] ) ? '<p class="description">' . esc_html( $args['description'] ) . '</p>' : '';
+
+        echo '<input type="number" step="' . $step . '" id="' . esc_attr( $id ) . '" name="' . esc_attr( self::$main_option_name . '[' . $id . ']' ) . '" value="' . $value . '">';
+        echo $description;
     }
 
     public static function render_select_field_callback( $args ) {
@@ -637,6 +719,20 @@ class SettingsPage {
         if ( isset( $input['stripe_secret_key'] ) ) {
             $output['stripe_secret_key'] = sanitize_text_field( $input['stripe_secret_key'] );
         }
+
+        // Sanitize Membership settings
+        if ( isset( $input['basic_fee'] ) ) {
+            $output['basic_fee'] = floatval( $input['basic_fee'] );
+        }
+        if ( isset( $input['pro_fee'] ) ) {
+            $output['pro_fee'] = floatval( $input['pro_fee'] );
+        }
+        if ( isset( $input['org_fee'] ) ) {
+            $output['org_fee'] = floatval( $input['org_fee'] );
+        }
+        $output['enable_stripe']      = ! empty( $input['enable_stripe'] );
+        $output['enable_woocommerce']  = ! empty( $input['enable_woocommerce'] );
+        $output['notify_on_change']    = ! empty( $input['notify_on_change'] );
 
         // Sanitize Data Management settings
         if ( isset( $input['enable_fallback_updates'] ) ) {
@@ -915,6 +1011,65 @@ class SettingsPage {
 
         wp_safe_redirect( $redirect_url );
         exit;
+    }
+
+    /**
+     * Exports membership fee settings as JSON.
+     */
+    public static function export_membership_fees() {
+        if ( ! isset( $_POST['_ead_export_membership_nonce'] ) || ! wp_verify_nonce( $_POST['_ead_export_membership_nonce'], 'ead_export_membership_json_action' ) ) {
+            wp_die( 'Security check failed for export.' );
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'You do not have permission to perform this action.' );
+        }
+
+        $options = get_option( self::$main_option_name, [] );
+        $data    = [
+            'basic_fee'         => $options['basic_fee'] ?? 0,
+            'pro_fee'           => $options['pro_fee'] ?? 0,
+            'org_fee'           => $options['org_fee'] ?? 0,
+            'enable_stripe'     => $options['enable_stripe'] ?? false,
+            'enable_woocommerce'=> $options['enable_woocommerce'] ?? false,
+            'notify_on_change'  => $options['notify_on_change'] ?? false,
+        ];
+
+        header( 'Content-disposition: attachment; filename=membership_settings.json' );
+        header( 'Content-type: application/json' );
+        echo wp_json_encode( $data );
+        exit;
+    }
+
+    /**
+     * Sends an email notification when membership fees change.
+     */
+    public static function maybe_notify_membership_change( $old, $new ) {
+        if ( empty( $new['notify_on_change'] ) ) {
+            return;
+        }
+
+        $keys  = [ 'basic_fee', 'pro_fee', 'org_fee', 'enable_stripe', 'enable_woocommerce' ];
+        $diff  = [];
+
+        foreach ( $keys as $key ) {
+            $old_val = $old[ $key ] ?? null;
+            $new_val = $new[ $key ] ?? null;
+            if ( $old_val !== $new_val ) {
+                $diff[ $key ] = $new_val;
+            }
+        }
+
+        if ( empty( $diff ) ) {
+            return;
+        }
+
+        $message = "Membership settings have been updated:\n\n";
+        foreach ( $diff as $key => $val ) {
+            $message .= ucfirst( str_replace( '_', ' ', $key ) ) . ': ' . esc_html( $old[ $key ] ?? 'N/A' ) . ' → ' . esc_html( $val ) . "\n";
+        }
+
+        wp_mail( get_option( 'admin_email' ), '🔔 Membership Settings Updated', $message );
     }
 
     /**
