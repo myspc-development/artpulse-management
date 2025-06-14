@@ -102,6 +102,9 @@ require_once plugin_dir_path(__FILE__) . 'events.php';
 // Load artist management functionality
 require_once plugin_dir_path(__FILE__) . 'artists.php';
 
+// Load artwork management functionality
+require_once plugin_dir_path(__FILE__) . 'artworks.php';
+
 
 /**
  * Copies plugin templates to the child theme directory on activation,
