@@ -214,6 +214,7 @@ class ManageMembersListTable extends \WP_List_Table {
                     'edit'         => sprintf('<a href="%s">%s</a>', esc_url($edit_url), __('Edit', 'artpulse-management')),
                     'membership'   => sprintf('<a href="%s">%s</a>', esc_url($membership_url), __('Edit Membership', 'artpulse-management')),
                     'resend'       => sprintf('<a href="%s">%s</a>', esc_url($resend_url), __('Resend Reminder', 'artpulse-management')),
+                    'quick_edit'   => sprintf('<a href="#" class="manage-members-inline" data-id="%d">%s</a>', $item->ID, __('Quick Edit', 'artpulse-management')),
                 ];
                 return sprintf('%s %s', esc_html($item->display_name), $this->row_actions($actions));
             case 'email':
@@ -239,6 +240,14 @@ class ManageMembersListTable extends \WP_List_Table {
 
 class ManageMembers {
     public static function render_admin_page() {
+        if ( isset( $_GET['page'] ) && $_GET['page'] === 'artpulse-manage-members' ) {
+            $plugin_url = EAD_PLUGIN_DIR_URL;
+            wp_enqueue_script( 'ead-manage-members', $plugin_url . 'assets/js/ead-manage-members.js', [ 'jquery' ], EAD_MANAGEMENT_VERSION, true );
+            wp_localize_script( 'ead-manage-members', 'manageMembersData', [
+                'restUrl' => rest_url( 'artpulse/v1/manage-members/' ),
+                'manageMembersNonce' => wp_create_nonce( 'wp_rest' ),
+            ] );
+        }
         if ( isset( $_GET['export'] ) && current_user_can( 'manage_options' ) ) {
             self::export_csv();
         }
