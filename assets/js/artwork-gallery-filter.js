@@ -1,29 +1,53 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
     const artistSelect = document.getElementById('filter-artist');
     const mediumSelect = document.getElementById('filter-medium');
-    if (!artistSelect || !mediumSelect) return;
+    const grid = document.getElementById('artwork-grid');
+    if (!artistSelect || !mediumSelect || !grid) return;
 
-    const cards = document.querySelectorAll('.artwork-gallery-card');
+    const ajaxEnabled = window.ARTWORK_GALLERY && window.ARTWORK_GALLERY.ajaxEnabled;
+    const ajaxUrl = window.ARTWORK_GALLERY ? window.ARTWORK_GALLERY.ajaxurl : null;
 
-    function filterCards() {
+    const cards = Array.from(grid.children);
+
+    function filterClient() {
         const artist = artistSelect.value;
         const medium = mediumSelect.value;
 
         cards.forEach(card => {
-            const cardArtist = card.getAttribute('data-artist-id');
-            const cardMedium = card.getAttribute('data-medium');
+            const cardArtist = card.dataset.artistId;
+            const cardMedium = card.dataset.medium;
 
             const matchArtist = !artist || cardArtist === artist;
             const matchMedium = !medium || cardMedium === medium;
 
-            if (matchArtist && matchMedium) {
-                card.classList.remove('hidden');
-            } else {
-                card.classList.add('hidden');
-            }
+            card.style.display = matchArtist && matchMedium ? '' : 'none';
         });
     }
 
-    artistSelect.addEventListener('change', filterCards);
-    mediumSelect.addEventListener('change', filterCards);
+    function filterAjax() {
+        if (!ajaxUrl) return;
+        const data = new FormData();
+        data.append('action', 'filter_artworks');
+        data.append('artist', artistSelect.value);
+        data.append('medium', mediumSelect.value);
+
+        fetch(ajaxUrl, { method: 'POST', body: data })
+            .then(res => res.json())
+            .then(json => {
+                if (json.success) {
+                    grid.innerHTML = json.data;
+                }
+            });
+    }
+
+    function applyFilters() {
+        if (ajaxEnabled) {
+            filterAjax();
+        } else {
+            filterClient();
+        }
+    }
+
+    artistSelect.addEventListener('change', applyFilters);
+    mediumSelect.addEventListener('change', applyFilters);
 });
