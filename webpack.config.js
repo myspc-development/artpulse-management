@@ -1,16 +1,10 @@
 const path = require('path');
-const fs = require('fs');
-
-const jsDir = path.resolve(__dirname, 'assets/js');
-const entryFiles = fs.readdirSync(jsDir)
-  .filter(file => file.endsWith('.js'))
-  .map(file => path.join(jsDir, file));
 
 module.exports = {
   mode: 'production',
-  entry: entryFiles,
+  entry: './assets/js/user-dashboard/main.js',
   output: {
-    filename: 'bundle.js',
+    filename: 'user-dashboard.bundle.js',
     path: path.resolve(__dirname, 'build'),
   },
   module: {
