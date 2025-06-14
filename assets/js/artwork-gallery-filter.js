@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const artistSelect = document.getElementById('filter-artist');
     const mediumSelect = document.getElementById('filter-medium');
+    const styleSelect  = document.getElementById('filter-style');
     const grid = document.getElementById('artwork-grid');
     if (!artistSelect || !mediumSelect || !grid) return;
 
@@ -12,15 +13,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function filterClient() {
         const artist = artistSelect.value;
         const medium = mediumSelect.value;
+        const style  = styleSelect ? styleSelect.value : '';
 
         cards.forEach(card => {
             const cardArtist = card.dataset.artistId;
             const cardMedium = card.dataset.medium;
+            const cardStyle  = card.dataset.style;
 
             const matchArtist = !artist || cardArtist === artist;
             const matchMedium = !medium || cardMedium === medium;
+            const matchStyle  = !style || cardStyle === style;
 
-            card.style.display = matchArtist && matchMedium ? '' : 'none';
+            card.style.display = matchArtist && matchMedium && matchStyle ? '' : 'none';
         });
     }
 
@@ -30,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
         data.append('action', 'filter_artworks');
         data.append('artist', artistSelect.value);
         data.append('medium', mediumSelect.value);
+        if (styleSelect) {
+            data.append('style', styleSelect.value);
+        }
 
         fetch(ajaxUrl, { method: 'POST', body: data })
             .then(res => res.json())
@@ -50,4 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     artistSelect.addEventListener('change', applyFilters);
     mediumSelect.addEventListener('change', applyFilters);
+    if (styleSelect) {
+        styleSelect.addEventListener('change', applyFilters);
+    }
 });

@@ -804,7 +804,7 @@ class Plugin {
         $version    = self::VERSION;
         $screen = get_current_screen();
 
-        $allowed_post_types_for_featured_js = [ 'ead_event', 'ead_organization', 'ead_artist', 'ead_artwork' ];
+        $allowed_post_types_for_featured_js = [ 'ead_event', 'ead_organization', 'ead_artist', 'ead_artwork', 'artwork' ];
 
         if ( $screen && in_array( $screen->post_type, $allowed_post_types_for_featured_js, true ) && in_array( $hook_suffix, [ 'post.php', 'post-new.php', 'edit.php' ] ) ) {
             wp_enqueue_script( 'ead-admin-featured-js', $plugin_url . 'assets/js/ead-featured.js', [ 'jquery' ], $version, true );
