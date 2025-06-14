@@ -245,6 +245,7 @@ use EAD\Rest\OrganizationDashboardEndpoint;
 use EAD\Rest\ModerationEndpoint;
 use EAD\Rest\Like_Endpoint;
 use EAD\Rest\JwtAuthEndpoint;
+use EAD\Rest\MembershipEndpoint;
 
 // Dashboards
 use EAD\Dashboard\ArtistDashboard;
@@ -578,6 +579,7 @@ class Plugin {
             new \EAD\Rest\SyncEndpoint(),
             new \EAD\Rest\SettingsEndpoint(),
             new \EAD\Rest\CalendarEndpoint(),
+            new \EAD\Rest\MembershipEndpoint(),
             new \Artpulse\UserController(),
         ];
 

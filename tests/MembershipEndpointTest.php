@@ -1,0 +1,72 @@
+<?php
+use PHPUnit\Framework\TestCase;
+use Tests\Stubs;
+use EAD\Rest\MembershipEndpoint;
+
+class MembershipEndpointTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        Stubs::$user_meta = [];
+        Stubs::$current_user_id = 1;
+        Stubs::$current_user_email = 'user@example.com';
+        Stubs::$current_user_display_name = 'User';
+        Stubs::$current_user_roles = ['subscriber'];
+        Stubs::$logged_in = true;
+    }
+
+    public function test_get_user_profile_returns_expected_fields()
+    {
+        Stubs::$user_meta = [
+            'membership_level' => 'gold',
+            'org_badge_label'  => 'VIP',
+        ];
+
+        $endpoint = new MembershipEndpoint();
+        $ref = new ReflectionClass($endpoint);
+        $method = $ref->getMethod('get_user_profile');
+        $method->setAccessible(true);
+
+        $response = $method->invoke($endpoint, new WP_REST_Request());
+
+        $this->assertSame(1, $response->data['ID']);
+        $this->assertSame('User', $response->data['name']);
+        $this->assertSame('user@example.com', $response->data['email']);
+        $this->assertSame('subscriber', $response->data['role']);
+        $this->assertSame('gold', $response->data['membership_level']);
+        $this->assertSame('VIP', $response->data['badge_label']);
+    }
+
+    public function test_get_user_badges_builds_badge_list()
+    {
+        Stubs::$user_meta = [ 'rsvp_count' => 12 ];
+        $endpoint = new MembershipEndpoint();
+        $ref = new ReflectionClass($endpoint);
+        $method = $ref->getMethod('get_user_badges');
+        $method->setAccessible(true);
+
+        $response = $method->invoke($endpoint, new WP_REST_Request());
+
+        $this->assertSame(12, $response->data['rsvp_count']);
+        $this->assertContains('3 RSVPs', $response->data['badges']);
+        $this->assertContains('10 RSVPs', $response->data['badges']);
+    }
+
+    public function test_get_membership_status_returns_flags()
+    {
+        Stubs::$user_meta = [
+            'is_member' => '1',
+            'membership_level' => 'silver',
+        ];
+        $endpoint = new MembershipEndpoint();
+        $ref = new ReflectionClass($endpoint);
+        $method = $ref->getMethod('get_membership_status');
+        $method->setAccessible(true);
+
+        $response = $method->invoke($endpoint, new WP_REST_Request());
+
+        $this->assertTrue($response->data['is_member']);
+        $this->assertSame('silver', $response->data['membership_level']);
+        $this->assertSame('subscriber', $response->data['role']);
+    }
+}
