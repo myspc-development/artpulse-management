@@ -1,4 +1,9 @@
 jQuery(document).ready(function ($) {
+    // Bail if the membership table isn't present
+    if (!$('.artpulse-edit-member').length) {
+        return;
+    }
+
     // Membership levels for dropdown
     var levels = ['basic', 'pro', 'org', 'expired'];
 
