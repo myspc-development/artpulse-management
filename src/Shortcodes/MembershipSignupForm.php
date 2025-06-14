@@ -7,6 +7,8 @@ class MembershipSignupForm {
         // Handle form submission during the init hook so user redirects work
         // before template output.
         add_action( 'init', [ self::class, 'handle_submit' ] );
+        // Display notices for missing dashboard pages if needed.
+        add_action( 'admin_notices', [ self::class, 'maybe_display_missing_page_notice' ] );
     }
 
     /**
@@ -31,6 +33,54 @@ class MembershipSignupForm {
             default:
                 $user->set_role( 'member_registered' );
         }
+    }
+
+    /**
+     * Get the dashboard URL for the given membership level.
+     *
+     * @param string $level Membership level slug.
+     * @return string URL to redirect to.
+     */
+    private static function get_dashboard_url_for_level( string $level ): string {
+        $settings = get_option( 'artpulse_plugin_settings', [] );
+
+        $defaults = [
+            'basic' => 'dashboard',
+            'pro'   => 'artist-dashboard',
+            'org'   => 'organization-dashboard',
+        ];
+
+        $key  = $level . '_dashboard_slug';
+        $slug = isset( $settings[ $key ] ) ? trim( $settings[ $key ], '/' ) : $defaults[ $level ];
+
+        $page = get_page_by_path( $slug );
+        if ( $page ) {
+            return get_permalink( $page );
+        }
+
+        // Persist notice for admins about the missing page.
+        set_transient( 'ead_missing_dashboard_page', $slug, DAY_IN_SECONDS );
+
+        return home_url( '/' );
+    }
+
+    /**
+     * Display an admin notice if a dashboard page is missing.
+     */
+    public static function maybe_display_missing_page_notice() {
+        $slug = get_transient( 'ead_missing_dashboard_page' );
+        if ( ! $slug || ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        delete_transient( 'ead_missing_dashboard_page' );
+
+        echo '<div class="notice notice-warning is-dismissible"><p>' .
+            sprintf(
+                esc_html__( 'Dashboard page "%s" not found. Please create a page with this slug and add the appropriate shortcode.', 'artpulse-management' ),
+                esc_html( $slug )
+            ) .
+            '</p></div>';
     }
 
     public static function render() {
@@ -92,12 +142,7 @@ class MembershipSignupForm {
 
         self::assign_role( $uid, $level );
 
-        $redirect_url = '/dashboard';
-        if ( 'pro' === $level ) {
-            $redirect_url = '/artist-dashboard';
-        } elseif ( 'org' === $level ) {
-            $redirect_url = '/organization-dashboard';
-        }
+        $redirect_url = self::get_dashboard_url_for_level( $level );
 
         wp_redirect( add_query_arg( 'joined', '1', $redirect_url ) );
         exit;
