@@ -1,4 +1,5 @@
 <?php
+// Deprecated: Legacy REST routes now provided by src/Rest/MembershipEndpoint.php
 // File: rest_endpoints_membership.php
 
 add_action('rest_api_init', function () {

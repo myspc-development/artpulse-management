@@ -7,7 +7,7 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 class UserController extends WP_REST_Controller {
-    protected $namespace = 'ead/v1';
+    protected $namespace = 'artpulse/v1';
 
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
