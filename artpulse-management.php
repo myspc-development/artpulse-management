@@ -243,6 +243,7 @@ function ead_flush_rewrites() {
 
     // Register custom endpoints needed for the plugin.
     add_rewrite_endpoint( 'organization-confirmation', EP_ROOT | EP_PAGES );
+    add_rewrite_endpoint( 'membership-confirmation', EP_ROOT | EP_PAGES );
 
     flush_rewrite_rules();
 }
@@ -1939,10 +1940,12 @@ add_action( 'template_redirect', function () {
 
 add_action( 'init', function () {
     add_rewrite_endpoint( 'organization-confirmation', EP_ROOT | EP_PAGES );
+    add_rewrite_endpoint( 'membership-confirmation', EP_ROOT | EP_PAGES );
 } );
 
 add_filter( 'query_vars', function ( $vars ) {
     $vars[] = 'organization-confirmation';
+    $vars[] = 'membership-confirmation';
     return $vars;
 } );
 
@@ -1950,6 +1953,12 @@ add_action( 'template_redirect', function () {
     if ( get_query_var( 'organization-confirmation' ) !== '' ) {
         status_header( 200 );
         include plugin_dir_path( __FILE__ ) . 'templates/organization-confirmation-template.php';
+        exit;
+    }
+
+    if ( get_query_var( 'membership-confirmation' ) !== '' ) {
+        status_header( 200 );
+        include plugin_dir_path( __FILE__ ) . 'templates/confirmation-template.php';
         exit;
     }
 } );
