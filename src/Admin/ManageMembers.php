@@ -239,6 +239,22 @@ class ManageMembersListTable extends \WP_List_Table {
 }
 
 class ManageMembers {
+    public static function register() {
+        add_action( 'admin_init', [ self::class, 'handle_export' ] );
+    }
+
+    public static function handle_export() {
+        if (
+            isset( $_GET['page'] ) &&
+            $_GET['page'] === 'artpulse-manage-members' &&
+            isset( $_GET['export'] ) &&
+            current_user_can( 'manage_options' )
+        ) {
+            self::export_csv();
+            exit;
+        }
+    }
+
     public static function render_admin_page() {
         if ( isset( $_GET['page'] ) && $_GET['page'] === 'artpulse-manage-members' ) {
             $plugin_url = EAD_PLUGIN_DIR_URL;
@@ -247,9 +263,6 @@ class ManageMembers {
                 'restUrl' => rest_url( 'artpulse/v1/manage-members/' ),
                 'manageMembersNonce' => wp_create_nonce( 'wp_rest' ),
             ] );
-        }
-        if ( isset( $_GET['export'] ) && current_user_can( 'manage_options' ) ) {
-            self::export_csv();
         }
 
         if ( isset( $_GET['edit'] ) && current_user_can( 'manage_options' ) ) {
