@@ -51,6 +51,17 @@ add_action('artpulse_event_reminder_cron', function () {
     }
 });
 
+// 1b. Register custom taxonomy for event tags
+function artpulse_register_event_taxonomy() {
+    register_taxonomy('event_tag', 'event', [
+        'label'        => 'Tags',
+        'public'       => true,
+        'hierarchical' => false,
+        'show_in_rest' => true,
+    ]);
+}
+add_action('init', 'artpulse_register_event_taxonomy');
+
 // 2. Frontend event list: [event_list limit=5]
 function artpulse_event_list_shortcode($atts) {
     $atts = shortcode_atts(['limit' => 5], $atts);
@@ -196,13 +207,17 @@ function artpulse_enqueue_event_calendar_assets() {
     ]);
 
     foreach ($query->posts as $post) {
-        $start   = get_post_meta($post->ID, 'event_start_datetime', true);
-        $end     = get_post_meta($post->ID, 'event_end_datetime', true);
-        $events[] = [
-            'title' => get_the_title($post),
-            'start' => $start,
-            'end'   => $end,
-            'url'   => get_permalink($post),
+        $start        = get_post_meta($post->ID, 'event_start_datetime', true);
+        $end          = get_post_meta($post->ID, 'event_end_datetime', true);
+        $organizer_id = get_post_meta($post->ID, 'event_organizer', true);
+        $tags         = wp_get_post_terms($post->ID, 'event_tag', ['fields' => 'slugs']);
+        $events[]     = [
+            'title'     => get_the_title($post),
+            'start'     => $start,
+            'end'       => $end,
+            'url'       => get_permalink($post),
+            'organizer' => $organizer_id,
+            'tags'      => $tags,
         ];
     }
 
@@ -235,12 +250,26 @@ function artpulse_event_calendar_shortcode() {
         $options .= '<option value="' . esc_attr($id) . '">' . esc_html($name) . '</option>';
     }
 
-    return '<div class="mb-4">
-            <label for="calendar-organizer-filter">Filter by Organizer:</label>
-            <select id="calendar-organizer-filter" class="border px-2 py-1 rounded ml-2">'
-        . $options .
-        '</select>
-        </div>
-        <div id="event-calendar" class="my-6"></div>';
+    $terms       = get_terms([ 'taxonomy' => 'event_tag', 'hide_empty' => false ]);
+    $tag_options = '<option value="">All Tags</option>';
+    foreach ($terms as $tag) {
+        $tag_options .= '<option value="' . esc_attr($tag->slug) . '">' . esc_html($tag->name) . '</option>';
+    }
+
+    return '<div class="flex flex-wrap gap-4 items-center mb-4">'
+        . '<label class="text-sm font-medium">Organizer:'
+        . '<select id="calendar-organizer-filter" class="ml-2 border px-2 py-1 rounded">' . $options . '</select>'
+        . '</label>'
+        . '<label class="text-sm font-medium">Tag:'
+        . '<select id="calendar-tag-filter" class="ml-2 border px-2 py-1 rounded">' . $tag_options . '</select>'
+        . '</label>'
+        . '<label class="text-sm font-medium">From:'
+        . '<input type="date" id="calendar-start-filter" class="ml-2 border px-2 py-1 rounded" />'
+        . '</label>'
+        . '<label class="text-sm font-medium">To:'
+        . '<input type="date" id="calendar-end-filter" class="ml-2 border px-2 py-1 rounded" />'
+        . '</label>'
+        . '</div>'
+        . '<div id="event-calendar" class="my-6"></div>';
 }
 add_shortcode('event_calendar', 'artpulse_event_calendar_shortcode');
