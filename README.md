@@ -1,7 +1,7 @@
 # ArtPulse Management Plugin
 
 A feature-rich WordPress plugin for managing events, organizations, artists, and artworks.
-Version **3.7.6** compatible with **WordPress 6.7.2+**.
+Version **3.7.7** compatible with **WordPress 6.7.2+**.
 
 ## Features
 

@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Bundled Select2 assets locally and updated admin and frontend forms to load them without using a CDN.
 
+## [3.7.7] - 2025-06-18
+### Added
+- Simple Membership Manager page under Settings listing user memberships.
+
 ## [3.7.4] - 2025-06-15
 ### Fixed
 - Ensured `RolesManager` is loaded before aliasing to avoid activation errors.
