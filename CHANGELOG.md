@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 - Loaded `RolesManager` alias on `plugins_loaded` with priority 0 for
   compatibility with early callbacks.
 
+## [3.7.6] - 2025-06-17
+### Added
+- Bundled Select2 assets locally and updated admin and frontend forms to load them without using a CDN.
+
 ## [3.7.4] - 2025-06-15
 ### Fixed
 - Ensured `RolesManager` is loaded before aliasing to avoid activation errors.
