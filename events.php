@@ -212,8 +212,35 @@ function artpulse_enqueue_event_calendar_assets() {
 }
 add_action('wp_enqueue_scripts', 'artpulse_enqueue_event_calendar_assets');
 
-// 5. Shortcode output container for event calendar
+// 5. Shortcode output container + organizer filter for event calendar
 function artpulse_event_calendar_shortcode() {
-    return '<div id="event-calendar" class="my-6"></div>';
+    $organizers = [];
+    $query      = new WP_Query([
+        'post_type'      => 'event',
+        'posts_per_page' => -1,
+    ]);
+
+    foreach ($query->posts as $post) {
+        $organizer_id = get_post_meta($post->ID, 'event_organizer', true);
+        if ($organizer_id && !in_array($organizer_id, $organizers, true)) {
+            $organizers[] = $organizer_id;
+        }
+    }
+
+    $options = '<option value="">All Organizers</option>';
+    foreach ($organizers as $id) {
+        $name    = (is_numeric($id) && $user = get_user_by('ID', $id))
+            ? $user->display_name
+            : 'Org #' . esc_html($id);
+        $options .= '<option value="' . esc_attr($id) . '">' . esc_html($name) . '</option>';
+    }
+
+    return '<div class="mb-4">
+            <label for="calendar-organizer-filter">Filter by Organizer:</label>
+            <select id="calendar-organizer-filter" class="border px-2 py-1 rounded ml-2">'
+        . $options .
+        '</select>
+        </div>
+        <div id="event-calendar" class="my-6"></div>';
 }
 add_shortcode('event_calendar', 'artpulse_event_calendar_shortcode');
