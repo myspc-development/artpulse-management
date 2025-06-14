@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ArtPulse Management
  * Description: A feature-rich directory plugin for managing events, organizations, artists, artworks, dashboards, reviews, mobile API, roles, and data exports.
- * Version: 3.7.4
+ * Version: 3.7.5
  * Author: ArtPulse
  * Text Domain: artpulse-management
  */
@@ -24,7 +24,7 @@ if ( ! defined( 'EAD_PLUGIN_DIR_URL' ) ) {
 }
 
 if ( ! defined( 'EAD_PLUGIN_VERSION' ) ) {
-    define( 'EAD_PLUGIN_VERSION', '3.7.4' ); // CORRECTED: Match plugin header version
+    define( 'EAD_PLUGIN_VERSION', '3.7.5' );
 }
 
 if ( ! defined( 'EAD_MANAGEMENT_VERSION' ) ) {
@@ -61,6 +61,9 @@ if ( file_exists( EAD_PLUGIN_DIR_PATH . 'src/Autoloader.php' ) ) {
 
     // Load the roles manager and alias for backward compatibility
     ead_load_roles_manager();
+
+    // Also load the roles manager early in the plugins_loaded phase
+    add_action( 'plugins_loaded', __NAMESPACE__ . '\\ead_load_roles_manager', 0 );
 } else {
     // Fallback or error handling if autoloader is missing
     add_action(

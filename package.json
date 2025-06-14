@@ -1,6 +1,6 @@
 {
   "name": "artpulse-management",
-  "version": "3.7.4",
+  "version": "3.7.5",
   "description": "A feature-rich WordPress plugin for managing events, organizations, artists, and artworks.",
   "main": "index.js",
   "scripts": {
