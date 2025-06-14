@@ -100,9 +100,11 @@ class MembershipEndpoint extends WP_REST_Controller {
         $user = wp_get_current_user();
         $uid  = $user->ID;
 
-        $name  = sanitize_text_field( $request->get_param( 'name' ) );
-        $bio   = sanitize_textarea_field( $request->get_param( 'bio' ) );
-        $badge = sanitize_text_field( $request->get_param( 'badge_label' ) );
+        // Sanitize input fields
+        $name   = sanitize_text_field( $request->get_param( 'name' ) );
+        $bio    = sanitize_textarea_field( $request->get_param( 'bio' ) );
+        $badge  = sanitize_text_field( $request->get_param( 'badge_label' ) );
+        $level  = sanitize_text_field( $request->get_param( 'membership_level' ) );
 
         if ( $name ) {
             wp_update_user([
@@ -119,13 +121,34 @@ class MembershipEndpoint extends WP_REST_Controller {
             update_user_meta( $uid, 'org_badge_label', $badge );
         }
 
+        // Handle membership updates
+        if ( $level ) {
+            update_user_meta( $uid, 'membership_level', $level );
+            update_user_meta( $uid, 'is_member', '1' );
+
+            switch ( $level ) {
+                case 'basic':
+                    $user->set_role( 'member_basic' );
+                    break;
+                case 'pro':
+                    $user->set_role( 'member_pro' );
+                    break;
+                case 'org':
+                    $user->set_role( 'member_org' );
+                    break;
+                default:
+                    $user->set_role( 'member_registered' );
+            }
+        }
+
         return new WP_REST_Response([
             'success' => true,
             'message' => 'Profile updated.',
             'data'    => [
-                'name'        => $name,
-                'bio'         => $bio,
-                'badge_label' => $badge,
+                'name'             => $name,
+                'bio'              => $bio,
+                'badge_label'      => $badge,
+                'membership_level' => $level,
             ],
         ], 200 );
     }
@@ -136,7 +159,6 @@ class MembershipEndpoint extends WP_REST_Controller {
     }
 
     public function update_permissions_check( WP_REST_Request $request ) {
-        $user = wp_get_current_user();
-        return in_array( 'member_pro', $user->roles, true ) || in_array( 'member_org', $user->roles, true );
+        return is_user_logged_in();
     }
 }
