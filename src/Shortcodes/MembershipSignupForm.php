@@ -178,8 +178,9 @@ class MembershipSignupForm {
         update_user_meta( $user_id, 'description', $bio );
         update_user_meta( $user_id, 'membership_level', $level );
         update_user_meta( $user_id, 'is_member', 1 );
-        update_user_meta( $user_id, 'membership_joined', current_time( 'timestamp' ) );
-        update_user_meta( $user_id, 'membership_expires', strtotime( '+1 year' ) );
+        update_user_meta( $user_id, 'membership_joined', current_time( 'mysql' ) );
+        $expires = strtotime( '+1 year' );
+        update_user_meta( $user_id, 'membership_expires', date( 'Y-m-d H:i:s', $expires ) );
         if ( $badge ) {
             update_user_meta( $user_id, 'org_badge_label', $badge );
         }
