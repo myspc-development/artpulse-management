@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.4] - 2025-06-15
+### Fixed
+- Ensured `RolesManager` is loaded before aliasing to avoid activation errors.
+
 ## [3.7.3] - 2025-06-14
 ### Added
 - Calendar view in the user dashboard to browse events visually.
