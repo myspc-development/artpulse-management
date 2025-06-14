@@ -84,6 +84,11 @@ if ( file_exists( $membership_signup_file ) ) {
     require_once $membership_signup_file;
 }
 
+$membership_overview_file = EAD_PLUGIN_DIR_PATH . 'admin_membership_overview.php';
+if ( file_exists( $membership_overview_file ) ) {
+    require_once $membership_overview_file;
+}
+
 $membership_rest_file = EAD_PLUGIN_DIR_PATH . 'rest_endpoints_membership.php';
 if ( file_exists( $membership_rest_file ) ) {
     require_once $membership_rest_file;
