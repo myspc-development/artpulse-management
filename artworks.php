@@ -81,8 +81,64 @@ add_action('wp_enqueue_scripts', function () {
     );
 });
 
+// AJAX handler for dynamic artwork filtering
+add_action('wp_ajax_filter_artworks', 'ead_filter_artworks_ajax');
+add_action('wp_ajax_nopriv_filter_artworks', 'ead_filter_artworks_ajax');
+
+function ead_filter_artworks_ajax() {
+    $artist = absint($_POST['artist'] ?? 0);
+    $medium = sanitize_text_field($_POST['medium'] ?? '');
+
+    $meta = [];
+    if ($artist) {
+        $meta[] = [
+            'key'   => 'artwork_artist_id',
+            'value' => $artist,
+        ];
+    }
+    if ($medium) {
+        $meta[] = [
+            'key'   => 'artwork_medium',
+            'value' => $medium,
+        ];
+    }
+
+    $query = new WP_Query([
+        'post_type'      => 'artwork',
+        'posts_per_page' => -1,
+        'meta_query'     => $meta,
+    ]);
+
+    ob_start();
+    while ($query->have_posts()) {
+        $query->the_post();
+        $price      = get_post_meta(get_the_ID(), 'artwork_price', true);
+        $artist_id  = get_post_meta(get_the_ID(), 'artwork_artist_id', true);
+        $medium_val = get_post_meta(get_the_ID(), 'artwork_medium', true);
+        ?>
+        <div class="artwork-gallery-card border p-2 rounded shadow text-center" data-artist-id="<?php echo esc_attr($artist_id); ?>" data-medium="<?php echo esc_attr($medium_val); ?>">
+            <?php if (has_post_thumbnail()) {
+                echo '<a href="' . get_permalink() . '">' . get_the_post_thumbnail(null, 'medium', ['class' => 'rounded mx-auto']) . '</a>';
+            } ?>
+            <h4 class="font-medium mt-2 text-sm"><?php echo get_the_title(); ?></h4>
+            <?php if ($price) {
+                echo '<p class="text-xs text-gray-600">Price: ' . esc_html($price) . '</p>';
+            } ?>
+        </div>
+        <?php
+    }
+    wp_reset_postdata();
+
+    wp_send_json_success(ob_get_clean());
+}
+
 add_shortcode('artwork_gallery', function ($atts) {
-    $atts = shortcode_atts(['artist' => ''], $atts);
+    $atts = shortcode_atts([
+        'artist' => '',
+        'ajax'   => false,
+    ], $atts);
+
+    $ajax_enabled = filter_var($atts['ajax'], FILTER_VALIDATE_BOOLEAN);
 
     global $wpdb;
 
@@ -122,6 +178,15 @@ add_shortcode('artwork_gallery', function ($atts) {
 
     wp_enqueue_script('artwork-gallery-filter');
 
+    wp_localize_script(
+        'artwork-gallery-filter',
+        'ARTWORK_GALLERY',
+        [
+            'ajaxEnabled' => $ajax_enabled,
+            'ajaxurl'     => admin_url('admin-ajax.php'),
+        ]
+    );
+
     ob_start();
     ?>
     <div class="flex flex-wrap gap-4 items-center mb-4">
@@ -142,7 +207,7 @@ add_shortcode('artwork_gallery', function ($atts) {
             </select>
         </label>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div id="artwork-grid" data-ajax="<?php echo $ajax_enabled ? '1' : '0'; ?>" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
     <?php
     while ($query->have_posts()) {
         $query->the_post();
