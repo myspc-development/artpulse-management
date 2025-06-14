@@ -1,6 +1,6 @@
 # Membership Settings
 
-The **Membership** tab under **ArtPulse Settings** controls fees and payment integrations for paid memberships. Open **ArtPulse Settings** in the admin menu and select the **Membership** tab. You can also navigate directly to `/wp-admin/admin.php?page=artpulse-settings&tab=membership`. Older slugs such as `ead-membership-settings` are not registered and will result in a 404.
+The **Membership** tab under **ArtPulse Settings** controls fees and payment integrations for paid memberships. Open **ArtPulse Settings** in the admin menu and select the **Membership** tab. You can also navigate directly to `/wp-admin/admin.php?page=artpulse-settings&tab=membership`. Legacy slugs such as `ead-membership-settings` now redirect to the correct page.
 
 ## Fields
 

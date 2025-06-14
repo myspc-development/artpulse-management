@@ -28,13 +28,3 @@ function ead_render_membership_settings() {
     echo '</tbody></table></div>';
 }
 
-// Redirect legacy slug to the actual admin page
-add_action('admin_init', function () {
-    // Redirect /wp-admin/ead-membership-settings to the real page
-    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
-
-    if (strpos($request_uri, '/wp-admin/ead-membership-settings') !== false) {
-        wp_redirect(admin_url('admin.php?page=ead-membership-settings'), 301);
-        exit;
-    }
-});

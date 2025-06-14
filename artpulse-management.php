@@ -269,6 +269,7 @@ use EAD\Admin\ReviewsModerator;
 use EAD\Admin\NotificationSettingsAdmin;
 use EAD\Admin\AdminEventForm;
 use EAD\Admin\Geocoder;
+use EAD\Admin\AdminRedirects;
 
 // Shortcodes
 use EAD\Shortcodes\EventsListShortcode;
@@ -586,6 +587,7 @@ class Plugin {
             AdminEventForm::register(); // Corrected placement
             Geocoder::register();
             \EAD\Admin\HelpTabs::register();
+            AdminRedirects::init();
         }
     }
 
