@@ -205,7 +205,7 @@ function ead_create_rsvp_table() {
 function ead_migrate_org_logo_meta() {
     $query = new \WP_Query(
         [
-            'post_type'      => 'ead_organization',
+            'post_type'      => [ 'ead_organization', 'organization' ],
             'post_status'    => 'any',
             'posts_per_page' => -1,
             'fields'         => 'ids',
@@ -239,10 +239,56 @@ function ead_migrate_org_logo_meta() {
     }
 }
 
+/**
+ * Migrates legacy organization location meta keys on plugin activation.
+ */
+function ead_migrate_org_location_meta() {
+    $query = new \WP_Query(
+        [
+            'post_type'      => [ 'ead_organization', 'organization' ],
+            'post_status'    => 'any',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'meta_query'     => [
+                'relation' => 'OR',
+                [ 'key' => 'org_country', 'compare' => 'EXISTS' ],
+                [ 'key' => 'org_state',   'compare' => 'EXISTS' ],
+                [ 'key' => 'org_city',    'compare' => 'EXISTS' ],
+                [ 'key' => 'ead_org_country', 'compare' => 'EXISTS' ],
+                [ 'key' => 'ead_org_state',   'compare' => 'EXISTS' ],
+                [ 'key' => 'ead_org_city',    'compare' => 'EXISTS' ],
+            ],
+        ]
+    );
+
+    foreach ( $query->posts as $post_id ) {
+        $map = [
+            'ead_country' => [ 'org_country', 'ead_org_country' ],
+            'ead_state'   => [ 'org_state',   'ead_org_state' ],
+            'ead_city'    => [ 'org_city',    'ead_org_city' ],
+        ];
+
+        foreach ( $map as $new_key => $old_keys ) {
+            $current = get_post_meta( $post_id, $new_key, true );
+            if ( empty( $current ) ) {
+                foreach ( $old_keys as $old_key ) {
+                    $old_val = get_post_meta( $post_id, $old_key, true );
+                    if ( ! empty( $old_val ) ) {
+                        update_post_meta( $post_id, $new_key, $old_val );
+                        delete_post_meta( $post_id, $old_key );
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
 register_activation_hook( __FILE__, 'EAD\artpulse_copy_templates_to_child_theme' );
 register_activation_hook( __FILE__, 'EAD\ead_register_default_event_types' ); // ADDED: Hook for event type registration
 register_activation_hook( __FILE__, 'EAD\ead_create_rsvp_table' );
 register_activation_hook( __FILE__, 'EAD\ead_migrate_org_logo_meta' );
+register_activation_hook( __FILE__, 'EAD\ead_migrate_org_location_meta' );
 register_activation_hook( __FILE__, [ \EAD\Roles\RolesManager::class, 'register_membership_roles' ] );
 register_deactivation_hook( __FILE__, [ \EAD\Roles\RolesManager::class, 'remove_membership_roles' ] );
 

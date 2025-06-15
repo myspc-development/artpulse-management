@@ -86,18 +86,9 @@ if (have_posts()) : while (have_posts()) : the_post();
             $org_venue_address = get_post_meta(get_the_ID(), 'ead_org_venue_address', true);
             $org_venue_email = get_post_meta(get_the_ID(), 'ead_org_venue_email', true);
             $org_venue_phone = get_post_meta(get_the_ID(), 'ead_org_venue_phone', true);
-            $org_country = get_post_meta(get_the_ID(), 'org_country', true);
-            if (!$org_country) {
-              $org_country = get_post_meta(get_the_ID(), 'ead_org_country', true);
-            }
-            $org_state   = get_post_meta(get_the_ID(), 'org_state', true);
-            if (!$org_state) {
-              $org_state   = get_post_meta(get_the_ID(), 'ead_org_state', true);
-            }
-            $org_city    = get_post_meta(get_the_ID(), 'org_city', true);
-            if (!$org_city) {
-              $org_city    = get_post_meta(get_the_ID(), 'ead_org_city', true);
-            }
+            $org_country = get_post_meta(get_the_ID(), 'ead_country', true);
+            $org_state   = get_post_meta(get_the_ID(), 'ead_state', true);
+            $org_city    = get_post_meta(get_the_ID(), 'ead_city', true);
             $org_venue_monday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_monday_start_time', true);
             $org_venue_monday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_monday_end_time', true);
             $org_venue_tuesday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_tuesday_start_time', true);
