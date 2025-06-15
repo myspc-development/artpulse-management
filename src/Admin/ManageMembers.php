@@ -13,6 +13,7 @@ class ManageMembers {
         add_action( 'admin_post_artpulse_upgrade_member', [ self::class, 'handle_upgrade_member' ] );
         add_action( 'admin_post_artpulse_assign_org', [ self::class, 'handle_assign_org' ] );
         add_action( 'admin_post_artpulse_delete_member', [ self::class, 'handle_delete_member' ] );
+        add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue_assets' ] );
     }
 
 
@@ -86,6 +87,33 @@ class ManageMembers {
     }
 
     /**
+     * Enqueue scripts on the manage members screen.
+     */
+    public static function enqueue_assets( string $hook ) {
+        if ( $hook !== 'toplevel_page_ead-member-menu' ) {
+            return;
+        }
+
+        $version = defined( 'EAD_PLUGIN_VERSION' ) ? EAD_PLUGIN_VERSION : '1.0';
+        wp_enqueue_script(
+            'ead-membership-manager',
+            EAD_PLUGIN_DIR_URL . 'assets/js/membership-manager.js',
+            [ 'jquery' ],
+            $version,
+            true
+        );
+
+        wp_localize_script(
+            'ead-membership-manager',
+            'MembershipManagerVars',
+            [
+                'restUrl' => esc_url_raw( rest_url( 'artpulse/v1/manage-members/' ) ),
+                'nonce'   => wp_create_nonce( 'wp_rest' ),
+            ]
+        );
+    }
+
+    /**
      * Render the Manage Members admin page.
      */
     public static function render_page() {
@@ -127,17 +155,24 @@ class ManageMembers {
         echo '</p>';
         echo '</form>';
 
+        echo '<div id="membership-message" class="" style="display:none;"></div>';
+
         echo '<table class="wp-list-table widefat striped">';
         echo '<thead><tr>';
         echo '<th>' . esc_html__( 'Name', 'artpulse-management' ) . '</th>';
         echo '<th>' . esc_html__( 'Email', 'artpulse-management' ) . '</th>';
         echo '<th>' . esc_html__( 'Level', 'artpulse-management' ) . '</th>';
+        echo '<th>' . esc_html__( 'Expires', 'artpulse-management' ) . '</th>';
+        echo '<th>' . esc_html__( 'Auto Renew', 'artpulse-management' ) . '</th>';
         echo '<th>' . esc_html__( 'Actions', 'artpulse-management' ) . '</th>';
         echo '</tr></thead><tbody>';
 
         if ( $members ) {
             foreach ( $members as $user ) {
-                $level      = get_user_meta( $user->ID, 'membership_level', true );
+                $level  = get_user_meta( $user->ID, 'membership_level', true );
+                $expiry = get_user_meta( $user->ID, 'membership_end_date', true );
+                $auto   = get_user_meta( $user->ID, 'membership_auto_renew', true ) === '1' ? 'ON' : 'OFF';
+
                 $upgrade_url = wp_nonce_url(
                     admin_url( 'admin-post.php?action=artpulse_upgrade_member&user_id=' . $user->ID ),
                     'artpulse_upgrade_' . $user->ID
@@ -151,11 +186,14 @@ class ManageMembers {
                     'artpulse_delete_' . $user->ID
                 );
 
-                echo '<tr>';
+                echo '<tr data-user-id="' . esc_attr( $user->ID ) . '">';
                 echo '<td>' . esc_html( $user->display_name ) . '</td>';
                 echo '<td>' . esc_html( $user->user_email ) . '</td>';
-                echo '<td>' . esc_html( $level ) . '</td>';
+                echo '<td data-field="level">' . esc_html( $level ) . '</td>';
+                echo '<td data-field="expiry">' . esc_html( $expiry ) . '</td>';
+                echo '<td data-field="auto_renew">' . esc_html( $auto ) . '</td>';
                 echo '<td>';
+                echo '<button class="button button-primary artpulse-edit-member">' . esc_html__( 'Edit', 'artpulse-management' ) . '</button> ';
                 echo '<a href="' . esc_url( $upgrade_url ) . '" class="button">' . esc_html__( 'Upgrade to Pro', 'artpulse-management' ) . '</a> ';
                 echo '<a href="' . esc_url( $assign_url ) . '" class="button">' . esc_html__( 'Assign Org', 'artpulse-management' ) . '</a> ';
                 echo '<a href="' . esc_url( $delete_url ) . '" class="button delete" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this member?', 'artpulse-management' ) ) . '\');">' . esc_html__( 'Delete', 'artpulse-management' ) . '</a>';
@@ -163,7 +201,7 @@ class ManageMembers {
                 echo '</tr>';
             }
         } else {
-            echo '<tr><td colspan="4">' . esc_html__( 'No members found.', 'artpulse-management' ) . '</td></tr>';
+            echo '<tr><td colspan="6">' . esc_html__( 'No members found.', 'artpulse-management' ) . '</td></tr>';
         }
 
         echo '</tbody></table>';
