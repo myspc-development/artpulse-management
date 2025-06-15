@@ -105,8 +105,11 @@ if (have_posts()) : while (have_posts()) : the_post();
             $org_venue_sunday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_sunday_end_time', true);
 
             if ($org_logo_id) {
-              $org_logo = wp_get_attachment_image_src($org_logo_id, 'full')[0];
-              echo '<div class="organization-meta organization-logo"><img src="' . esc_url($org_logo) . '" alt="Logo"></div>';
+              $info = wp_get_attachment_image_src($org_logo_id, 'full');
+              if ($info) {
+                $org_logo = $info[0];
+                echo '<div class="organization-meta organization-logo"><img src="' . esc_url($org_logo) . '" alt="Logo"></div>';
+              }
             }
             if ($org_description) {
               echo '<div class="organization-meta"><strong>Description:</strong> ' . esc_html($org_description) . '</div>';

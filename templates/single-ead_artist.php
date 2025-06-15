@@ -14,7 +14,13 @@ if (have_posts()) : while (have_posts()) : the_post(); ?>
                 <?php
                 // Artist portrait (from meta, else fallback to post thumbnail or placeholder)
                 $artist_portrait_id = get_post_meta(get_the_ID(), 'artist_portrait', true);
-                $artist_portrait_url = $artist_portrait_id ? wp_get_attachment_image_src($artist_portrait_id, 'full')[0] : '';
+                $artist_portrait_url = '';
+                if ($artist_portrait_id) {
+                    $info = wp_get_attachment_image_src($artist_portrait_id, 'full');
+                    if ($info) {
+                        $artist_portrait_url = $info[0];
+                    }
+                }
                 if ($artist_portrait_url) {
                     echo '<div class="artist-meta artist-portrait"><img src="' . esc_url($artist_portrait_url) . '" alt="' . esc_attr(get_the_title()) . ' portrait" loading="lazy"></div>';
                 } elseif (has_post_thumbnail()) {
@@ -85,9 +91,10 @@ if (have_posts()) : while (have_posts()) : the_post(); ?>
                         foreach ($gallery_ids as $img_id) {
                             $img_id = intval($img_id);
                             if ($img_id > 0) {
-                                $img_url = wp_get_attachment_image_src($img_id, 'large');
-                                if ($img_url) {
-                                    echo '<img src="' . esc_url($img_url[0]) . '" alt="' . esc_attr(get_the_title($img_id)) . '" loading="lazy" class="artist-gallery-img">';
+                                $info = wp_get_attachment_image_src($img_id, 'large');
+                                if ($info) {
+                                    $img_url = $info[0];
+                                    echo '<img src="' . esc_url($img_url) . '" alt="' . esc_attr(get_the_title($img_id)) . '" loading="lazy" class="artist-gallery-img">';
                                 }
                             }
                         }
