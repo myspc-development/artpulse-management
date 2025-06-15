@@ -22,6 +22,7 @@ Artists and organizers can manage their listings through a set of self-service t
 
 ## Managing Members
 Site administrators can manage accounts from the **Member Management** menu. Choose **Manage Members** to view and edit accounts.
+This screen is powered by the `ManageMembers` class under `src/Admin/ManageMembers.php`, replacing the legacy admin functions that were formerly part of `membership-core.php`.
 - Filter by membership level or expiration status.
 - Sort members by level, start date or expiration date.
 - Apply bulk actions to change level or send reminders.
