@@ -333,7 +333,9 @@ add_action('init', function () {
 
     if (in_array($level, ['pro', 'org'], true)) {
         // Store data for post-checkout account creation
-        session_start();
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
         $_SESSION['pending_registration'] = compact('username', 'email', 'password', 'level');
         wp_redirect(home_url("/checkout/?level=$level"));
         exit;
@@ -358,7 +360,9 @@ add_action('init', function () {
 
 // Finalize registration after successful Stripe checkout
 add_shortcode('finalize_registration', function () {
-    session_start();
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
     if (!isset($_SESSION['pending_registration'])) {
         return 'Missing registration session.';
     }
