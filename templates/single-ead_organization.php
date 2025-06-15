@@ -86,6 +86,9 @@ if (have_posts()) : while (have_posts()) : the_post();
             $org_venue_address = get_post_meta(get_the_ID(), 'ead_org_venue_address', true);
             $org_venue_email = get_post_meta(get_the_ID(), 'ead_org_venue_email', true);
             $org_venue_phone = get_post_meta(get_the_ID(), 'ead_org_venue_phone', true);
+            $org_country = get_post_meta(get_the_ID(), 'org_country', true);
+            $org_state   = get_post_meta(get_the_ID(), 'org_state', true);
+            $org_city    = get_post_meta(get_the_ID(), 'org_city', true);
             $org_venue_monday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_monday_start_time', true);
             $org_venue_monday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_monday_end_time', true);
             $org_venue_tuesday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_tuesday_start_time', true);
@@ -142,6 +145,10 @@ if (have_posts()) : while (have_posts()) : the_post();
             }
             if ($primary_contact_role) {
               echo '<div class="organization-meta"><strong>Primary Contact Role:</strong> ' . esc_html($primary_contact_role) . '</div>';
+            }
+            $location_parts = array_filter([$org_city, $org_state, $org_country]);
+            if ($location_parts) {
+              echo '<div class="organization-meta"><strong>Location:</strong> ' . esc_html(implode(', ', $location_parts)) . '</div>';
             }
             if ($org_street_address) {
               echo '<div class="organization-meta"><strong>Street Address:</strong> ' . esc_html($org_street_address) . '</div>';

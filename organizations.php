@@ -46,6 +46,9 @@ function artpulse_register_organization_meta() {
     ]);
     register_post_meta('organization', 'org_address', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
     register_post_meta('organization', 'org_phone', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_country', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_state', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
+    register_post_meta('organization', 'org_city', ['type' => 'string', 'single' => true, 'show_in_rest' => true]);
 }
 add_action('init', 'artpulse_register_organization_meta');
 
@@ -63,11 +66,17 @@ function artpulse_org_meta_box_callback($post) {
     $team = get_post_meta($post->ID, 'org_team_members', true) ?: [];
     $address = get_post_meta($post->ID, 'org_address', true);
     $phone = get_post_meta($post->ID, 'org_phone', true);
+    $country = get_post_meta($post->ID, 'org_country', true);
+    $state   = get_post_meta($post->ID, 'org_state', true);
+    $city    = get_post_meta($post->ID, 'org_city', true);
     ?>
     <p><label>Website: <input type="url" name="org_website" value="<?php echo esc_attr($website); ?>" style="width:100%;" /></label></p>
     <p><label>Logo URL: <input type="text" name="org_logo_url" value="<?php echo esc_attr($logo); ?>" style="width:100%;" /></label></p>
     <p><label>Mission:<br><textarea name="org_mission" rows="4" style="width:100%;"><?php echo esc_textarea($mission); ?></textarea></label></p>
     <p><label>Address:<br><input type="text" name="org_address" value="<?php echo esc_attr($address); ?>" style="width:100%;" /></label></p>
+    <p><label>Country:<br><input type="text" name="org_country" value="<?php echo esc_attr($country); ?>" style="width:100%;" /></label></p>
+    <p><label>State:<br><input type="text" name="org_state" value="<?php echo esc_attr($state); ?>" style="width:100%;" /></label></p>
+    <p><label>City:<br><input type="text" name="org_city" value="<?php echo esc_attr($city); ?>" style="width:100%;" /></label></p>
     <p><label>Phone:<br><input type="text" name="org_phone" value="<?php echo esc_attr($phone); ?>" style="width:100%;" /></label></p>
     <p><label>Org Admin User IDs (comma-separated):<br>
         <input type="text" name="org_admin_users" value="<?php echo esc_attr(implode(',', $admins)); ?>" style="width:100%;" />
@@ -84,6 +93,9 @@ function artpulse_save_organization_meta($post_id) {
     update_post_meta($post_id, 'org_logo_url', esc_url_raw($_POST['org_logo_url'] ?? ''));
     update_post_meta($post_id, 'org_mission', sanitize_textarea_field($_POST['org_mission'] ?? ''));
     update_post_meta($post_id, 'org_address', sanitize_text_field($_POST['org_address'] ?? ''));
+    update_post_meta($post_id, 'org_country', sanitize_text_field($_POST['org_country'] ?? ''));
+    update_post_meta($post_id, 'org_state', sanitize_text_field($_POST['org_state'] ?? ''));
+    update_post_meta($post_id, 'org_city', sanitize_text_field($_POST['org_city'] ?? ''));
     update_post_meta($post_id, 'org_phone', sanitize_text_field($_POST['org_phone'] ?? ''));
     update_post_meta($post_id, 'org_admin_users', array_filter(array_map('intval', explode(',', $_POST['org_admin_users'] ?? ''))));
     update_post_meta($post_id, 'org_team_members', array_filter(array_map('intval', explode(',', $_POST['org_team_members'] ?? ''))));
@@ -207,6 +219,9 @@ function artpulse_organization_edit_form_shortcode($atts) {
         update_post_meta($post_id, 'org_website', sanitize_text_field($_POST['org_website'] ?? ''));
         update_post_meta($post_id, 'org_mission', sanitize_textarea_field($_POST['org_mission'] ?? ''));
         update_post_meta($post_id, 'org_address', sanitize_text_field($_POST['org_address'] ?? ''));
+        update_post_meta($post_id, 'org_country', sanitize_text_field($_POST['org_country'] ?? ''));
+        update_post_meta($post_id, 'org_state', sanitize_text_field($_POST['org_state'] ?? ''));
+        update_post_meta($post_id, 'org_city', sanitize_text_field($_POST['org_city'] ?? ''));
         update_post_meta($post_id, 'org_phone', sanitize_text_field($_POST['org_phone'] ?? ''));
 
         // Handle logo upload
@@ -230,6 +245,9 @@ function artpulse_organization_edit_form_shortcode($atts) {
     $logo    = get_post_meta($post_id, 'org_logo_url', true);
     $mission = get_post_meta($post_id, 'org_mission', true);
     $address = get_post_meta($post_id, 'org_address', true);
+    $country = get_post_meta($post_id, 'org_country', true);
+    $state   = get_post_meta($post_id, 'org_state', true);
+    $city    = get_post_meta($post_id, 'org_city', true);
     $phone   = get_post_meta($post_id, 'org_phone', true);
 
     ob_start();
@@ -244,6 +262,9 @@ function artpulse_organization_edit_form_shortcode($atts) {
         <?php endif; ?>
         <p><label>Mission:<br><textarea name="org_mission" rows="4" style="width:100%"><?php echo esc_textarea($mission); ?></textarea></label></p>
         <p><label>Address:<br><input type="text" name="org_address" value="<?php echo esc_attr($address); ?>" style="width:100%"></label></p>
+        <p><label>Country:<br><input type="text" name="org_country" value="<?php echo esc_attr($country); ?>" style="width:100%"></label></p>
+        <p><label>State:<br><input type="text" name="org_state" value="<?php echo esc_attr($state); ?>" style="width:100%"></label></p>
+        <p><label>City:<br><input type="text" name="org_city" value="<?php echo esc_attr($city); ?>" style="width:100%"></label></p>
         <p><label>Phone:<br><input type="text" name="org_phone" value="<?php echo esc_attr($phone); ?>" style="width:100%"></label></p>
         <p><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Save Changes</button></p>
     </form>
