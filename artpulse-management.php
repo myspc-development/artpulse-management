@@ -97,7 +97,9 @@ if ( file_exists( $user_profile_tab_file ) ) {
 
 
 $membership_core_file = EAD_PLUGIN_DIR_PATH . 'membership-core.php';
-// Legacy membership functionality has been replaced by classes under src/.
+if ( file_exists( $membership_core_file ) ) {
+    require_once $membership_core_file;
+}
 
 $functions_file = EAD_PLUGIN_DIR_PATH . 'functions.php';
 if ( file_exists( $functions_file ) ) {
@@ -684,7 +686,9 @@ class Plugin {
                 require_once $manage_members_path;
             }
 
-            ManageMembers::register();
+            if ( ! has_action( 'admin_post_artpulse_upgrade_member' ) ) {
+                ManageMembers::register();
+            }
             MetaBoxesOrganisation::register();
             MetaBoxesArtist::register();
             MetaBoxesEvent::register();
