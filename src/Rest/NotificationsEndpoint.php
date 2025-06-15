@@ -49,7 +49,7 @@ class NotificationsEndpoint extends WP_REST_Controller {
             static function ( $msg ) {
                 return [
                     'title'   => get_the_title( $msg ),
-                    'content' => apply_filters( 'the_content', $msg->post_content ),
+                    'content' => apply_filters( 'the_content', (string) $msg->post_content ),
                     'date'    => get_the_date( '', $msg ),
                 ];
             },
