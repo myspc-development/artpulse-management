@@ -34,9 +34,13 @@ add_action('artpulse_check_memberships', function () {
     $expire_users = get_users([
         'meta_query' => [
             [
-                'key' => 'membership_end_date',
-                'value' => date('Y-m-d H:i:s', strtotime('+3 days', $now)),
-                'compare' => 'LIKE'
+                'key'     => 'membership_end_date',
+                'value'   => [
+                    current_time('mysql'),
+                    date('Y-m-d H:i:s', strtotime('+3 days', $now))
+                ],
+                'compare' => 'BETWEEN',
+                'type'    => 'DATETIME'
             ]
         ]
     ]);
