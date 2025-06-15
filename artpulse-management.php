@@ -1941,7 +1941,7 @@ class Plugin {
         ]);
 
         foreach ( $pages as $page_id ) {
-            $content = get_post_field( 'post_content', $page_id );
+            $content = (string) get_post_field( 'post_content', $page_id );
             if ( has_shortcode( $content, $shortcode ) ) {
                 return $page_id;
             }
