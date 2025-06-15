@@ -43,6 +43,16 @@ class SubmitEventEndpoint extends WP_REST_Controller {
             return new WP_Error('rest_not_logged_in', __('You must be logged in to submit an event.', 'artpulse-management'), [ 'status' => 401 ]);
         }
 
+        // Check honeypot field for spam submissions
+        $honeypot = sanitize_text_field($request->get_param('website_url_hp'));
+        if (!empty($honeypot)) {
+            return new WP_Error(
+                'spam_detected',
+                __('Spam detected.', 'artpulse-management'),
+                [ 'status' => 400 ]
+            );
+        }
+
         // === Sanitize input ===
         $title       = sanitize_text_field($request->get_param('title'));
         $description = wp_kses_post($request->get_param('description'));
