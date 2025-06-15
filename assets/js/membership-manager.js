@@ -1,16 +1,13 @@
 jQuery(document).ready(function ($) {
-    // Bail if the membership table isn't present
+    const settings = window.MembershipManagerVars || {};
     if (!$('.artpulse-edit-member').length) {
         return;
     }
 
-    // Membership levels for dropdown
     var levels = ['basic', 'pro', 'org', 'expired'];
 
-    // When Edit is clicked
     $('.artpulse-edit-member').on('click', function () {
         var $row = $(this).closest('tr');
-        // Prevent double edit
         if ($row.hasClass('editing')) return;
 
         $row.addClass('editing');
@@ -23,7 +20,6 @@ jQuery(document).ready(function ($) {
             auto: $autoCell.text().trim() === 'ON' ? 1 : 0,
         };
 
-        // Level dropdown
         var levelSelect = $('<select></select>');
         $.each(levels, function (i, lvl) {
             levelSelect.append($('<option></option>')
@@ -33,16 +29,13 @@ jQuery(document).ready(function ($) {
         });
         $levelCell.html(levelSelect);
 
-        // Expiry date input
         var dateInput = $('<input type="date">').val(orig.expiry.substr(0, 10));
         $expiryCell.html(dateInput);
 
-        // Auto-renew toggle
         var autoSelect = $('<select><option value="1">ON</option><option value="0">OFF</option></select>')
             .val(orig.auto);
         $autoCell.html(autoSelect);
 
-        // Replace Edit button with Save/Cancel
         var $actions = $row.find('td:last');
         $actions.html(
             '<button class="button button-primary artpulse-save-member">Save</button>' +
@@ -50,7 +43,6 @@ jQuery(document).ready(function ($) {
         );
     });
 
-    // Save handler
     $(document).on('click', '.artpulse-save-member', function () {
         var $row = $(this).closest('tr');
         var userId = $row.data('user-id');
@@ -58,32 +50,46 @@ jQuery(document).ready(function ($) {
         var newExpiry = $row.find('[data-field="expiry"] input').val();
         var newAuto = $row.find('[data-field="auto_renew"] select').val();
 
-        // TODO: AJAX to save changes (for now, just update table)
-        $row.find('[data-field="level"]').text(newLevel.charAt(0).toUpperCase() + newLevel.slice(1));
-        $row.find('[data-field="expiry"]').text(newExpiry);
-        $row.find('[data-field="auto_renew"]').text(newAuto == 1 ? 'ON' : 'OFF');
-        $row.removeClass('editing');
-        $row.find('td:last').html('<button class="button button-primary artpulse-edit-member">Edit</button>');
-
-        // --- Real AJAX example ---
-        /*
-        $.post(ajaxurl, {
-            action: 'artpulse_update_membership',
-            user_id: userId,
-            level: newLevel,
-            expiry: newExpiry,
-            auto_renew: newAuto,
-            _ajax_nonce: ART_PULSE_NONCE // Add this via wp_localize_script
-        }, function (response) {
-            // Handle success/fail here
+        $.ajax({
+            url: settings.restUrl + userId,
+            method: 'POST',
+            beforeSend: function(xhr){
+                xhr.setRequestHeader('X-WP-Nonce', settings.nonce);
+            },
+            data: {
+                membership_level: newLevel,
+                membership_end_date: newExpiry,
+                membership_auto_renew: newAuto
+            }
+        }).done(function(res){
+            if(res && res.success){
+                $row.find('[data-field="level"]').text(newLevel.charAt(0).toUpperCase() + newLevel.slice(1));
+                $row.find('[data-field="expiry"]').text(newExpiry);
+                $row.find('[data-field="auto_renew"]').text(newAuto == 1 ? 'ON' : 'OFF');
+                $row.removeClass('editing');
+                $row.find('td:last').html('<button class="button button-primary artpulse-edit-member">Edit</button>');
+                showMessage('Member updated!', 'success');
+            }else{
+                showMessage('Failed to update member.', 'error');
+            }
+        }).fail(function(){
+            showMessage('Error contacting server.', 'error');
         });
-        */
     });
 
-    // Cancel handler
     $(document).on('click', '.artpulse-cancel-member', function () {
-        var $row = $(this).closest('tr');
-        // Just reload the page for simplicity (or restore old text)
         location.reload();
     });
+
+    function showMessage(msg, type){
+        var $msg = $('#membership-message');
+        if(!$msg.length) return;
+        $msg.text(msg).removeClass('notice-success notice-error');
+        if(type === 'success'){
+            $msg.addClass('notice-success');
+        }else{
+            $msg.addClass('notice-error');
+        }
+        $msg.show();
+    }
 });
