@@ -90,7 +90,7 @@ add_shortcode('membership_status', 'artpulse_membership_status_shortcode');
 
 // Stripe Test Checkout Button Shortcode
 function artpulse_membership_checkout_shortcode() {
-    $level = $_GET['level'] ?? '';
+    $level = sanitize_text_field($_GET['level'] ?? '');
     $map   = [
         'pro' => 'prod_ABC123',
         'org' => 'prod_XYZ789',
