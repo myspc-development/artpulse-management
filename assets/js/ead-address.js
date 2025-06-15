@@ -39,113 +39,40 @@ jQuery(document).ready(function($) {
     });
     allowCustomEntry('#ead_country');
 
-    // --- Handle state/city enable/disable logic ---
-    $('#ead_country').on('change', function() {
-        let selectedCountry = $(this).val();
-        $('#ead_state').val(null).trigger('change');
-        $('#ead_city').val(null).trigger('change');
-        $('#ead_state').prop('disabled', !selectedCountry);
-        $('#ead_city').prop('disabled', true);
-    });
 
-    // --- STATE: AJAX via backend ---
-    $('#ead_state').select2({
-        ajax: {
-            url: eadAddress.ajaxUrl,
-            dataType: 'json',
-            delay: 150,
-            data: function(params) {
-                return {
-                    action: 'ead_load_states',
-                    country_code: $('#ead_country').val(),
-                    term: params.term || '',
-                    security: eadAddress.statesNonce
-                };
+    // --- Handle state and city dropdowns using shared module ---
+    if (window.EadAddressCommon) {
+        EadAddressCommon.initStateCityDropdowns({
+            ajaxUrl: eadAddress.ajaxUrl,
+            statesNonce: eadAddress.statesNonce,
+            citiesNonce: eadAddress.citiesNonce,
+            stateSelect2: {
+                placeholder: 'Select or type a state/province',
+                allowClear: true,
+                minimumInputLength: 1,
+                tags: true,
+                width: '100%'
             },
-            processResults: function(data) {
-                let items = [];
-                if (data.success && Array.isArray(data.data)) {
-                    items = data.data;
-                } else if (Array.isArray(data)) {
-                    items = data;
-                } else if (Array.isArray(data.results)) {
-                    items = data.results;
-                }
-                return {
-                    results: items.map(function(item) {
-                        return { id: item.code || item.name, text: item.name };
-                    })
-                };
-            },
-            cache: true
-        },
-        placeholder: 'Select or type a state/province',
-        allowClear: true,
-        minimumInputLength: 1,
-        tags: true,
-        width: '100%'
-    });
-    allowCustomEntry('#ead_state');
-
-    $('#ead_state').on('change', function() {
-        let selectedState = $(this).val();
-        $('#ead_city').val(null).trigger('change');
-        $('#ead_city').prop('disabled', !selectedState);
-    });
-
-    // --- CITY: AJAX via backend ---
-    $('#ead_city').select2({
-        ajax: {
-            url: eadAddress.ajaxUrl,
-            dataType: 'json',
-            delay: 150,
-            data: function(params) {
-                return {
-                    action: 'ead_search_cities',
-                    country_code: $('#ead_country').val(),
-                    state_code: $('#ead_state').val(),
-                    term: params.term || '',
-                    security: eadAddress.citiesNonce,
-                    use_cache: true
-                };
-            },
-            processResults: function(data) {
-                let items = [];
-                if (data.success && Array.isArray(data.data)) {
-                    items = data.data;
-                } else if (Array.isArray(data)) {
-                    items = data;
-                } else if (Array.isArray(data.results)) {
-                    items = data.results;
-                }
-                return {
-                    results: items.map(function(item) {
-                        return { id: item.name, text: item.name };
-                    })
-                };
-            },
-            cache: true
-        },
-        placeholder: 'Select or type a city',
-        allowClear: true,
-        minimumInputLength: 1,
-        tags: true,
-        width: '100%'
-    });
-    allowCustomEntry('#ead_city');
-
-    // --- Initial State On Load (editing forms) ---
-    (function() {
-        if (!$('#ead_country').val()) {
-            $('#ead_state').prop('disabled', true);
-            $('#ead_city').prop('disabled', true);
-        } else if (!$('#ead_state').val()) {
-            $('#ead_city').prop('disabled', true);
-        }
-        // ARIA for accessibility
-        $('#ead_country, #ead_state, #ead_city').attr('aria-required', 'true');
-    })();
-
+            citySelect2: {
+                placeholder: 'Select or type a city',
+                allowClear: true,
+                minimumInputLength: 1,
+                tags: true,
+                width: '100%'
+            }
+        });
+        (function() {
+            if (!$('#ead_country').val()) {
+                $('#ead_state').prop('disabled', true);
+                $('#ead_city').prop('disabled', true);
+            } else if (!$('#ead_state').val()) {
+                $('#ead_city').prop('disabled', true);
+            }
+            $('#ead_country, #ead_state, #ead_city').attr('aria-required', 'true');
+        })();
+        allowCustomEntry('#ead_state');
+        allowCustomEntry('#ead_city');
+    }
     // --- GOOGLE PLACES AUTOCOMPLETE & MAP PICKER ---
     if (eadAddress.gmapsPlacesEnabled && typeof google === 'object' && typeof google.maps === 'object') {
         let autocomplete, map, marker;

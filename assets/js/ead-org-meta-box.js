@@ -119,81 +119,11 @@ jQuery(document).ready(function($) {
         width: '100%'
     });
 
-    $('#ead_state').select2({
-        placeholder: 'Select a state/province',
-        width: '100%',
-        ajax: {
-            url: EAD_VARS.ajaxUrl,
-            dataType: 'json',
-            delay: 250,
-            data: function(params) {
-                const country = $('#ead_country').val();
-                if (!country) {
-                    console.warn('Country not selected; skipping states AJAX.');
-                    return {};
-                }
-                return {
-                    action: 'ead_load_states',
-                    country_code: country,
-                    security: EAD_VARS.statesNonce
-                };
-            },
-            processResults: function(data) {
-                return { results: data.results || [] };
-            },
-            error: function(xhr, status, error) {
-                console.error('States AJAX error:', error);
-            }
-        }
-    });
-
-    $('#ead_country').on('change', function() {
-        if ($(this).val()) {
-            $('#ead_state').prop('disabled', false).val(null).trigger('change');
-        } else {
-            $('#ead_state').prop('disabled', true).val(null).trigger('change');
-            $('#ead_city').prop('disabled', true).val(null).trigger('change');
-        }
-    });
-
-    $('#ead_city').select2({
-        placeholder: 'Start typing a city',
-        width: '100%',
-        minimumInputLength: 2,
-        ajax: {
-            url: EAD_VARS.ajaxUrl,
-            dataType: 'json',
-            delay: 250,
-            data: function(params) {
-                const country = $('#ead_country').val();
-                const state = $('#ead_state').val();
-                if (!country || !state) {
-                    console.warn('Country or state not selected; skipping cities AJAX.');
-                    return {};
-                }
-                return {
-                    action: 'ead_search_cities',
-                    country_code: country,
-                    state_code: state,
-                    term: params.term,
-                    security: EAD_VARS.citiesNonce,
-                    use_cache: true
-                };
-            },
-            processResults: function(data) {
-                return { results: data.results || [] };
-            },
-            error: function(xhr, status, error) {
-                console.error('Cities AJAX error:', error);
-            }
-        }
-    });
-
-    $('#ead_state').on('change', function() {
-        if ($(this).val()) {
-            $('#ead_city').prop('disabled', false);
-        } else {
-            $('#ead_city').prop('disabled', true).val(null).trigger('change');
-        }
-    });
+    if (window.EadAddressCommon) {
+        EadAddressCommon.initStateCityDropdowns({
+            ajaxUrl: EAD_VARS.ajaxUrl,
+            statesNonce: EAD_VARS.statesNonce,
+            citiesNonce: EAD_VARS.citiesNonce
+        });
+    }
 });
