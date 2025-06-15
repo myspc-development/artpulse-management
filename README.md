@@ -36,7 +36,7 @@ Introduced in version **3.7.0** – see [CHANGELOG.md](CHANGELOG.md) for details
 ## Installation
 
 1. Download the plugin .zip or clone this repository into your WordPress `wp-content/plugins` directory.
-2. Install dependencies and build the assets **before activating** the plugin:
+2. Install dependencies and build the assets **before activating** the plugin. This will pull in PHP packages such as `stripe/stripe-php` used for the membership checkout flow:
 
    ```bash
    composer install
