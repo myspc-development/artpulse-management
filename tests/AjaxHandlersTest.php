@@ -10,7 +10,7 @@ class AjaxHandlersTest extends TestCase
         Plugin::init();
 
         $this->assertTrue(function_exists('ead_event_rsvp_ajax'));
-        $this->assertTrue(function_exists('ead_load_states_handler'));
+        $this->assertTrue(is_callable([\EAD\Admin\MetaBoxesAddress::class, 'ajax_load_states']));
     }
 }
 
