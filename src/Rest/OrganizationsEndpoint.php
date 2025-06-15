@@ -1,4 +1,5 @@
 <?php
+
 namespace EAD\Rest;
 
 use WP_REST_Controller;
@@ -41,7 +42,7 @@ class OrganizationsEndpoint extends WP_REST_Controller {
      * Permission check.
      */
     public function permissionsCheck( $request ) {
-        return is_user_logged_in();
+        return is_user_logged_in() && current_user_can( 'ead_register_organization' );
     }
 
     /**
@@ -76,13 +77,11 @@ class OrganizationsEndpoint extends WP_REST_Controller {
 
         $post_id = wp_insert_post( $post_data );
 
-        if ( ! is_wp_error( $post_id ) ) {
-            update_post_meta( $post_id, 'ead_org_name', $org_name );
-        }
-
         if ( is_wp_error( $post_id ) ) {
             return new WP_Error( 'create_failed', __( 'Failed to create organization.', 'artpulse-management' ), [ 'status' => 500 ] );
         }
+
+        update_post_meta( $post_id, 'ead_org_name', $org_name );
 
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -123,10 +122,6 @@ class OrganizationsEndpoint extends WP_REST_Controller {
 
         $fields = $this->get_fields();
         foreach ( $fields as $field ) {
-            if ( in_array( $field, $file_fields, true ) ) {
-                continue;
-            }
-
             $value = $request->get_param( $field );
             if ( $value !== null ) {
                 if ( strpos( $field, 'url' ) !== false ) {
@@ -233,13 +228,16 @@ class OrganizationsEndpoint extends WP_REST_Controller {
             home_url( '/organization-registration-success/' )
         );
 
-        return new WP_REST_Response( [
-            'success'          => true,
-            'message'          => __( 'Organization registered successfully!', 'artpulse-management' ),
-            'post_id'          => $post_id,
-            'uploaded_files'   => $uploaded_files,
-            'confirmation_url' => $confirmation_url,
-        ], 200 );
+        return new WP_REST_Response(
+            [
+                'success'          => true,
+                'message'          => __( 'Organization registered successfully!', 'artpulse-management' ),
+                'post_id'          => $post_id,
+                'uploaded_files'   => $uploaded_files,
+                'confirmation_url' => $confirmation_url,
+            ],
+            200
+        );
     }
 
     private function get_fields() {
