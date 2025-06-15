@@ -29,7 +29,7 @@ class UsersEndpoint extends WP_REST_Controller {
     }
 
     public function search_users( WP_REST_Request $request ) {
-        $term = sanitize_text_field( $request->get_param( 'term' ) );
+        $term = sanitize_text_field( $request->get_param( 'term' ) ?? '' );
 
         $users = get_users(
             [

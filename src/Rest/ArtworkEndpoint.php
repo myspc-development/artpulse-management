@@ -552,7 +552,7 @@ class ArtworkEndpoint extends WP_REST_Controller {
         // Core Post Fields
         // Map frontend form fields (artwork_title, artwork_description) to core post fields
         if ($request->has_param('artwork_title')) {
-            $prepared_args['post_title'] = sanitize_text_field($request->get_param('artwork_title'));
+            $prepared_args['post_title'] = sanitize_text_field($request->get_param('artwork_title') ?? '');
         }
         if ($request->has_param('artwork_description')) {
             $prepared_args['post_content'] = wp_kses_post($request->get_param('artwork_description'));

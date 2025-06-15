@@ -70,7 +70,7 @@ class JwtAuthEndpoint extends WP_REST_Controller {
      * Handle token creation.
      */
     public function createToken( WP_REST_Request $request ) {
-        $username = sanitize_user( $request->get_param( 'username' ) );
+        $username = sanitize_user( $request->get_param( 'username' ) ?? '' );
         $password = $request->get_param( 'password' );
 
         if ( empty( $username ) || empty( $password ) ) {

@@ -81,9 +81,9 @@ class ManageMembersEndpoint extends WP_REST_Controller {
 
     public function update_member( WP_REST_Request $request ): WP_REST_Response {
         $user_id = absint( $request['id'] );
-        $level   = sanitize_text_field( $request->get_param( 'membership_level' ) );
-        $end     = sanitize_text_field( $request->get_param( 'membership_end_date' ) );
-        $renew   = rest_sanitize_boolean( $request->get_param( 'membership_auto_renew' ) );
+        $level   = sanitize_text_field( $request->get_param( 'membership_level' ) ?? '' );
+        $end     = sanitize_text_field( $request->get_param( 'membership_end_date' ) ?? '' );
+        $renew   = rest_sanitize_boolean( $request->get_param( 'membership_auto_renew' ) ?? '' );
 
         if ( $level !== '' ) {
             update_user_meta( $user_id, 'membership_level', $level );
@@ -98,11 +98,11 @@ class ManageMembersEndpoint extends WP_REST_Controller {
     }
 
     public function create_member( WP_REST_Request $request ): WP_REST_Response {
-        $name  = sanitize_text_field( $request->get_param( 'name' ) );
-        $email = sanitize_email( $request->get_param( 'email' ) );
-        $level = sanitize_text_field( $request->get_param( 'membership_level' ) ?: 'basic' );
-        $end   = sanitize_text_field( $request->get_param( 'membership_end_date' ) );
-        $renew = rest_sanitize_boolean( $request->get_param( 'membership_auto_renew' ) );
+        $name  = sanitize_text_field( $request->get_param( 'name' ) ?? '' );
+        $email = sanitize_email( $request->get_param( 'email' ) ?? '' );
+        $level = sanitize_text_field( $request->get_param( 'membership_level' ) ?? 'basic' );
+        $end   = sanitize_text_field( $request->get_param( 'membership_end_date' ) ?? '' );
+        $renew = rest_sanitize_boolean( $request->get_param( 'membership_auto_renew' ) ?? '' );
 
         $user_id = wp_insert_user([
             'user_login'    => $email,

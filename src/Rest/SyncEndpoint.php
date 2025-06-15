@@ -35,7 +35,7 @@ class SyncEndpoint extends WP_REST_Controller {
     }
 
     public function get_changes( WP_REST_Request $request ) {
-        $since = sanitize_text_field( $request->get_param( 'since' ) );
+        $since = sanitize_text_field( $request->get_param( 'since' ) ?? '' );
 
         $args = [
             'post_type'      => [ 'ead_event', 'ead_organization', 'ead_artist', 'ead_artwork' ],

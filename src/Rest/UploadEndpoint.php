@@ -41,7 +41,7 @@ class UploadEndpoint extends WP_REST_Controller {
         require_once ABSPATH . 'wp-admin/includes/media.php';
 
         $user_id = get_current_user_id();
-        $title   = sanitize_text_field( $request->get_param( 'title' ) );
+        $title   = sanitize_text_field( $request->get_param( 'title' ) ?? '' );
 
         if ( empty( $_FILES['file'] ) ) {
             return new WP_REST_Response( [ 'error' => 'No file received' ], 400 );

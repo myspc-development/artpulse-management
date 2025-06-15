@@ -116,7 +116,7 @@ class ArtistDashboardEndpoint extends WP_REST_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function handleDashboardAction( WP_REST_Request $request ) {
-        $action = sanitize_text_field( $request->get_param( 'action' ) );
+        $action = sanitize_text_field( $request->get_param( 'action' ) ?? '' );
 
         if ( empty( $action ) ) {
             return new WP_Error( 'missing_action', __( 'Action parameter is required.', 'artpulse-management' ), [ 'status' => 400 ] );

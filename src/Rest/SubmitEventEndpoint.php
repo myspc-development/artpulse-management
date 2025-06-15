@@ -44,7 +44,7 @@ class SubmitEventEndpoint extends WP_REST_Controller {
         }
 
         // Check honeypot field for spam submissions
-        $honeypot = sanitize_text_field($request->get_param('website_url_hp'));
+        $honeypot = sanitize_text_field($request->get_param('website_url_hp') ?? '');
         if (!empty($honeypot)) {
             return new WP_Error(
                 'spam_detected',
@@ -54,22 +54,22 @@ class SubmitEventEndpoint extends WP_REST_Controller {
         }
 
         // === Sanitize input ===
-        $title       = sanitize_text_field($request->get_param('title'));
+        $title       = sanitize_text_field($request->get_param('title') ?? '');
         $description = wp_kses_post($request->get_param('description'));
-        $event_type  = sanitize_text_field($request->get_param('event_type'));
-        $start_date  = sanitize_text_field($request->get_param('event_start_date'));
-        $end_date    = sanitize_text_field($request->get_param('event_end_date'));
-        $venue_name  = sanitize_text_field($request->get_param('venue_name'));
-        $organizer   = sanitize_text_field($request->get_param('organizer'));
-        $organizerEmail = sanitize_email($request->get_param('organizer_email'));
+        $event_type  = sanitize_text_field($request->get_param('event_type') ?? '');
+        $start_date  = sanitize_text_field($request->get_param('event_start_date') ?? '');
+        $end_date    = sanitize_text_field($request->get_param('event_end_date') ?? '');
+        $venue_name  = sanitize_text_field($request->get_param('venue_name') ?? '');
+        $organizer   = sanitize_text_field($request->get_param('organizer') ?? '');
+        $organizerEmail = sanitize_email($request->get_param('organizer_email') ?? '');
 
         // Address / geo fields
-        $country  = sanitize_text_field($request->get_param('event_country'));
-        $state    = sanitize_text_field($request->get_param('event_state'));
-        $city     = sanitize_text_field($request->get_param('event_city'));
-        $suburb   = sanitize_text_field($request->get_param('event_suburb'));
-        $street   = sanitize_text_field($request->get_param('event_street_address'));
-        $postcode = sanitize_text_field($request->get_param('event_postcode'));
+        $country  = sanitize_text_field($request->get_param('event_country') ?? '');
+        $state    = sanitize_text_field($request->get_param('event_state') ?? '');
+        $city     = sanitize_text_field($request->get_param('event_city') ?? '');
+        $suburb   = sanitize_text_field($request->get_param('event_suburb') ?? '');
+        $street   = sanitize_text_field($request->get_param('event_street_address') ?? '');
+        $postcode = sanitize_text_field($request->get_param('event_postcode') ?? '');
         $featured = $request->get_param('event_featured') ? '1' : '';
         $latitude  = $request->get_param('latitude') !== null ? floatval($request->get_param('latitude')) : '';
         $longitude = $request->get_param('longitude') !== null ? floatval($request->get_param('longitude')) : '';
