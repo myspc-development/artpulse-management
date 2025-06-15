@@ -1,4 +1,5 @@
 <?php
+
 namespace EAD\Rest;
 
 use WP_REST_Controller;
@@ -8,12 +9,10 @@ use WP_REST_Response;
 use WP_Error;
 
 class SubmissionEndpoint extends WP_REST_Controller {
-    protected $namespace;
-    protected $rest_base;
+    protected $namespace = 'artpulse/v1';
+    protected $rest_base = 'submissions';
 
     public function __construct() {
-        $this->namespace = 'artpulse/v1';
-        $this->rest_base = 'submissions';
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
     }
 
@@ -58,15 +57,18 @@ class SubmissionEndpoint extends WP_REST_Controller {
 
     public function permissions_check( WP_REST_Request $request ): bool {
         $user = wp_get_current_user();
+
         return current_user_can( 'manage_options' ) || in_array( 'organization', $user->roles, true );
     }
 
     public function get_pending_submissions( WP_REST_Request $request ) {
-        $pending = get_posts( [
-            'post_type'      => 'ead_artwork',
-            'post_status'    => 'pending',
-            'posts_per_page' => 20,
-        ] );
+        $pending = get_posts(
+            [
+                'post_type'      => 'ead_artwork',
+                'post_status'    => 'pending',
+                'posts_per_page' => 20,
+            ]
+        );
 
         $items = array_map(
             static function ( $post ) {
@@ -93,7 +95,13 @@ class SubmissionEndpoint extends WP_REST_Controller {
         }
 
         $new_status = $action === 'approve' ? 'publish' : 'trash';
-        wp_update_post( [ 'ID' => $id, 'post_status' => $new_status ] );
+        $updated    = wp_update_post( [ 'ID' => $id, 'post_status' => $new_status ], true );
+
+        if ( is_wp_error( $updated ) ) {
+            error_log( 'ArtPulse Management: Error updating submission status: ' . $updated->get_error_message() );
+
+            return new WP_REST_Response( [ 'error' => 'Failed to update submission status' ], 500 );
+        }
 
         return new WP_REST_Response( [ 'success' => true, 'new_status' => $new_status ], 200 );
     }
@@ -102,24 +110,30 @@ class SubmissionEndpoint extends WP_REST_Controller {
         global $wpdb;
 
         $month_start = date( 'Y-m-01 00:00:00' );
+        $month_start = sanitize_text_field( $month_start );
 
         $pending = wp_count_posts( 'ead_artwork' )->pending;
 
-        $approved = (int) $wpdb->get_var( $wpdb->prepare(
-            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'publish' AND post_date >= %s",
-            $month_start
-        ) );
+        $approved = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'publish' AND post_date >= %s",
+                $month_start
+            )
+        );
 
-        $rejected = (int) $wpdb->get_var( $wpdb->prepare(
-            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'trash' AND post_date >= %s",
-            $month_start
-        ) );
+        $rejected = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'trash' AND post_date >= %s",
+                $month_start
+            )
+        );
 
-        $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT DATE(post_date) as date, COUNT(*) as count FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'publish' AND post_date >= %s GROUP BY DATE(post_date)",
-            date( 'Y-m-d', strtotime( '-30 days' ) )
-        ) );
-
+        $rows   = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT DATE(post_date) as date, COUNT(*) as count FROM {$wpdb->posts} WHERE post_type = 'ead_artwork' AND post_status = 'publish' AND post_date >= %s GROUP BY DATE(post_date)",
+                date( 'Y-m-d', strtotime( '-30 days' ) )
+            )
+        );
         $labels = array_map( static fn( $r ) => $r->date, $rows );
         $data   = array_map( static fn( $r ) => (int) $r->count, $rows );
 
