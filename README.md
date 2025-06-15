@@ -118,7 +118,14 @@ command bundles the JavaScript from `assets/js/user-dashboard/main.js` into
 
 ### Running Tests
 
-Execute PHPUnit to run the unit test suite:
+Before executing any tests make sure all development dependencies are installed:
+
+```bash
+composer install
+npm install
+```
+
+Run the JavaScript tests with `npm test` or execute PHPUnit to run the PHP unit suite:
 
 ```bash
 phpunit
