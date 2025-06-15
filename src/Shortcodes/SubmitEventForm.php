@@ -78,6 +78,10 @@ class SubmitEventForm {
             return '<div class="ead-notice ead-login-required">You must be logged in to submit an event.</div>';
         }
 
+        if (!current_user_can('manage_events')) {
+            return '<div class="ead-notice ead-permission-denied">You do not have permission to submit events.</div>';
+        }
+
         $event_types = get_terms([
             'taxonomy'   => 'ead_event_type',
             'hide_empty' => false,
