@@ -230,7 +230,7 @@ class SubmitEventEndpoint extends WP_REST_Controller {
      * Permission check callback.
      */
     public function permissionsCheck(WP_REST_Request $request) {
-        return is_user_logged_in();
+        return current_user_can('manage_events') || current_user_can('edit_posts');
     }
 
     /**

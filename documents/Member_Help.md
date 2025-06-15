@@ -14,6 +14,7 @@ Artists and organizers can manage their listings through a set of self-service t
 
 ## Submitting Events
 - Organizers can create events from the dashboard or with the `[ead_submit_event_form]` shortcode.
+- Your account must have the `manage_events` capability (usually the **Event Organizer** role).
 - Events remain pending until approved by an admin.
 
 ## Reviews
