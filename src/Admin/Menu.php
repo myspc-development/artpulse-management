@@ -171,7 +171,7 @@ class Menu {
             __('Manage Members', 'artpulse-management'),
             __('Manage Members', 'artpulse-management'),
             'manage_options',
-            'artpulse-manage-members',
+            'ead-member-menu',
             [ManageMembers::class, 'render_admin_page']
         );
 
