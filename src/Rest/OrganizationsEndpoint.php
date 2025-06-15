@@ -138,6 +138,16 @@ class OrganizationsEndpoint extends WP_REST_Controller {
             }
         }
 
+        if ( ! has_post_thumbnail( $post_id ) ) {
+            $thumb_id = (int) get_post_meta( $post_id, 'ead_org_logo_id', true );
+            if ( ! $thumb_id ) {
+                $thumb_id = (int) get_post_meta( $post_id, 'ead_org_banner_id', true );
+            }
+            if ( $thumb_id ) {
+                set_post_thumbnail( $post_id, $thumb_id );
+            }
+        }
+
         // Address data
         $address_data_json = $request->get_param( 'address_data' );
         if ( $address_data_json ) {
