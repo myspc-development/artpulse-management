@@ -64,6 +64,8 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## Upcoming
+### Removed
+- Obsolete `src/Shortcodes/EventsList.php` after confirming `EventsListShortcode` is the registered implementation.
 ### Planned
 - Testing and QA.
 - PHPDoc complete coverage.
