@@ -100,7 +100,9 @@ function artpulse_membership_checkout_shortcode() {
 
     $settings      = get_option('artpulse_plugin_settings', []);
     $use_test      = ! empty($settings['stripe_test_mode']);
-    $stripe_secret = $use_test ? 'sk_test_123' : 'sk_live_456';
+    $stripe_secret = $use_test
+        ? ($settings['stripe_test_secret'] ?? '')
+        : ($settings['stripe_live_secret'] ?? '');
 
     \Stripe\Stripe::setApiKey($stripe_secret);
 
@@ -184,7 +186,9 @@ function artpulse_create_checkout_session() {
     require_once ABSPATH . 'vendor/autoload.php';
     $settings      = get_option('artpulse_plugin_settings', []);
     $use_test      = ! empty($settings['stripe_test_mode']);
-    $stripe_secret = $use_test ? 'sk_test_123' : 'sk_live_456';
+    $stripe_secret = $use_test
+        ? ($settings['stripe_test_secret'] ?? '')
+        : ($settings['stripe_live_secret'] ?? '');
 
     \Stripe\Stripe::setApiKey($stripe_secret);
 
