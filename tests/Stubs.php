@@ -90,6 +90,31 @@ function get_users(array $args = []) {
     return \Tests\Stubs::$users;
 }
 
+function wp_insert_user(array $userdata) {
+    $id = count(\Tests\Stubs::$users) + 1;
+    $user = (object) array_merge(['ID' => $id], $userdata);
+    \Tests\Stubs::$users[] = $user;
+    return $id;
+}
+
+function get_user_by($field, $value) {
+    foreach (\Tests\Stubs::$users as $u) {
+        if ($field === 'id' && $u->ID == $value) return $u;
+        if ($field === 'email' && ($u->user_email ?? '') == $value) return $u;
+        if ($field === 'login' && ($u->user_login ?? '') == $value) return $u;
+    }
+    return false;
+}
+
+function get_userdata($id) {
+    foreach (\Tests\Stubs::$users as $u) {
+        if ($u->ID == $id) return $u;
+    }
+    return false;
+}
+
+function sanitize_email($email) { return trim($email); }
+
 function get_post($post_id) {
     foreach (\Tests\Stubs::$posts as $p) {
         if (is_object($p) && $p->ID == $post_id) {

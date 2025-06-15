@@ -215,6 +215,8 @@ class ManageMembersListTable extends \WP_List_Table {
                     'membership'   => sprintf('<a href="%s">%s</a>', esc_url($membership_url), __('Edit Membership', 'artpulse-management')),
                     'resend'       => sprintf('<a href="%s">%s</a>', esc_url($resend_url), __('Resend Reminder', 'artpulse-management')),
                     'quick_edit'   => sprintf('<a href="#" class="manage-members-inline" data-id="%d">%s</a>', $item->ID, __('Quick Edit', 'artpulse-management')),
+                    'view'         => sprintf('<a href="#" class="manage-members-view" data-id="%d">%s</a>', $item->ID, __('View', 'artpulse-management')),
+                    'upgrade'      => sprintf('<a href="#" class="manage-members-upgrade" data-id="%d">%s</a>', $item->ID, __('Upgrade', 'artpulse-management')),
                 ];
                 return sprintf('%s %s', esc_html($item->display_name), $this->row_actions($actions));
             case 'email':
@@ -295,6 +297,10 @@ class ManageMembers {
                 <input type="hidden" name="export" value="1" />
                 <?php submit_button( __('Export CSV', 'artpulse-management'), 'secondary', '', false ); ?>
             </form>
+            <button type="button" class="button" id="mm-add-member">
+                <?php esc_html_e( 'Add Member', 'artpulse-management' ); ?>
+            </button>
+            <div id="mm-add-row-container"></div>
             <?php $list_table->display(); ?>
         </div>
         <?php
