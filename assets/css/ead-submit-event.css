@@ -27,6 +27,18 @@
   }
 }
 
+.ead-submit-event-message {
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.ead-submit-event-loading {
+    margin-left: 10px;
+    font-style: italic;
+}
+
 .ead-dropzone {
   border: 2px dashed #bbb;
   padding: 1.5rem;
