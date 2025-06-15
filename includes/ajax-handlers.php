@@ -2,10 +2,10 @@
 // File: includes/ajax-handlers.php
 
 // --- State/City AJAX ---
-add_action('wp_ajax_ead_load_states', 'ead_load_states_handler');
-add_action('wp_ajax_nopriv_ead_load_states', 'ead_load_states_handler');
-add_action('wp_ajax_ead_search_cities', 'ead_search_cities_handler');
-add_action('wp_ajax_nopriv_ead_search_cities', 'ead_search_cities_handler');
+// The address metabox class registers the handlers for loading states and
+// searching cities. These hooks used to live here but were duplicated in that
+// class, so the implementations and action registrations now reside in
+// `EAD\Admin\MetaBoxesAddress`.
 
 function ead_check_rate_limit( $action ) {
     $settings = include plugin_dir_path( __FILE__ ) . 'settings.php';
@@ -24,129 +24,6 @@ function ead_check_rate_limit( $action ) {
     return true;
 }
 
-function ead_load_states_handler() {
-    if ( ! ead_check_rate_limit( 'ead_load_states' ) ) {
-        wp_send_json_error( [ 'error' => 'Too many requests.' ], 429 );
-    }
-    if (!isset($_GET['security']) || !wp_verify_nonce($_GET['security'], 'ead_load_states')) {
-        wp_send_json_error(['error' => 'Invalid security token.']);
-    }
-
-    $country = sanitize_text_field($_GET['country_code'] ?? '');
-    if (!$country) {
-        wp_send_json_error(['error' => 'Missing country code.']);
-    }
-
-    $states_file = plugin_dir_path(__FILE__) . '../data/states.json';
-    $states_data = json_decode(file_get_contents($states_file), true);
-
-    if (isset($states_data[$country])) {
-        wp_send_json_success($states_data[$country]);
-    }
-
-    $settings = include(plugin_dir_path(__FILE__) . '../includes/settings.php');
-    $geonames_username = $settings['geonames_username'] ?? '';
-
-    if (!$geonames_username) {
-        wp_send_json_error(['error' => 'GeoNames username not configured.']);
-    }
-
-    $api_url = "http://api.geonames.org/childrenJSON?geonameId={$country}&username={$geonames_username}";
-    $response = wp_remote_get($api_url);
-
-    if (is_wp_error($response)) {
-        wp_send_json_error(['error' => 'Failed to fetch states from GeoNames.']);
-    }
-
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-    $states = [];
-
-    if (!empty($data['geonames'])) {
-        foreach ($data['geonames'] as $item) {
-            $states[] = [
-                'code' => $item['adminCode1'] ?? '',
-                'name' => $item['name'] ?? ''
-            ];
-        }
-        $states_data[$country] = $states;
-        file_put_contents($states_file, json_encode($states_data, JSON_PRETTY_PRINT));
-        wp_send_json_success($states);
-    } else {
-        wp_send_json_error(['error' => 'No states found.']);
-    }
-}
-
-function ead_search_cities_handler() {
-    if ( ! ead_check_rate_limit( 'ead_search_cities' ) ) {
-        wp_send_json_error( [ 'error' => 'Too many requests.' ], 429 );
-    }
-    if (!isset($_GET['security']) || !wp_verify_nonce($_GET['security'], 'ead_search_cities')) {
-        wp_send_json_error(['error' => 'Invalid security token.']);
-    }
-
-    $country    = sanitize_text_field($_GET['country_code'] ?? '');
-    $state      = sanitize_text_field($_GET['state_code'] ?? '');
-    $term       = sanitize_text_field($_GET['term'] ?? '');
-    $use_cache  = filter_var($_GET['use_cache'] ?? true, FILTER_VALIDATE_BOOLEAN);
-
-    if (!$country || !$state) {
-        wp_send_json_error(['error' => 'Missing country or state.']);
-    }
-
-    $cities_file = plugin_dir_path(__FILE__) . '../data/cities.json';
-    $cities_data = json_decode(file_get_contents($cities_file), true) ?: [];
-    $cache_key = "{$country}-{$state}";
-
-    if ( $use_cache && isset( $cities_data[ $cache_key ] ) ) {
-        $cached = $cities_data[ $cache_key ];
-        $results = [];
-        foreach ( $cached as $city ) {
-            $name = is_array( $city ) ? ( $city['name'] ?? '' ) : $city;
-            if ( $name === '' ) {
-                continue;
-            }
-            if ( $term && stripos( $name, $term ) === false ) {
-                continue;
-            }
-            $results[] = is_array( $city ) ? $city : [ 'name' => $name ];
-        }
-        wp_send_json_success( $results );
-    }
-
-    $settings = include(plugin_dir_path(__FILE__) . '../includes/settings.php');
-    $geonames_username = $settings['geonames_username'] ?? '';
-
-    if (!$geonames_username) {
-        wp_send_json_error(['error' => 'GeoNames username not configured.']);
-    }
-
-    $api_url = "http://api.geonames.org/searchJSON?country={$country}&adminCode1={$state}&featureClass=P&maxRows=1000&username={$geonames_username}";
-    if (!empty($term)) {
-        $api_url .= "&name_startsWith=" . urlencode($term);
-    }
-
-    $response = wp_remote_get($api_url);
-
-    if (is_wp_error($response)) {
-        wp_send_json_error(['error' => 'Failed to fetch cities from GeoNames.']);
-    }
-
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-    $cities = [];
-
-    if (!empty($data['geonames'])) {
-        foreach ($data['geonames'] as $item) {
-            $cities[] = [
-                'name' => $item['name'] ?? ''
-            ];
-        }
-        $cities_data[$cache_key] = $cities;
-        file_put_contents($cities_file, json_encode($cities_data, JSON_PRETTY_PRINT));
-        wp_send_json_success($cities);
-    } else {
-        wp_send_json_error(['error' => 'No cities found.']);
-    }
-}
 
 // --- RSVP AJAX: save RSVP as custom post type ---
 add_action( 'wp_ajax_ead_event_rsvp', 'ead_event_rsvp_ajax' );
