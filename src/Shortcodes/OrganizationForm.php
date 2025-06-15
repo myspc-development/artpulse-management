@@ -65,7 +65,7 @@ class OrganizationForm {
                 wp_update_post([
                     'ID' => $org_id,
                     'post_title' => $meta['ead_org_name'],
-                    'post_content' => $meta['organisation_description'],
+                    'post_content' => (string) $meta['organisation_description'],
                     'post_status' => 'pending',
                 ]);
                 foreach ($meta as $k => $v) update_post_meta($org_id, $k, $v);
@@ -76,7 +76,7 @@ class OrganizationForm {
             $org_id = wp_insert_post([
                 'post_type' => 'ead_organization',
                 'post_title' => $meta['ead_org_name'],
-                'post_content' => $meta['organisation_description'],
+                'post_content' => (string) $meta['organisation_description'],
                 'post_status' => 'pending',
                 'post_author' => get_current_user_id(),
             ]);

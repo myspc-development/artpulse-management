@@ -37,7 +37,7 @@ class EditEventForm {
         wp_update_post([
             'ID' => $event_id,
             'post_title' => $title,
-            'post_content' => $desc,
+            'post_content' => (string) $desc,
             'post_status' => 'pending',
         ]);
         wp_set_object_terms($event_id, [$type], 'ead_event_type');

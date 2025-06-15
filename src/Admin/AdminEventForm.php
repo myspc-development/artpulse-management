@@ -248,7 +248,7 @@ class AdminEventForm {
         // Insert post
         $event_id = wp_insert_post( [
             'post_title'   => $fields['event_title'],
-            'post_content' => $fields['event_description'],
+            'post_content' => (string) $fields['event_description'],
             'post_type'    => 'ead_event',
             'post_status'  => 'pending',  // admin review by default
             'post_author'  => get_current_user_id(),
