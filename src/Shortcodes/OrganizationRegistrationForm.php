@@ -1,4 +1,5 @@
 <?php
+
 namespace EAD\Shortcodes;
 
 use EAD\Shortcodes\HoneypotTrait;
@@ -10,8 +11,8 @@ class OrganizationRegistrationForm {
      * Register shortcode and asset hooks.
      */
     public static function register() {
-        add_shortcode('ead_organization_registration_form', [self::class, 'render_form']);
-        add_action('wp_enqueue_scripts', [self::class, 'enqueue_assets']);
+        add_shortcode( 'ead_organization_registration_form', [ self::class, 'render_form' ] );
+        add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue_assets' ] );
     }
 
     /**
@@ -19,7 +20,7 @@ class OrganizationRegistrationForm {
      */
     public static function enqueue_assets() {
         $plugin_url = EAD_PLUGIN_DIR_URL;
-        $version    = defined('EAD_PLUGIN_VERSION') ? EAD_PLUGIN_VERSION : '1.0.0';
+        $version    = defined( 'EAD_PLUGIN_VERSION' ) ? EAD_PLUGIN_VERSION : '1.0.0';
 
         wp_enqueue_style(
             'ead-organization-registration',
@@ -43,14 +44,14 @@ class OrganizationRegistrationForm {
             'ead-organization-gallery',
             'eadOrgGallery',
             [
-                'select_image_title'  => __( 'Select or Upload Image', 'artpulse-management' ),
-                'use_image_button'    => __( 'Use this image', 'artpulse-management' ),
-                'placeholder_prefix'  => __( 'Image ', 'artpulse-management' ),
+                'select_image_title'  => esc_html__( 'Select or Upload Image', 'artpulse-management' ),
+                'use_image_button'    => esc_html__( 'Use this image', 'artpulse-management' ),
+                'placeholder_prefix'  => esc_html__( 'Image ', 'artpulse-management' ),
             ]
         );
 
-        wp_enqueue_style('select2', $plugin_url . 'assets/select2/css/select2.min.css');
-        wp_enqueue_script('select2', $plugin_url . 'assets/select2/js/select2.min.js', ['jquery'], null, true);
+        wp_enqueue_style( 'select2', $plugin_url . 'assets/select2/css/select2.min.css' );
+        wp_enqueue_script( 'select2', $plugin_url . 'assets/select2/js/select2.min.js', [ 'jquery' ], null, true );
 
         wp_enqueue_script(
             'ead-address',
@@ -60,22 +61,22 @@ class OrganizationRegistrationForm {
             true
         );
 
-        $settings = get_option('artpulse_plugin_settings', []);
-        $gmaps_api_key = isset($settings['google_maps_api_key']) ? $settings['google_maps_api_key'] : '';
-        $gmaps_places_enabled = !empty($settings['enable_google_places_api']);
-        $geonames_enabled = !empty($settings['enable_geonames_api']);
+        $settings             = get_option( 'artpulse_plugin_settings', [] );
+        $gmaps_api_key        = isset( $settings['google_maps_api_key'] ) ? $settings['google_maps_api_key'] : '';
+        $gmaps_places_enabled = ! empty( $settings['enable_google_places_api'] );
+        $geonames_enabled     = ! empty( $settings['enable_geonames_api'] );
 
         wp_localize_script(
             'ead-address',
             'eadAddress',
             [
-                'countriesJson'    => $plugin_url . 'data/countries.json',
-                'ajaxUrl'          => admin_url('admin-ajax.php'),
-                'statesNonce'      => wp_create_nonce('ead_load_states'),
-                'citiesNonce'      => wp_create_nonce('ead_search_cities'),
-                'gmapsApiKey'      => $gmaps_api_key,
+                'countriesJson'      => $plugin_url . 'data/countries.json',
+                'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
+                'statesNonce'          => wp_create_nonce( 'ead_load_states' ),
+                'citiesNonce'          => wp_create_nonce( 'ead_search_cities' ),
+                'gmapsApiKey'          => $gmaps_api_key,
                 'gmapsPlacesEnabled' => $gmaps_places_enabled,
-                'geonamesEnabled'  => $geonames_enabled,
+                'geonamesEnabled'     => $geonames_enabled,
             ]
         );
 
@@ -296,8 +297,8 @@ class OrganizationRegistrationForm {
                     $max_images = 5;
                     for ( $i = 0; $i < $max_images; $i++ ) :
                         ?>
-                        <div class="ead-image-upload-container" data-image-index="<?php echo $i; ?>">
-                            <div class="ead-image-preview"><span class="placeholder"><?php printf( esc_html__( 'Image %d', 'artpulse-management' ), $i + 1 ); ?></span></div>
+                        <div class="ead-image-upload-container" data-image-index="<?php echo intval( $i ); ?>">
+                            <div class="ead-image-preview"><span class="placeholder"><?php printf( esc_html__( 'Image %d', 'artpulse-management' ), intval( $i ) + 1 ); ?></span></div>
                             <input type="hidden" name="ead_org_gallery_images[]" class="ead-image-id-input" value="">
                             <button type="button" class="button ead-upload-image-button"><?php esc_html_e( 'Select Image', 'artpulse-management' ); ?></button>
                             <button type="button" class="button ead-remove-image-button hidden"><?php esc_html_e( 'Remove Image', 'artpulse-management' ); ?></button>
