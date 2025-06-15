@@ -113,6 +113,17 @@ function get_userdata($id) {
     return false;
 }
 
+function wp_delete_user($id) {
+    foreach (\Tests\Stubs::$users as $i => $u) {
+        if ($u->ID == $id) {
+            unset(\Tests\Stubs::$users[$i]);
+            \Tests\Stubs::$users = array_values(\Tests\Stubs::$users);
+            return true;
+        }
+    }
+    return false;
+}
+
 function sanitize_email($email) { return trim($email); }
 
 function get_post($post_id) {
