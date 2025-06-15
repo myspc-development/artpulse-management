@@ -7,8 +7,8 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 class ManageMembersEndpoint extends WP_REST_Controller {
-    protected string $namespace = 'artpulse/v1';
-    protected string $rest_base = 'manage-members';
+    protected $namespace = 'artpulse/v1';
+    protected $rest_base = 'manage-members';
 
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
