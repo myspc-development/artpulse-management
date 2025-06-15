@@ -161,6 +161,10 @@ class OrganizationForm {
                     <input type="file" name="organisation_logo_file" accept="image/*">
                 </label><br>
                 <?php echo self::render_honeypot( $atts ); ?>
+                <button type="submit" class="button button-primary">
+                    <?php echo $org_id ? esc_html__('Update Organization', 'artpulse-management')
+                                       : esc_html__('Submit Organization', 'artpulse-management'); ?>
+                </button>
             </form>
         </div>
         <style>

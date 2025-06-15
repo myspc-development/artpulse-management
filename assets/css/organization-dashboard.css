@@ -64,6 +64,22 @@
     outline: none;
 }
 
+/* Submit button inside dashboard forms */
+.ead-dashboard-card button.button-primary {
+    background: var(--ead-primary-color, #0073aa);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.ead-dashboard-card button.button-primary:hover,
+.ead-dashboard-card button.button-primary:focus {
+    background: #005f8d;
+    outline: none;
+}
+
 /* Profile Form in Dashboard */
 .ead-organization-profile-form .form-group {
     margin-bottom: 1rem;
