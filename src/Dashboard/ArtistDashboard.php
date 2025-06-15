@@ -391,6 +391,10 @@ class ArtistDashboard {
 
         if ($new_portrait_id) {
             update_post_meta($artist_post_id, 'artist_portrait', $new_portrait_id);
+
+            if (!has_post_thumbnail($artist_post_id)) {
+                set_post_thumbnail($artist_post_id, intval($new_portrait_id));
+            }
         } else {
             delete_post_meta($artist_post_id, 'artist_portrait');
         }
