@@ -139,6 +139,10 @@ class ArtistsEndpoint extends WP_REST_Controller {
         $portrait = $request->get_param( 'artist_portrait' );
         if ( $portrait ) {
             update_post_meta( $artist_post_id, 'artist_portrait', intval( $portrait ) );
+
+            if ( ! has_post_thumbnail( $artist_post_id ) ) {
+                set_post_thumbnail( $artist_post_id, intval( $portrait ) );
+            }
         }
 
         $gallery_ids = $request->get_param( 'artist_gallery_images' );
