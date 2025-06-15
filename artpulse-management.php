@@ -630,6 +630,14 @@ class Plugin {
             PendingOrganizations::register();
             PendingArtists::register();
             PendingArtworks::register();
+
+            // Ensure the ManageMembers class is loaded before registering
+            // hooks in case autoloading fails or the file is outdated.
+            $manage_members_path = EAD_PLUGIN_DIR_PATH . 'src/Admin/ManageMembers.php';
+            if ( file_exists( $manage_members_path ) ) {
+                require_once $manage_members_path;
+            }
+
             ManageMembers::register();
             MetaBoxesOrganisation::register();
             MetaBoxesArtist::register();
