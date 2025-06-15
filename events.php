@@ -299,7 +299,7 @@ function artpulse_event_card_shortcode($atts) {
         <?php if ($organizer): ?><p><strong>Organizer ID:</strong> <?php echo esc_html($organizer); ?></p><?php endif; ?>
         <?php if ($recurring === '1'): ?><p><em>This event recurs.</em></p><?php endif; ?>
 
-        <div class="mt-3"><?php echo wpautop($post->post_content); ?></div>
+        <div class="mt-3"><?php echo wpautop( (string) $post->post_content ); ?></div>
 
         <?php
         $current_user = wp_get_current_user();
@@ -377,7 +377,7 @@ add_action('template_redirect', function () {
     }
     echo 'SUMMARY:' . esc_html($post->post_title) . "\r\n";
     echo 'LOCATION:' . esc_html($location) . "\r\n";
-    echo 'DESCRIPTION:' . esc_html(strip_tags($post->post_content)) . "\r\n";
+    echo 'DESCRIPTION:' . esc_html( strip_tags( (string) $post->post_content ) ) . "\r\n";
     echo "END:VEVENT\r\n";
     echo "END:VCALENDAR\r\n";
 

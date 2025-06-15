@@ -104,7 +104,7 @@ add_shortcode('artwork_card', function ($atts) {
         } ?>
         <h3 class="text-xl font-bold"><?php echo esc_html($post->post_title); ?></h3>
         <p class="text-sm text-gray-600 mb-2">Artist: <?php echo esc_html($artist_name); ?></p>
-        <div class="text-gray-800 text-sm"><?php echo wpautop($post->post_content); ?></div>
+        <div class="text-gray-800 text-sm"><?php echo wpautop( (string) $post->post_content ); ?></div>
         <?php if ($gallery_ids) : ?>
             <div class="artwork-lightbox mt-2">
                 <?php foreach ($gallery_ids as $gid) :

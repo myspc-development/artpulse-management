@@ -58,7 +58,7 @@ add_shortcode('artist_card', function ($atts) {
             echo get_the_post_thumbnail($post->ID, 'medium', ['class' => 'rounded']);
         } ?>
         <h3 class="text-xl font-bold"><?php echo esc_html($post->post_title); ?></h3>
-        <div class="text-sm text-gray-700"><?php echo wpautop($post->post_content); ?></div>
+        <div class="text-sm text-gray-700"><?php echo wpautop( (string) $post->post_content ); ?></div>
         <div class="flex gap-3 mt-2">
             <?php if ($website): ?><a href="<?php echo esc_url($website); ?>" class="underline text-blue-600" target="_blank">Website</a><?php endif; ?>
             <?php if ($social): ?><a href="<?php echo esc_url($social); ?>" class="underline text-blue-600" target="_blank">Social</a><?php endif; ?>

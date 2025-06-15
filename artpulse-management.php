@@ -1249,7 +1249,7 @@ class Plugin {
                     get_post_meta( $event->ID, 'event_organizer_email', true ),
                     get_post_meta( $event->ID, 'event_start_date', true ),
                     get_post_meta( $event->ID, 'event_end_date', true ),
-                    wp_strip_all_tags( $event->post_content ),
+                    wp_strip_all_tags( (string) $event->post_content ),
                     get_the_date( 'Y-m-d H:i:s', $event->ID ),
                     $org_id,
                     $org_name,
