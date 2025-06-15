@@ -24,7 +24,7 @@ class ManageMembers {
             'Members',                       // Menu title
             'manage_options',                // Capability
             'artpulse-manage-members',       // Menu slug
-            [self::class, 'render_page'],    // Callback function
+            [ self::class, 'render_admin_page' ], // Callback wrapper
             'dashicons-groups',              // Icon
             56                               // Position
         );
