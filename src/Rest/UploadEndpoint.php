@@ -98,7 +98,7 @@ class UploadEndpoint extends WP_REST_Controller {
             static function ( $post ) {
                 return [
                     'title'       => $post->post_title,
-                    'description' => $post->post_content,
+                    'description' => (string) $post->post_content,
                     'image_url'   => get_the_post_thumbnail_url( $post->ID, 'medium' ),
                 ];
             },

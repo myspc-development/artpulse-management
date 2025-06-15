@@ -52,7 +52,7 @@ class PortfolioSync {
             'post_type'   => 'portfolio',
             'post_status' => 'publish',
             'post_title'  => $post->post_title,
-            'post_content'=> $post->post_content,
+            'post_content'=> (string) $post->post_content,
         ];
 
         if ( $portfolio_id && get_post( $portfolio_id ) ) {
