@@ -59,6 +59,7 @@ function artpulse_add_organization_meta_boxes() {
 add_action('add_meta_boxes', 'artpulse_add_organization_meta_boxes');
 
 function artpulse_org_meta_box_callback($post) {
+    wp_nonce_field('save_org', 'org_nonce');
     $website = get_post_meta($post->ID, 'org_website', true);
     $logo = get_post_meta($post->ID, 'org_logo_url', true);
     $mission = get_post_meta($post->ID, 'org_mission', true);
@@ -88,6 +89,14 @@ function artpulse_org_meta_box_callback($post) {
 }
 
 function artpulse_save_organization_meta($post_id) {
+    if (
+        ! isset($_POST['org_nonce']) ||
+        ! wp_verify_nonce($_POST['org_nonce'], 'save_org') ||
+        ! current_user_can('edit_post', $post_id)
+    ) {
+        return;
+    }
+
     if (get_post_type($post_id) !== 'organization') return;
     update_post_meta($post_id, 'org_website', sanitize_text_field($_POST['org_website'] ?? ''));
     update_post_meta($post_id, 'org_logo_url', esc_url_raw($_POST['org_logo_url'] ?? ''));
