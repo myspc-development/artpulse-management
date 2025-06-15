@@ -15,6 +15,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Simple Membership Manager page under Settings listing user memberships.
 
+## [3.7.8] - 2025-06-19
+### Removed
+- Simple Membership Manager admin page and its JavaScript asset.
+
 ## [3.7.4] - 2025-06-15
 ### Fixed
 - Ensured `RolesManager` is loaded before aliasing to avoid activation errors.
