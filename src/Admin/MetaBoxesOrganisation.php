@@ -287,6 +287,16 @@ class MetaBoxesOrganisation {
                 }
             }
         }
+
+        if ( ! has_post_thumbnail( $post_id ) ) {
+            $thumb_id = (int) get_post_meta( $post_id, 'ead_org_logo_id', true );
+            if ( ! $thumb_id ) {
+                $thumb_id = (int) get_post_meta( $post_id, 'ead_org_banner_id', true );
+            }
+            if ( $thumb_id ) {
+                set_post_thumbnail( $post_id, $thumb_id );
+            }
+        }
     }
     public static function is_organisation_featured( $post_id ) {
         return get_post_meta( $post_id, '_ead_featured', true );
