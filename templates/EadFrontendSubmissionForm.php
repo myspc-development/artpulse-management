@@ -1,14 +1,39 @@
 <?php
 // templates/ead-frontend-submission-form.php
 
-// Enqueue form styles when this template is loaded.
+// Enqueue form styles and scripts when this template is loaded.
 if ( defined( 'EAD_PLUGIN_DIR_URL' ) ) {
-    wp_enqueue_style(
-        'ead-submit-event-css',
-        EAD_PLUGIN_DIR_URL . 'assets/css/ead-submit-event.css',
-        [],
-        defined( 'EAD_PLUGIN_VERSION' ) ? EAD_PLUGIN_VERSION : null
+    $plugin_url = EAD_PLUGIN_DIR_URL;
+    $version    = defined( 'EAD_PLUGIN_VERSION' ) ? EAD_PLUGIN_VERSION : '1.0.0';
+
+    wp_enqueue_style( 'ead-submit-event-css', $plugin_url . 'assets/css/ead-submit-event.css', [], $version );
+    wp_enqueue_style( 'select2', $plugin_url . 'assets/select2/css/select2.min.css' );
+    wp_enqueue_script( 'select2', $plugin_url . 'assets/select2/js/select2.min.js', [ 'jquery' ], null, true );
+    wp_enqueue_script( 'ead-address', $plugin_url . 'assets/js/ead-address.js', [ 'jquery', 'select2' ], $version, true );
+    wp_enqueue_script( 'ead-frontend-location', $plugin_url . 'assets/js/frontend-location-init.js', [ 'ead-address' ], $version, true );
+
+    $settings               = get_option( 'artpulse_plugin_settings', [] );
+    $gmaps_api_key          = isset( $settings['google_maps_api_key'] ) ? $settings['google_maps_api_key'] : '';
+    $gmaps_places_enabled   = ! empty( $settings['enable_google_places_api'] );
+    $geonames_enabled       = ! empty( $settings['enable_geonames_api'] );
+
+    wp_localize_script(
+        'ead-address',
+        'eadAddress',
+        [
+            'countriesJson'     => $plugin_url . 'data/countries.json',
+            'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
+            'statesNonce'       => wp_create_nonce( 'ead_load_states' ),
+            'citiesNonce'       => wp_create_nonce( 'ead_search_cities' ),
+            'gmapsApiKey'       => $gmaps_api_key,
+            'gmapsPlacesEnabled' => $gmaps_places_enabled,
+            'geonamesEnabled'   => $geonames_enabled,
+        ]
     );
+
+    if ( $gmaps_places_enabled && $gmaps_api_key ) {
+        wp_enqueue_script( 'google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . $gmaps_api_key . '&libraries=places', [], null, true );
+    }
 }
 
 // Generate the security nonce and get event types.
@@ -95,6 +120,18 @@ $types = get_terms(['taxonomy' => 'ead_event_type', 'hide_empty' => false]);
     <!-- Location -->
     <fieldset class="ead-card">
       <legend>Location</legend>
+      <div class="ead-form-group">
+        <label for="ead_country">Country</label>
+        <select id="ead_country" name="event_country" required></select>
+      </div>
+      <div class="ead-form-group">
+        <label for="ead_state">State</label>
+        <select id="ead_state" name="event_state" disabled required></select>
+      </div>
+      <div class="ead-form-group">
+        <label for="ead_city">City</label>
+        <select id="ead_city" name="event_city" disabled required></select>
+      </div>
       <div class="ead-form-group">
         <label for="ead-map">Click on the map to select location:</label>
         <div id="ead-map" class="ead-map-display"></div>
