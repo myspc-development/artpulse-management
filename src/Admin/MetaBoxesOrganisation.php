@@ -28,6 +28,15 @@ class MetaBoxesOrganisation {
             'normal',
             'default'
         );
+
+        add_meta_box(
+            'ead_organisation_featured',
+            __( 'Featured Organization', 'artpulse-management' ),
+            [ self::class, 'render_featured_meta_box' ],
+            'ead_organization',
+            'side',
+            'default'
+        );
     }
 
     /**
@@ -86,6 +95,8 @@ class MetaBoxesOrganisation {
             'ead_org_sunday_start_time'    => [ 'type' => 'time', 'label' => __( 'Sunday Opening Time', 'artpulse-management' ) ],
             'ead_org_sunday_end_time'      => [ 'type' => 'time', 'label' => __( 'Sunday Closing Time', 'artpulse-management' ) ],
             'ead_org_sunday_closed'        => [ 'type' => 'checkbox', 'label' => __( 'Closed on Sunday', 'artpulse-management' ) ],
+            '_ead_featured' => [ 'type' => 'checkbox', 'label' => __('Featured', 'artpulse-management')],
+            '_ead_featured_priority' => ['type' => 'number', 'label' => __('Featured Priority', 'artpulse-management')],
         ];
     }
 
@@ -123,6 +134,10 @@ class MetaBoxesOrganisation {
 
         echo '<table class="form-table">';
         foreach ( $fields as $field => $args ) {
+            // Skip featured related fields here, render in the dedicated metabox
+            if (in_array($field, ['_ead_featured', '_ead_featured_priority'])) {
+                continue;
+            }
             echo '<tr>';
             echo '<th><label for="ead_org_mb_' . esc_attr( $field ) . '">' . esc_html( $args['label'] ) . '</label></th>';
             echo '<td>';
@@ -199,6 +214,19 @@ class MetaBoxesOrganisation {
         <?php
     }
 
+    public static function render_featured_meta_box( $post ) {
+        wp_nonce_field( 'ead_organization_meta_nonce', 'ead_organization_meta_nonce' );
+
+        $featured = get_post_meta($post->ID, '_ead_featured', true);
+        $priority = get_post_meta($post->ID, '_ead_featured_priority', true);
+
+        echo '<p><label><input type="checkbox" name="_ead_featured" value="1" ' . checked($featured, '1', false) . '> ' . esc_html(__('Featured', 'artpulse-management')) . '</label></p>';
+
+        echo '<p><label>' . esc_html(__('Featured Priority', 'artpulse-management')) . '</label>';
+        echo '<input type="number" name="_ead_featured_priority" value="' . esc_attr($priority) . '" class="widefat"></p>';
+        echo '<p class="description">' . esc_html(__('Lower numbers have higher priority (1 is highest).', 'artpulse-management')) . '</p>';
+    }
+
     /**
      * Saves the meta box data.
      *
@@ -240,6 +268,9 @@ class MetaBoxesOrganisation {
                     case 'time':
                         $sanitized_value = sanitize_text_field( wp_unslash( $value ) ); // Sanitize time input
                         break;
+                    case 'number':
+                        $sanitized_value = intval(wp_unslash($value));
+                        break;
                     default:
                         $sanitized_value = sanitize_text_field( wp_unslash( $value ) );
                         break;
@@ -256,5 +287,11 @@ class MetaBoxesOrganisation {
                 }
             }
         }
+    }
+    public static function is_organisation_featured( $post_id ) {
+        return get_post_meta( $post_id, '_ead_featured', true );
+    }
+    public static function get_featured_priority( $post_id ) {
+        return get_post_meta( $post_id, '_ead_featured_priority', true );
     }
 }
