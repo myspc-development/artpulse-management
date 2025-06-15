@@ -20,6 +20,7 @@ add_action('add_meta_boxes', function () {
 });
 
 function render_artist_meta_box($post) {
+    wp_nonce_field('save_artist', 'artist_nonce');
     $website = get_post_meta($post->ID, 'artist_website', true);
     $social = get_post_meta($post->ID, 'artist_social', true);
     echo '<p><label>Website:<br><input type="url" name="artist_website" value="' . esc_attr($website) . '" class="widefat"></label></p>';
@@ -27,7 +28,16 @@ function render_artist_meta_box($post) {
 }
 
 add_action('save_post', function ($post_id) {
+    if (
+        ! isset($_POST['artist_nonce']) ||
+        ! wp_verify_nonce($_POST['artist_nonce'], 'save_artist') ||
+        ! current_user_can('edit_post', $post_id)
+    ) {
+        return;
+    }
+
     if (get_post_type($post_id) !== 'artist') return;
+
     update_post_meta($post_id, 'artist_website', sanitize_text_field($_POST['artist_website'] ?? ''));
     update_post_meta($post_id, 'artist_social', sanitize_text_field($_POST['artist_social'] ?? ''));
 });
