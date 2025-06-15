@@ -51,7 +51,7 @@ class ManageMembers {
             update_user_meta( $user_id, 'membership_end_date', date( 'Y-m-d H:i:s', strtotime( '+365 days' ) ) );
             self::update_role( $user_id, 'pro' );
         }
-        wp_redirect( admin_url( 'admin.php?page=artpulse-manage-members' ) );
+        wp_redirect( admin_url( 'admin.php?page=ead-member-menu' ) );
         exit;
     }
 
@@ -66,7 +66,7 @@ class ManageMembers {
         if ( $user_id ) {
             update_user_meta( $user_id, 'assigned_org', 'default_org' );
         }
-        wp_redirect( admin_url( 'admin.php?page=artpulse-manage-members' ) );
+        wp_redirect( admin_url( 'admin.php?page=ead-member-menu' ) );
         exit;
     }
 
@@ -81,7 +81,7 @@ class ManageMembers {
         if ( $user_id && wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'artpulse_delete_' . $user_id ) ) {
             wp_delete_user( $user_id );
         }
-        wp_redirect( admin_url( 'admin.php?page=artpulse-manage-members' ) );
+        wp_redirect( admin_url( 'admin.php?page=ead-member-menu' ) );
         exit;
     }
 
@@ -119,7 +119,7 @@ class ManageMembers {
         echo '<h1>' . esc_html__( 'Manage Members', 'artpulse-management' ) . '</h1>';
 
         echo '<form method="get">';
-        echo '<input type="hidden" name="page" value="artpulse-manage-members" />';
+        echo '<input type="hidden" name="page" value="ead-member-menu" />';
         echo '<p class="search-box">';
         echo '<label class="screen-reader-text" for="member-search-input">' . esc_html__( 'Search Members', 'artpulse-management' ) . '</label>';
         echo '<input type="search" id="member-search-input" name="s" value="' . esc_attr( $search ) . '" />';
@@ -170,7 +170,7 @@ class ManageMembers {
 
         if ( $total_pages > 1 ) {
             echo '<div class="tablenav bottom"><div class="tablenav-pages">';
-            $base = admin_url( 'admin.php?page=artpulse-manage-members' );
+            $base = admin_url( 'admin.php?page=ead-member-menu' );
             if ( $search ) {
                 $base = add_query_arg( 's', urlencode( $search ), $base );
             }
