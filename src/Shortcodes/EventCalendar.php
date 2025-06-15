@@ -40,16 +40,9 @@ class EventCalendar {
             'order'          => 'ASC',
         ]);
 
-        $events     = [];
         $organizers = [];
         foreach ($query->posts as $event) {
             $organizer = get_post_meta($event->ID, 'event_organizer_name', true);
-            $events[]  = [
-                'title'     => get_the_title($event),
-                'start'     => get_post_meta($event->ID, 'event_date', true),
-                'url'       => get_permalink($event->ID),
-                'organizer' => $organizer,
-            ];
             if ($organizer) {
                 $organizers[$organizer] = $organizer;
             }
@@ -59,7 +52,10 @@ class EventCalendar {
         wp_localize_script(
             'ead-event-calendar',
             'eventCalendarData',
-            [ 'events' => $events ]
+            [
+                'restUrl' => esc_url_raw( rest_url('artpulse/v1/calendar') ),
+                'nonce'   => wp_create_nonce('wp_rest'),
+            ]
         );
 
         ob_start();
