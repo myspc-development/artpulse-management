@@ -147,6 +147,26 @@ class Menu {
 
         add_submenu_page(
             'artpulse-main-menu',
+            __('Notifications', 'artpulse-management'),
+            __('Notifications', 'artpulse-management'),
+            'manage_options',
+            'artpulse-notifications',
+            [\EAD\Admin\NotificationSettingsAdmin::class, 'render_admin_page']
+        );
+
+        // Member Management top-level menu
+        add_menu_page(
+            __('Member Management', 'artpulse-management'),
+            __('Member Management', 'artpulse-management'),
+            'manage_options',
+            'ead-member-menu',
+            [ManageMembers::class, 'render_admin_page'],
+            'dashicons-groups',
+            33
+        );
+
+        add_submenu_page(
+            'ead-member-menu',
             __('Manage Members', 'artpulse-management'),
             __('Manage Members', 'artpulse-management'),
             'manage_options',
@@ -155,12 +175,12 @@ class Menu {
         );
 
         add_submenu_page(
-            'artpulse-main-menu',
-            __('Notifications', 'artpulse-management'),
-            __('Notifications', 'artpulse-management'),
+            'ead-member-menu',
+            __('Member Settings', 'artpulse-management'),
+            __('Member Settings', 'artpulse-management'),
             'manage_options',
-            'artpulse-notifications',
-            [\EAD\Admin\NotificationSettingsAdmin::class, 'render_admin_page']
+            'ead-membership-settings',
+            [self::class, 'render_membership_settings_page']
         );
 
         // The Settings page is registered separately by SettingsPage::add_settings_page_menu_item
@@ -187,6 +207,15 @@ class Menu {
                 margin-left: 6px;
             }
         </style>';
+    }
+
+    /**
+     * Render the membership tab of the settings page when accessed
+     * from the Member Management menu.
+     */
+    public static function render_membership_settings_page() {
+        $_GET['tab'] = 'membership';
+        SettingsPage::render_settings_page_with_tabs();
     }
 
     /**
