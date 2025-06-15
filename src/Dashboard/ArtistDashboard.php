@@ -217,7 +217,13 @@ class ArtistDashboard {
         $twitter   = get_post_meta($artist_post_id, 'artist_twitter', true);
         $linkedin  = get_post_meta($artist_post_id, 'artist_linkedin', true);
         $portrait_id  = get_post_meta($artist_post_id, 'artist_portrait', true);
-        $portrait_url = $portrait_id ? wp_get_attachment_image_src($portrait_id, 'thumbnail')[0] : '';
+        $portrait_url = '';
+        if ( $portrait_id ) {
+            $info = wp_get_attachment_image_src( $portrait_id, 'thumbnail' );
+            if ( $info ) {
+                $portrait_url = $info[0];
+            }
+        }
         $gallery_ids = get_post_meta($artist_post_id, 'artist_gallery_images', true);
         if (!is_array($gallery_ids)) {
             $gallery_ids = [];
