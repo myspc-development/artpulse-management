@@ -908,7 +908,7 @@ class Plugin {
             is_a( $post, 'WP_Post' ) &&
             class_exists( OrganizationList::class ) &&
             defined( OrganizationList::class . '::SHORTCODE_TAG_MAP' ) &&
-            has_shortcode( $post->post_content, OrganizationList::SHORTCODE_TAG_MAP )
+            has_shortcode( (string) $post->post_content, OrganizationList::SHORTCODE_TAG_MAP )
         ) {
             $version = self::VERSION;
 

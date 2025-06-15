@@ -85,7 +85,7 @@ class CalendarEndpoint extends WP_REST_Controller {
                     'category'  => $terms[0] ?? 'Uncategorized',
                     'location'  => get_post_meta( $id, 'event_location', true ) ?: 'Unspecified',
                     'tags'      => $tags,
-                    'description' => $post->post_content,
+                    'description' => (string) $post->post_content,
                     'latitude'  => (float) $lat,
                     'longitude' => (float) $lng,
                 ];

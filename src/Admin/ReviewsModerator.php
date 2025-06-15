@@ -79,7 +79,7 @@ class ReviewsModerator {
             echo '<td><input type="checkbox" name="review_ids[]" value="'.esc_attr($review->ID).'"></td>';
             echo '<td>' . esc_html($reviewer) . '</td>';
             echo '<td>' . esc_html($rating) . '</td>';
-            echo '<td>' . esc_html($review->post_content) . '</td>';
+            echo '<td>' . esc_html( (string) $review->post_content ) . '</td>';
             echo '<td>';
             if ($org_id) {
                 $org = get_post($org_id);

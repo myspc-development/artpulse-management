@@ -14,7 +14,7 @@ class SubmitEventForm {
 
     public static function enqueue_assets_if_shortcode_present() {
         global $post;
-        if ( is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'ead_submit_event_form' ) ) {
+        if ( is_a( $post, 'WP_Post' ) && has_shortcode( (string) $post->post_content, 'ead_submit_event_form' ) ) {
             self::enqueue_assets();
         }
     }

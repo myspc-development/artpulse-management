@@ -94,7 +94,7 @@ class UserController extends WP_REST_Controller {
                     'rsvped'      => in_array( $id, $user_rsvps, true ),
                     'category'    => $terms[0] ?? 'Uncategorized',
                     'tags'        => $tags,
-                    'description' => $post->post_content,
+                    'description' => (string) $post->post_content,
                 ];
             },
             $events

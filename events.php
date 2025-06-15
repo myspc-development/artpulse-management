@@ -184,7 +184,7 @@ function artpulse_enqueue_event_calendar_assets() {
     }
 
     global $post;
-    if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'event_calendar')) {
+    if (!is_a($post, 'WP_Post') || !has_shortcode((string) $post->post_content, 'event_calendar')) {
         return;
     }
 

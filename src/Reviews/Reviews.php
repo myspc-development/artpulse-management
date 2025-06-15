@@ -102,7 +102,7 @@ class Reviews {
 
         foreach ($reviews as $review) {
             $rating = get_post_meta($review->ID, 'ead_review_rating', true);
-            $content = $review->post_content;
+            $content = (string) $review->post_content;
             $status = ucfirst($review->post_status);
             $author = get_userdata($review->post_author);
 

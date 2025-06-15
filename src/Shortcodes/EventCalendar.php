@@ -11,7 +11,7 @@ class EventCalendar {
 
     public static function enqueue_assets_if_needed() {
         global $post;
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, self::SHORTCODE_TAG)) {
+        if (is_a($post, 'WP_Post') && has_shortcode((string) $post->post_content, self::SHORTCODE_TAG)) {
             self::enqueue_assets();
         }
     }
