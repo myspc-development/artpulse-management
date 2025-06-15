@@ -13,7 +13,7 @@ add_action('init', 'artpulse_register_membership_meta');
 
 // 2. Assign default membership level on registration
 function artpulse_assign_default_membership($user_id) {
-    update_user_meta($user_id, 'membership_level', 'free');
+    update_user_meta($user_id, 'membership_level', 'basic');
     update_user_meta($user_id, 'membership_start_date', current_time('mysql'));
     update_user_meta($user_id, 'membership_end_date', date('Y-m-d H:i:s', strtotime('+30 days')));
     update_user_meta($user_id, 'membership_auto_renew', true);
@@ -401,8 +401,8 @@ function artpulse_render_membership_admin() {
                 update_user_meta($user_id, 'membership_level', 'pro');
             } elseif ($bulk_action === 'set_org') {
                 update_user_meta($user_id, 'membership_level', 'org');
-            } elseif ($bulk_action === 'set_free') {
-                update_user_meta($user_id, 'membership_level', 'free');
+            } elseif ($bulk_action === 'set_basic') {
+                update_user_meta($user_id, 'membership_level', 'basic');
             } elseif ($bulk_action === 'enable_auto_renew') {
                 update_user_meta($user_id, 'membership_auto_renew', true);
             } elseif ($bulk_action === 'disable_auto_renew') {
@@ -446,7 +446,7 @@ function artpulse_render_membership_admin() {
 
     // Build meta_query for filters
     $meta_query = [['key' => 'membership_level', 'compare' => 'EXISTS']];
-    if ($filter_level && in_array($filter_level, ['free','pro','org','expired'])) {
+    if ($filter_level && in_array($filter_level, ['basic','pro','org','expired'])) {
         $meta_query[] = ['key' => 'membership_level', 'value' => $filter_level];
     }
     if ($filter_auto === 'on') {
@@ -486,7 +486,7 @@ function artpulse_render_membership_admin() {
     echo '<input type="text" name="membership_search" placeholder="Search user..." value="' . esc_attr($search) . '" />';
     echo '&nbsp; Level: <select name="membership_level">';
     echo '<option value="">All</option>';
-    foreach (['free'=>'Free','pro'=>'Pro','org'=>'Org','expired'=>'Expired'] as $k=>$v) {
+    foreach (['basic'=>'Basic','pro'=>'Pro','org'=>'Org','expired'=>'Expired'] as $k=>$v) {
         echo '<option value="'.$k.'"'.selected($filter_level, $k, false).'>'.$v.'</option>';
     }
     echo '</select>';
@@ -523,7 +523,7 @@ function artpulse_render_membership_admin() {
         wp_nonce_field('artpulse_membership_update_' . $user->ID);
         echo '<td>
                 <select name="membership_level">
-                    <option value="free"'    . selected($level, 'free', false)    . '>Free</option>
+                    <option value="basic"'   . selected($level, 'basic', false)   . '>Basic</option>
                     <option value="pro"'     . selected($level, 'pro', false)     . '>Pro</option>
                     <option value="org"'     . selected($level, 'org', false)     . '>Org</option>
                     <option value="expired"' . selected($level, 'expired', false) . '>Expired</option>
@@ -534,7 +534,7 @@ function artpulse_render_membership_admin() {
         echo '<td style="text-align:center;"><input type="checkbox" name="membership_auto_renew" value="1"' . checked($renew, true, false) . '></td>';
         // Upgrade/downgrade quick buttons
         echo '<td style="white-space:nowrap;">';
-        foreach (['pro'=>'Pro','org'=>'Org','free'=>'Free','expired'=>'Expired'] as $target=>$label) {
+        foreach (['pro'=>'Pro','org'=>'Org','basic'=>'Basic','expired'=>'Expired'] as $target=>$label) {
             if ($level != $target) {
                 echo '<button class="button" name="quick_upgrade" value="'.esc_attr($target).'">'.esc_html($label).'</button> ';
             }
@@ -550,7 +550,7 @@ function artpulse_render_membership_admin() {
     echo '<select name="bulk_action">
             <option value="">Bulk Actions</option>
             <option value="set_expired">Set to Expired</option>
-            <option value="set_free">Set to Free</option>
+            <option value="set_basic">Set to Basic</option>
             <option value="set_pro">Set to Pro</option>
             <option value="set_org">Set to Org</option>
             <option value="enable_auto_renew">Enable Auto Renew</option>
