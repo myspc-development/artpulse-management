@@ -102,10 +102,10 @@ class MembershipEndpoint extends WP_REST_Controller {
         $user = wp_get_current_user();
         $uid  = $user->ID;
 
-        $name   = sanitize_text_field( $request->get_param( 'name' ) );
-        $bio    = sanitize_textarea_field( $request->get_param( 'bio' ) );
-        $badge  = sanitize_text_field( $request->get_param( 'badge_label' ) );
-        $level  = sanitize_text_field( $request->get_param( 'membership_level' ) );
+        $name   = sanitize_text_field( $request->get_param( 'name' ) ?? '' );
+        $bio    = sanitize_textarea_field( $request->get_param( 'bio' ) ?? '' );
+        $badge  = sanitize_text_field( $request->get_param( 'badge_label' ) ?? '' );
+        $level  = sanitize_text_field( $request->get_param( 'membership_level' ) ?? '' );
 
         if ( $name ) {
             wp_update_user([

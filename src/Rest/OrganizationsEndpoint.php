@@ -60,7 +60,7 @@ class OrganizationsEndpoint extends WP_REST_Controller {
             return new WP_Error( 'invalid_nonce', __( 'Security check failed.', 'artpulse-management' ), [ 'status' => 403 ] );
         }
 
-        $org_name = sanitize_text_field( $request->get_param( 'ead_org_name' ) );
+        $org_name = sanitize_text_field( $request->get_param( 'ead_org_name' ) ?? '' );
         if ( empty( $org_name ) ) {
             return new WP_Error( 'missing_name', __( 'Organization name is required.', 'artpulse-management' ), [ 'status' => 400 ] );
         }

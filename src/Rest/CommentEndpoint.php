@@ -123,7 +123,7 @@ class CommentEndpoint extends WP_REST_Controller {
      */
     public function moderateComment( WP_REST_Request $request ) {
         $commentId = (int) $request->get_param( 'comment_id' );
-        $action     = sanitize_text_field( $request->get_param( 'action' ) );
+        $action     = sanitize_text_field( $request->get_param( 'action' ) ?? '' );
 
         if ( ! current_user_can( 'moderate_comments' ) ) {
             return new WP_Error( 'rest_forbidden', __( 'You do not have permission to moderate comments.', 'artpulse-management' ), [ 'status' => 403 ] );

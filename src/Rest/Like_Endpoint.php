@@ -67,7 +67,7 @@ class Like_Endpoint extends WP_REST_Controller {
         }
 
         $postId = (int) $request->get_param( 'post_id' );
-        $action = sanitize_text_field( $request->get_param( 'action' ) );
+        $action = sanitize_text_field( $request->get_param( 'action' ) ?? '' );
 
         if ( empty( $postId ) ) {
             return new WP_Error( 'missing_post_id', __( 'Post ID is required.', 'artpulse-management' ), [ 'status' => 400 ] );

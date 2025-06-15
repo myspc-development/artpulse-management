@@ -109,8 +109,8 @@ class UserProfileEndpoint extends WP_REST_Controller {
             return new WP_Error( 'rest_not_logged_in', __( 'You are not currently logged in.', 'artpulse-management' ), [ 'status' => 401 ] );
         }
 
-        $name = sanitize_text_field( $request->get_param( 'name' ) );
-        $bio  = sanitize_textarea_field( $request->get_param( 'bio' ) );
+        $name = sanitize_text_field( $request->get_param( 'name' ) ?? '' );
+        $bio  = sanitize_textarea_field( $request->get_param( 'bio' ) ?? '' );
 
         $updateData = [
             'ID'           => $userId,

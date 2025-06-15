@@ -67,12 +67,12 @@ class ArtistsEndpoint extends WP_REST_Controller {
             return new WP_Error( 'already_logged_in', __( 'You are already logged in.', 'artpulse-management' ), [ 'status' => 400 ] );
         }
 
-        $username  = sanitize_user( $request->get_param( 'artist_username' ) );
-        $email     = sanitize_email( $request->get_param( 'registration_email' ) );
+        $username  = sanitize_user( $request->get_param( 'artist_username' ) ?? '' );
+        $email     = sanitize_email( $request->get_param( 'registration_email' ) ?? '' );
         $password  = $request->get_param( 'artist_password' );
         $confirm   = $request->get_param( 'artist_password_confirm' );
-        $display   = sanitize_text_field( $request->get_param( 'artist_display_name' ) );
-        $artist_email = sanitize_email( $request->get_param( 'artist_email' ) ?: $email );
+        $display   = sanitize_text_field( $request->get_param( 'artist_display_name' ) ?? '' );
+        $artist_email = sanitize_email( $request->get_param( 'artist_email' ) ?? $email );
 
         if ( empty( $username ) || empty( $email ) || empty( $password ) || empty( $confirm ) || empty( $display ) ) {
             return new WP_Error( 'missing_fields', __( 'All required fields must be completed.', 'artpulse-management' ), [ 'status' => 400 ] );

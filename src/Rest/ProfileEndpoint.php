@@ -30,9 +30,9 @@ class ProfileEndpoint extends WP_REST_Controller {
 
     public function save_profile( WP_REST_Request $request ) {
         $user_id = get_current_user_id();
-        $name = sanitize_text_field( $request->get_param( 'display_name' ) );
-        $city = sanitize_text_field( $request->get_param( 'city' ) );
-        $country = sanitize_text_field( $request->get_param( 'country' ) );
+        $name = sanitize_text_field( $request->get_param( 'display_name' ) ?? '' );
+        $city = sanitize_text_field( $request->get_param( 'city' ) ?? '' );
+        $country = sanitize_text_field( $request->get_param( 'country' ) ?? '' );
         $newsletter = $request->get_param( 'newsletter' ) === 'true' ? 'yes' : 'no';
 
         wp_update_user( [ 'ID' => $user_id, 'display_name' => $name ] );

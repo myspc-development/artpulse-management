@@ -88,7 +88,7 @@ class SubmissionEndpoint extends WP_REST_Controller {
 
     public function update_submission_status( WP_REST_Request $request ) {
         $id     = (int) $request['id'];
-        $action = sanitize_text_field( $request->get_param( 'action' ) );
+        $action = sanitize_text_field( $request->get_param( 'action' ) ?? '' );
 
         if ( ! in_array( $action, [ 'approve', 'reject' ], true ) ) {
             return new WP_REST_Response( [ 'error' => 'Invalid action' ], 400 );

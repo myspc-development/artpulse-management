@@ -122,7 +122,7 @@ class ReviewsEndpoint extends WP_REST_Controller {
             return new WP_Error( 'rest_not_logged_in', __( 'You must be logged in to submit a review.', 'artpulse-management' ), [ 'status' => 401 ] );
         }
 
-        $title   = sanitize_text_field( $request->get_param( 'title' ) );
+        $title   = sanitize_text_field( $request->get_param( 'title' ) ?? '' );
         $content = wp_kses_post( $request->get_param( 'content' ) );
         $rating  = (int) $request->get_param( 'rating' );
 

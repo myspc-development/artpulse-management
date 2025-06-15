@@ -129,8 +129,8 @@ class BookingsEndpoint extends WP_REST_Controller {
             return new WP_Error( 'rest_forbidden', __( 'You do not have permission to create bookings.', 'artpulse-management' ), [ 'status' => 403 ] );
         }
 
-        $title = sanitize_text_field( $request->get_param( 'title' ) );
-        $date  = sanitize_text_field( $request->get_param( 'date' ) );
+        $title = sanitize_text_field( $request->get_param( 'title' ) ?? '' );
+        $date  = sanitize_text_field( $request->get_param( 'date' ) ?? '' );
         $bookingDetails = wp_kses_post( $request->get_param( 'booking_details' ) ); // Sanitize booking details
 
         if ( empty( $title ) ) {
