@@ -1,99 +1,80 @@
 <?php
 /*
- * Single Template: Artwork Post (Salient Style)
- * Place in child theme as single-ead_artwork.php
+ * Archive Template: Artworks Portfolio Grid (Salient Style)
+ * Place in child theme as archive-ead_artwork.php
  */
-
 get_header();
 
-if (have_posts()) :
-    while (have_posts()) :
-        the_post(); ?>
-        <div class="container-wrap">
-            <div class="container main-content">
-                <article id="post-<?php the_ID(); ?>" <?php post_class('single-artwork'); ?>>
+$columns = 'cols-3';
+$span_num = 'span_4';
+$paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
 
-                    <?php
-                    // Retrieve gallery images (array of IDs)
-                    $image_ids = get_post_meta(get_the_ID(), '_ead_artwork_gallery_images', true);
+$artworks_query = new WP_Query([
+    'post_type'      => 'ead_artwork',
+    'posts_per_page' => 12,
+    'paged'          => $paged
+]);
+?>
 
-                    if (!empty($image_ids) && is_array($image_ids)) : ?>
-                        <div class="single-artwork-gallery">
-                            <?php foreach ($image_ids as $img_id) :
-                                $img_id = intval($img_id);
-                                if ($img_id > 0) {
-                                    $image_src = wp_get_attachment_image_src($img_id, 'large');
-                                    $image_caption = wp_get_attachment_caption($img_id);
-                                    if ($image_src) : ?>
-                                        <figure class="artwork-single-img">
-                                            <img src="<?php echo esc_url($image_src[0]); ?>" alt="<?php the_title_attribute(); ?> image" loading="lazy">
-                                            <?php if ($image_caption) : ?>
-                                                <figcaption><?php echo esc_html($image_caption); ?></figcaption>
-                                            <?php endif; ?>
-                                        </figure>
-                                    <?php else :
-                                        echo '<p>' . esc_html__('Image not found.', 'artpulse-management') . '</p>';
-                                    endif;
-                                }
-                            endforeach; ?>
-                        </div>
-                    <?php elseif (has_post_thumbnail()) : ?>
-                        <div class="single-artwork-thumb">
-                            <?php the_post_thumbnail('large', ['alt' => get_the_title(), 'loading' => 'lazy']); ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="single-artwork-thumb">
-                            <img src="<?php echo esc_url(get_template_directory_uri() . '/img/placeholder.png'); ?>"
-                                 alt="<?php the_title_attribute(); ?> - No image available" loading="lazy">
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="single-artwork-content">
-                        <h1 class="artwork-title"><?php the_title(); ?></h1>
-                        <div class="artwork-description">
-                            <?php the_content(); ?>
-                        </div>
-
-                        <?php
-                        // Metadata fields
-                        $fields = [
-                            'Artist'     => 'artwork_artist',
-                            'Year'       => 'artwork_year',
-                            'Medium'     => 'artwork_medium',
-                            'Dimensions' => 'artwork_dimensions',
-                            'Materials'  => 'artwork_materials',
-                            'Price'      => 'artwork_price',
-                            'Edition'    => 'artwork_edition',
-                            'Provenance' => 'artwork_provenance',
-                            'Tags'       => 'artwork_tags',
-                        ];
-
-                        echo '<dl class="artwork-details">';
-                        foreach ($fields as $label => $meta_key) {
-                            $value = get_post_meta(get_the_ID(), $meta_key, true);
-                            if ($value) {
-                                if ($label === 'Tags') {
-                                    $tags = array_map('trim', explode(',', $value));
-                                    echo '<dt>' . esc_html($label) . '</dt><dd>';
-                                    foreach ($tags as $tag) {
-                                        echo '<span class="artwork-tag">' . esc_html($tag) . '</span> ';
+<div class="container-wrap">
+    <div class="container main-content">
+        <div class="nectar-portfolio-wrap">
+            <div class="portfolio-items <?php echo esc_attr($columns); ?>">
+                <?php if ($artworks_query->have_posts()) :
+                    while ($artworks_query->have_posts()) : $artworks_query->the_post(); ?>
+                        <div <?php post_class('portfolio-item ' . $span_num); ?>>
+                            <a href="<?php the_permalink(); ?>">
+                                <div class="portfolio-thumb">
+                                    <?php
+                                    if (has_post_thumbnail()) {
+                                        the_post_thumbnail('portfolio-thumb', [
+                                            'alt' => get_the_title(),
+                                            'loading' => 'lazy'
+                                        ]);
+                                    } else {
+                                        echo '<img src="' . esc_url(get_template_directory_uri() . '/img/placeholder.png') .
+                                             '" alt="' . esc_attr(get_the_title()) . ' - No image available" loading="lazy">';
                                     }
-                                    echo '</dd>';
-                                } elseif ($label === 'Artist' && is_email($value)) {
-                                    // If artist is an email
-                                    echo '<dt>' . esc_html($label) . '</dt><dd>' . antispambot(esc_html($value)) . '</dd>';
-                                } else {
-                                    echo '<dt>' . esc_html($label) . '</dt><dd>' . esc_html($value) . '</dd>';
-                                }
-                            }
-                        }
-                        echo '</dl>';
-                        ?>
-                    </div>
-                </article>
+                                    ?>
+                                </div>
+                                <div class="portfolio-desc">
+                                    <h2 class="portfolio-title"><?php the_title(); ?></h2>
+                                    <div class="portfolio-excerpt"><?php the_excerpt(); ?></div>
+                                    <?php
+                                    // Show year and medium under title for richer cards
+                                    $year = get_post_meta(get_the_ID(), 'artwork_year', true);
+                                    $medium = get_post_meta(get_the_ID(), 'artwork_medium', true);
+                                    if ($year || $medium) {
+                                        echo '<div class="portfolio-meta">';
+                                        if ($year) {
+                                            echo '<span class="meta-year">' . esc_html($year) . '</span>';
+                                        }
+                                        if ($year && $medium) {
+                                            echo ' &middot; ';
+                                        }
+                                        if ($medium) {
+                                            echo '<span class="meta-medium">' . esc_html($medium) . '</span>';
+                                        }
+                                        echo '</div>';
+                                    }
+                                    ?>
+                                </div>
+                            </a>
+                        </div>
+                    <?php endwhile;
+                else : ?>
+                    <p><?php esc_html_e('No artworks found.', 'artpulse-management'); ?></p>
+                <?php endif;
+                wp_reset_postdata(); ?>
             </div>
+            <?php
+            if (function_exists('nectar_pagination')) {
+                nectar_pagination();
+            } else {
+                the_posts_pagination();
+            }
+            ?>
         </div>
-<?php
-    endwhile;
-endif;
-get_footer();
+    </div>
+</div>
+<?php get_footer(); ?>
