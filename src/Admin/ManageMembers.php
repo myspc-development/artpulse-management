@@ -54,6 +54,9 @@ class ManageMembers {
      * Handle upgrade action from the admin page.
      */
     public static function handle_upgrade_member() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'You do not have permission to upgrade members.', 'artpulse-management' ) );
+        }
         $user_id = intval( $_GET['user_id'] ?? 0 );
         if ( $user_id ) {
             update_user_meta( $user_id, 'membership_level', 'pro' );
@@ -69,6 +72,9 @@ class ManageMembers {
      * Handle assigning an organization to a user.
      */
     public static function handle_assign_org() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'You do not have permission to assign organizations.', 'artpulse-management' ) );
+        }
         $user_id = intval( $_GET['user_id'] ?? 0 );
         if ( $user_id ) {
             update_user_meta( $user_id, 'assigned_org', 'default_org' );
@@ -81,6 +87,9 @@ class ManageMembers {
      * Handle deleting a member from the admin page.
      */
     public static function handle_delete_member() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'You do not have permission to delete members.', 'artpulse-management' ) );
+        }
         $user_id = intval( $_GET['user_id'] ?? 0 );
         if ( $user_id && wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'artpulse_delete_' . $user_id ) ) {
             wp_delete_user( $user_id );
@@ -93,31 +102,98 @@ class ManageMembers {
      * Render the Manage Members admin page.
      */
     public static function render_page() {
-        echo '<div class="wrap"><h1>Manage Members</h1>';
-
-        // TODO: Output your member table and admin controls here.
-        echo '<p>This is your Manage Members admin page. Add your UI code here.</p>';
-
-        // Example: Show all members with a quick upgrade form
-        $members = get_users([
-            'meta_query' => [
-                ['key' => 'membership_level', 'compare' => 'EXISTS']
-            ],
-            'number' => 30
-        ]);
-        echo '<table class="widefat"><tr><th>Name</th><th>Email</th><th>Level</th><th>Upgrade</th></tr>';
-        foreach ($members as $user) {
-            $level = get_user_meta($user->ID, 'membership_level', true);
-            echo '<tr>';
-            echo '<td>' . esc_html($user->display_name) . '</td>';
-            echo '<td>' . esc_html($user->user_email) . '</td>';
-            echo '<td>' . esc_html($level) . '</td>';
-            echo '<td><a class="button" href="' . esc_url( wp_nonce_url(
-                admin_url('admin-post.php?action=artpulse_upgrade_member&user_id=' . $user->ID), 'artpulse_upgrade_' . $user->ID
-            )) . '">Upgrade to Pro</a></td>';
-            echo '</tr>';
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'You do not have permission to manage members.', 'artpulse-management' ) );
         }
-        echo '</table>';
+
+        $search   = isset( $_GET['s'] ) ? sanitize_text_field( $_GET['s'] ) : '';
+        $paged    = max( 1, intval( $_GET['paged'] ?? 1 ) );
+        $per_page = 20;
+
+        $args = [
+            'meta_query' => [
+                [ 'key' => 'membership_level', 'compare' => 'EXISTS' ],
+            ],
+            'number' => $per_page,
+            'paged'  => $paged,
+        ];
+
+        if ( $search !== '' ) {
+            $args['search']         = '*' . $search . '*';
+            $args['search_columns'] = [ 'user_login', 'user_email', 'display_name' ];
+        }
+
+        $query   = new \WP_User_Query( $args );
+        $members = $query->get_results();
+        $total   = $query->get_total();
+        $total_pages = $total > 0 ? ceil( $total / $per_page ) : 1;
+
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__( 'Manage Members', 'artpulse-management' ) . '</h1>';
+
+        echo '<form method="get">';
+        echo '<input type="hidden" name="page" value="artpulse-manage-members" />';
+        echo '<p class="search-box">';
+        echo '<label class="screen-reader-text" for="member-search-input">' . esc_html__( 'Search Members', 'artpulse-management' ) . '</label>';
+        echo '<input type="search" id="member-search-input" name="s" value="' . esc_attr( $search ) . '" />';
+        echo '<input type="submit" id="search-submit" class="button" value="' . esc_attr__( 'Search Members', 'artpulse-management' ) . '" />';
+        echo '</p>';
+        echo '</form>';
+
+        echo '<table class="wp-list-table widefat striped">';
+        echo '<thead><tr>';
+        echo '<th>' . esc_html__( 'Name', 'artpulse-management' ) . '</th>';
+        echo '<th>' . esc_html__( 'Email', 'artpulse-management' ) . '</th>';
+        echo '<th>' . esc_html__( 'Level', 'artpulse-management' ) . '</th>';
+        echo '<th>' . esc_html__( 'Actions', 'artpulse-management' ) . '</th>';
+        echo '</tr></thead><tbody>';
+
+        if ( $members ) {
+            foreach ( $members as $user ) {
+                $level      = get_user_meta( $user->ID, 'membership_level', true );
+                $upgrade_url = wp_nonce_url(
+                    admin_url( 'admin-post.php?action=artpulse_upgrade_member&user_id=' . $user->ID ),
+                    'artpulse_upgrade_' . $user->ID
+                );
+                $assign_url  = wp_nonce_url(
+                    admin_url( 'admin-post.php?action=artpulse_assign_org&user_id=' . $user->ID ),
+                    'artpulse_assign_' . $user->ID
+                );
+                $delete_url  = wp_nonce_url(
+                    admin_url( 'admin-post.php?action=artpulse_delete_member&user_id=' . $user->ID ),
+                    'artpulse_delete_' . $user->ID
+                );
+
+                echo '<tr>';
+                echo '<td>' . esc_html( $user->display_name ) . '</td>';
+                echo '<td>' . esc_html( $user->user_email ) . '</td>';
+                echo '<td>' . esc_html( $level ) . '</td>';
+                echo '<td>';
+                echo '<a href="' . esc_url( $upgrade_url ) . '" class="button">' . esc_html__( 'Upgrade to Pro', 'artpulse-management' ) . '</a> ';
+                echo '<a href="' . esc_url( $assign_url ) . '" class="button">' . esc_html__( 'Assign Org', 'artpulse-management' ) . '</a> ';
+                echo '<a href="' . esc_url( $delete_url ) . '" class="button delete" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this member?', 'artpulse-management' ) ) . '\');">' . esc_html__( 'Delete', 'artpulse-management' ) . '</a>';
+                echo '</td>';
+                echo '</tr>';
+            }
+        } else {
+            echo '<tr><td colspan="4">' . esc_html__( 'No members found.', 'artpulse-management' ) . '</td></tr>';
+        }
+
+        echo '</tbody></table>';
+
+        if ( $total_pages > 1 ) {
+            echo '<div class="tablenav bottom"><div class="tablenav-pages">';
+            $base = admin_url( 'admin.php?page=artpulse-manage-members' );
+            if ( $search ) {
+                $base = add_query_arg( 's', urlencode( $search ), $base );
+            }
+            for ( $i = 1; $i <= $total_pages; $i++ ) {
+                $url   = add_query_arg( 'paged', $i, $base );
+                $class = $i === $paged ? 'button button-primary' : 'button';
+                echo '<a class="' . esc_attr( $class ) . '" href="' . esc_url( $url ) . '">' . $i . '</a> ';
+            }
+            echo '</div></div>';
+        }
 
         echo '</div>';
     }
