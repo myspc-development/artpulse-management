@@ -99,4 +99,23 @@ class ManageMembersEndpointTest extends TestCase
         $this->assertSame('pro', $response->data['membership_level']);
         $this->assertTrue($response->data['membership_auto_renew']);
     }
+
+    public function test_delete_member_deletes_user()
+    {
+        Stubs::$caps = ['manage_options'];
+        Stubs::$users = [ (object) ['ID' => 3] ];
+
+        $endpoint = new ManageMembersEndpoint();
+        $ref = new ReflectionClass($endpoint);
+        $method = $ref->getMethod('delete_member');
+        $method->setAccessible(true);
+
+        $request = new WP_REST_Request();
+        $request->set_param('id', 3);
+
+        $response = $method->invoke($endpoint, $request);
+
+        $this->assertTrue($response->data['success']);
+        $this->assertSame([], Stubs::$users);
+    }
 }

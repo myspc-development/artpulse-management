@@ -60,6 +60,19 @@ class ManageMembersEndpoint extends WP_REST_Controller {
                 ],
             ]
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/' . $this->rest_base . '/(?P<id>\\d+)',
+            [
+                'methods'             => WP_REST_Server::DELETABLE,
+                'callback'            => [ $this, 'delete_member' ],
+                'permission_callback' => [ $this, 'permissions_check' ],
+                'args'                => [
+                    'id' => [ 'sanitize_callback' => 'absint' ],
+                ],
+            ]
+        );
     }
 
     public function permissions_check( WP_REST_Request $request ): bool {
@@ -123,5 +136,16 @@ class ManageMembersEndpoint extends WP_REST_Controller {
             'membership_end_date'=> get_user_meta( $user_id, 'membership_end_date', true ),
             'membership_auto_renew' => get_user_meta( $user_id, 'membership_auto_renew', true ) === '1',
         ]);
+    }
+
+    public function delete_member( WP_REST_Request $request ): WP_REST_Response {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return new WP_REST_Response( [ 'success' => false ], 403 );
+        }
+
+        $user_id = absint( $request['id'] );
+        wp_delete_user( $user_id );
+
+        return new WP_REST_Response( [ 'success' => true ] );
     }
 }
