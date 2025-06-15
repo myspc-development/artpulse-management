@@ -594,9 +594,9 @@ function artpulse_render_membership_admin() {
 // Load the class (adjust the path as needed for your file structure)
 require_once __DIR__ . '/src/Admin/ManageMembers.php';
 
-// Register POST handlers and menu
+// Register POST handlers for member management
 \EAD\Admin\ManageMembers::register();
-add_action('admin_menu', ['\\EAD\\Admin\\ManageMembers', 'admin_menu']);
+// Menu pages are registered via the central Menu class
 
 
 // === Admin: Membership Manager Interface (Disabled, handled in src/Admin) ===

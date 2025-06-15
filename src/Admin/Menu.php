@@ -175,6 +175,15 @@ class Menu {
             [ManageMembers::class, 'render_admin_page']
         );
 
+        // Link to WordPress' built-in Add New User screen for creating members
+        add_submenu_page(
+            'ead-member-menu',
+            __('Add New Member', 'artpulse-management'),
+            __('Add New Member', 'artpulse-management'),
+            'create_users',
+            'user-new.php'
+        );
+
         add_submenu_page(
             'ead-member-menu',
             __('Membership Analytics', 'artpulse-management'),
