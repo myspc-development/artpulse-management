@@ -108,8 +108,6 @@ if ( file_exists( $functions_file ) ) {
 // Load user profile enhancements
 require_once plugin_dir_path(__FILE__) . 'users-profile.php';
 
-// Load organization management functionality
-require_once plugin_dir_path(__FILE__) . 'organizations.php';
 
 // Load basic events functionality
 require_once plugin_dir_path(__FILE__) . 'events.php';
@@ -239,10 +237,48 @@ function ead_migrate_org_logo_meta() {
     }
 }
 
+/**
+ * Converts legacy `organization` posts to `ead_organization`.
+ * Copies basic meta fields to the new keys.
+ */
+function ead_migrate_legacy_organization_cpt() {
+    $query = new \WP_Query([
+        'post_type'      => 'organization',
+        'post_status'    => 'any',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+    ]);
+
+    $map = [
+        'org_website' => 'ead_org_website_url',
+        'org_mission' => 'ead_org_description',
+        'org_address' => 'ead_org_street_address',
+        'org_phone'   => 'ead_org_primary_contact_phone',
+        'org_country' => 'ead_org_country',
+        'org_state'   => 'ead_org_state',
+        'org_city'    => 'ead_org_city',
+    ];
+
+    foreach ( $query->posts as $post_id ) {
+        wp_update_post([
+            'ID'       => $post_id,
+            'post_type'=> 'ead_organization',
+        ]);
+
+        foreach ( $map as $old => $new ) {
+            $val = get_post_meta( $post_id, $old, true );
+            if ( '' !== $val && false !== $val ) {
+                update_post_meta( $post_id, $new, $val );
+            }
+        }
+    }
+}
+
 register_activation_hook( __FILE__, 'EAD\artpulse_copy_templates_to_child_theme' );
 register_activation_hook( __FILE__, 'EAD\ead_register_default_event_types' ); // ADDED: Hook for event type registration
 register_activation_hook( __FILE__, 'EAD\ead_create_rsvp_table' );
 register_activation_hook( __FILE__, 'EAD\ead_migrate_org_logo_meta' );
+register_activation_hook( __FILE__, 'EAD\ead_migrate_legacy_organization_cpt' );
 register_activation_hook( __FILE__, [ \EAD\Roles\RolesManager::class, 'register_membership_roles' ] );
 register_deactivation_hook( __FILE__, [ \EAD\Roles\RolesManager::class, 'remove_membership_roles' ] );
 

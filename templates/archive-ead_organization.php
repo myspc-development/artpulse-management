@@ -39,20 +39,24 @@ $orgs_query = new WP_Query(array(
                 <h2 class="portfolio-title"><?php the_title(); ?></h2>
                 <div class="portfolio-excerpt"><?php the_excerpt(); ?></div>
                 <?php
-                  // Display custom fields: organization description, website, logo (using ACF or native fields)
-                  if(function_exists('get_field')) {
-                    $org_description = get_field('organization_description');
-                    $org_website = get_field('organization_website');
-                    $org_logo = get_field('organization_logo');
-                    if($org_logo) {
-                      echo '<div class="organization-meta organization-logo"><img src="'. esc_url($org_logo) .'" alt="Logo"></div>';
-                    }
-                    if($org_description) {
-                      echo '<div class="organization-meta"><strong>Description:</strong> '. esc_html($org_description) .'</div>';
-                    }
-                    if($org_website) {
-                      echo '<div class="organization-meta"><a href="'. esc_url($org_website) .'" target="_blank" rel="noopener">Website</a></div>';
-                    }
+                  $org_description = get_post_meta(get_the_ID(), 'ead_org_description', true);
+                  if(!$org_description) {
+                    $org_description = get_post_meta(get_the_ID(), 'organisation_description', true);
+                  }
+                  $org_website = get_post_meta(get_the_ID(), 'ead_org_website_url', true);
+                  if(!$org_website) {
+                    $org_website = get_post_meta(get_the_ID(), 'organisation_website_url', true);
+                  }
+                  $logo_id = get_post_meta(get_the_ID(), 'ead_org_logo_id', true);
+                  $org_logo = $logo_id ? wp_get_attachment_url($logo_id) : '';
+                  if($org_logo) {
+                    echo '<div class="organization-meta organization-logo"><img src="'. esc_url($org_logo) .'" alt="Logo"></div>';
+                  }
+                  if($org_description) {
+                    echo '<div class="organization-meta"><strong>Description:</strong> '. esc_html($org_description) .'</div>';
+                  }
+                  if($org_website) {
+                    echo '<div class="organization-meta"><a href="'. esc_url($org_website) .'" target="_blank" rel="noopener">Website</a></div>';
                   }
                 ?>
               </div>

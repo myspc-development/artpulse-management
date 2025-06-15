@@ -89,14 +89,7 @@ add_shortcode('user_profile', 'artpulse_user_profile_shortcode');
 
 function ap_user_org_meta($user) {
     $selected   = get_user_meta($user->ID, 'user_org_id', true);
-    $args       = ['post_type' => 'organization', 'numberposts' => -1];
-    if (!current_user_can('manage_options')) {
-        $args['meta_query'] = [[
-            'key'     => 'org_admin_users',
-            'value'   => get_current_user_id(),
-            'compare' => 'LIKE',
-        ]];
-    }
+    $args       = ['post_type' => 'ead_organization', 'numberposts' => -1];
     $orgs = get_posts($args);
     echo '<h3>Organization Assignment</h3><select name="user_org_id">';
     echo '<option value="">— None —</option>';
