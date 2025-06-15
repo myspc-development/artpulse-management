@@ -448,6 +448,151 @@ function artpulse_render_membership_admin() {
     echo '</tbody></table></div>';
 }
 
+add_action('admin_menu', function() {
+    add_menu_page(
+        'Membership Admin',
+        'Membership Admin',
+        'manage_options',
+        'membership-admin',
+        'artpulse_render_membership_admin',
+        'dashicons-groups',
+        55
+    );
+});
+
+function artpulse_render_membership_admin() {
+    // --- Handle bulk actions ---
+    if (isset($_POST['bulk_action']) && !empty($_POST['bulk_user_ids'])) {
+        $bulk_action = sanitize_text_field($_POST['bulk_action']);
+        $bulk_ids = array_map('intval', $_POST['bulk_user_ids']);
+        foreach ($bulk_ids as $user_id) {
+            if ($bulk_action === 'set_expired') {
+                update_user_meta($user_id, 'membership_level', 'expired');
+            } elseif ($bulk_action === 'set_pro') {
+                update_user_meta($user_id, 'membership_level', 'pro');
+            } elseif ($bulk_action === 'enable_auto_renew') {
+                update_user_meta($user_id, 'membership_auto_renew', true);
+            } elseif ($bulk_action === 'disable_auto_renew') {
+                update_user_meta($user_id, 'membership_auto_renew', false);
+            }
+        }
+        echo '<div class="notice notice-success is-dismissible"><p>Bulk action applied!</p></div>';
+    }
+
+    // --- Handle single user update ---
+    if (isset($_POST['update_membership'])) {
+        check_admin_referer('artpulse_membership_update_' . intval($_POST['user_id']));
+        $user_id = intval($_POST['user_id']);
+        update_user_meta($user_id, 'membership_level', sanitize_text_field($_POST['membership_level']));
+        update_user_meta($user_id, 'membership_end_date', sanitize_text_field($_POST['membership_end_date']));
+        update_user_meta($user_id, 'membership_auto_renew', !empty($_POST['membership_auto_renew']));
+        echo '<div class="notice notice-success is-dismissible"><p>Membership updated!</p></div>';
+    }
+
+    // --- Search ---
+    $search = isset($_GET['membership_search']) ? sanitize_text_field($_GET['membership_search']) : '';
+    $paged = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+    $per_page = 20;
+    $offset = ($paged - 1) * $per_page;
+
+    $user_query_args = [
+        'meta_query' => [
+            ['key' => 'membership_level', 'compare' => 'EXISTS']
+        ],
+        'number' => $per_page,
+        'offset' => $offset,
+        'search' => '*' . esc_attr($search) . '*',
+        'search_columns' => ['user_login', 'user_email', 'display_name']
+    ];
+    if (empty($search)) unset($user_query_args['search']);
+
+    $users = get_users($user_query_args);
+    $total_users = count(get_users([
+        'meta_query' => [['key' => 'membership_level', 'compare' => 'EXISTS']],
+        'fields' => 'ID',
+        'search' => $search ? '*' . esc_attr($search) . '*' : '',
+        'search_columns' => ['user_login', 'user_email', 'display_name']
+    ]));
+    $total_pages = ceil($total_users / $per_page);
+
+    echo '<div class="wrap"><h1>Membership Admin</h1>';
+
+    // --- Search Form ---
+    echo '<form method="get" style="margin-bottom: 1em;"><input type="hidden" name="page" value="membership-admin">';
+    echo '<input type="text" name="membership_search" placeholder="Search user..." value="' . esc_attr($search) . '">';
+    echo '<button class="button">Search</button></form>';
+
+    // --- Bulk actions form ---
+    echo '<form method="post"><table class="widefat striped"><thead><tr>
+            <th style="width:20px;"><input type="checkbox" id="select_all"></th>
+            <th>User</th>
+            <th>Level</th>
+            <th>End Date</th>
+            <th>Auto Renew</th>
+            <th>Action</th>
+        </tr></thead><tbody>';
+
+    foreach ($users as $user) {
+        $level = get_user_meta($user->ID, 'membership_level', true);
+        $end   = get_user_meta($user->ID, 'membership_end_date', true);
+        $renew = get_user_meta($user->ID, 'membership_auto_renew', true);
+
+        echo '<tr>';
+        echo '<td><input type="checkbox" class="user_checkbox" name="bulk_user_ids[]" value="' . esc_attr($user->ID) . '"></td>';
+        echo '<td>' . esc_html($user->display_name) . ' <br><small>' . esc_html($user->user_email) . '</small></td>';
+        echo '<form method="post">';
+        echo '<input type="hidden" name="user_id" value="' . esc_attr($user->ID) . '">';
+        wp_nonce_field('artpulse_membership_update_' . $user->ID);
+        echo '<td>
+                <select name="membership_level">
+                    <option value="free"'    . selected($level, 'free', false)    . '>Free</option>
+                    <option value="pro"'     . selected($level, 'pro', false)     . '>Pro</option>
+                    <option value="org"'     . selected($level, 'org', false)     . '>Org</option>
+                    <option value="expired"' . selected($level, 'expired', false) . '>Expired</option>
+                </select>
+              </td>';
+        $end_input = $end ? date('Y-m-d', strtotime($end)) : '';
+        echo '<td><input type="date" name="membership_end_date" value="' . esc_attr($end_input) . '"></td>';
+        echo '<td style="text-align:center;"><input type="checkbox" name="membership_auto_renew" value="1"' . checked($renew, true, false) . '></td>';
+        echo '<td><button class="button button-primary" name="update_membership" type="submit">Update</button></td>';
+        echo '</form></tr>';
+    }
+    echo '</tbody></table>';
+
+    // --- Bulk Actions Controls ---
+    echo '<div style="margin-top:10px;">';
+    echo '<select name="bulk_action">
+            <option value="">Bulk Actions</option>
+            <option value="set_expired">Set to Expired</option>
+            <option value="set_pro">Set to Pro</option>
+            <option value="enable_auto_renew">Enable Auto Renew</option>
+            <option value="disable_auto_renew">Disable Auto Renew</option>
+        </select> ';
+    echo '<button class="button" type="submit">Apply</button>';
+    echo '</div></form>';
+
+    // --- Pagination ---
+    echo '<div style="margin-top:20px;">';
+    for ($i = 1; $i <= $total_pages; $i++) {
+        $url = admin_url('admin.php?page=membership-admin&paged=' . $i . ($search ? '&membership_search=' . urlencode($search) : ''));
+        echo '<a href="' . esc_url($url) . '" class="button' . ($i === $paged ? ' button-primary' : '') . '">' . $i . '</a> ';
+    }
+    echo '</div>';
+
+    // --- JavaScript for select all checkboxes ---
+    echo '<script>
+    document.getElementById("select_all").addEventListener("change", function(e) {
+        var checkboxes = document.querySelectorAll(".user_checkbox");
+        for(var i=0; i<checkboxes.length; i++) {
+            checkboxes[i].checked = e.target.checked;
+        }
+    });
+    </script>';
+
+    echo '</div>';
+}
+
+
 // === Admin: Membership Manager Interface (Disabled, handled in src/Admin) ===
 // The legacy admin page registration and rendering logic have been removed
 // in favor of the ManageMembers class located under src/Admin. The code
