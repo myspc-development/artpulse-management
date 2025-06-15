@@ -15,20 +15,7 @@ class ManageMembers {
         add_action( 'admin_post_artpulse_delete_member', [ self::class, 'handle_delete_member' ] );
     }
 
-    /**
-     * Register the Manage Members admin menu.
-     */
-    public static function admin_menu() {
-        add_menu_page(
-            'Manage Members',                // Page title
-            'Members',                       // Menu title
-            'manage_options',                // Capability
-            'artpulse-manage-members',       // Menu slug
-            [ self::class, 'render_admin_page' ], // Callback wrapper
-            'dashicons-groups',              // Icon
-            56                               // Position
-        );
-    }
+
 
     /**
      * Update the WordPress role based on membership level.
