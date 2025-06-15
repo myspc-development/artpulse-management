@@ -1,6 +1,22 @@
 <?php
 namespace Tests;
 
+// Ensure core WordPress constants exist for the tests.
+if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
+    define( 'MINUTE_IN_SECONDS', 60 );
+}
+
+if ( ! function_exists( __NAMESPACE__ . '\\rest_authorization_required_code' ) ) {
+    /**
+     * Mimic WordPress' rest_authorization_required_code helper.
+     *
+     * @return int
+     */
+    function rest_authorization_required_code() : int {
+        return 401;
+    }
+}
+
 class Stubs {
     public static array $posts = [];
     public static array $users = [];
