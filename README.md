@@ -64,6 +64,7 @@ Newcomers can follow the [Onboarding Guide](documents/Onboarding_Guide.md) for a
   - **Pending Events** — approve or reject events.
   - **Moderate Reviews** — moderate reviews submitted by users.
   - **Bookings** — manage bookings submitted via the REST API.
+  - **Member Management** — view and edit member accounts in the **Manage Members** screen provided by `src/Admin/ManageMembers.php`.
   - **ArtPulse › Settings** — plugin settings. See [Settings Tabs](documents/Settings_Tabs.md) for a breakdown of each section.
   - **Notifications** — toggle options like the new event submission email.
 
