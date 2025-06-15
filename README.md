@@ -125,10 +125,11 @@ composer install
 npm install
 ```
 
-Run the JavaScript tests with `npm test` or execute PHPUnit to run the PHP unit suite:
+Run the JavaScript tests with `npm test` and execute PHPUnit via `vendor/bin/phpunit` to run the PHP unit suite:
 
 ```bash
-phpunit
+vendor/bin/phpunit
+npm test
 ```
 
 During development you can run `npm run watch` to continuously build assets as files change.
