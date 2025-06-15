@@ -188,7 +188,7 @@ Below is a high-level view of the custom REST endpoints. All routes are prefixed
 | `/comments` | `GET` users with `read` |
 | `/comments/moderate` | `POST` users with `moderate_comments` |
 | `/events` | `GET` public, `POST/PUT/DELETE` users with `edit_posts` |
-| `/events/submit` | `POST` logged-in users |
+| `/events/submit` | `POST` users with `manage_events` |
 | `/likes` | `POST` logged-in users |
 | `/moderation` | `POST` logged-in users |
 | `/notifications` | `GET` logged-in users |
