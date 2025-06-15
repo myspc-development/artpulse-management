@@ -2,9 +2,12 @@ const path = require('path');
 
 module.exports = {
   mode: 'production',
-  entry: './assets/js/user-dashboard/main.js',
+  entry: {
+    'user-dashboard': './assets/js/user-dashboard/main.js',
+    'membership-manager': './assets/js/membership-manager.js',
+  },
   output: {
-    filename: 'user-dashboard.bundle.js',
+    filename: '[name].bundle.js',
     path: path.resolve(__dirname, 'build'),
   },
   module: {

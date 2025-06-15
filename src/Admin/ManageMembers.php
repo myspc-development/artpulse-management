@@ -97,7 +97,7 @@ class ManageMembers {
         $version = defined( 'EAD_PLUGIN_VERSION' ) ? EAD_PLUGIN_VERSION : '1.0';
         wp_enqueue_script(
             'ead-membership-manager',
-            EAD_PLUGIN_DIR_URL . 'assets/js/membership-manager.js',
+            EAD_PLUGIN_DIR_URL . 'build/membership-manager.bundle.js',
             [ 'jquery' ],
             $version,
             true
