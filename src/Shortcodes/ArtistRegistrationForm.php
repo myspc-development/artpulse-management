@@ -172,13 +172,13 @@ class ArtistRegistrationForm {
             <fieldset>
                 <legend><?php esc_html_e('Address', 'artpulse-management'); ?></legend>
                 <label for="ead_country"><?php esc_html_e('Country', 'artpulse-management'); ?></label>
-                <input type="text" id="ead_country" name="ead_country" required>
+                <select id="ead_country" name="ead_country" required></select>
 
                 <label for="ead_state"><?php esc_html_e('State', 'artpulse-management'); ?></label>
-                <input type="text" id="ead_state" name="ead_state" required>
+                <select id="ead_state" name="ead_state" disabled required></select>
 
                 <label for="ead_city"><?php esc_html_e('City', 'artpulse-management'); ?></label>
-                <input type="text" id="ead_city" name="ead_city" required>
+                <select id="ead_city" name="ead_city" disabled required></select>
 
                 <label for="ead_suburb"><?php esc_html_e('Suburb', 'artpulse-management'); ?></label>
                 <input type="text" id="ead_suburb" name="ead_suburb">
