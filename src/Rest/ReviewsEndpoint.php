@@ -123,7 +123,7 @@ class ReviewsEndpoint extends WP_REST_Controller {
         }
 
         $title   = sanitize_text_field( $request->get_param( 'title' ) ?? '' );
-        $content = wp_kses_post( $request->get_param( 'content' ) );
+        $content = wp_kses_post( $request->get_param( 'content' ) ?? '' );
         $rating  = (int) $request->get_param( 'rating' );
 
         if ( empty( $title ) ) {
@@ -140,7 +140,7 @@ class ReviewsEndpoint extends WP_REST_Controller {
 
         $review_post = [
             'post_title'   => $title,
-            'post_content' => $content,
+            'post_content' => (string) $content,
             'post_status'  => 'pending',
             'post_type'    => 'ead_org_review',
             'post_author'  => get_current_user_id(),

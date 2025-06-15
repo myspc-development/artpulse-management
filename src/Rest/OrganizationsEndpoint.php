@@ -65,14 +65,14 @@ class OrganizationsEndpoint extends WP_REST_Controller {
             return new WP_Error( 'missing_name', __( 'Organization name is required.', 'artpulse-management' ), [ 'status' => 400 ] );
         }
 
-        $org_description = wp_kses_post( $request->get_param( 'ead_org_description' ) );
+        $org_description = wp_kses_post( $request->get_param( 'ead_org_description' ) ?? '' );
 
         $post_data = [
             'post_title'   => $org_name,
             'post_type'    => 'ead_organization',
             'post_status'  => 'pending',
             'post_author'  => $current_user->ID,
-            'post_content' => $org_description,
+            'post_content' => (string) $org_description,
         ];
 
         $post_id = wp_insert_post( $post_data );

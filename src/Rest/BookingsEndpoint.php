@@ -131,7 +131,7 @@ class BookingsEndpoint extends WP_REST_Controller {
 
         $title = sanitize_text_field( $request->get_param( 'title' ) ?? '' );
         $date  = sanitize_text_field( $request->get_param( 'date' ) ?? '' );
-        $bookingDetails = wp_kses_post( $request->get_param( 'booking_details' ) ); // Sanitize booking details
+        $bookingDetails = wp_kses_post( $request->get_param( 'booking_details' ) ?? '' ); // Sanitize booking details
 
         if ( empty( $title ) ) {
             return new WP_Error( 'missing_title', __( 'Title is required.', 'artpulse-management' ), [ 'status' => 400 ] );
@@ -144,7 +144,7 @@ class BookingsEndpoint extends WP_REST_Controller {
         // Insert booking post.
         $bookingPost = [
             'post_title'   => $title,
-            'post_content' => $bookingDetails, // Store booking details in content
+            'post_content' => (string) $bookingDetails, // Store booking details in content
             'post_status'  => 'pending', // Or 'publish' depending on your workflow
             'post_type'    => 'ead_booking',
             'post_author'  => get_current_user_id(),

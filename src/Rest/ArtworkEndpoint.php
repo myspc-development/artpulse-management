@@ -346,6 +346,9 @@ class ArtworkEndpoint extends WP_REST_Controller {
     public function create_item($request) {
         $prepared_args = $this->prepare_item_for_database($request);
 
+        // Ensure post_content is always a string
+        $prepared_args['post_content'] = (string) ( $prepared_args['post_content'] ?? '' );
+
         if (is_wp_error($prepared_args)) {
             return $prepared_args;
         }
@@ -451,6 +454,8 @@ class ArtworkEndpoint extends WP_REST_Controller {
         }
 
         $prepared_args = $this->prepare_item_for_database($request);
+        // Ensure post_content is always a string
+        $prepared_args['post_content'] = (string) ( $prepared_args['post_content'] ?? '' );
         if (is_wp_error($prepared_args)) {
             return $prepared_args;
         }
@@ -555,7 +560,7 @@ class ArtworkEndpoint extends WP_REST_Controller {
             $prepared_args['post_title'] = sanitize_text_field($request->get_param('artwork_title') ?? '');
         }
         if ($request->has_param('artwork_description')) {
-            $prepared_args['post_content'] = wp_kses_post($request->get_param('artwork_description'));
+            $prepared_args['post_content'] = wp_kses_post($request->get_param('artwork_description') ?? '');
         }
 
         // Return the prepared args for wp_insert_post/wp_update_post.

@@ -55,7 +55,7 @@ class SubmitEventEndpoint extends WP_REST_Controller {
 
         // === Sanitize input ===
         $title       = sanitize_text_field($request->get_param('title') ?? '');
-        $description = wp_kses_post($request->get_param('description'));
+        $description = wp_kses_post($request->get_param('description') ?? '');
         $event_type  = sanitize_text_field($request->get_param('event_type') ?? '');
         $start_date  = sanitize_text_field($request->get_param('event_start_date') ?? '');
         $end_date    = sanitize_text_field($request->get_param('event_end_date') ?? '');
@@ -144,7 +144,7 @@ class SubmitEventEndpoint extends WP_REST_Controller {
         // === Insert Event as Pending ===
         $eventPost = [
             'post_title'   => $title,
-            'post_content' => $description,
+            'post_content' => (string) $description,
             'post_status'  => 'pending',
             'post_type'    => 'ead_event',
             'post_author'  => get_current_user_id(),
