@@ -21,7 +21,7 @@ Artists and organizers can manage their listings through a set of self-service t
 - Members can respond to feedback directly from their dashboards.
 
 ## Managing Members
-Site administrators can manage accounts from **Manage Members** under the ArtPulse menu.
+Site administrators can manage accounts from the **Member Management** menu. Choose **Manage Members** to view and edit accounts.
 - Filter by membership level or expiration status.
 - Sort members by level, start date or expiration date.
 - Apply bulk actions to change level or send reminders.
