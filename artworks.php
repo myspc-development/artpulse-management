@@ -74,6 +74,9 @@ add_action('save_post_artwork', function ($post_id) {
     if (isset($_POST['ead_artwork_image_ids'])) {
         $ids = array_filter(array_map('intval', explode(',', $_POST['ead_artwork_image_ids'])));
         update_post_meta($post_id, 'artwork_gallery_images', $ids);
+        if ( ! has_post_thumbnail( $post_id ) && ! empty( $ids[0] ) ) {
+            set_post_thumbnail( $post_id, $ids[0] );
+        }
     }
 });
 
