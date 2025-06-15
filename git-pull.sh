@@ -1,25 +1,34 @@
 #!/bin/bash
 
-# Configuration
+# =============== CONFIG =====================
 USERNAME="myspchosting"
-REPO_URL="https://github.com/myspc-development/artpulse-management.git"
+REPO="myspc-development/artpulse-management"
 CLONE_DIR="$HOME/artpulse-management"
+# ============================================
 
-# Prompt for GitHub password or personal access token (input hidden)
-read -s -p "🔐 Enter GitHub password or token for $USERNAME: " PASSWORD
+# Prompt for GitHub token or password
+read -s -p "🔐 Enter GitHub token or password for $USERNAME: " PASSWORD
 echo ""
 
-# Construct authenticated URL
-AUTH_URL="https://${USERNAME}:${PASSWORD}@github.com/myspc-development/artpulse-management.git"
+# Authenticated URL
+REPO_URL="https://${USERNAME}:${PASSWORD}@github.com/${REPO}.git"
 
-# Clone if not exists
+# Clone if needed
 if [ ! -d "$CLONE_DIR/.git" ]; then
-    echo "📁 Cloning repository to $CLONE_DIR..."
-    git clone "$AUTH_URL" "$CLONE_DIR"
+    echo "📁 Cloning repository..."
+    git clone "$REPO_URL" "$CLONE_DIR" || { echo "❌ Clone failed"; exit 1; }
 else
     echo "🔄 Pulling latest changes..."
-    cd "$CLONE_DIR" || { echo "❌ Failed to enter directory."; exit 1; }
-    git pull "$AUTH_URL"
+    cd "$CLONE_DIR" || { echo "❌ Failed to enter repo directory"; exit 1; }
+
+    # Use no-rebase strategy to avoid divergence error
+    git pull --no-rebase origin main || {
+        echo "❌ Git pull failed: divergent branches.";
+        exit 1;
+    }
 fi
 
-echo "✅ Git pull complete."
+# Show recent commit dates
+cd "$CLONE_DIR" || exit
+echo "📅 Recent commit dates:"
+git log --pretty=format:"%ad - %s" --date=short | head -10
