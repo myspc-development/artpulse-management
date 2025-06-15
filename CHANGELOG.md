@@ -15,6 +15,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Simple Membership Manager page under Settings listing user memberships.
 
+## [3.7.8] - 2025-06-21
+### Fixed
+- Assign first gallery image as featured thumbnail when saving artwork posts.
+- Guard attachment lookups in artist and organization templates to avoid
+  deprecation warnings.
+
 ## [3.7.4] - 2025-06-15
 ### Fixed
 - Ensured `RolesManager` is loaded before aliasing to avoid activation errors.
