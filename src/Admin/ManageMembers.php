@@ -121,4 +121,9 @@ class ManageMembers {
 
         echo '</div>';
     }
+
+    /** Wrapper expected by Menu class. */
+    public static function render_admin_page() {
+        self::render_page();
+    }
 }
