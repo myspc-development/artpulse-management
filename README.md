@@ -26,6 +26,7 @@ Version **3.7.7** compatible with **WordPress 6.7.2+**.
 - Automatic portfolio mirroring for published content
 - Approved artist profiles display uploaded gallery images
 - Listing analytics for views and clicks with CSV export
+- Membership analytics dashboard with member counts
 - Social auto-posting to Facebook, Instagram, Twitter and Pinterest
 - WooCommerce payment option for featured listings
 - Offline sync via the `/sync` endpoint

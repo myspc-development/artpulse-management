@@ -11,6 +11,7 @@ use EAD\Admin\PendingArtworks;
 use EAD\Admin\ReviewsModerator;
 use EAD\Admin\AdminEventForm; // <-- Add this import
 use EAD\Admin\ManageMembers;
+use EAD\Admin\MembershipAnalytics;
 
 /**
  * Admin Menu Registration.
@@ -172,6 +173,15 @@ class Menu {
             'manage_options',
             'artpulse-manage-members',
             [ManageMembers::class, 'render_admin_page']
+        );
+
+        add_submenu_page(
+            'ead-member-menu',
+            __('Membership Analytics', 'artpulse-management'),
+            __('Analytics', 'artpulse-management'),
+            'manage_options',
+            'ead-membership-analytics',
+            [MembershipAnalytics::class, 'render_admin_page']
         );
 
         add_submenu_page(

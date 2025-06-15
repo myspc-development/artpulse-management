@@ -28,3 +28,4 @@ Site administrators can manage accounts from the **Member Management** menu. Cho
 - Use the **Edit Membership** links to update a user's level and expiry.
 - Click **Export CSV** to download the current list including start and end dates.
 - A new **Quick Edit** option lets admins modify level, expiry and auto-renew inline directly within the table.
+- The new **Analytics** page shows totals of active and expired members as well as counts per level.
