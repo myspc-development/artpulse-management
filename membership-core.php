@@ -373,6 +373,80 @@ add_shortcode('finalize_registration', function () {
 
   return '<div class="text-green-600">✅ Registration complete. Welcome to ArtPulse!</div>';
 });
+// Add Membership Admin menu page in WP Admin
+add_action('admin_menu', function() {
+    add_menu_page(
+        'Membership Admin',          // Page title
+        'Membership Admin',          // Menu title
+        'manage_options',            // Required capability
+        'membership-admin',          // Menu slug
+        'artpulse_render_membership_admin', // Function to render page
+        'dashicons-groups',          // Icon
+        55                           // Position in menu
+    );
+});
+
+// Render Membership Admin page
+function artpulse_render_membership_admin() {
+    // Handle update requests
+    if (isset($_POST['update_membership'])) {
+        // Security: Check nonce
+        check_admin_referer('artpulse_membership_update_' . intval($_POST['user_id']));
+        $user_id = intval($_POST['user_id']);
+        update_user_meta($user_id, 'membership_level', sanitize_text_field($_POST['membership_level']));
+        update_user_meta($user_id, 'membership_end_date', sanitize_text_field($_POST['membership_end_date']));
+        update_user_meta($user_id, 'membership_auto_renew', !empty($_POST['membership_auto_renew']));
+        echo '<div class="notice notice-success is-dismissible"><p>Membership updated!</p></div>';
+    }
+
+    // Fetch users with a membership_level
+    $args = [
+        'meta_query' => [
+            ['key' => 'membership_level', 'compare' => 'EXISTS']
+        ],
+        'number' => 50, // Adjust as needed for larger sites
+    ];
+    $users = get_users($args);
+
+    echo '<div class="wrap"><h1>Membership Admin</h1>';
+    echo '<table class="widefat striped"><thead><tr>
+            <th>User</th>
+            <th>Level</th>
+            <th>End Date</th>
+            <th>Auto Renew</th>
+            <th>Action</th>
+        </tr></thead><tbody>';
+
+    foreach ($users as $user) {
+        $level = get_user_meta($user->ID, 'membership_level', true);
+        $end   = get_user_meta($user->ID, 'membership_end_date', true);
+        $renew = get_user_meta($user->ID, 'membership_auto_renew', true);
+
+        echo '<tr><td>' . esc_html($user->display_name) . ' <br><small>' . esc_html($user->user_email) . '</small></td>';
+        echo '<form method="post">';
+        echo '<input type="hidden" name="user_id" value="' . esc_attr($user->ID) . '">';
+        wp_nonce_field('artpulse_membership_update_' . $user->ID);
+        echo '<td>
+                <select name="membership_level">
+                    <option value="free"'    . selected($level, 'free', false)    . '>Free</option>
+                    <option value="pro"'     . selected($level, 'pro', false)     . '>Pro</option>
+                    <option value="org"'     . selected($level, 'org', false)     . '>Org</option>
+                    <option value="expired"' . selected($level, 'expired', false) . '>Expired</option>
+                </select>
+              </td>';
+        // Format end date as Y-m-d for HTML5 date field
+        $end_input = '';
+        if ($end) {
+            $end_input = date('Y-m-d', strtotime($end));
+        }
+        echo '<td><input type="date" name="membership_end_date" value="' . esc_attr($end_input) . '"></td>';
+        echo '<td style="text-align:center;"><input type="checkbox" name="membership_auto_renew" value="1"' . checked($renew, true, false) . '></td>';
+        echo '<td><button class="button button-primary" name="update_membership" type="submit">Update</button></td>';
+        echo '</form></tr>';
+    }
+
+    echo '</tbody></table></div>';
+}
 
 // === Admin: Membership Manager Interface (Disabled, handled in src/Admin) ===
 // The legacy admin page registration and rendering logic have been removed
