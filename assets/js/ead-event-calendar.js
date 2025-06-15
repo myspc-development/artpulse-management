@@ -3,16 +3,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const filterEl = document.getElementById('event-organizer-filter');
   if (!el || typeof FullCalendar === 'undefined') return;
 
-  const allEvents = Array.isArray(eventCalendarData?.events)
+  const restUrl = eventCalendarData?.restUrl;
+  const nonce = eventCalendarData?.nonce || '';
+  let allEvents = Array.isArray(eventCalendarData?.events)
     ? eventCalendarData.events
     : [];
 
   const calendar = new FullCalendar.Calendar(el, {
     initialView: 'dayGridMonth',
-    events: allEvents,
+    events: [],
   });
 
   calendar.render();
+
+  function render(events) {
+    calendar.removeAllEvents();
+    calendar.addEventSource(events);
+  }
+
+  function fetchEvents() {
+    if (!restUrl) {
+      render(allEvents);
+      return;
+    }
+
+    fetch(restUrl, { headers: { 'X-WP-Nonce': nonce } })
+      .then((res) => res.json())
+      .then((data) => {
+        allEvents = Array.isArray(data) ? data : [];
+        render(allEvents);
+      })
+      .catch(() => render(allEvents));
+  }
+
+  fetchEvents();
 
   if (filterEl) {
     filterEl.addEventListener('change', () => {
@@ -20,8 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const events = selected
         ? allEvents.filter((e) => e.organizer === selected)
         : allEvents;
-      calendar.removeAllEvents();
-      calendar.addEventSource(events);
+      render(events);
     });
   }
 });
