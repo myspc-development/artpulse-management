@@ -1,7 +1,7 @@
 <?php
 namespace EAD\Admin;
 
-if ( ! class_exists( '\\WP_List_Table', false ) ) {
+if ( ! class_exists( '\WP_List_Table', false ) ) {
     require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 }
 
@@ -16,11 +16,25 @@ class ManageMembers {
     }
 
     /**
+     * Register the Manage Members admin menu.
+     */
+    public static function admin_menu() {
+        add_menu_page(
+            'Manage Members',                // Page title
+            'Members',                       // Menu title
+            'manage_options',                // Capability
+            'artpulse-manage-members',       // Menu slug
+            [self::class, 'render_page'],    // Callback function
+            'dashicons-groups',              // Icon
+            56                               // Position
+        );
+    }
+
+    /**
      * Update the WordPress role based on membership level.
      */
     public static function update_role( int $user_id, string $level ) {
         $user = new \WP_User( $user_id );
-
         switch ( $level ) {
             case 'basic':
                 $user->set_role( 'member_basic' );
@@ -78,45 +92,33 @@ class ManageMembers {
     /**
      * Render the Manage Members admin page.
      */
-    public static function render_admin_page() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( __( 'You do not have sufficient permissions to access this page.', 'artpulse-management' ) );
-        }
+    public static function render_page() {
+        echo '<div class="wrap"><h1>Manage Members</h1>';
 
-        $users = get_users([
-            'fields' => [ 'ID', 'display_name', 'user_email' ],
-            'number' => 50,
+        // TODO: Output your member table and admin controls here.
+        echo '<p>This is your Manage Members admin page. Add your UI code here.</p>';
+
+        // Example: Show all members with a quick upgrade form
+        $members = get_users([
+            'meta_query' => [
+                ['key' => 'membership_level', 'compare' => 'EXISTS']
+            ],
+            'number' => 30
         ]);
-
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html__( 'Manage Members', 'artpulse-management' ) . '</h1>';
-        echo '<table class="widefat striped"><thead><tr>';
-        echo '<th>' . esc_html__( 'User', 'artpulse-management' ) . '</th>';
-        echo '<th>' . esc_html__( 'Email', 'artpulse-management' ) . '</th>';
-        echo '<th>' . esc_html__( 'Level', 'artpulse-management' ) . '</th>';
-        echo '<th>' . esc_html__( 'Expires', 'artpulse-management' ) . '</th>';
-        echo '</tr></thead><tbody>';
-
-        foreach ( $users as $user ) {
-            $level  = get_user_meta( $user->ID, 'membership_level', true );
-            $expiry = get_user_meta( $user->ID, 'membership_end_date', true );
+        echo '<table class="widefat"><tr><th>Name</th><th>Email</th><th>Level</th><th>Upgrade</th></tr>';
+        foreach ($members as $user) {
+            $level = get_user_meta($user->ID, 'membership_level', true);
             echo '<tr>';
-            echo '<td>' . esc_html( $user->display_name ) . '</td>';
-            echo '<td>' . esc_html( $user->user_email ) . '</td>';
-            echo '<td class="column-level">' . esc_html( $level ) . '</td>';
-            echo '<td class="column-expires">' . esc_html( $expiry ) . '</td>';
+            echo '<td>' . esc_html($user->display_name) . '</td>';
+            echo '<td>' . esc_html($user->user_email) . '</td>';
+            echo '<td>' . esc_html($level) . '</td>';
+            echo '<td><a class="button" href="' . esc_url( wp_nonce_url(
+                admin_url('admin-post.php?action=artpulse_upgrade_member&user_id=' . $user->ID), 'artpulse_upgrade_' . $user->ID
+            )) . '">Upgrade to Pro</a></td>';
             echo '</tr>';
         }
+        echo '</table>';
 
-        echo '</tbody></table>';
-        echo '<div id="mm-add-row-container"></div>';
         echo '</div>';
-
-        wp_enqueue_script( 'ead-manage-members', plugins_url( '../../assets/js/ead-manage-members.js', __FILE__ ), [ 'jquery' ], EAD_PLUGIN_VERSION, true );
-        wp_localize_script( 'ead-manage-members', 'manageMembersData', [
-            'restUrl'            => esc_url_raw( rest_url( 'artpulse/v1/manage-members/' ) ),
-            'manageMembersNonce' => wp_create_nonce( 'wp_rest' ),
-        ] );
     }
 }
-
