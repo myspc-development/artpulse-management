@@ -58,7 +58,7 @@ class RecommendationsEndpoint extends WP_REST_Controller {
             'id'          => $post->ID,
             'title'       => get_the_title( $post->ID ),
             'link'        => get_permalink( $post ),
-            'description' => apply_filters( 'the_content', $post->post_content ),
+            'description' => apply_filters( 'the_content', (string) $post->post_content ),
             'start_date'  => get_post_meta( $post->ID, 'event_start_date', true ),
             'end_date'    => get_post_meta( $post->ID, 'event_end_date', true ),
             'venue'       => [

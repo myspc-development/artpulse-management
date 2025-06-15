@@ -97,7 +97,7 @@ class ReviewsEndpoint extends WP_REST_Controller {
             $reviews[] = [
                 'id'      => $post->ID,
                 'title'   => get_the_title( $post->ID ),
-                'content' => apply_filters( 'the_content', $post->post_content ),
+                'content' => apply_filters( 'the_content', (string) $post->post_content ),
                 'rating'  => get_post_meta( $post->ID, '_ead_rating', true ),
                 'author'  => get_the_author_meta( 'display_name', $post->post_author ),
                 'date'    => get_the_date( '', $post->ID ),

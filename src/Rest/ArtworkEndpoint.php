@@ -578,7 +578,7 @@ class ArtworkEndpoint extends WP_REST_Controller {
             'modified'          => mysql_to_rfc3339($item->post_modified),
             'status'            => $item->post_status,
             'artwork_title'     => get_the_title($item), // Use the artwork_title meta if preferred, or get_the_title() for post_title
-            'artwork_description' => apply_filters('the_content', $item->post_content), // Use apply_filters for content
+            'artwork_description' => apply_filters('the_content', (string) $item->post_content), // Use apply_filters for content
             'author_id'         => (int) $item->post_author,
             'author_name'       => get_the_author_meta('display_name', $item->post_author),
             'link'              => get_permalink($item->ID),
