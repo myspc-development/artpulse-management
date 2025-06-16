@@ -17,12 +17,12 @@ class Geocoder {
     }
 
     public static function maybe_geocode_event($post_id, $post, $update) {
-        if (get_post_meta($post_id, 'event_lat', true) && get_post_meta($post_id, 'event_lng', true)) {
+        if (ead_get_meta($post_id, 'event_lat') && ead_get_meta($post_id, 'event_lng')) {
             return;
         }
-        if (get_post_meta($post_id, '_ead_geocode_manual', true)) return;
+        if (ead_get_meta($post_id, '_ead_geocode_manual')) return;
 
-        $address = get_post_meta($post_id, 'event_address', true);
+        $address = ead_get_meta($post_id, 'event_address');
         if (!$address) return;
 
         $coords = self::geocode_address($address);
@@ -33,12 +33,12 @@ class Geocoder {
     }
 
     public static function maybe_geocode_organization($post_id, $post, $update) {
-        if (get_post_meta($post_id, 'org_lat', true) && get_post_meta($post_id, 'org_lng', true)) {
+        if (ead_get_meta($post_id, 'org_lat') && ead_get_meta($post_id, 'org_lng')) {
             return;
         }
-        if (get_post_meta($post_id, '_ead_geocode_manual', true)) return;
+        if (ead_get_meta($post_id, '_ead_geocode_manual')) return;
 
-        $address = get_post_meta($post_id, 'org_address', true);
+        $address = ead_get_meta($post_id, 'org_address');
         if (!$address) return;
 
         $coords = self::geocode_address($address);

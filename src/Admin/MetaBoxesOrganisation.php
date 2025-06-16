@@ -129,7 +129,7 @@ class MetaBoxesOrganisation {
         ];
 
         foreach ( $fields as $field => $args ) {
-            $meta[ $field ] = get_post_meta( $post->ID, $field, true );
+            $meta[ $field ] = ead_get_meta( $post->ID, $field);
         }
 
         echo '<table class="form-table">';
@@ -217,8 +217,8 @@ class MetaBoxesOrganisation {
     public static function render_featured_meta_box( $post ) {
         wp_nonce_field( 'ead_organization_meta_nonce', 'ead_organization_meta_nonce' );
 
-        $featured = get_post_meta($post->ID, '_ead_featured', true);
-        $priority = get_post_meta($post->ID, '_ead_featured_priority', true);
+        $featured = ead_get_meta($post->ID, '_ead_featured');
+        $priority = ead_get_meta($post->ID, '_ead_featured_priority');
 
         echo '<p><label><input type="checkbox" name="_ead_featured" value="1" ' . checked($featured, '1', false) . '> ' . esc_html(__('Featured', 'artpulse-management')) . '</label></p>';
 
@@ -289,9 +289,9 @@ class MetaBoxesOrganisation {
         }
 
         if ( ! has_post_thumbnail( $post_id ) ) {
-            $thumb_id = (int) get_post_meta( $post_id, 'ead_org_logo_id', true );
+            $thumb_id = (int) ead_get_meta( $post_id, 'ead_org_logo_id');
             if ( ! $thumb_id ) {
-                $thumb_id = (int) get_post_meta( $post_id, 'ead_org_banner_id', true );
+                $thumb_id = (int) ead_get_meta( $post_id, 'ead_org_banner_id');
             }
             if ( $thumb_id ) {
                 set_post_thumbnail( $post_id, $thumb_id );
@@ -299,9 +299,9 @@ class MetaBoxesOrganisation {
         }
     }
     public static function is_organisation_featured( $post_id ) {
-        return get_post_meta( $post_id, '_ead_featured', true );
+        return ead_get_meta( $post_id, '_ead_featured');
     }
     public static function get_featured_priority( $post_id ) {
-        return get_post_meta( $post_id, '_ead_featured_priority', true );
+        return ead_get_meta( $post_id, '_ead_featured_priority');
     }
 }

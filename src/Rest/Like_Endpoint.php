@@ -89,7 +89,7 @@ class Like_Endpoint extends WP_REST_Controller {
         $userId  = get_current_user_id();
         $metaKey = 'artpulse_likes';
 
-        $likes = get_post_meta( $postId, $metaKey, true );
+        $likes = ead_get_meta( $postId, $metaKey);
 
         if ( ! is_array( $likes ) ) {
             $likes = [];

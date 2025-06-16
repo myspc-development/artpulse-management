@@ -346,8 +346,8 @@ class OrganizationDashboardEndpoint extends WP_REST_Controller {
             $data[] = [
                 'id'     => $event_id,
                 'title'  => get_the_title( $event_id ),
-                'views'  => (int) get_post_meta( $event_id, '_ead_view_count', true ),
-                'clicks' => (int) get_post_meta( $event_id, '_ead_click_count', true ),
+                'views'  => (int) ead_get_meta( $event_id, '_ead_view_count'),
+                'clicks' => (int) ead_get_meta( $event_id, '_ead_click_count'),
             ];
         }
 

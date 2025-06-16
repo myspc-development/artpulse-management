@@ -44,7 +44,7 @@ class EventsEndpoint extends WP_REST_Controller {
                 return [
                     'id'    => $post->ID,
                     'title' => $post->post_title,
-                    'date' => (string) get_post_meta($post->ID, 'event_date', true),
+                    'date' => (string) ead_get_meta($post->ID, 'event_date'),
                     'link'  => get_permalink( $post ),
                 ];
             },

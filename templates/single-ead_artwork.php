@@ -15,7 +15,7 @@ if ( have_posts() ) :
                 <article id="post-<?php the_ID(); ?>" <?php post_class('single-artwork'); ?>>
                     <?php
                     // Featured image or first gallery image fallback
-                    $gallery_ids = get_post_meta( get_the_ID(), '_ead_artwork_gallery_images', true );
+                    $gallery_ids = ead_get_meta( get_the_ID(), '_ead_artwork_gallery_images');
                     if ( ! is_array( $gallery_ids ) ) {
                         $gallery_ids = maybe_unserialize( $gallery_ids );
                         if ( ! is_array( $gallery_ids ) ) {
@@ -41,7 +41,7 @@ if ( have_posts() ) :
                         <h1 class="artwork-title"><?php the_title(); ?></h1>
 
                         <?php
-                        $description = get_post_meta( get_the_ID(), 'artwork_description', true );
+                        $description = ead_get_meta( get_the_ID(), 'artwork_description');
                         if ( ! $description ) {
                             $description = get_the_content();
                         }
@@ -50,15 +50,15 @@ if ( have_posts() ) :
                         }
 
                         $meta_fields = [
-                            'artist'     => get_post_meta( get_the_ID(), 'artwork_artist', true ),
-                            'medium'     => get_post_meta( get_the_ID(), 'artwork_medium', true ),
-                            'dimensions' => get_post_meta( get_the_ID(), 'artwork_dimensions', true ),
-                            'year'       => get_post_meta( get_the_ID(), 'artwork_year', true ),
-                            'materials'  => get_post_meta( get_the_ID(), 'artwork_materials', true ),
-                            'price'      => get_post_meta( get_the_ID(), 'artwork_price', true ),
-                            'provenance' => get_post_meta( get_the_ID(), 'artwork_provenance', true ),
-                            'edition'    => get_post_meta( get_the_ID(), 'artwork_edition', true ),
-                            'tags'       => get_post_meta( get_the_ID(), 'artwork_tags', true ),
+                            'artist'     => ead_get_meta( get_the_ID(), 'artwork_artist'),
+                            'medium'     => ead_get_meta( get_the_ID(), 'artwork_medium'),
+                            'dimensions' => ead_get_meta( get_the_ID(), 'artwork_dimensions'),
+                            'year'       => ead_get_meta( get_the_ID(), 'artwork_year'),
+                            'materials'  => ead_get_meta( get_the_ID(), 'artwork_materials'),
+                            'price'      => ead_get_meta( get_the_ID(), 'artwork_price'),
+                            'provenance' => ead_get_meta( get_the_ID(), 'artwork_provenance'),
+                            'edition'    => ead_get_meta( get_the_ID(), 'artwork_edition'),
+                            'tags'       => ead_get_meta( get_the_ID(), 'artwork_tags'),
                         ];
                         $has_meta = array_filter( $meta_fields );
                         if ( $has_meta ) {

@@ -42,7 +42,7 @@ class EventCalendar {
 
         $organizers = [];
         foreach ($query->posts as $event) {
-            $organizer = get_post_meta($event->ID, 'event_organizer_name', true);
+            $organizer = ead_get_meta($event->ID, 'event_organizer_name');
             if ($organizer) {
                 $organizers[$organizer] = $organizer;
             }

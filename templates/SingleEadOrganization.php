@@ -26,7 +26,7 @@ if ($events): ?>
         <?php foreach($events as $ev): ?>
             <li>
                 <a href="<?php echo get_permalink($ev->ID); ?>"><?php echo esc_html(get_the_title($ev)); ?></a>
-                (<?php echo date('M j, Y', strtotime(get_post_meta($ev->ID, 'event_start_date', true))); ?>)
+                (<?php echo date('M j, Y', strtotime(ead_get_meta($ev->ID, 'event_start_date'))); ?>)
             </li>
         <?php endforeach; ?>
     </ul>

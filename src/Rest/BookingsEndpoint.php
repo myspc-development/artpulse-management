@@ -105,7 +105,7 @@ class BookingsEndpoint extends WP_REST_Controller {
             $bookings[] = [
                 'id'    => $post->ID,
                 'title' => get_the_title( $post->ID ),
-                'date'  => get_post_meta( $post->ID, '_ead_booking_date', true ), // Assuming you store the date in a meta field
+                'date'  => ead_get_meta( $post->ID, '_ead_booking_date'), // Assuming you store the date in a meta field
                 'status' => get_post_status( $post->ID ),
             ];
         }

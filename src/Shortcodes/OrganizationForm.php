@@ -110,9 +110,9 @@ class OrganizationForm {
 
         $meta = [];
         foreach ($fields as $k => $args) {
-            $meta[$k] = $org_id ? get_post_meta($org_id, $k, true) : '';
+            $meta[$k] = $org_id ? ead_get_meta($org_id, $k) : '';
         }
-        $meta['ead_org_name'] = $org_id ? get_post_meta($org_id, 'ead_org_name', true) : $meta['ead_org_name'];
+        $meta['ead_org_name'] = $org_id ? ead_get_meta($org_id, 'ead_org_name') : $meta['ead_org_name'];
         $meta['organisation_description'] = $org_id ? $org->post_content : $meta['organisation_description'];
 
         $output = self::load_template(

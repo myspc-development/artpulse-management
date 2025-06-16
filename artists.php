@@ -21,8 +21,8 @@ add_action('add_meta_boxes', function () {
 
 function render_artist_meta_box($post) {
     wp_nonce_field('save_artist', 'artist_nonce');
-    $website = get_post_meta($post->ID, 'artist_website', true);
-    $social = get_post_meta($post->ID, 'artist_social', true);
+    $website = ead_get_meta($post->ID, 'artist_website');
+    $social = ead_get_meta($post->ID, 'artist_social');
     echo '<p><label>Website:<br><input type="url" name="artist_website" value="' . esc_attr($website) . '" class="widefat"></label></p>';
     echo '<p><label>Social Media / Linktree:<br><input type="url" name="artist_social" value="' . esc_attr($social) . '" class="widefat"></label></p>';
 }
@@ -48,8 +48,8 @@ add_shortcode('artist_card', function ($atts) {
     $post = get_post($atts['id']);
     if (!$post || $post->post_type !== 'artist') return '';
 
-    $website = get_post_meta($post->ID, 'artist_website', true);
-    $social = get_post_meta($post->ID, 'artist_social', true);
+    $website = ead_get_meta($post->ID, 'artist_website');
+    $social = ead_get_meta($post->ID, 'artist_social');
 
     ob_start();
     ?>

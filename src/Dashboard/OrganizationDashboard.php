@@ -210,7 +210,7 @@ class OrganizationDashboard {
 
         $values = [];
         foreach ($fields as $key => $label) {
-            $values[$key] = get_post_meta($org_id, $key, true);
+            $values[$key] = ead_get_meta($org_id, $key);
         }
         ?>
         <form method="post" class="ead-organization-profile-form">
@@ -230,13 +230,13 @@ class OrganizationDashboard {
             </button>
         </form>
         <?php
-        $payment_status = get_post_meta($org_id, '_ead_featured_payment_status', true);
-        $payment_url    = get_post_meta($org_id, '_ead_featured_payment_url', true);
-        if (get_post_meta($org_id, '_ead_featured', true)) {
+        $payment_status = ead_get_meta($org_id, '_ead_featured_payment_status');
+        $payment_url    = ead_get_meta($org_id, '_ead_featured_payment_url');
+        if (ead_get_meta($org_id, '_ead_featured')) {
             echo '<span class="ead-badge-featured"><span class="dashicons dashicons-star-filled"></span>' . esc_html__('Featured', 'artpulse-management') . '</span>';
         } elseif ($payment_status === 'pending' && $payment_url) {
             echo '<a href="' . esc_url($payment_url) . '" class="button button-small">' . esc_html__('Complete Payment', 'artpulse-management') . '</a>';
-        } elseif (get_post_meta($org_id, '_ead_featured_request', true)) {
+        } elseif (ead_get_meta($org_id, '_ead_featured_request')) {
             echo '<span class="ead-badge-requested"><span class="dashicons dashicons-star-filled"></span>' . esc_html__('Requested', 'artpulse-management') . '</span>';
         } else {
             ?>
@@ -385,13 +385,13 @@ class OrganizationDashboard {
             echo '<tr>';
             echo '<th class="check-column"><input type="checkbox" name="event_ids[]" value="' . esc_attr($event->ID) . '"></th>';
             echo '<td>' . esc_html($event->post_title);
-            if (get_post_meta($event->ID, '_ead_featured', true)) {
+            if (ead_get_meta($event->ID, '_ead_featured')) {
                 echo ' <span class="ead-badge-featured"><span class="dashicons dashicons-star-filled"></span>' . esc_html__('Featured', 'artpulse-management') . '</span>';
             }
             echo '</td>';
             $status_badge = '<span class="ead-badge-status ead-badge-status-' . esc_attr($event->post_status) . '"><span class="dashicons dashicons-info"></span> ' . esc_html(ucfirst($event->post_status)) . '</span>';
             echo '<td>' . $status_badge . '</td>';
-            echo '<td>' . esc_html(get_post_meta($event->ID, 'event_end_date', true)) . '</td>';
+            echo '<td>' . esc_html(ead_get_meta($event->ID, 'event_end_date')) . '</td>';
             echo '<td>';
             echo '<a href="' . esc_url(get_edit_post_link($event->ID)) . '" class="button button-small">' . esc_html__('Edit', 'artpulse-management') . '</a> ';
             echo '<a href="' . esc_url(get_permalink($event->ID)) . '" class="button button-small" target="_blank">' . esc_html__('View', 'artpulse-management') . '</a>';
@@ -678,8 +678,8 @@ class OrganizationDashboard {
             fputcsv($out, [
                 $ev_id,
                 get_the_title($ev_id),
-                (int) get_post_meta($ev_id, '_ead_view_count', true),
-                (int) get_post_meta($ev_id, '_ead_click_count', true),
+                (int) ead_get_meta($ev_id, '_ead_view_count'),
+                (int) ead_get_meta($ev_id, '_ead_click_count'),
             ]);
         }
 

@@ -75,6 +75,10 @@ function get_post_meta($post_id, string $key, $single = false) {
     return \Tests\Stubs::$meta[$post_id][$key] ?? '';
 }
 
+function ead_get_meta($post_id, string $key) {
+    return (string) get_post_meta($post_id, $key, true) ?: '';
+}
+
 function update_post_meta($post_id, string $key, $value) {
     \Tests\Stubs::$meta[$post_id][$key] = $value;
     return true;

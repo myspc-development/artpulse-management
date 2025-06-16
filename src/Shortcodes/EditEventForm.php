@@ -95,11 +95,11 @@ class EditEventForm {
                         ?>
                     </select>
                 </label><br>
-                <label>Start Date <input type="date" name="event_start_date" value="<?php echo esc_attr(get_post_meta($event_id, 'event_start_date', true)); ?>" required></label><br>
-                <label>End Date <input type="date" name="event_end_date" value="<?php echo esc_attr(get_post_meta($event_id, 'event_end_date', true)); ?>" required></label><br>
+                <label>Start Date <input type="date" name="event_start_date" value="<?php echo esc_attr(ead_get_meta($event_id, 'event_start_date')); ?>" required></label><br>
+                <label>End Date <input type="date" name="event_end_date" value="<?php echo esc_attr(ead_get_meta($event_id, 'event_end_date')); ?>" required></label><br>
                 <label>Description <textarea name="event_description" rows="3"><?php echo esc_textarea($event->post_content); ?></textarea></label><br>
-                <label>Organizer Name <input type="text" name="organizer_name" value="<?php echo esc_attr(get_post_meta($event_id, 'event_organizer_name', true)); ?>" required></label><br>
-                <label>Organizer Email <input type="email" name="organizer_email" value="<?php echo esc_attr(get_post_meta($event_id, 'event_organizer_email', true)); ?>" required></label><br>
+                <label>Organizer Name <input type="text" name="organizer_name" value="<?php echo esc_attr(ead_get_meta($event_id, 'event_organizer_name')); ?>" required></label><br>
+                <label>Organizer Email <input type="email" name="organizer_email" value="<?php echo esc_attr(ead_get_meta($event_id, 'event_organizer_email')); ?>" required></label><br>
 
                 <?php echo self::render_honeypot( $atts ); ?>
                 <button type="submit" class="ead-btn-primary">Update Event</button>

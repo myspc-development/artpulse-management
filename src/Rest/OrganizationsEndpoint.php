@@ -139,9 +139,9 @@ class OrganizationsEndpoint extends WP_REST_Controller {
         }
 
         if ( ! has_post_thumbnail( $post_id ) ) {
-            $thumb_id = (int) get_post_meta( $post_id, 'ead_org_logo_id', true );
+            $thumb_id = (int) ead_get_meta( $post_id, 'ead_org_logo_id');
             if ( ! $thumb_id ) {
-                $thumb_id = (int) get_post_meta( $post_id, 'ead_org_banner_id', true );
+                $thumb_id = (int) ead_get_meta( $post_id, 'ead_org_banner_id');
             }
             if ( $thumb_id ) {
                 set_post_thumbnail( $post_id, $thumb_id );

@@ -85,16 +85,16 @@ class OrganizationList {
         <?php if ($q->have_posts()): ?>
             <div class="ead-org-directory">
             <?php while ($q->have_posts()) : $q->the_post();
-                $logo_id = (string) get_post_meta(get_the_ID(), 'ead_org_logo_id', true);
+                $logo_id = (string) ead_get_meta(get_the_ID(), 'ead_org_logo_id');
                 $logo = $logo_id ? wp_get_attachment_image($logo_id, [80,80], false, ['class' => 'ead-org-logo-preview']) : '';
-                $desc = (string) get_post_meta(get_the_ID(), 'organisation_description', true);
-                $website = (string) get_post_meta(get_the_ID(), 'organisation_website_url', true);
+                $desc = (string) ead_get_meta(get_the_ID(), 'organisation_description');
+                $website = (string) ead_get_meta(get_the_ID(), 'organisation_website_url');
 
                 $featured = MetaBoxesOrganisation::is_organisation_featured(get_the_ID());
                 $priority = MetaBoxesOrganisation::get_featured_priority(get_the_ID());
 
-                $lat = esc_attr((string) get_post_meta(get_the_ID(), 'organisation_lat', true));
-                $lng = esc_attr((string) get_post_meta(get_the_ID(), 'organisation_lng', true));
+                $lat = esc_attr((string) ead_get_meta(get_the_ID(), 'organisation_lat'));
+                $lng = esc_attr((string) ead_get_meta(get_the_ID(), 'organisation_lng'));
 
                 $card_classes = 'ead-org-card';
                 if ($featured) {
@@ -168,7 +168,7 @@ class OrganizationList {
         ];
         $out = '';
         foreach ($socials as $meta => $icon) {
-            $url = get_post_meta($post_id, $meta, true);
+            $url = ead_get_meta($post_id, $meta);
             if ($url) {
                 $out .= '<a href="'.esc_url($url).'" target="_blank" rel="noopener">'.$icon.'</a>';
             }

@@ -209,14 +209,14 @@ class ArtistDashboard {
             return;
         }
 
-        $bio       = get_post_meta($artist_post_id, 'artist_bio', true);
-        $website   = get_post_meta($artist_post_id, 'artist_website', true);
-        $phone     = get_post_meta($artist_post_id, 'artist_phone', true);
-        $instagram = get_post_meta($artist_post_id, 'artist_instagram', true);
-        $facebook  = get_post_meta($artist_post_id, 'artist_facebook', true);
-        $twitter   = get_post_meta($artist_post_id, 'artist_twitter', true);
-        $linkedin  = get_post_meta($artist_post_id, 'artist_linkedin', true);
-        $portrait_id  = get_post_meta($artist_post_id, 'artist_portrait', true);
+        $bio       = ead_get_meta($artist_post_id, 'artist_bio');
+        $website   = ead_get_meta($artist_post_id, 'artist_website');
+        $phone     = ead_get_meta($artist_post_id, 'artist_phone');
+        $instagram = ead_get_meta($artist_post_id, 'artist_instagram');
+        $facebook  = ead_get_meta($artist_post_id, 'artist_facebook');
+        $twitter   = ead_get_meta($artist_post_id, 'artist_twitter');
+        $linkedin  = ead_get_meta($artist_post_id, 'artist_linkedin');
+        $portrait_id  = ead_get_meta($artist_post_id, 'artist_portrait');
         $portrait_url = '';
         if ( $portrait_id ) {
             $info = wp_get_attachment_image_src( $portrait_id, 'thumbnail' );
@@ -224,7 +224,7 @@ class ArtistDashboard {
                 $portrait_url = $info[0];
             }
         }
-        $gallery_ids = get_post_meta($artist_post_id, 'artist_gallery_images', true);
+        $gallery_ids = ead_get_meta($artist_post_id, 'artist_gallery_images');
         if (!is_array($gallery_ids)) {
             $gallery_ids = [];
         }
@@ -297,13 +297,13 @@ class ArtistDashboard {
             </p>
         </form>
         <?php
-        $payment_status = get_post_meta($artist_post_id, '_ead_featured_payment_status', true);
-        $payment_url    = get_post_meta($artist_post_id, '_ead_featured_payment_url', true);
-        if (get_post_meta($artist_post_id, '_ead_featured', true)) {
+        $payment_status = ead_get_meta($artist_post_id, '_ead_featured_payment_status');
+        $payment_url    = ead_get_meta($artist_post_id, '_ead_featured_payment_url');
+        if (ead_get_meta($artist_post_id, '_ead_featured')) {
             echo '<span class="ead-badge-featured"><span class="dashicons dashicons-star-filled"></span>' . esc_html__('Featured', 'artpulse-management') . '</span>';
         } elseif ($payment_status === 'pending' && $payment_url) {
             echo '<a href="' . esc_url($payment_url) . '" class="button button-small">' . esc_html__('Complete Payment', 'artpulse-management') . '</a>';
-        } elseif (get_post_meta($artist_post_id, '_ead_featured_request', true)) {
+        } elseif (ead_get_meta($artist_post_id, '_ead_featured_request')) {
             echo '<span class="ead-badge-requested"><span class="dashicons dashicons-star-filled"></span>' . esc_html__('Requested', 'artpulse-management') . '</span>';
         } else {
             ?>

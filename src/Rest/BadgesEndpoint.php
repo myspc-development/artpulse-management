@@ -52,7 +52,7 @@ class BadgesEndpoint extends WP_REST_Controller {
         // Determine streaks based on event_date meta
         $dates = [];
         foreach ( $rsvps as $event_id ) {
-            $date = get_post_meta( $event_id, 'event_date', true );
+            $date = ead_get_meta( $event_id, 'event_date');
             if ( $date ) {
                 $dates[] = strtotime( $date );
             }

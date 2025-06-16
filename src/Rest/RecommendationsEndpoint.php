@@ -59,15 +59,15 @@ class RecommendationsEndpoint extends WP_REST_Controller {
             'title'       => get_the_title( $post->ID ),
             'link'        => get_permalink( $post ),
             'description' => apply_filters( 'the_content', (string) $post->post_content ),
-            'start_date'  => get_post_meta( $post->ID, 'event_start_date', true ),
-            'end_date'    => get_post_meta( $post->ID, 'event_end_date', true ),
+            'start_date'  => ead_get_meta( $post->ID, 'event_start_date'),
+            'end_date'    => ead_get_meta( $post->ID, 'event_end_date'),
             'venue'       => [
-                'name'          => get_post_meta( $post->ID, 'venue_name', true ),
-                'street_address' => get_post_meta( $post->ID, 'event_street_address', true ),
-                'city'          => get_post_meta( $post->ID, 'event_city', true ),
-                'state'         => get_post_meta( $post->ID, 'event_state', true ),
-                'country'       => get_post_meta( $post->ID, 'event_country', true ),
-                'postcode'      => get_post_meta( $post->ID, 'event_postcode', true ),
+                'name'          => ead_get_meta( $post->ID, 'venue_name'),
+                'street_address' => ead_get_meta( $post->ID, 'event_street_address'),
+                'city'          => ead_get_meta( $post->ID, 'event_city'),
+                'state'         => ead_get_meta( $post->ID, 'event_state'),
+                'country'       => ead_get_meta( $post->ID, 'event_country'),
+                'postcode'      => ead_get_meta( $post->ID, 'event_postcode'),
             ],
         ];
     }

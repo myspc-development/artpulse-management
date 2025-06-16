@@ -42,8 +42,8 @@ $artworks_query = new WP_Query([
                                     <div class="portfolio-excerpt"><?php the_excerpt(); ?></div>
                                     <?php
                                     // Show year and medium under title for richer cards
-                                    $year = get_post_meta(get_the_ID(), 'artwork_year', true);
-                                    $medium = get_post_meta(get_the_ID(), 'artwork_medium', true);
+                                    $year = ead_get_meta(get_the_ID(), 'artwork_year');
+                                    $medium = ead_get_meta(get_the_ID(), 'artwork_medium');
                                     if ($year || $medium) {
                                         echo '<div class="portfolio-meta">';
                                         if ($year) {

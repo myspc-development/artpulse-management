@@ -56,10 +56,10 @@ class MetaBoxesAddress {
         wp_nonce_field('ead_save_address', 'ead_address_nonce');
 
         // Retrieve meta values. Ensure they are strings.
-        $country_raw = get_post_meta($post->ID, 'ead_country', true);
-        $state_raw = get_post_meta($post->ID, 'ead_state', true);
-        $city_raw = get_post_meta($post->ID, 'ead_city', true);
-        $street_address_raw = get_post_meta($post->ID, 'ead_street_address', true);
+        $country_raw = ead_get_meta($post->ID, 'ead_country');
+        $state_raw = ead_get_meta($post->ID, 'ead_state');
+        $city_raw = ead_get_meta($post->ID, 'ead_city');
+        $street_address_raw = ead_get_meta($post->ID, 'ead_street_address');
 
         // Defensive check: if a meta value is an array, take the first element or an empty string.
         // This handles cases where data might have been improperly saved as an array previously.

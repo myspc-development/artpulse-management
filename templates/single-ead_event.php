@@ -26,16 +26,16 @@ if (have_posts()) : while (have_posts()) : the_post();
         
         <div class="event-meta-block">
           <?php
-            $event_date = get_post_meta( get_the_ID(), 'event_date', true );
-            $event_time = get_post_meta( get_the_ID(), 'event_time', true );
-            $organizer  = get_post_meta( get_the_ID(), 'event_organizer', true );
+            $event_date = ead_get_meta( get_the_ID(), 'event_date');
+            $event_time = ead_get_meta( get_the_ID(), 'event_time');
+            $organizer  = ead_get_meta( get_the_ID(), 'event_organizer');
 
-            $street   = get_post_meta( get_the_ID(), 'event_street', true );
-            $suburb   = get_post_meta( get_the_ID(), 'event_suburb', true );
-            $city     = get_post_meta( get_the_ID(), 'event_city', true );
-            $state    = get_post_meta( get_the_ID(), 'event_state', true );
-            $postcode = get_post_meta( get_the_ID(), 'event_postcode', true );
-            $country  = get_post_meta( get_the_ID(), 'event_country', true );
+            $street   = ead_get_meta( get_the_ID(), 'event_street');
+            $suburb   = ead_get_meta( get_the_ID(), 'event_suburb');
+            $city     = ead_get_meta( get_the_ID(), 'event_city');
+            $state    = ead_get_meta( get_the_ID(), 'event_state');
+            $postcode = ead_get_meta( get_the_ID(), 'event_postcode');
+            $country  = ead_get_meta( get_the_ID(), 'event_country');
 
             $location_parts = array_filter( [ $street, $suburb, $city, $state, $postcode, $country ] );
             $event_location = implode( ', ', $location_parts );
@@ -71,7 +71,7 @@ if (have_posts()) : while (have_posts()) : the_post();
         ?>
 
         <?php
-          $gallery_ids = get_post_meta( get_the_ID(), 'event_gallery', true );
+          $gallery_ids = ead_get_meta( get_the_ID(), 'event_gallery');
           if ( ! empty( $gallery_ids ) && is_array( $gallery_ids ) ) {
             echo '<div class="event-gallery">';
             foreach ( $gallery_ids as $img_id ) {

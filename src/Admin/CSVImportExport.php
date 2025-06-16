@@ -177,7 +177,7 @@ class CSVImportExport {
                 $row = [$post_id, $title];
 
                 foreach ($fields as $field) {
-                    $row[] = get_post_meta($post_id, $field, true);
+                    $row[] = ead_get_meta($post_id, $field);
                 }
 
                 fputcsv($output, $row);

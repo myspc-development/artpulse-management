@@ -37,7 +37,7 @@ class PortfolioSync {
             return;
         }
 
-        $portfolio_id = (int) get_post_meta( $post_id, '_portfolio_post_id', true );
+        $portfolio_id = (int) ead_get_meta( $post_id, '_portfolio_post_id');
 
         // If the post is not published, remove any existing portfolio entry.
         if ( 'publish' !== $post->post_status ) {

@@ -42,7 +42,7 @@ class MetaBoxesEvent {
         // Load meta values
         $meta = [];
         foreach ($fields as $field => $args) {
-            $meta[$field] = get_post_meta($post->ID, $field, true);
+            $meta[$field] = ead_get_meta($post->ID, $field);
         }
 
         echo '<table class="form-table">';

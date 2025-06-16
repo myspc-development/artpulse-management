@@ -65,7 +65,7 @@ class ListingAnalytics {
      * @param string $meta_key Meta key.
      */
     private static function increment_meta_count( $post_id, $meta_key ) {
-        $count = (int) get_post_meta( $post_id, $meta_key, true );
+        $count = (int) ead_get_meta( $post_id, $meta_key);
         update_post_meta( $post_id, $meta_key, $count + 1 );
     }
 
@@ -97,9 +97,9 @@ class ListingAnalytics {
             if ( $posts ) {
                 echo '<h4>' . esc_html( $label ) . '</h4><ul>';
                 foreach ( $posts as $post ) {
-                    $views    = (int) get_post_meta( $post->ID, '_ead_view_count', true );
-                    $clicks   = (int) get_post_meta( $post->ID, '_ead_click_count', true );
-                    $featured = get_post_meta( $post->ID, '_ead_featured', true ) ? ' ⭐' : '';
+                    $views    = (int) ead_get_meta( $post->ID, '_ead_view_count');
+                    $clicks   = (int) ead_get_meta( $post->ID, '_ead_click_count');
+                    $featured = ead_get_meta( $post->ID, '_ead_featured') ? ' ⭐' : '';
                     echo '<li>' . esc_html( $post->post_title ) . $featured . ' - V:' . $views . ' C:' . $clicks . '</li>';
                 }
                 echo '</ul>';
@@ -139,9 +139,9 @@ class ListingAnalytics {
                         $post->ID,
                         $post->post_title,
                         $type,
-                        (int) get_post_meta( $post->ID, '_ead_view_count', true ),
-                        (int) get_post_meta( $post->ID, '_ead_click_count', true ),
-                        get_post_meta( $post->ID, '_ead_featured', true ) ? '1' : '0',
+                        (int) ead_get_meta( $post->ID, '_ead_view_count'),
+                        (int) ead_get_meta( $post->ID, '_ead_click_count'),
+                        ead_get_meta( $post->ID, '_ead_featured') ? '1' : '0',
                     ]
                 );
             }
