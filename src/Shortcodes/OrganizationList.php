@@ -82,16 +82,16 @@ class OrganizationList {
         <?php if ($q->have_posts()): ?>
             <div class="ead-org-directory">
             <?php while ($q->have_posts()) : $q->the_post();
-                $logo_id = get_post_meta(get_the_ID(), 'ead_org_logo_id', true);
+                $logo_id = (string) get_post_meta(get_the_ID(), 'ead_org_logo_id', true);
                 $logo = $logo_id ? wp_get_attachment_image($logo_id, [80,80], false, ['style'=>'border-radius:8px;']) : '';
-                $desc = get_post_meta(get_the_ID(), 'organisation_description', true);
-                $website = get_post_meta(get_the_ID(), 'organisation_website_url', true);
+                $desc = (string) get_post_meta(get_the_ID(), 'organisation_description', true);
+                $website = (string) get_post_meta(get_the_ID(), 'organisation_website_url', true);
 
                 $featured = MetaBoxesOrganisation::is_organisation_featured(get_the_ID());
                 $priority = MetaBoxesOrganisation::get_featured_priority(get_the_ID());
 
-                $lat = esc_attr(get_post_meta(get_the_ID(), 'organisation_lat', true));
-                $lng = esc_attr(get_post_meta(get_the_ID(), 'organisation_lng', true));
+                $lat = esc_attr((string) get_post_meta(get_the_ID(), 'organisation_lat', true));
+                $lng = esc_attr((string) get_post_meta(get_the_ID(), 'organisation_lng', true));
 
                 $card_classes = 'ead-org-card';
                 if ($featured) {
