@@ -75,7 +75,7 @@ if (have_posts()) : while (have_posts()) : the_post();
           if ( ! empty( $gallery_ids ) && is_array( $gallery_ids ) ) {
             echo '<div class="event-gallery">';
             foreach ( $gallery_ids as $img_id ) {
-              $img = wp_get_attachment_image( $img_id, 'large' );
+              $img = wp_get_attachment_image( ( $img_id ?: 0 ), 'medium_large' );
               if ( $img ) {
                 echo '<div class="event-gallery-item">' . $img . '</div>';
               }

@@ -621,7 +621,7 @@ class ArtworkEndpoint extends WP_REST_Controller {
         }
         $gallery_images_data = [];
         foreach ($gallery_image_ids as $img_id) {
-            $img_url = wp_get_attachment_image_url($img_id, 'full'); // Or 'medium', 'large'
+            $img_url = wp_get_attachment_image_url(($img_id ?: 0), 'medium_large');
             if ($img_url) {
                 $gallery_images_data[] = [
                     'id'  => $img_id,
@@ -636,7 +636,7 @@ class ArtworkEndpoint extends WP_REST_Controller {
         if (empty($featured_image_id) && !empty($gallery_image_ids[0])) {
             $featured_image_id = $gallery_image_ids[0];
         }
-        $data['featured_image_url'] = $featured_image_id ? wp_get_attachment_image_url($featured_image_id, 'large') : null;
+        $data['featured_image_url'] = $featured_image_id ? wp_get_attachment_image_url(($featured_image_id ?: 0), 'medium_large') : null;
 
 
         $context = ! empty( $request['context'] ) ? $request['context'] : 'view';

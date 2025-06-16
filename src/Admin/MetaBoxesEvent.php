@@ -91,7 +91,7 @@ class MetaBoxesEvent {
 
                 case 'media':
                     $image_id = intval($meta[$field]);
-                    $image_src = $image_id ? wp_get_attachment_image_url($image_id, 'thumbnail') : '';
+                    $image_src = $image_id ? wp_get_attachment_image_url(($image_id ?: 0), 'nectar_thumb') : '';
                     echo '<input type="hidden" id="' . esc_attr($field) . '" name="' . esc_attr($field) . '" value="' . esc_attr($image_id) . '">';
                     if ($image_src) {
                         echo '<img src="' . esc_url($image_src) . '" style="max-width: 200px; display: block; margin-bottom: 10px;">';

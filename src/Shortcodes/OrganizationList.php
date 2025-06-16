@@ -86,7 +86,7 @@ class OrganizationList {
             <div class="ead-org-directory">
             <?php while ($q->have_posts()) : $q->the_post();
                 $logo_id = (string) ead_get_meta(get_the_ID(), 'ead_org_logo_id');
-                $logo = $logo_id ? wp_get_attachment_image($logo_id, [80,80], false, ['class' => 'ead-org-logo-preview']) : '';
+                $logo = $logo_id ? wp_get_attachment_image(($logo_id ?: 0), 'nectar_thumb', false, ['class' => 'ead-org-logo-preview']) : '';
                 $desc = (string) ead_get_meta(get_the_ID(), 'organisation_description');
                 $website = (string) ead_get_meta(get_the_ID(), 'organisation_website_url');
 

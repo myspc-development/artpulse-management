@@ -56,7 +56,7 @@ add_action('add_meta_boxes', function () {
         echo '<p><button type="button" class="button ead-upload-images">Select Images</button></p>';
         echo '<div id="ead-image-preview">';
         foreach ($ids as $id) {
-            $thumb = wp_get_attachment_image_url($id, 'thumbnail');
+            $thumb = wp_get_attachment_image_url( ($id ?: 0), 'nectar_thumb' );
             if ($thumb) {
                 echo '<img src="' . esc_url($thumb) . '" style="width:75px;height:75px;object-fit:cover;margin:4px;" />';
             }
@@ -108,10 +108,10 @@ add_shortcode('artwork_card', function ($atts) {
         <?php if ($gallery_ids) : ?>
             <div class="artwork-lightbox mt-2">
                 <?php foreach ($gallery_ids as $gid) :
-                    $url = wp_get_attachment_image_url($gid, 'large');
+                    $url = wp_get_attachment_image_url( ($gid ?: 0), 'medium_large' );
                     if ($url) : ?>
                         <a href="<?php echo esc_url($url); ?>" data-lightbox="artwork-<?php echo esc_attr($post->ID); ?>">
-                            <?php echo wp_get_attachment_image($gid, 'thumbnail', false, ['class' => 'rounded']); ?>
+                            <?php echo wp_get_attachment_image( ($gid ?: 0), 'nectar_thumb', false, ['class' => 'rounded']); ?>
                         </a>
                     <?php endif; endforeach; ?>
             </div>

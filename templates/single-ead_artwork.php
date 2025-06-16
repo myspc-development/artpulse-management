@@ -28,7 +28,7 @@ if ( have_posts() ) :
                         the_post_thumbnail( 'large', [ 'alt' => get_the_title(), 'loading' => 'lazy' ] );
                         echo '</div>';
                     } elseif ( ! empty( $gallery_ids[0] ) ) {
-                        $img = wp_get_attachment_image( $gallery_ids[0], 'large', false, [ 'loading' => 'lazy', 'alt' => get_the_title() ] );
+                        $img = wp_get_attachment_image( ( $gallery_ids[0] ?: 0 ), 'medium_large', false, [ 'loading' => 'lazy', 'alt' => get_the_title() ] );
                         if ( $img ) {
                             echo '<div class="artwork-featured">' . $img . '</div>';
                         }
@@ -77,7 +77,7 @@ if ( have_posts() ) :
                         if ( ! empty( $gallery_ids ) ) {
                             echo '<div class="artwork-gallery">';
                             foreach ( $gallery_ids as $img_id ) {
-                                $img = wp_get_attachment_image( $img_id, 'large', false, [ 'loading' => 'lazy', 'class' => 'artwork-gallery-img' ] );
+                                $img = wp_get_attachment_image( ( $img_id ?: 0 ), 'medium_large', false, [ 'loading' => 'lazy', 'class' => 'artwork-gallery-img' ] );
                                 if ( $img ) {
                                     echo $img;
                                 }
