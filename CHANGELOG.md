@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.9] - 2025-06-22
+### Added
+- Salient portfolio synchronization support for published listings.
+
 ## [3.7.5] - 2025-06-16
 ### Fixed
 - Loaded `RolesManager` alias on `plugins_loaded` with priority 0 for
