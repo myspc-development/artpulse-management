@@ -16,6 +16,7 @@ class OrgReviewForm {
 
         $org_id = intval($atts['org_id']);
 
+        do_action('artpulse_before_form');
         ob_start();
         ?>
         <div class="ead-org-review-form">
@@ -74,6 +75,8 @@ class OrgReviewForm {
         });
         </script>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        $html = apply_filters('artpulse_form_output', $html);
+        return $html;
     }
 }

@@ -93,6 +93,7 @@ class MembershipSignupForm {
         $bio   = get_user_meta( $u->ID, 'description', true );
         $badge = get_user_meta( $u->ID, 'org_badge_label', true );
 
+        do_action( 'artpulse_before_form' );
         ob_start();
         ?>
         <div id="membership-message"></div>
@@ -127,7 +128,9 @@ class MembershipSignupForm {
             });
         </script>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        $html = apply_filters( 'artpulse_form_output', $html );
+        return $html;
     }
 
     public static function handle_submit() {

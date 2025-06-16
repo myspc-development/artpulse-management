@@ -101,6 +101,7 @@ class OrganizationForm {
         }
 
         $fields = self::fields();
+        do_action('artpulse_before_form');
         $msg = '';
         if (!empty($_GET['ead_org_msg'])) {
             if ($_GET['ead_org_msg'] === 'updated') $msg = '<div class="ead-org-success">Organization updated and pending review!</div>';
@@ -125,11 +126,13 @@ class OrganizationForm {
                 'atts'   => $atts,
             ]
         );
-        if ( false !== $output ) {
-            return $output;
+        if ( false === $output ) {
+            $output = '';
         }
 
-        return '';
+        $output = apply_filters('artpulse_form_output', $output);
+
+        return $output;
     }
 
     private static function fields() {

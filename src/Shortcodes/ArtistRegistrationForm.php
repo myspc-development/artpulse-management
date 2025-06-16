@@ -114,6 +114,7 @@ class ArtistRegistrationForm {
             return '<p>' . esc_html__( 'You must be a Pro Artist member to apply.', 'artpulse-management' ) . '</p>';
         }
 
+        do_action( 'artpulse_before_form' );
         ob_start();
         ?>
         <form method="post" enctype="multipart/form-data" class="ap-artist-registration-form">
@@ -245,7 +246,9 @@ class ArtistRegistrationForm {
             </button>
         </form>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        $html = apply_filters( 'artpulse_form_output', $html );
+        return $html;
     }
 
     /**
