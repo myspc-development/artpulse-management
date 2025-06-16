@@ -406,6 +406,7 @@ use EAD\Export\DataExport;
 use EAD\Analytics\ListingAnalytics;
 use EAD\Integration\WPBakery;
 use EAD\Integration\WooCommercePayments;
+use EAD\Integration\PortfolioSync;
 use EAD\Notifications\PushNotificationService;
 use EAD\Roles\RolesManager;
 
@@ -788,6 +789,10 @@ class Plugin {
         }
         if ( class_exists( 'WooCommerce' ) && class_exists( WooCommercePayments::class ) ) {
             WooCommercePayments::register();
+        }
+
+        if ( post_type_exists( 'portfolio' ) && class_exists( PortfolioSync::class ) ) {
+            PortfolioSync::register();
         }
     }
 
