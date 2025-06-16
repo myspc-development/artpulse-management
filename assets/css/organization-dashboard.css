@@ -333,6 +333,11 @@
     font-size: 15px;
 }
 
+.ead-dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
 /* Styles for new dashboard elements */
 .ead-dashboard-events-count,
 .ead-dashboard-rsvps-count,

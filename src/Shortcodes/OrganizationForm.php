@@ -90,20 +90,20 @@ class OrganizationForm {
 
     public static function render($atts = []) {
         if (!is_user_logged_in()) {
-            return '<div class="ead-dashboard-card"><p>Please <a href="' . esc_url(wp_login_url(get_permalink())) . '">log in</a> to submit or edit an organization.</p></div>';
+            return '<div class="container"><div class="row"><div class="col"><div class="ead-dashboard-card"><p>Please <a href="' . esc_url(wp_login_url(get_permalink())) . '">log in</a> to submit or edit an organization.</p></div></div></div></div>';
         }
 
         $org_id = isset($_GET['edit']) ? intval($_GET['edit']) : 0;
         $org = $org_id ? get_post($org_id) : null;
         if ($org && ($org->post_type !== 'ead_organization' || $org->post_author != get_current_user_id())) {
-            return '<div class="ead-dashboard-card"><p>You cannot edit this organization.</p></div>';
+            return '<div class="container"><div class="row"><div class="col"><div class="ead-dashboard-card"><p>You cannot edit this organization.</p></div></div></div></div>';
         }
 
         $fields = self::fields();
         $msg = '';
         if (!empty($_GET['ead_org_msg'])) {
-            if ($_GET['ead_org_msg'] === 'updated') $msg = '<div style="background:#eaffea;color:#308000;border-radius:8px;padding:10px 14px;margin-bottom:18px;">Organization updated and pending review!</div>';
-            if ($_GET['ead_org_msg'] === 'submitted') $msg = '<div style="background:#eaffea;color:#308000;border-radius:8px;padding:10px 14px;margin-bottom:18px;">Organization submitted for review!</div>';
+            if ($_GET['ead_org_msg'] === 'updated') $msg = '<div class="ead-org-success">Organization updated and pending review!</div>';
+            if ($_GET['ead_org_msg'] === 'submitted') $msg = '<div class="ead-org-success">Organization submitted for review!</div>';
         }
 
         $meta = [];
@@ -114,7 +114,10 @@ class OrganizationForm {
         $meta['organisation_description'] = $org_id ? $org->post_content : $meta['organisation_description'];
 
         ob_start(); ?>
-        <div class="ead-dashboard-card">
+        <div class="container">
+        <div class="row">
+        <div class="col">
+            <div class="ead-dashboard-card ead-organization-form-wrapper">
             <?php echo $msg; ?>
             <h2><?php echo $org_id ? 'Edit' : 'Add'; ?> Organization</h2>
             <form method="post" enctype="multipart/form-data">
@@ -154,25 +157,22 @@ class OrganizationForm {
                     <?php
                     $logo_id = isset($meta['ead_org_logo_id']) ? intval($meta['ead_org_logo_id']) : 0;
                     if ($logo_id) {
-                        echo '<br>' . wp_get_attachment_image($logo_id, [120,120], false, ['style' => 'border-radius:8px;']);
+                        echo '<br>' . wp_get_attachment_image($logo_id, [120,120], false, ['class' => 'ead-org-logo-preview']);
                         echo '<br><label><input type="checkbox" name="remove_logo" value="1"> Remove Logo</label>';
                     }
                     ?>
                     <input type="file" name="organisation_logo_file" accept="image/*">
                 </label><br>
                 <?php echo self::render_honeypot( $atts ); ?>
-                <button type="submit" class="button button-primary">
+                <button type="submit" class="nectar-button">
                     <?php echo $org_id ? esc_html__('Update Organization', 'artpulse-management')
                                        : esc_html__('Submit Organization', 'artpulse-management'); ?>
                 </button>
             </form>
+            </div>
         </div>
-        <style>
-        .ead-dashboard-card {background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,0.09);padding:2rem;max-width:650px;margin:2rem auto;}
-        label {display:block;margin:8px 0 4px 0;}
-        input[type=text],input[type=email],input[type=url],textarea {width:100%;max-width:440px;}
-        hr {margin:18px 0;}
-        </style>
+        </div>
+        </div>
         <?php
         return ob_get_clean();
     }

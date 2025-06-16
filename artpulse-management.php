@@ -810,6 +810,7 @@ class Plugin {
         wp_enqueue_style( 'ead-main-style', $plugin_url . 'assets/css/ead-main.css', [], $version );
         wp_enqueue_style( 'ead-badges-style', $plugin_url . 'assets/css/ead-badges.css', [], $version );
         wp_enqueue_style( 'ead-artist-gallery', $plugin_url . 'assets/css/artist-gallery.css', [], $version );
+        wp_enqueue_style( 'ead-organization-inline', $plugin_url . 'assets/css/ead-organization-inline.css', [], $version );
 
         wp_enqueue_script( 'ead-main-js', $plugin_url . 'assets/js/ead-main.js', [ 'jquery' ], $version, true );
 
@@ -883,6 +884,7 @@ class Plugin {
     public static function enqueue_admin_assets( $hook_suffix ) {
         $plugin_url = EAD_PLUGIN_DIR_URL;
         $version    = self::VERSION;
+        wp_enqueue_style( 'ead-admin-inline', $plugin_url . 'assets/css/ead-admin-inline.css', [], $version );
         $screen = get_current_screen();
 
         $allowed_post_types_for_featured_js = [ 'ead_event', 'ead_organization', 'ead_artist', 'ead_artwork', 'artwork' ];
@@ -1335,14 +1337,7 @@ class Plugin {
         global $pagenow, $typenow;
 
         if ( $pagenow === 'edit.php' && $typenow === 'ead_event' ) {
-            echo '<style>
-                .post-type-ead_event tr.status-pending { background-color:#fff5e0 !important; }
-                .post-type-ead_event tr.status-publish { background-color:#eaffea !important; }
-                .post-type-ead_event .column-title .post-state {
-                    background:#ffd080; color:#835b00; border-radius:3px;
-                    padding:0 4px; margin-left:6px; font-size:11px;
-                }
-            </style>';
+            // styles moved to stylesheet
         }
     }
 

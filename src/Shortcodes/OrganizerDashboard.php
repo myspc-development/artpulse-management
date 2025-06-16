@@ -72,7 +72,7 @@ class OrganizerDashboard {
                     if ($checkout) {
                         $msg = esc_html__('Proceed to payment to complete your request.', 'artpulse-management') . ' <a href="' . esc_url($checkout) . '" class="button">' . esc_html__('Pay Now', 'artpulse-management') . '</a>';
                     }
-                    echo '<div class="ead-featured-confirm" style="background:#eaffea;color:#308000;border-radius:8px;padding:10px 14px;position:fixed;bottom:32px;right:32px;z-index:99;">' . $msg . '</div>';
+                    echo '<div class="ead-featured-confirm">' . $msg . '</div>';
                 });
             }
         }
@@ -95,12 +95,15 @@ class OrganizerDashboard {
 
         ob_start();
         ?>
+        <div class="container">
+        <div class="row">
+        <div class="col">
         <div class="ead-dashboard-card">
             <h2>Your Events</h2>
-            <a href="<?php echo esc_url(add_query_arg('create', '1', $dashboard_url)); ?>" class="button" style="margin-bottom: 16px;">+ Submit New Event</a>
+            <a href="<?php echo esc_url(add_query_arg('create', '1', $dashboard_url)); ?>" class="nectar-button mb-16">+ Submit New Event</a>
 
             <?php if ($events): ?>
-                <table class="ead-dashboard-table" style="width:100%;border-collapse:collapse;">
+                <table class="ead-dashboard-table">
                     <thead>
                         <tr>
                             <th>Title</th>
@@ -117,11 +120,11 @@ class OrganizerDashboard {
                             <td>
                                 <?php
                                 if ($event->post_status === 'pending') {
-                                    echo '<span style="color:#c90;">Pending Review</span>';
+                                    echo '<span class="ead-badge-status ead-badge-status-pending"><span class="dashicons dashicons-info"></span> Pending Review</span>';
                                 } elseif ($event->post_status === 'draft') {
-                                    echo '<span style="color:#888;">Draft</span>';
+                                    echo '<span class="ead-badge-status ead-badge-status-draft"><span class="dashicons dashicons-minus"></span> Draft</span>';
                                 } else {
-                                    echo '<span style="color:#090;">Published</span>';
+                                    echo '<span class="ead-badge-status ead-badge-status-published"><span class="dashicons dashicons-yes"></span> Published</span>';
                                 }
                                 ?>
                             </td>
@@ -131,17 +134,17 @@ class OrganizerDashboard {
                                 $payment_status = (string) get_post_meta($event->ID, '_ead_featured_payment_status', true);
                                 $payment_url    = (string) get_post_meta($event->ID, '_ead_featured_payment_url', true);
                                 if ((string) get_post_meta($event->ID, '_ead_featured', true)) {
-                                    echo '<span class="ead-badge-featured" style="color:#fff;background:#fd7e14;padding:2px 9px;border-radius:10px;font-size:12px;">Featured</span>';
+                                    echo '<span class="ead-badge-featured">Featured</span>';
                                 } elseif ($payment_status === 'pending' && $payment_url) {
-                                    echo '<a href="' . esc_url($payment_url) . '" class="button button-small" style="font-size:12px;">' . esc_html__('Pay Now', 'artpulse-management') . '</a>';
+                                    echo '<a href="' . esc_url($payment_url) . '" class="button button-small">' . esc_html__('Pay Now', 'artpulse-management') . '</a>';
                                 } elseif ((string) get_post_meta($event->ID, '_ead_featured_request', true)) {
-                                    echo '<span class="ead-badge-requested" style="color:#fff;background:#fbc02d;padding:2px 9px;border-radius:10px;font-size:12px;">Requested</span>';
+                                    echo '<span class="ead-badge-requested">Requested</span>';
                                 } else {
                                     ?>
-                                    <form method="post" style="display:inline;">
+                                    <form method="post" class="ead-inline-form">
                                         <?php wp_nonce_field('ead_request_featured_' . $event->ID); ?>
                                         <input type="hidden" name="ead_request_featured_listing_id" value="<?php echo esc_attr($event->ID); ?>">
-                                        <button type="submit" name="ead_request_featured_submit" class="button button-small" style="font-size:12px;">Request</button>
+                                        <button type="submit" name="ead_request_featured_submit" class="button button-small">Request</button>
                                     </form>
                                     <?php
                                 }
@@ -158,6 +161,9 @@ class OrganizerDashboard {
             <?php else: ?>
                 <p>You have not created any events yet.</p>
             <?php endif; ?>
+        </div>
+        </div>
+        </div>
         </div>
         <?php
         return ob_get_clean();

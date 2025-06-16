@@ -25,7 +25,7 @@ class ReviewsModerator {
     }
 
     public static function admin_menu_css() {
-        echo '<style>.awaiting-mod {background:#e43d4f;color:#fff;border-radius:10px;padding:2px 7px 2px 7px;font-size:13px;margin-left:8px;vertical-align:middle;}</style>';
+        // styles moved to stylesheet
     }
 
     public static function moderate_reviews_page() {

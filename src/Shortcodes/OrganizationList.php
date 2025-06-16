@@ -61,7 +61,10 @@ class OrganizationList {
 
         ob_start(); ?>
 
-        <form id="ead-org-filterbar" method="get" class="ead-org-filterbar" style="margin-bottom:22px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+        <div class="container">
+        <div class="row">
+        <div class="col">
+        <form id="ead-org-filterbar" method="get" class="ead-org-filterbar">
             <input type="text" name="org_search" placeholder="Search organizations..." value="<?php echo esc_attr($search); ?>">
             <input type="text" name="org_city" placeholder="City..." value="<?php echo esc_attr($city); ?>">
             <select name="org_day">
@@ -83,7 +86,7 @@ class OrganizationList {
             <div class="ead-org-directory">
             <?php while ($q->have_posts()) : $q->the_post();
                 $logo_id = (string) get_post_meta(get_the_ID(), 'ead_org_logo_id', true);
-                $logo = $logo_id ? wp_get_attachment_image($logo_id, [80,80], false, ['style'=>'border-radius:8px;']) : '';
+                $logo = $logo_id ? wp_get_attachment_image($logo_id, [80,80], false, ['class' => 'ead-org-logo-preview']) : '';
                 $desc = (string) get_post_meta(get_the_ID(), 'organisation_description', true);
                 $website = (string) get_post_meta(get_the_ID(), 'organisation_website_url', true);
 
@@ -146,66 +149,8 @@ class OrganizationList {
             <p>No organizations found.</p>
         <?php endif; ?>
 
-        <style>
-        .ead-org-directory {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 28px;
-        }
-        .ead-org-card {
-            background: #fff;
-            border-radius: 13px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.07);
-            padding: 2rem 1.2rem;
-            text-align: center;
-        }
-        .ead-org-card-featured {
-            border: 2px solid gold;
-            background: linear-gradient(180deg, #fffbe9, #fff);
-            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
-        }
-        .ead-org-featured-badge {
-            display: inline-block;
-            background: linear-gradient(90deg, #ffd700 60%, #fffbe9);
-            color: #9a7500;
-            font-weight: bold;
-            border-radius: 7px;
-            font-size: 0.97em;
-            margin-bottom: 7px;
-            padding: 3px 12px;
-            letter-spacing: 0.7px;
-        }
-        .ead-featured-priority {
-            font-weight: normal;
-            font-size: 0.85em;
-            color: #555;
-            margin-left: 5px;
-        }
-        .ead-org-pagination {
-            display: flex;
-            justify-content: center;
-            list-style: none;
-            gap: 6px;
-            margin-top: 20px;
-            padding-left: 0;
-        }
-        .ead-org-pagination li {
-            display: inline-block;
-        }
-        .ead-org-pagination a {
-            display: inline-block;
-            padding: 6px 12px;
-            background: #f0f0f0;
-            color: #333;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-        .ead-org-pagination .current {
-            font-weight: bold;
-            background: #ffd700;
-            color: #000;
-        }
-        </style>
+        </div></div></div>
+
 
         <?php
         wp_reset_postdata();
