@@ -277,7 +277,7 @@ class ArtistDashboard {
                     $max_images = 5;
                     for ($i = 0; $i < $max_images; $i++):
                         $img_id = $gallery_ids[$i] ?? '';
-                        $img_url = $img_id ? wp_get_attachment_image_url($img_id, 'thumbnail') : '';
+                        $img_url = $img_id ? wp_get_attachment_image_url(($img_id ?: 0), 'nectar_thumb') : '';
                         ?>
                         <div class="ead-image-upload-container" data-image-index="<?php echo $i; ?>">
                             <div class="ead-image-preview<?php echo $img_url ? ' has-image' : ''; ?>"<?php echo $img_url ? ' style="background-image:url(' . esc_url($img_url) . ')"' : ''; ?>>

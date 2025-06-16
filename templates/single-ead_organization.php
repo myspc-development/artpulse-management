@@ -238,7 +238,7 @@ if (have_posts()) : while (have_posts()) : the_post();
               }
               echo '<div class="organization-gallery">';
               foreach ($gallery_ids as $gid) {
-                $img = wp_get_attachment_image($gid, 'large');
+                $img = wp_get_attachment_image(($gid ?: 0), 'medium_large');
                 if ($img) {
                   echo '<div class="organization-gallery-item">' . $img . '</div>';
                 }

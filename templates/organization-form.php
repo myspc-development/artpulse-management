@@ -41,7 +41,7 @@
             <?php
             $logo_id = isset($meta['ead_org_logo_id']) ? intval($meta['ead_org_logo_id']) : 0;
             if ($logo_id) {
-                echo '<br>' . wp_get_attachment_image($logo_id, [120,120], false, ['class' => 'ead-org-logo-preview']);
+                echo '<br>' . wp_get_attachment_image(($logo_id ?: 0), 'nectar_thumb', false, ['class' => 'ead-org-logo-preview']);
                 echo '<br><label><input type="checkbox" name="remove_logo" value="1"> Remove Logo</label>';
             }
             ?>

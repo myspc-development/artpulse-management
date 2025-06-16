@@ -203,7 +203,7 @@ class PendingArtists {
                 if (!$thumb) {
                     $gallery_ids = ead_get_meta($post_id, 'artist_gallery_images');
                     if (is_array($gallery_ids) && !empty($gallery_ids[0])) {
-                        $thumb = wp_get_attachment_image($gallery_ids[0], [60, 60]);
+                        $thumb = wp_get_attachment_image(($gallery_ids[0] ?: 0), 'nectar_thumb');
                     }
                 }
                 echo '<td data-colname="' . esc_attr__('Thumbnail', 'artpulse-management') . '" class="column-thumbnail">' . $thumb . '</td>';

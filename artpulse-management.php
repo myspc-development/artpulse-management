@@ -1663,7 +1663,7 @@ class Plugin {
         }
 
         $url            = wp_get_attachment_url( $attachment_id );
-        $thumbnail_html = wp_get_attachment_image( $attachment_id, 'thumbnail', false, [ 'style' => 'height:48px; width:auto; border-radius:6px;' ] );
+        $thumbnail_html = wp_get_attachment_image( ( $attachment_id ?: 0 ), 'nectar_thumb', false, [ 'style' => 'height:48px; width:auto; border-radius:6px;' ] );
 
         wp_send_json_success(
             [
@@ -1931,7 +1931,7 @@ class Plugin {
 
                 $logo_id           = ead_get_meta( $post_id, 'ead_org_logo_id');
                 $default_logo_url = EAD_PLUGIN_DIR_URL . 'assets/images/default-org-logo.png';
-                $logo_url          = $logo_id ? wp_get_attachment_image_url( $logo_id, 'thumbnail' ) : $default_logo_url;
+                $logo_url          = $logo_id ? wp_get_attachment_image_url( ( $logo_id ?: 0 ), 'nectar_thumb' ) : $default_logo_url;
 
                 if ( ! $logo_url ) {
                     $logo_url = $default_logo_url;

@@ -135,7 +135,7 @@ class ArtworkSubmissionForm {
                         $max_images = 5; // Define max images
                         for ( $i = 0; $i < $max_images; $i++ ) {
                             $image_id  = isset( $existing_image_ids[ $i ] ) ? intval( $existing_image_ids[ $i ] ) : 0;
-                            $image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'medium' ) : ''; // Use 'medium' or 'thumbnail'
+                            $image_url = $image_id ? wp_get_attachment_image_url( ( $image_id ?: 0 ), 'medium_large' ) : '';
                             ?>
                             <div class="ead-image-upload-container" data-image-index="<?php echo $i; ?>">
                                 <div class="ead-image-preview <?php echo $image_id ? 'has-image' : ''; ?>"
