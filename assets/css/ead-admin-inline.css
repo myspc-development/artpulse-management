@@ -1,0 +1,37 @@
+/* Admin styles migrated from inline CSS */
+
+.awaiting-mod {
+    background:#e43d4f;
+    color:#fff;
+    border-radius:10px;
+    padding:2px 7px 2px 7px;
+    font-size:13px;
+    margin-left:8px;
+    vertical-align:middle;
+}
+
+#adminmenu .awaiting-mod {
+    background-color:#d63638;
+    color:#fff;
+    font-weight:normal;
+    padding:2px 5px;
+    border-radius:4px;
+    font-size:11px;
+    line-height:1.2;
+    margin-left:6px;
+}
+
+.post-type-ead_event tr.status-pending {
+    background-color:#fff5e0 !important;
+}
+.post-type-ead_event tr.status-publish {
+    background-color:#eaffea !important;
+}
+.post-type-ead_event .column-title .post-state {
+    background:#ffd080;
+    color:#835b00;
+    border-radius:3px;
+    padding:0 4px;
+    margin-left:6px;
+    font-size:11px;
+}

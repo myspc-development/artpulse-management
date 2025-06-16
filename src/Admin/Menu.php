@@ -162,18 +162,7 @@ class Menu
 
     public static function admin_menu_badge_css()
     {
-        echo '<style>
-            #adminmenu .awaiting-mod {
-                background-color: #d63638;
-                color: #fff;
-                font-weight: normal;
-                padding: 2px 5px;
-                border-radius: 4px;
-                font-size: 11px;
-                line-height: 1.2;
-                margin-left: 6px;
-            }
-        </style>';
+        // styles moved to stylesheet
     }
 
     public static function render_membership_settings_page()
