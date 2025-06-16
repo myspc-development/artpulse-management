@@ -127,7 +127,7 @@ class ArtworkSubmissionForm {
                     <p><?php _e( 'Upload up to 5 images for your artwork. The first image will be considered the featured image.', 'artpulse-management' ); ?></p>
                     <div class="ead-artwork-image-upload-area">
                         <?php
-                        $existing_image_ids = $post ? get_post_meta( $post->ID, '_ead_artwork_gallery_images', true ) : [];
+                        $existing_image_ids = $post ? (string) get_post_meta( $post->ID, '_ead_artwork_gallery_images', true) : [];
                         if ( ! is_array( $existing_image_ids ) ) {
                             $existing_image_ids = [];
                         }
