@@ -62,6 +62,7 @@ class ArtworkSubmissionForm {
             $is_editing = true;
         }
 
+        do_action( 'artpulse_before_form' );
         ob_start();
         ?>
         <div class="ead-artwork-submission-form-wrap">
@@ -162,7 +163,9 @@ class ArtworkSubmissionForm {
             </form>
         </div>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        $html = apply_filters( 'artpulse_form_output', $html );
+        return $html;
     }
 
     /**

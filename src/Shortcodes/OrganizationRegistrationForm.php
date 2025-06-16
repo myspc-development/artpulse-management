@@ -133,6 +133,7 @@ class OrganizationRegistrationForm {
             'other'  => __( 'Other', 'artpulse-management' ),
         ];
 
+        do_action( 'artpulse_before_form' );
         ob_start();
         ?>
         <form id="ead-organization-registration-form" class="ead-organization-form" enctype="multipart/form-data" method="post">
@@ -311,6 +312,8 @@ class OrganizationRegistrationForm {
             <button type="submit" class="button button-primary"><?php esc_html_e( 'Register Organization', 'artpulse-management' ); ?></button>
         </form>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        $html = apply_filters( 'artpulse_form_output', $html );
+        return $html;
     }
 }

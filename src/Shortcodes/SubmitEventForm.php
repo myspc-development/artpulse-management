@@ -95,6 +95,7 @@ class SubmitEventForm {
             ]
         );
 
+        do_action( 'artpulse_before_form' );
         ob_start();
         ?>
         <div class="ead-dashboard-card ead-submit-event-wrapper">
@@ -174,6 +175,8 @@ class SubmitEventForm {
             </form>
         </div>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        $html = apply_filters( 'artpulse_form_output', $html );
+        return $html;
     }
 }

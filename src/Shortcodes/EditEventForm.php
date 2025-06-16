@@ -74,6 +74,7 @@ class EditEventForm {
         $types = get_terms(['taxonomy' => 'ead_event_type', 'hide_empty' => false]);
         $current_types = wp_get_post_terms($event_id, 'ead_event_type', ['fields' => 'slugs']);
 
+        do_action('artpulse_before_form');
         ob_start();
         ?>
         <div class="ead-dashboard-card">
@@ -105,6 +106,8 @@ class EditEventForm {
             </form>
         </div>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        $html = apply_filters('artpulse_form_output', $html);
+        return $html;
     }
 }
