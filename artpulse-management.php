@@ -803,7 +803,81 @@ class Plugin {
         add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue_admin_assets' ] );
     }
 
+    private static function current_post_has_shortcode( array $tags ) {
+        global $post;
+
+        if ( ! is_a( $post, 'WP_Post' ) ) {
+            return false;
+        }
+
+        foreach ( $tags as $tag ) {
+            if ( shortcode_exists( $tag ) && has_shortcode( (string) $post->post_content, $tag ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function current_post_has_map_shortcode() {
+        $map_tags = [];
+
+        if ( class_exists( OrganizationList::class ) && defined( OrganizationList::class . '::SHORTCODE_TAG_MAP' ) ) {
+            $map_tags[] = OrganizationList::SHORTCODE_TAG_MAP;
+        }
+
+        foreach ( [ 'ead_org_map', 'ead_event_map', 'ead_map' ] as $tag ) {
+            if ( shortcode_exists( $tag ) ) {
+                $map_tags[] = $tag;
+            }
+        }
+
+        return self::current_post_has_shortcode( $map_tags );
+    }
+
     public static function enqueue_frontend_assets() {
+        $shortcodes = [
+            'ead_user_profile_tab',
+            'organization_profile',
+            'organization_selector',
+            'organization_edit_form',
+            'event_list',
+            'event_rsvp',
+            'event_card',
+            'artist_card',
+            'artwork_card',
+            'artwork_gallery',
+            'user_profile',
+            'membership_status',
+            'membership_checkout',
+            'membership_success_status',
+            'membership_cancel_status',
+            'finalize_registration',
+            'register_member',
+            'ead_reviews_form',
+            'ead_reviews_table',
+            'ead_organization_dashboard',
+            'ead_artist_dashboard',
+            'ead_user_dashboard',
+            'ead_artwork_submission_form',
+            'ead_events_list',
+            'event_calendar',
+            'ead_edit_event_form',
+            'ap_artist_registration_form',
+            'ead_submit_event_form',
+            'ead_organization_form',
+            'ead_org_review_form',
+            'ead_organizer_dashboard',
+            'ead_organization_list',
+            'ead_membership_status',
+            'ead_favorites',
+            'ead_organization_registration_form',
+        ];
+
+        if ( ! self::current_post_has_shortcode( $shortcodes ) ) {
+            return;
+        }
+
         $plugin_url = EAD_PLUGIN_DIR_URL;
         $version    = self::VERSION;
 
@@ -909,14 +983,7 @@ class Plugin {
     }
 
     public static function enqueue_map_assets_conditionally() {
-        global $post;
-
-        if (
-            is_a( $post, 'WP_Post' ) &&
-            class_exists( OrganizationList::class ) &&
-            defined( OrganizationList::class . '::SHORTCODE_TAG_MAP' ) &&
-            has_shortcode( (string) $post->post_content, OrganizationList::SHORTCODE_TAG_MAP )
-        ) {
+        if ( self::current_post_has_map_shortcode() ) {
             $version = self::VERSION;
 
             $settings      = get_option( 'artpulse_plugin_settings', [] );
