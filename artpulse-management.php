@@ -835,6 +835,34 @@ class Plugin {
         return self::current_post_has_shortcode( $map_tags );
     }
 
+    /**
+     * Enqueue a style only if it isn't already registered or enqueued.
+     * If Salient (or another theme) has registered the handle we rely on that.
+     */
+    private static function maybe_enqueue_style( $handle, $src, $deps = [], $ver = false, $media = 'all' ) {
+        if ( ! wp_style_is( $handle, 'registered' ) ) {
+            wp_register_style( $handle, $src, $deps, $ver, $media );
+        }
+
+        if ( ! wp_style_is( $handle, 'enqueued' ) ) {
+            wp_enqueue_style( $handle );
+        }
+    }
+
+    /**
+     * Enqueue a script only if it isn't already registered or enqueued.
+     * This prevents duplicate network requests when Salient provides the same asset.
+     */
+    private static function maybe_enqueue_script( $handle, $src, $deps = [], $ver = false, $in_footer = false ) {
+        if ( ! wp_script_is( $handle, 'registered' ) ) {
+            wp_register_script( $handle, $src, $deps, $ver, $in_footer );
+        }
+
+        if ( ! wp_script_is( $handle, 'enqueued' ) ) {
+            wp_enqueue_script( $handle );
+        }
+    }
+
     public static function enqueue_frontend_assets() {
         $shortcodes = [
             'ead_user_profile_tab',
@@ -989,16 +1017,16 @@ class Plugin {
             $settings      = get_option( 'artpulse_plugin_settings', [] );
             $gmaps_api_key = isset( $settings['google_maps_api_key'] ) ? $settings['google_maps_api_key'] : '';
 
-            wp_enqueue_style( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4' );
-            wp_enqueue_script( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true );
+            self::maybe_enqueue_style( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4' );
+            self::maybe_enqueue_script( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true );
 
-            wp_enqueue_style( 'leaflet-cluster', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css', [ 'leaflet' ], '1.5.3' );
-            wp_enqueue_script( 'leaflet-cluster', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js', [ 'leaflet' ], '1.5.3', true );
+            self::maybe_enqueue_style( 'leaflet-cluster', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css', [ 'leaflet' ], '1.5.3' );
+            self::maybe_enqueue_script( 'leaflet-cluster', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js', [ 'leaflet' ], '1.5.3', true );
 
-            wp_enqueue_script( 'ead-org-map-ajax', EAD_PLUGIN_DIR_URL . 'assets/js/ead-org-map-ajax.js', [ 'jquery', 'leaflet', 'leaflet-cluster' ], $version, true );
+            self::maybe_enqueue_script( 'ead-org-map-ajax', EAD_PLUGIN_DIR_URL . 'assets/js/ead-org-map-ajax.js', [ 'jquery', 'leaflet', 'leaflet-cluster' ], $version, true );
 
             if ( $gmaps_api_key ) {
-                wp_enqueue_script( 'google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . $gmaps_api_key, [], null, true );
+                self::maybe_enqueue_script( 'google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . $gmaps_api_key, [], null, true );
             }
 
             wp_localize_script(
@@ -1033,11 +1061,11 @@ class Plugin {
             }
             if ( $lat && $lng ) {
                 $version = self::VERSION;
-                wp_enqueue_style( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4' );
-                wp_enqueue_script( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true );
-                wp_enqueue_script( 'ead-frontend-map', EAD_PLUGIN_DIR_URL . 'assets/js/ead-frontend-map.js', [ 'jquery', 'leaflet' ], $version, true );
+                self::maybe_enqueue_style( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4' );
+                self::maybe_enqueue_script( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true );
+                self::maybe_enqueue_script( 'ead-frontend-map', EAD_PLUGIN_DIR_URL . 'assets/js/ead-frontend-map.js', [ 'jquery', 'leaflet' ], $version, true );
                 if ( $gmaps_api_key ) {
-                    wp_enqueue_script( 'google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . $gmaps_api_key, [], null, true );
+                    self::maybe_enqueue_script( 'google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . $gmaps_api_key, [], null, true );
                 }
                 wp_localize_script( 'ead-frontend-map', 'EAD_SINGLE_MAP', [
                     'lat'         => $lat,
@@ -1059,11 +1087,11 @@ class Plugin {
             }
             if ( $lat && $lng ) {
                 $version = self::VERSION;
-                wp_enqueue_style( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4' );
-                wp_enqueue_script( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true );
-                wp_enqueue_script( 'ead-org-map-ajax', EAD_PLUGIN_DIR_URL . 'assets/js/ead-org-map-ajax.js', [ 'jquery', 'leaflet' ], $version, true );
+                self::maybe_enqueue_style( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4' );
+                self::maybe_enqueue_script( 'leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true );
+                self::maybe_enqueue_script( 'ead-org-map-ajax', EAD_PLUGIN_DIR_URL . 'assets/js/ead-org-map-ajax.js', [ 'jquery', 'leaflet' ], $version, true );
                 if ( $gmaps_api_key ) {
-                    wp_enqueue_script( 'google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . $gmaps_api_key, [], null, true );
+                    self::maybe_enqueue_script( 'google-maps', 'https://maps.googleapis.com/maps/api/js?key=' . $gmaps_api_key, [], null, true );
                 }
                 wp_localize_script( 'ead-org-map-ajax', 'EAD_SINGLE_MAP', [
                     'lat'         => $lat,
