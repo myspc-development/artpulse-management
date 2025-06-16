@@ -11,13 +11,11 @@ class OrganizerDashboard {
     public static function enqueue_styles_and_scripts() {
         $main_file = WP_PLUGIN_DIR . '/artpulse-management/artpulse-management.php';
 
-        // Enqueue badge styles
         wp_enqueue_style(
             'ead-badges',
             plugins_url('assets/css/ead-badges.css', $main_file)
         );
 
-        // Enqueue organization dashboard styles and scripts
         wp_enqueue_style(
             'ead-organization-dashboard',
             plugins_url('assets/css/organization-dashboard.css', $main_file),
@@ -34,7 +32,6 @@ class OrganizerDashboard {
         );
     }
 
-    // Handle featured request submissions from dashboard
     public static function handle_featured_request_submission() {
         if (
             isset($_POST['ead_request_featured_submit']) &&
@@ -49,18 +46,15 @@ class OrganizerDashboard {
                 $post->post_author == $user_id &&
                 $post->post_type === 'ead_event'
             ) {
-                // Flag the event as having requested featured status
                 update_post_meta($listing_id, '_ead_featured_request', '1');
                 update_post_meta($listing_id, '_ead_featured_payment_status', 'pending');
-
-                // Store the request timestamp separately for reference
                 update_post_meta($listing_id, '_ead_featured_request_time', current_time('mysql'));
 
-                $checkout = \EAD\Integration\WooCommercePayments::generate_checkout_url( $listing_id );
-                if ( $checkout ) {
-                    update_post_meta( $listing_id, '_ead_featured_payment_url', esc_url_raw( $checkout ) );
+                $checkout = \EAD\Integration\WooCommercePayments::generate_checkout_url($listing_id);
+                if ($checkout) {
+                    update_post_meta($listing_id, '_ead_featured_payment_url', esc_url_raw($checkout));
                 }
-                // Notify admin
+
                 wp_mail(
                     get_option('admin_email'),
                     __('Featured Listing Request', 'artpulse-management'),
@@ -72,11 +66,11 @@ class OrganizerDashboard {
                         $listing_id
                     )
                 );
-                // Show a confirmation message
-                add_action('wp_footer', function() use ( $checkout ) {
+
+                add_action('wp_footer', function () use ($checkout) {
                     $msg = esc_html__('Your featured request was sent for review.', 'artpulse-management');
-                    if ( $checkout ) {
-                        $msg = esc_html__('Proceed to payment to complete your request.', 'artpulse-management') . ' <a href="' . esc_url( $checkout ) . '" class="button">' . esc_html__('Pay Now', 'artpulse-management') . '</a>';
+                    if ($checkout) {
+                        $msg = esc_html__('Proceed to payment to complete your request.', 'artpulse-management') . ' <a href="' . esc_url($checkout) . '" class="button">' . esc_html__('Pay Now', 'artpulse-management') . '</a>';
                     }
                     echo '<div class="ead-featured-confirm" style="background:#eaffea;color:#308000;border-radius:8px;padding:10px 14px;position:fixed;bottom:32px;right:32px;z-index:99;">' . $msg . '</div>';
                 });
@@ -103,7 +97,6 @@ class OrganizerDashboard {
         ?>
         <div class="ead-dashboard-card">
             <h2>Your Events</h2>
-            <div id="ead-badges" class="ead-badges"></div>
             <a href="<?php echo esc_url(add_query_arg('create', '1', $dashboard_url)); ?>" class="button" style="margin-bottom: 16px;">+ Submit New Event</a>
 
             <?php if ($events): ?>
@@ -132,16 +125,16 @@ class OrganizerDashboard {
                                 }
                                 ?>
                             </td>
-                            <td><?php echo esc_html(get_post_meta($event->ID, 'event_start_date', true)); ?></td>
+                            <td><?php echo esc_html((string) get_post_meta($event->ID, 'event_start_date', true)); ?></td>
                             <td>
                                 <?php
-                                $payment_status = get_post_meta($event->ID, '_ead_featured_payment_status', true);
-                                $payment_url    = get_post_meta($event->ID, '_ead_featured_payment_url', true);
-                                if (get_post_meta($event->ID, '_ead_featured', true)) {
+                                $payment_status = (string) get_post_meta($event->ID, '_ead_featured_payment_status', true);
+                                $payment_url    = (string) get_post_meta($event->ID, '_ead_featured_payment_url', true);
+                                if ((string) get_post_meta($event->ID, '_ead_featured', true)) {
                                     echo '<span class="ead-badge-featured" style="color:#fff;background:#fd7e14;padding:2px 9px;border-radius:10px;font-size:12px;">Featured</span>';
                                 } elseif ($payment_status === 'pending' && $payment_url) {
                                     echo '<a href="' . esc_url($payment_url) . '" class="button button-small" style="font-size:12px;">' . esc_html__('Pay Now', 'artpulse-management') . '</a>';
-                                } elseif (get_post_meta($event->ID, '_ead_featured_request', true)) {
+                                } elseif ((string) get_post_meta($event->ID, '_ead_featured_request', true)) {
                                     echo '<span class="ead-badge-requested" style="color:#fff;background:#fbc02d;padding:2px 9px;border-radius:10px;font-size:12px;">Requested</span>';
                                 } else {
                                     ?>
@@ -166,13 +159,6 @@ class OrganizerDashboard {
                 <p>You have not created any events yet.</p>
             <?php endif; ?>
         </div>
-
-        <style>
-            .ead-dashboard-card {background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,0.09);padding:2rem;max-width:900px;margin:2rem auto;}
-            .ead-dashboard-table th, .ead-dashboard-table td {padding:10px 6px;border-bottom:1px solid #eee;}
-            .ead-dashboard-table th {background:#fafafa;}
-            .button.button-small {font-size:12px;padding:3px 10px;margin-right:4px;}
-        </style>
         <?php
         return ob_get_clean();
     }
