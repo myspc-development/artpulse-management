@@ -755,4 +755,3 @@ class ArtworkEndpoint extends WP_REST_Controller {
         return [ 'view', 'edit', 'embed' ];
     }
 }
-if (!is_array(\$gallery_image_ids)) \$gallery_image_ids = [];
