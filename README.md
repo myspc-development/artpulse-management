@@ -66,7 +66,12 @@ Newcomers can follow the [Onboarding Guide](documents/Onboarding_Guide.md) for a
   - **Bookings** — manage bookings submitted via the REST API.
   - **Member Management** — view and edit member accounts in the **Manage Members** screen provided by `src/Admin/ManageMembers.php`.
   - **ArtPulse › Settings** — plugin settings. See [Settings Tabs](documents/Settings_Tabs.md) for a breakdown of each section.
-  - **Notifications** — toggle options like the new event submission email.
+- **Notifications** — toggle options like the new event submission email.
+
+Archive templates shipped with the plugin call `nectar_pagination()` when the
+function is available (as in the Salient theme). If it is not defined they fall
+back to `the_posts_pagination()`. Copy these template files into your child
+theme to maintain Salient styling.
 
 ### RSVP Form
 
