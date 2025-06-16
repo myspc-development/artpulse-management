@@ -41,8 +41,8 @@ $artists_query = new WP_Query([
                   <h2 class="portfolio-title"><?php the_title(); ?></h2>
                   <div class="portfolio-excerpt"><?php the_excerpt(); ?></div>
                   <?php
-                  $artist_bio = get_post_meta(get_the_ID(), 'artist_bio', true);
-                  $artist_name = get_post_meta(get_the_ID(), 'artist_name', true);
+                  $artist_bio = ead_get_meta(get_the_ID(), 'artist_bio');
+                  $artist_name = ead_get_meta(get_the_ID(), 'artist_name');
                   if ($artist_name) {
                       echo '<div class="portfolio-meta"><span class="meta-name">' . esc_html($artist_name) . '</span></div>';
                   }

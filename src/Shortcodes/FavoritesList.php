@@ -34,7 +34,7 @@ class FavoritesList {
             if (!$post) continue;
             $permalink = get_permalink($post);
             $title = get_the_title($post);
-            $like_count = get_post_meta($post_id, '_ead_like_count', true);
+            $like_count = ead_get_meta($post_id, '_ead_like_count');
 
             $output .= '<div class="ead-favorite-item">';
             $output .= '<a href="' . esc_url($permalink) . '">' . esc_html($title) . '</a> ';

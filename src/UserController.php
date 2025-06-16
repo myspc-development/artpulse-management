@@ -89,7 +89,7 @@ class UserController extends WP_REST_Controller {
                 return [
                     'id'          => $id,
                     'title'       => $post->post_title,
-                    'start'       => get_post_meta( $id, 'event_date', true ),
+                    'start'       => ead_get_meta( $id, 'event_date'),
                     'url'         => get_permalink( $id ),
                     'rsvped'      => in_array( $id, $user_rsvps, true ),
                     'category'    => $terms[0] ?? 'Uncategorized',

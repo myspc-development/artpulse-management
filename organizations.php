@@ -60,16 +60,16 @@ add_action('add_meta_boxes', 'artpulse_add_organization_meta_boxes');
 
 function artpulse_org_meta_box_callback($post) {
     wp_nonce_field('save_org', 'org_nonce');
-    $website = get_post_meta($post->ID, 'org_website', true);
-    $logo = get_post_meta($post->ID, 'org_logo_url', true);
-    $mission = get_post_meta($post->ID, 'org_mission', true);
-    $admins = get_post_meta($post->ID, 'org_admin_users', true) ?: [];
-    $team = get_post_meta($post->ID, 'org_team_members', true) ?: [];
-    $address = get_post_meta($post->ID, 'org_address', true);
-    $phone = get_post_meta($post->ID, 'org_phone', true);
-    $country = get_post_meta($post->ID, 'ead_country', true);
-    $state   = get_post_meta($post->ID, 'ead_state', true);
-    $city    = get_post_meta($post->ID, 'ead_city', true);
+    $website = ead_get_meta($post->ID, 'org_website');
+    $logo = ead_get_meta($post->ID, 'org_logo_url');
+    $mission = ead_get_meta($post->ID, 'org_mission');
+    $admins = ead_get_meta($post->ID, 'org_admin_users') ?: [];
+    $team = ead_get_meta($post->ID, 'org_team_members') ?: [];
+    $address = ead_get_meta($post->ID, 'org_address');
+    $phone = ead_get_meta($post->ID, 'org_phone');
+    $country = ead_get_meta($post->ID, 'ead_country');
+    $state   = ead_get_meta($post->ID, 'ead_state');
+    $city    = ead_get_meta($post->ID, 'ead_city');
     ?>
     <p><label>Website: <input type="url" name="org_website" value="<?php echo esc_attr($website); ?>" style="width:100%;" /></label></p>
     <p><label>Logo URL: <input type="text" name="org_logo_url" value="<?php echo esc_attr($logo); ?>" style="width:100%;" /></label></p>
@@ -117,14 +117,14 @@ function artpulse_organization_profile_shortcode($atts) {
     $post = get_post($atts['id']);
     if (!$post || $post->post_type !== 'organization') return '<p>Organization not found.</p>';
 
-    $website = get_post_meta($post->ID, 'org_website', true);
-    $logo    = get_post_meta($post->ID, 'org_logo_url', true);
-    $mission = get_post_meta($post->ID, 'org_mission', true);
-    $address = get_post_meta($post->ID, 'org_address', true);
-    $phone   = get_post_meta($post->ID, 'org_phone', true);
-    $email   = get_post_meta($post->ID, 'org_email', true);
-    $social  = get_post_meta($post->ID, 'org_social_links', true) ?: [];
-    $team    = get_post_meta($post->ID, 'org_team_members', true);
+    $website = ead_get_meta($post->ID, 'org_website');
+    $logo    = ead_get_meta($post->ID, 'org_logo_url');
+    $mission = ead_get_meta($post->ID, 'org_mission');
+    $address = ead_get_meta($post->ID, 'org_address');
+    $phone   = ead_get_meta($post->ID, 'org_phone');
+    $email   = ead_get_meta($post->ID, 'org_email');
+    $social  = ead_get_meta($post->ID, 'org_social_links') ?: [];
+    $team    = ead_get_meta($post->ID, 'org_team_members');
 
     ob_start();
     echo '<div class="organization-profile p-4 border rounded">';
@@ -174,7 +174,7 @@ add_filter('user_has_cap', function ($caps, $cap, $args) {
     if (is_array($cap) && isset($cap[0]) && $cap[0] === 'edit_post') {
         $post_id = $args[2] ?? null;
         if ($post_id && get_post_type($post_id) === 'organization') {
-            $org_admins = get_post_meta($post_id, 'org_admin_users', true) ?: [];
+            $org_admins = ead_get_meta($post_id, 'org_admin_users') ?: [];
             if (in_array(get_current_user_id(), $org_admins)) {
                 $caps[$cap[0]] = true;
             }
@@ -220,7 +220,7 @@ function artpulse_organization_edit_form_shortcode($atts) {
 
     if (!$post_id || get_post_type($post_id) !== 'organization') return '<p>Invalid organization.</p>';
 
-    $admins = get_post_meta($post_id, 'org_admin_users', true) ?: [];
+    $admins = ead_get_meta($post_id, 'org_admin_users') ?: [];
     if (!in_array($user_id, $admins)) return '<p>You are not an admin for this organization.</p>';
 
     // Process form submission
@@ -250,14 +250,14 @@ function artpulse_organization_edit_form_shortcode($atts) {
         echo '<div class="p-2 bg-green-100 text-green-700 border border-green-300 rounded">Changes saved.</div>';
     }
 
-    $website = get_post_meta($post_id, 'org_website', true);
-    $logo    = get_post_meta($post_id, 'org_logo_url', true);
-    $mission = get_post_meta($post_id, 'org_mission', true);
-    $address = get_post_meta($post_id, 'org_address', true);
-    $country = get_post_meta($post_id, 'ead_country', true);
-    $state   = get_post_meta($post_id, 'ead_state', true);
-    $city    = get_post_meta($post_id, 'ead_city', true);
-    $phone   = get_post_meta($post_id, 'org_phone', true);
+    $website = ead_get_meta($post_id, 'org_website');
+    $logo    = ead_get_meta($post_id, 'org_logo_url');
+    $mission = ead_get_meta($post_id, 'org_mission');
+    $address = ead_get_meta($post_id, 'org_address');
+    $country = ead_get_meta($post_id, 'ead_country');
+    $state   = ead_get_meta($post_id, 'ead_state');
+    $city    = ead_get_meta($post_id, 'ead_city');
+    $phone   = ead_get_meta($post_id, 'org_phone');
 
     ob_start();
     ?>

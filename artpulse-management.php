@@ -220,10 +220,10 @@ function ead_migrate_org_logo_meta() {
     );
 
     foreach ( $query->posts as $post_id ) {
-        $logo_id = get_post_meta( $post_id, 'ead_org_logo_id', true );
+        $logo_id = ead_get_meta( $post_id, 'ead_org_logo_id');
 
         if ( ! $logo_id ) {
-            $old_id = get_post_meta( $post_id, 'ead_organisation_logo_id', true );
+            $old_id = ead_get_meta( $post_id, 'ead_organisation_logo_id');
             if ( $old_id ) {
                 update_post_meta( $post_id, 'ead_org_logo_id', $old_id );
                 delete_post_meta( $post_id, 'ead_organisation_logo_id' );
@@ -232,7 +232,7 @@ function ead_migrate_org_logo_meta() {
         }
 
         if ( ! $logo_id ) {
-            $old_id = get_post_meta( $post_id, 'organisation_logo', true );
+            $old_id = ead_get_meta( $post_id, 'organisation_logo');
             if ( $old_id ) {
                 update_post_meta( $post_id, 'ead_org_logo_id', $old_id );
                 delete_post_meta( $post_id, 'organisation_logo' );
@@ -271,10 +271,10 @@ function ead_migrate_org_location_meta() {
         ];
 
         foreach ( $map as $new_key => $old_keys ) {
-            $current = get_post_meta( $post_id, $new_key, true );
+            $current = ead_get_meta( $post_id, $new_key);
             if ( empty( $current ) ) {
                 foreach ( $old_keys as $old_key ) {
-                    $old_val = get_post_meta( $post_id, $old_key, true );
+                    $old_val = ead_get_meta( $post_id, $old_key);
                     if ( ! empty( $old_val ) ) {
                         update_post_meta( $post_id, $new_key, $old_val );
                         delete_post_meta( $post_id, $old_key );
@@ -1023,13 +1023,13 @@ class Plugin {
 
         if ( is_singular( 'ead_event' ) ) {
             $post_id = get_the_ID();
-            $lat = get_post_meta( $post_id, 'event_latitude', true );
+            $lat = ead_get_meta( $post_id, 'event_latitude');
             if ( ! $lat ) {
-                $lat = get_post_meta( $post_id, 'event_lat', true );
+                $lat = ead_get_meta( $post_id, 'event_lat');
             }
-            $lng = get_post_meta( $post_id, 'event_longitude', true );
+            $lng = ead_get_meta( $post_id, 'event_longitude');
             if ( ! $lng ) {
-                $lng = get_post_meta( $post_id, 'event_lng', true );
+                $lng = ead_get_meta( $post_id, 'event_lng');
             }
             if ( $lat && $lng ) {
                 $version = self::VERSION;
@@ -1049,13 +1049,13 @@ class Plugin {
 
         if ( is_singular( 'ead_organization' ) ) {
             $post_id = get_the_ID();
-            $lat = get_post_meta( $post_id, 'ead_latitude', true );
+            $lat = ead_get_meta( $post_id, 'ead_latitude');
             if ( ! $lat ) {
-                $lat = get_post_meta( $post_id, 'org_lat', true );
+                $lat = ead_get_meta( $post_id, 'org_lat');
             }
-            $lng = get_post_meta( $post_id, 'ead_longitude', true );
+            $lng = ead_get_meta( $post_id, 'ead_longitude');
             if ( ! $lng ) {
-                $lng = get_post_meta( $post_id, 'org_lng', true );
+                $lng = ead_get_meta( $post_id, 'org_lng');
             }
             if ( $lat && $lng ) {
                 $version = self::VERSION;
@@ -1134,7 +1134,7 @@ class Plugin {
     public static function render_event_admin_custom_columns( $column, $post_id ) {
         switch ( $column ) {
             case 'event_organisation':
-                $org_id = get_post_meta( $post_id, '_ead_event_organisation_id', true );
+                $org_id = ead_get_meta( $post_id, '_ead_event_organisation_id');
                 if ( $org_id && get_post( $org_id ) && 'trash' !== get_post_status( $org_id ) ) {
                     echo '<a href="' . esc_url( get_edit_post_link( $org_id ) ) . '">' . esc_html( get_the_title( $org_id ) ) . '</a>';
                 } else {
@@ -1143,26 +1143,26 @@ class Plugin {
                 break;
 
             case 'organizer_name':
-                echo esc_html( get_post_meta( $post_id, 'event_organizer_name', true ) );
+                echo esc_html( ead_get_meta( $post_id, 'event_organizer_name') );
                 break;
 
             case 'organizer_email':
-                $email = get_post_meta( $post_id, 'event_organizer_email', true );
+                $email = ead_get_meta( $post_id, 'event_organizer_email');
                 if ( $email && is_email( $email ) ) {
                     echo '<a href="mailto:' . esc_attr( $email ) . '">' . esc_html( $email ) . '</a>';
                 }
                 break;
 
             case 'event_start':
-                echo esc_html( get_post_meta( $post_id, 'event_start_date', true ) );
+                echo esc_html( ead_get_meta( $post_id, 'event_start_date') );
                 break;
 
             case 'event_end':
-                echo esc_html( get_post_meta( $post_id, 'event_end_date', true ) );
+                echo esc_html( ead_get_meta( $post_id, 'event_end_date') );
                 break;
 
             case 'gallery':
-                $gallery_ids = get_post_meta( $post_id, 'event_gallery', true );
+                $gallery_ids = ead_get_meta( $post_id, 'event_gallery');
                 if ( ! empty( $gallery_ids ) && is_array( $gallery_ids ) ) {
                     echo esc_html( count( $gallery_ids ) ) . ' ' . esc_html( _n( 'image', 'images', count( $gallery_ids ), self::TEXT_DOMAIN ) );
                 } else {
@@ -1171,12 +1171,12 @@ class Plugin {
                 break;
 
             case 'ead_featured_request':
-                $payment_status = get_post_meta( $post_id, '_ead_featured_payment_status', true );
-                if ( get_post_meta( $post_id, '_ead_featured', true ) ) {
+                $payment_status = ead_get_meta( $post_id, '_ead_featured_payment_status');
+                if ( ead_get_meta( $post_id, '_ead_featured') ) {
                     echo esc_html__( 'Featured', self::TEXT_DOMAIN );
                 } elseif ( $payment_status === 'pending' ) {
                     echo esc_html__( 'Payment Pending', self::TEXT_DOMAIN );
-                } elseif ( get_post_meta( $post_id, '_ead_featured_request', true ) === '1' ) {
+                } elseif ( ead_get_meta( $post_id, '_ead_featured_request') === '1' ) {
                     echo '<span style="color:orange;font-weight:bold;">✔</span> ' . esc_html__( 'Requested', self::TEXT_DOMAIN );
                 }
                 break;
@@ -1307,7 +1307,7 @@ class Plugin {
         fputcsv( $output, $headers );
 
         foreach ( $events as $event ) {
-            $org_id   = get_post_meta( $event->ID, '_ead_event_organisation_id', true );
+            $org_id   = ead_get_meta( $event->ID, '_ead_event_organisation_id');
             $org_name = '';
 
             if ( $org_id && get_post( $org_id ) ) {
@@ -1319,10 +1319,10 @@ class Plugin {
                 [
                     $event->ID,
                     $event->post_title,
-                    get_post_meta( $event->ID, 'event_organizer_name', true ),
-                    get_post_meta( $event->ID, 'event_organizer_email', true ),
-                    get_post_meta( $event->ID, 'event_start_date', true ),
-                    get_post_meta( $event->ID, 'event_end_date', true ),
+                    ead_get_meta( $event->ID, 'event_organizer_name'),
+                    ead_get_meta( $event->ID, 'event_organizer_email'),
+                    ead_get_meta( $event->ID, 'event_start_date'),
+                    ead_get_meta( $event->ID, 'event_end_date'),
                     wp_strip_all_tags( (string) $event->post_content ),
                     get_the_date( 'Y-m-d H:i:s', $event->ID ),
                     $org_id,
@@ -1442,8 +1442,8 @@ class Plugin {
 
     public static function notify_organizer_on_event_approval( $new_status, $old_status, $post ) {
         if ( $post instanceof \WP_Post && $post->post_type === 'ead_event' && $old_status === 'pending' && $new_status === 'publish' ) {
-            $organizer_email = get_post_meta( $post->ID, 'event_organizer_email', true );
-            $organizer_name  = get_post_meta( $post->ID, 'event_organizer_name', true );
+            $organizer_email = ead_get_meta( $post->ID, 'event_organizer_email');
+            $organizer_name  = ead_get_meta( $post->ID, 'event_organizer_name');
             $event_title     = get_the_title( $post->ID );
 
             if ( $organizer_email && is_email( $organizer_email ) ) {
@@ -1922,14 +1922,14 @@ class Plugin {
                 $query->the_post();
                 $post_id = get_the_ID();
 
-                $lat_val = get_post_meta( $post_id, 'ead_organisation_lat', true );
-                $lng_val = get_post_meta( $post_id, 'ead_organisation_lng', true );
+                $lat_val = ead_get_meta( $post_id, 'ead_organisation_lat');
+                $lng_val = ead_get_meta( $post_id, 'ead_organisation_lng');
 
                 if ( empty( $lat_val ) || empty( $lng_val ) ) {
                     continue;
                 }
 
-                $logo_id           = get_post_meta( $post_id, 'ead_org_logo_id', true );
+                $logo_id           = ead_get_meta( $post_id, 'ead_org_logo_id');
                 $default_logo_url = EAD_PLUGIN_DIR_URL . 'assets/images/default-org-logo.png';
                 $logo_url          = $logo_id ? wp_get_attachment_image_url( $logo_id, 'thumbnail' ) : $default_logo_url;
 
@@ -1942,11 +1942,11 @@ class Plugin {
                     'title'    => get_the_title(),
                     'link'     => esc_url( get_permalink() ),
                     'logo_url' => esc_url( $logo_url ),
-                    'desc'     => wp_trim_words( get_post_meta( $post_id, 'ead_org_description_content', true ), 16, '...' ),
-                    'website'  => esc_url( get_post_meta( $post_id, 'ead_org_website', true ) ),
+                    'desc'     => wp_trim_words( ead_get_meta( $post_id, 'ead_org_description_content'), 16, '...' ),
+                    'website'  => esc_url( ead_get_meta( $post_id, 'ead_org_website') ),
                     'lat'      => floatval( $lat_val ),
                     'lng'      => floatval( $lng_val ),
-                    'featured' => (bool) get_post_meta( $post_id, '_ead_featured', true ),
+                    'featured' => (bool) ead_get_meta( $post_id, '_ead_featured'),
                 ];
             }
         }

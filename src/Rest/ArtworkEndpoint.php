@@ -606,7 +606,7 @@ class ArtworkEndpoint extends WP_REST_Controller {
                 continue;
             }
 
-            $value = (string) get_post_meta($item->ID, $key, true);
+            $value = (string) ead_get_meta($item->ID, $key);
             // Convert boolean strings to actual booleans for JSON output
             if ($type === 'boolean') {
                 $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
@@ -615,7 +615,7 @@ class ArtworkEndpoint extends WP_REST_Controller {
         }
 
         // Handle artwork gallery images specifically
-        $gallery_image_ids = get_post_meta($item->ID, '_ead_artwork_gallery_images', true) ?? [];
+        $gallery_image_ids = ead_get_meta($item->ID, '_ead_artwork_gallery_images') ?? [];
         if (!is_array($gallery_image_ids)) {
             $gallery_image_ids = [];
         }

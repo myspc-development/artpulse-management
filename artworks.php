@@ -24,7 +24,7 @@ add_action('init', function () {
 // 2. Meta Box for Artist Link
 add_action('add_meta_boxes', function () {
     add_meta_box('artwork_artist_meta', 'Artist', function ($post) {
-        $value   = get_post_meta($post->ID, 'artwork_artist_id', true);
+        $value   = ead_get_meta($post->ID, 'artwork_artist_id');
         $artists = get_posts(['post_type' => 'artist', 'numberposts' => -1]);
 
         echo '<select name="artwork_artist_id" class="widefat">';
@@ -37,9 +37,9 @@ add_action('add_meta_boxes', function () {
     }, 'artwork', 'side');
 
     add_meta_box('artwork_info_meta', 'Artwork Info', function ($post) {
-        $price        = get_post_meta($post->ID, 'artwork_price', true);
-        $medium       = get_post_meta($post->ID, 'artwork_medium', true);
-        $availability = get_post_meta($post->ID, 'artwork_availability', true);
+        $price        = ead_get_meta($post->ID, 'artwork_price');
+        $medium       = ead_get_meta($post->ID, 'artwork_medium');
+        $availability = ead_get_meta($post->ID, 'artwork_availability');
         ?>
         <p><label>Price:<br><input type="text" name="artwork_price" value="<?php echo esc_attr($price); ?>" class="widefat"></label></p>
         <p><label>Medium:<br><input type="text" name="artwork_medium" value="<?php echo esc_attr($medium); ?>" class="widefat"></label></p>
@@ -48,7 +48,7 @@ add_action('add_meta_boxes', function () {
     }, 'artwork', 'normal', 'default');
 
     add_meta_box('artwork_gallery_meta', 'Gallery Images', function ($post) {
-        $ids = get_post_meta($post->ID, 'artwork_gallery_images', true);
+        $ids = ead_get_meta($post->ID, 'artwork_gallery_images');
         if (!is_array($ids)) {
             $ids = $ids ? array_map('intval', explode(',', $ids)) : [];
         }
@@ -86,9 +86,9 @@ add_shortcode('artwork_card', function ($atts) {
     $post = get_post($atts['id']);
     if (!$post || $post->post_type !== 'artwork') return '';
 
-    $artist_id   = get_post_meta($post->ID, 'artwork_artist_id', true);
+    $artist_id   = ead_get_meta($post->ID, 'artwork_artist_id');
     $artist_name = $artist_id ? get_the_title($artist_id) : '—';
-    $gallery_ids = get_post_meta($post->ID, 'artwork_gallery_images', true);
+    $gallery_ids = ead_get_meta($post->ID, 'artwork_gallery_images');
     if (!is_array($gallery_ids)) {
         $gallery_ids = $gallery_ids ? array_map('intval', explode(',', $gallery_ids)) : [];
     }
@@ -172,9 +172,9 @@ function ead_filter_artworks_ajax() {
     ob_start();
     while ($query->have_posts()) {
         $query->the_post();
-        $price      = get_post_meta(get_the_ID(), 'artwork_price', true);
-        $artist_id  = get_post_meta(get_the_ID(), 'artwork_artist_id', true);
-        $medium_val = get_post_meta(get_the_ID(), 'artwork_medium', true);
+        $price      = ead_get_meta(get_the_ID(), 'artwork_price');
+        $artist_id  = ead_get_meta(get_the_ID(), 'artwork_artist_id');
+        $medium_val = ead_get_meta(get_the_ID(), 'artwork_medium');
         $style_terms = wp_get_post_terms(get_the_ID(), 'artwork_style', ['fields' => 'slugs']);
         $style_slug = $style_terms ? $style_terms[0] : '';
         ?>
@@ -286,9 +286,9 @@ add_shortcode('artwork_gallery', function ($atts) {
     <?php
     while ($query->have_posts()) {
         $query->the_post();
-        $price      = get_post_meta(get_the_ID(), 'artwork_price', true);
-        $artist_id  = get_post_meta(get_the_ID(), 'artwork_artist_id', true);
-        $medium     = get_post_meta(get_the_ID(), 'artwork_medium', true);
+        $price      = ead_get_meta(get_the_ID(), 'artwork_price');
+        $artist_id  = ead_get_meta(get_the_ID(), 'artwork_artist_id');
+        $medium     = ead_get_meta(get_the_ID(), 'artwork_medium');
         $style_terms = wp_get_post_terms(get_the_ID(), 'artwork_style', ['fields' => 'slugs']);
         $style_slug = $style_terms ? $style_terms[0] : '';
         ?>

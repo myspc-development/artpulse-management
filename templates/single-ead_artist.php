@@ -13,7 +13,7 @@ if (have_posts()) : while (have_posts()) : the_post(); ?>
 
                 <?php
                 // Artist portrait (from meta, else fallback to post thumbnail or placeholder)
-                $artist_portrait_id = get_post_meta(get_the_ID(), 'artist_portrait', true);
+                $artist_portrait_id = ead_get_meta(get_the_ID(), 'artist_portrait');
                 $artist_portrait_url = '';
                 if ($artist_portrait_id) {
                     $info = wp_get_attachment_image_src($artist_portrait_id, 'full');
@@ -35,15 +35,15 @@ if (have_posts()) : while (have_posts()) : the_post(); ?>
                     <div class="artist-description"><?php the_content(); ?></div>
                     <?php
                     // Custom fields/meta
-                    $artist_bio      = get_post_meta(get_the_ID(), 'artist_bio', true);
-                    $artist_website  = get_post_meta(get_the_ID(), 'artist_website', true);
-                    $artist_phone    = get_post_meta(get_the_ID(), 'artist_phone', true);
-                    $artist_email    = get_post_meta(get_the_ID(), 'artist_email', true);
-                    $artist_name     = get_post_meta(get_the_ID(), 'artist_name', true);
-                    $artist_instagram = get_post_meta(get_the_ID(), 'artist_instagram', true);
-                    $artist_facebook  = get_post_meta(get_the_ID(), 'artist_facebook', true);
-                    $artist_twitter   = get_post_meta(get_the_ID(), 'artist_twitter', true);
-                    $artist_linkedin  = get_post_meta(get_the_ID(), 'artist_linkedin', true);
+                    $artist_bio      = ead_get_meta(get_the_ID(), 'artist_bio');
+                    $artist_website  = ead_get_meta(get_the_ID(), 'artist_website');
+                    $artist_phone    = ead_get_meta(get_the_ID(), 'artist_phone');
+                    $artist_email    = ead_get_meta(get_the_ID(), 'artist_email');
+                    $artist_name     = ead_get_meta(get_the_ID(), 'artist_name');
+                    $artist_instagram = ead_get_meta(get_the_ID(), 'artist_instagram');
+                    $artist_facebook  = ead_get_meta(get_the_ID(), 'artist_facebook');
+                    $artist_twitter   = ead_get_meta(get_the_ID(), 'artist_twitter');
+                    $artist_linkedin  = ead_get_meta(get_the_ID(), 'artist_linkedin');
 
                     echo '<dl class="artist-details">';
                     if ($artist_name) {
@@ -79,7 +79,7 @@ if (have_posts()) : while (have_posts()) : the_post(); ?>
                     echo '</dl>';
 
                     // Gallery images
-                    $gallery_ids = get_post_meta(get_the_ID(), 'artist_gallery_images', true);
+                    $gallery_ids = ead_get_meta(get_the_ID(), 'artist_gallery_images');
                     if (!empty($gallery_ids)) {
                         if (is_string($gallery_ids)) {
                             $gallery_ids = maybe_unserialize($gallery_ids);

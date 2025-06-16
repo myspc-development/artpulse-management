@@ -73,17 +73,17 @@ class CalendarEndpoint extends WP_REST_Controller {
                 $terms = wp_get_post_terms( $id, 'ead_event_category', [ 'fields' => 'names' ] );
                 $tags  = wp_get_post_terms( $id, 'post_tag', [ 'fields' => 'names' ] );
 
-                $lat = get_post_meta( $id, 'event_latitude', true );
-                $lng = get_post_meta( $id, 'event_longitude', true );
+                $lat = ead_get_meta( $id, 'event_latitude');
+                $lng = ead_get_meta( $id, 'event_longitude');
 
                 return [
                     'id'        => $id,
                     'title'     => $post->post_title,
-                    'start'     => get_post_meta( $id, 'event_date', true ),
+                    'start'     => ead_get_meta( $id, 'event_date'),
                     'url'       => get_permalink( $id ),
                     'rsvped'    => in_array( $id, $user_rsvps, true ),
                     'category'  => $terms[0] ?? 'Uncategorized',
-                    'location'  => get_post_meta( $id, 'event_location', true ) ?: 'Unspecified',
+                    'location'  => ead_get_meta( $id, 'event_location') ?: 'Unspecified',
                     'tags'      => $tags,
                     'description' => (string) $post->post_content,
                     'latitude'  => (float) $lat,

@@ -128,16 +128,16 @@ class OrganizerDashboard {
                                 }
                                 ?>
                             </td>
-                            <td><?php echo esc_html((string) get_post_meta($event->ID, 'event_start_date', true)); ?></td>
+                            <td><?php echo esc_html((string) ead_get_meta($event->ID, 'event_start_date')); ?></td>
                             <td>
                                 <?php
-                                $payment_status = (string) get_post_meta($event->ID, '_ead_featured_payment_status', true);
-                                $payment_url    = (string) get_post_meta($event->ID, '_ead_featured_payment_url', true);
-                                if ((string) get_post_meta($event->ID, '_ead_featured', true)) {
+                                $payment_status = (string) ead_get_meta($event->ID, '_ead_featured_payment_status');
+                                $payment_url    = (string) ead_get_meta($event->ID, '_ead_featured_payment_url');
+                                if ((string) ead_get_meta($event->ID, '_ead_featured')) {
                                     echo '<span class="ead-badge-featured">Featured</span>';
                                 } elseif ($payment_status === 'pending' && $payment_url) {
                                     echo '<a href="' . esc_url($payment_url) . '" class="button button-small">' . esc_html__('Pay Now', 'artpulse-management') . '</a>';
-                                } elseif ((string) get_post_meta($event->ID, '_ead_featured_request', true)) {
+                                } elseif ((string) ead_get_meta($event->ID, '_ead_featured_request')) {
                                     echo '<span class="ead-badge-requested">Requested</span>';
                                 } else {
                                     ?>

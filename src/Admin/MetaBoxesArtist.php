@@ -26,7 +26,7 @@ class MetaBoxesArtist {
         echo '<div class="ead-artist-meta-box">';
         foreach ($fields as $key => $args) {
             list($type, $required, $sanitize_callback, $description, $choices) = array_pad($args, 5, '');
-            $value = get_post_meta($post->ID, $key, true);
+            $value = ead_get_meta($post->ID, $key);
             $label = ucwords(str_replace('_', ' ', $key));
             $field_id = esc_attr($key . '_' . $post->ID);
 

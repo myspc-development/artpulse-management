@@ -72,9 +72,9 @@ class ReviewsModerator {
             <th>Action</th>
             </tr></thead><tbody>';
         foreach ($reviews as $review):
-            $org_id = get_post_meta($review->ID, 'organization_id', true);
-            $reviewer = get_post_meta($review->ID, 'reviewer_name', true);
-            $rating = get_post_meta($review->ID, 'review_rating', true);
+            $org_id = ead_get_meta($review->ID, 'organization_id');
+            $reviewer = ead_get_meta($review->ID, 'reviewer_name');
+            $rating = ead_get_meta($review->ID, 'review_rating');
             echo '<tr>';
             echo '<td><input type="checkbox" name="review_ids[]" value="'.esc_attr($review->ID).'"></td>';
             echo '<td>' . esc_html($reviewer) . '</td>';
@@ -156,9 +156,9 @@ class ReviewsModerator {
      * Notify reviewer by email if review is approved and email exists
      */
     public static function notify_reviewer($id) {
-        $email = get_post_meta($id, 'reviewer_email', true);
+        $email = ead_get_meta($id, 'reviewer_email');
         if ($email) {
-            $org_id = get_post_meta($id, 'organization_id', true);
+            $org_id = ead_get_meta($id, 'organization_id');
             $org_title = get_the_title($org_id);
             $subject = "Your review for $org_title is now live!";
             $message = "Thank you for reviewing $org_title. Your review has been approved and is now visible on the site.\n\nView organization: " . get_permalink($org_id);

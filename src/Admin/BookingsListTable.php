@@ -85,7 +85,7 @@ class BookingsListTable extends \WP_List_Table {
                 $user = get_user_by( 'id', $item->post_author );
                 return $user ? esc_html( $user->display_name ) : '';
             case 'date':
-                $date = get_post_meta( $item->ID, '_ead_booking_date', true );
+                $date = ead_get_meta( $item->ID, '_ead_booking_date');
                 return $date ? esc_html( date_i18n( get_option( 'date_format' ), strtotime( $date ) ) ) : '';
             case 'status':
                 $status = get_post_status_object( $item->post_status );

@@ -74,9 +74,9 @@ class FavoritesEndpoint extends WP_REST_Controller {
                     'title' => get_the_title( $post ),
                     'link'  => get_permalink( $post ),
                     'venue' => [
-                        'city'    => get_post_meta( $post->ID, 'event_city', true ),
-                        'state'   => get_post_meta( $post->ID, 'event_state', true ),
-                        'country' => get_post_meta( $post->ID, 'event_country', true ),
+                        'city'    => ead_get_meta( $post->ID, 'event_city'),
+                        'state'   => ead_get_meta( $post->ID, 'event_state'),
+                        'country' => ead_get_meta( $post->ID, 'event_country'),
                     ],
                 ];
             },

@@ -78,7 +78,7 @@ class ArtworkSubmissionForm {
                     $fields = self::get_artwork_meta_fields_for_frontend();
                     foreach ( $fields as $key => $args ) {
                         list( $type, $label, $placeholder, $required ) = array_pad($args, 4, false); // Add $required with default false
-                        $value = $post ? get_post_meta( $post->ID, '_' . $key, true ) : ''; // Assuming meta keys are prefixed with '_'
+                        $value = $post ? ead_get_meta( $post->ID, '_' . $key ) : '';
 
                         // Special handling for artwork_artist if the current user is an artist
                         if ( $key === 'artwork_artist' && ! $is_editing ) { // Only prefill for new submissions
@@ -128,7 +128,7 @@ class ArtworkSubmissionForm {
                     <p><?php _e( 'Upload up to 5 images for your artwork. The first image will be considered the featured image.', 'artpulse-management' ); ?></p>
                     <div class="ead-artwork-image-upload-area">
                         <?php
-                        $existing_image_ids = $post ? (string) get_post_meta( $post->ID, '_ead_artwork_gallery_images', true) : [];
+                        $existing_image_ids = $post ? (string) ead_get_meta( $post->ID, '_ead_artwork_gallery_images') : [];
                         if ( ! is_array( $existing_image_ids ) ) {
                             $existing_image_ids = [];
                         }

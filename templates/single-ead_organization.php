@@ -24,7 +24,7 @@ if (have_posts()) : while (have_posts()) : the_post();
       <div class="single-organization-content">
         <h1 class="organization-title">
             <?php
-            $name = get_post_meta( get_the_ID(), 'ead_org_name', true );
+            $name = ead_get_meta( get_the_ID(), 'ead_org_name');
             if ( $name ) {
                 echo esc_html( $name );
             } else {
@@ -46,11 +46,11 @@ if (have_posts()) : while (have_posts()) : the_post();
 
         <?php
           // Display custom fields
-            $org_description = get_post_meta(get_the_ID(), 'ead_org_description', true);
-            $org_website = get_post_meta(get_the_ID(), 'ead_org_website_url', true);
-            $org_logo_id = get_post_meta(get_the_ID(), 'ead_org_logo_id', true);
-            $org_type = get_post_meta(get_the_ID(), 'ead_org_type', true);
-            $org_size = get_post_meta(get_the_ID(), 'ead_org_size', true);
+            $org_description = ead_get_meta(get_the_ID(), 'ead_org_description');
+            $org_website = ead_get_meta(get_the_ID(), 'ead_org_website_url');
+            $org_logo_id = ead_get_meta(get_the_ID(), 'ead_org_logo_id');
+            $org_type = ead_get_meta(get_the_ID(), 'ead_org_type');
+            $org_size = ead_get_meta(get_the_ID(), 'ead_org_size');
 
             $type_labels = [
               'gallery'             => __( 'Art Gallery', 'artpulse-management' ),
@@ -70,39 +70,39 @@ if (have_posts()) : while (have_posts()) : the_post();
               'large'  => __( 'Large', 'artpulse-management' ),
               'other'  => __( 'Other', 'artpulse-management' ),
             ];
-            $org_facebook = get_post_meta(get_the_ID(), 'ead_org_facebook_url', true);
-            $org_twitter = get_post_meta(get_the_ID(), 'ead_org_twitter_url', true);
-            $org_instagram = get_post_meta(get_the_ID(), 'ead_org_instagram_url', true);
-            $org_linkedin = get_post_meta(get_the_ID(), 'ead_org_linkedin_url', true);
-            $org_artsy = get_post_meta(get_the_ID(), 'ead_org_artsy_url', true);
-            $org_pinterest = get_post_meta(get_the_ID(), 'ead_org_pinterest_url', true);
-            $org_youtube = get_post_meta(get_the_ID(), 'ead_org_youtube_url', true);
-            $primary_contact_name = get_post_meta(get_the_ID(), 'ead_org_primary_contact_name', true);
-            $primary_contact_email = get_post_meta(get_the_ID(), 'ead_org_primary_contact_email', true);
-            $primary_contact_phone = get_post_meta(get_the_ID(), 'ead_org_primary_contact_phone', true);
-            $primary_contact_role = get_post_meta(get_the_ID(), 'ead_org_primary_contact_role', true);
-            $org_street_address = get_post_meta(get_the_ID(), 'ead_org_street_address', true);
-            $org_postal_address = get_post_meta(get_the_ID(), 'ead_org_postal_address', true);
-            $org_venue_address = get_post_meta(get_the_ID(), 'ead_org_venue_address', true);
-            $org_venue_email = get_post_meta(get_the_ID(), 'ead_org_venue_email', true);
-            $org_venue_phone = get_post_meta(get_the_ID(), 'ead_org_venue_phone', true);
-            $org_country = get_post_meta(get_the_ID(), 'ead_country', true);
-            $org_state   = get_post_meta(get_the_ID(), 'ead_state', true);
-            $org_city    = get_post_meta(get_the_ID(), 'ead_city', true);
-            $org_venue_monday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_monday_start_time', true);
-            $org_venue_monday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_monday_end_time', true);
-            $org_venue_tuesday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_tuesday_start_time', true);
-            $org_venue_tuesday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_tuesday_end_time', true);
-            $org_venue_wednesday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_wednesday_start_time', true);
-            $org_venue_wednesday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_wednesday_end_time', true);
-            $org_venue_thursday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_thursday_start_time', true);
-            $org_venue_thursday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_thursday_end_time', true);
-            $org_venue_friday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_friday_start_time', true);
-            $org_venue_friday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_friday_end_time', true);
-            $org_venue_saturday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_saturday_start_time', true);
-            $org_venue_saturday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_saturday_end_time', true);
-            $org_venue_sunday_start_time = get_post_meta(get_the_ID(), 'ead_org_venue_sunday_start_time', true);
-            $org_venue_sunday_end_time = get_post_meta(get_the_ID(), 'ead_org_venue_sunday_end_time', true);
+            $org_facebook = ead_get_meta(get_the_ID(), 'ead_org_facebook_url');
+            $org_twitter = ead_get_meta(get_the_ID(), 'ead_org_twitter_url');
+            $org_instagram = ead_get_meta(get_the_ID(), 'ead_org_instagram_url');
+            $org_linkedin = ead_get_meta(get_the_ID(), 'ead_org_linkedin_url');
+            $org_artsy = ead_get_meta(get_the_ID(), 'ead_org_artsy_url');
+            $org_pinterest = ead_get_meta(get_the_ID(), 'ead_org_pinterest_url');
+            $org_youtube = ead_get_meta(get_the_ID(), 'ead_org_youtube_url');
+            $primary_contact_name = ead_get_meta(get_the_ID(), 'ead_org_primary_contact_name');
+            $primary_contact_email = ead_get_meta(get_the_ID(), 'ead_org_primary_contact_email');
+            $primary_contact_phone = ead_get_meta(get_the_ID(), 'ead_org_primary_contact_phone');
+            $primary_contact_role = ead_get_meta(get_the_ID(), 'ead_org_primary_contact_role');
+            $org_street_address = ead_get_meta(get_the_ID(), 'ead_org_street_address');
+            $org_postal_address = ead_get_meta(get_the_ID(), 'ead_org_postal_address');
+            $org_venue_address = ead_get_meta(get_the_ID(), 'ead_org_venue_address');
+            $org_venue_email = ead_get_meta(get_the_ID(), 'ead_org_venue_email');
+            $org_venue_phone = ead_get_meta(get_the_ID(), 'ead_org_venue_phone');
+            $org_country = ead_get_meta(get_the_ID(), 'ead_country');
+            $org_state   = ead_get_meta(get_the_ID(), 'ead_state');
+            $org_city    = ead_get_meta(get_the_ID(), 'ead_city');
+            $org_venue_monday_start_time = ead_get_meta(get_the_ID(), 'ead_org_venue_monday_start_time');
+            $org_venue_monday_end_time = ead_get_meta(get_the_ID(), 'ead_org_venue_monday_end_time');
+            $org_venue_tuesday_start_time = ead_get_meta(get_the_ID(), 'ead_org_venue_tuesday_start_time');
+            $org_venue_tuesday_end_time = ead_get_meta(get_the_ID(), 'ead_org_venue_tuesday_end_time');
+            $org_venue_wednesday_start_time = ead_get_meta(get_the_ID(), 'ead_org_venue_wednesday_start_time');
+            $org_venue_wednesday_end_time = ead_get_meta(get_the_ID(), 'ead_org_venue_wednesday_end_time');
+            $org_venue_thursday_start_time = ead_get_meta(get_the_ID(), 'ead_org_venue_thursday_start_time');
+            $org_venue_thursday_end_time = ead_get_meta(get_the_ID(), 'ead_org_venue_thursday_end_time');
+            $org_venue_friday_start_time = ead_get_meta(get_the_ID(), 'ead_org_venue_friday_start_time');
+            $org_venue_friday_end_time = ead_get_meta(get_the_ID(), 'ead_org_venue_friday_end_time');
+            $org_venue_saturday_start_time = ead_get_meta(get_the_ID(), 'ead_org_venue_saturday_start_time');
+            $org_venue_saturday_end_time = ead_get_meta(get_the_ID(), 'ead_org_venue_saturday_end_time');
+            $org_venue_sunday_start_time = ead_get_meta(get_the_ID(), 'ead_org_venue_sunday_start_time');
+            $org_venue_sunday_end_time = ead_get_meta(get_the_ID(), 'ead_org_venue_sunday_end_time');
 
             if ($org_logo_id) {
               $info = wp_get_attachment_image_src($org_logo_id, 'full');
@@ -213,15 +213,15 @@ if (have_posts()) : while (have_posts()) : the_post();
 
             // Gallery images
             $gallery_ids = [];
-            $featured_id  = get_post_meta(get_the_ID(), 'ead_org_featured_image', true);
+            $featured_id  = ead_get_meta(get_the_ID(), 'ead_org_featured_image');
             for ($i = 1; $i <= 5; $i++) {
-              $img_id = get_post_meta(get_the_ID(), 'ead_org_image' . $i . '_id', true);
+              $img_id = ead_get_meta(get_the_ID(), 'ead_org_image' . $i . '_id');
               if ($img_id) {
                 $gallery_ids[] = $img_id;
               }
             }
             if (empty($gallery_ids)) {
-              $stored = get_post_meta(get_the_ID(), 'ead_org_gallery_images', true);
+              $stored = ead_get_meta(get_the_ID(), 'ead_org_gallery_images');
               if (!empty($stored)) {
                 if (is_string($stored)) {
                   $stored = maybe_unserialize($stored);

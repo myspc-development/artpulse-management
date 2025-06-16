@@ -30,9 +30,9 @@ add_action('artpulse_event_reminder_cron', function () {
     ]);
 
     foreach ($query->posts as $event) {
-        $rsvps = get_post_meta($event->ID, 'event_rsvps', true) ?: [];
+        $rsvps = ead_get_meta($event->ID, 'event_rsvps') ?: [];
         $title = get_the_title($event);
-        $start = get_post_meta($event->ID, 'event_start_datetime', true);
+        $start = ead_get_meta($event->ID, 'event_start_datetime');
 
         foreach (array_keys($rsvps) as $user_id) {
             $user = get_user_by('ID', $user_id);
@@ -92,8 +92,8 @@ function artpulse_event_list_shortcode($atts) {
     echo '<div class="event-list space-y-4">';
     while ($query->have_posts()) {
         $query->the_post();
-        $start    = get_post_meta(get_the_ID(), 'event_start_datetime', true);
-        $location = get_post_meta(get_the_ID(), 'event_location', true);
+        $start    = ead_get_meta(get_the_ID(), 'event_start_datetime');
+        $location = ead_get_meta(get_the_ID(), 'event_location');
         echo '<div class="border p-4 rounded shadow">'
             . '<h3 class="text-lg font-semibold">' . esc_html(get_the_title()) . '</h3>'
             . '<p class="text-sm text-gray-600">' . esc_html(date('F j, Y, g:i a', strtotime($start))) . '</p>'
@@ -124,7 +124,7 @@ function artpulse_event_rsvp_shortcode($atts) {
         isset($_POST['artpulse_rsvp_nonce']) &&
         wp_verify_nonce($_POST['artpulse_rsvp_nonce'], 'rsvp_event_' . $post_id)
     ) {
-        $rsvps = get_post_meta($post_id, 'event_rsvps', true) ?: [];
+        $rsvps = ead_get_meta($post_id, 'event_rsvps') ?: [];
 
         if (!array_key_exists($user_id, $rsvps)) {
             $guest_name       = sanitize_text_field($_POST['guest_name'] ?? '');
@@ -154,8 +154,8 @@ add_shortcode('event_rsvp', 'artpulse_event_rsvp_shortcode');
 function artpulse_send_rsvp_email($event_id, $user_id) {
     $user   = get_user_by('ID', $user_id);
     $event  = get_post($event_id);
-    $start  = get_post_meta($event_id, 'event_start_datetime', true);
-    $rsvps = get_post_meta($event_id, 'event_rsvps', true) ?: [];
+    $start  = ead_get_meta($event_id, 'event_start_datetime');
+    $rsvps = ead_get_meta($event_id, 'event_rsvps') ?: [];
     $guest = $rsvps[$user_id] ?? '';
 
     if (!$user || !$event) {
@@ -188,13 +188,13 @@ function artpulse_event_card_shortcode($atts) {
         return '<p>Event not found.</p>';
     }
 
-    $start        = get_post_meta($post->ID, 'event_start_datetime', true);
-    $end          = get_post_meta($post->ID, 'event_end_datetime', true);
-    $location     = get_post_meta($post->ID, 'event_location', true);
-    $organizer    = get_post_meta($post->ID, 'event_organizer', true);
-    $recurring    = get_post_meta($post->ID, 'event_is_recurring', true);
-    $rsvp_enabled = get_post_meta($post->ID, 'event_rsvp_enabled', true);
-    $rsvps        = get_post_meta($post->ID, 'event_rsvps', true) ?: [];
+    $start        = ead_get_meta($post->ID, 'event_start_datetime');
+    $end          = ead_get_meta($post->ID, 'event_end_datetime');
+    $location     = ead_get_meta($post->ID, 'event_location');
+    $organizer    = ead_get_meta($post->ID, 'event_organizer');
+    $recurring    = ead_get_meta($post->ID, 'event_is_recurring');
+    $rsvp_enabled = ead_get_meta($post->ID, 'event_rsvp_enabled');
+    $rsvps        = ead_get_meta($post->ID, 'event_rsvps') ?: [];
     $total_rsvps  = count($rsvps);
     ob_start();
     ?>
@@ -272,9 +272,9 @@ add_action('template_redirect', function () {
         return;
     }
 
-    $start    = get_post_meta($event_id, 'event_start_datetime', true);
-    $end      = get_post_meta($event_id, 'event_end_datetime', true);
-    $location = get_post_meta($event_id, 'event_location', true);
+    $start    = ead_get_meta($event_id, 'event_start_datetime');
+    $end      = ead_get_meta($event_id, 'event_end_datetime');
+    $location = ead_get_meta($event_id, 'event_location');
 
     header('Content-Type: text/calendar; charset=utf-8');
     header('Content-Disposition: attachment; filename=event-' . $event_id . '.ics');
@@ -304,7 +304,7 @@ add_action('init', function () {
         $user_id   = get_current_user_id();
         $guest_name = sanitize_text_field($_POST['guest_name'] ?? '');
 
-        $rsvps = get_post_meta($event_id, 'event_rsvps', true) ?: [];
+        $rsvps = ead_get_meta($event_id, 'event_rsvps') ?: [];
         $rsvps[$user_id] = $guest_name;
         update_post_meta($event_id, 'event_rsvps', $rsvps);
     }

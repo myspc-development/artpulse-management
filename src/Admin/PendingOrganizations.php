@@ -125,7 +125,7 @@ class PendingOrganizations {
                             <?php
                             $thumb = get_the_post_thumbnail($post_id, [60, 60]);
                             if (!$thumb) {
-                                $gallery_ids = get_post_meta($post_id, 'ead_org_gallery_images', true);
+                                $gallery_ids = ead_get_meta($post_id, 'ead_org_gallery_images');
                                 if (is_array($gallery_ids) && !empty($gallery_ids[0])) {
                                     $thumb = wp_get_attachment_image($gallery_ids[0], [60, 60]);
                                 }

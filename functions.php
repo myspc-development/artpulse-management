@@ -17,5 +17,16 @@ function artpulse_send_welcome_email( $user_id ) {
     wp_mail( $email, $subject, $message );
 }
 
+/**
+ * Safely get post meta with a default empty string.
+ *
+ * @param int    $post_id Post ID.
+ * @param string $key     Meta key.
+ * @return string Meta value or empty string.
+ */
+function ead_get_meta( $post_id, $key ) {
+    return (string) get_post_meta( $post_id, $key, true ) ?: '';
+}
+
 // ---- Membership Manager admin menu and related code has been removed ----
 // All member admin is now managed under the consolidated Member Management menu.
