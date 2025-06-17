@@ -1,0 +1,50 @@
+/* Sidebar Taxonomy Selector Styles */
+.artpulse-taxonomy-filter-list {
+  list-style-type: disc;
+  margin-left: 20px;
+  padding-left: 0;
+}
+
+.artpulse-taxonomy-filter-list li {
+  margin-bottom: 5px;
+}
+
+/* Advanced Taxonomy Filter Block Styles */
+.artpulse-advanced-taxonomy-filter-block ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.artpulse-advanced-taxonomy-filter-block ul li {
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.artpulse-advanced-taxonomy-filter-block button {
+  margin: 6px 6px 6px 0;
+  cursor: pointer;
+  background-color: #0073aa;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.artpulse-advanced-taxonomy-filter-block button:hover,
+.artpulse-advanced-taxonomy-filter-block button:focus {
+  background-color: #005177;
+  outline: none;
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+  .artpulse-advanced-taxonomy-filter-block ul li {
+    font-size: 14px;
+  }
+
+  .artpulse-advanced-taxonomy-filter-block button {
+    padding: 5px 10px;
+    font-size: 14px;
+  }
+}

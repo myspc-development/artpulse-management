@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Composer dependencies
+vendor/
+composer.lock
+
+# Build output
+build/
+dist/
+
+# PHPUnit
+.phpunit.result.cache
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+
+# IDE configs
+.vscode/
+.idea/
+
+# GitHub workflows (optional — keep if used)
+.github/
+
+# Local env
+.env
+.env.*

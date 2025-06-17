@@ -1,0 +1,14 @@
+{
+  "name": "artpulse-management-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "release": "standard-version"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^24.6.0",
+    "standard-version": "^9.5.0"
+  }
+}

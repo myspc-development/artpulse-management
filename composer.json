@@ -1,0 +1,19 @@
+{
+  "name": "myspc-development/artpulse-management-plugin",
+  "description": "ArtPulse management plugin for WP 6.8/PHP 8.3",
+  "type": "wordpress-plugin",
+  "require": {
+    "php": "^8.3",
+    "stripe/stripe-php": "^17.3",
+    "erusev/parsedown": "^1.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "ArtPulse\\": "src/"
+    }
+  },
+  "require-dev": {
+    "brain/monkey": "*",
+    "phpunit/phpunit": "^9"
+  }
+}

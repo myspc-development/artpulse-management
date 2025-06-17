@@ -1,0 +1,74 @@
+/*
+ * ArtPulse Portfolio Grid (Salient-inspired)
+ * File: assets/css/ap-portfolio.css
+ */
+
+/* Grid container: responsive columns */
+.ap-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Individual portfolio item */
+.portfolio-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease;
+}
+
+/* Image styling: full width with scale on hover */
+.portfolio-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 0.5s ease;
+}
+.portfolio-item:hover img {
+  transform: scale(1.05);
+}
+
+/* Title overlay hidden by default, fades in on hover */
+.portfolio-item h3 {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin: 0;
+  padding: 15px;
+  width: 100%;
+  font-size: 1.25rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.portfolio-item:hover h3 {
+  opacity: 1;
+}
+
+/* Responsive breakpoints similar to Salient */
+@media (max-width: 1024px) {
+  .ap-portfolio-grid {
+    gap: 20px;
+  }
+  .portfolio-item h3 {
+    font-size: 1.1rem;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ap-portfolio-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .portfolio-item h3 {
+    font-size: 1rem;
+    padding: 10px;
+  }
+}
