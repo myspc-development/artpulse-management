@@ -68,3 +68,4 @@ A comprehensive management plugin for ArtPulse, providing membership handling, f
 
 ```bash
 vendor/bin/phpunit --testdox
+```
