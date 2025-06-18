@@ -23,11 +23,6 @@ if (!defined('ARTPULSE_PLUGIN_FILE')) {
     define('ARTPULSE_PLUGIN_FILE', __FILE__);
 }
 
-// Plugin-level debug constant
-if (!defined('ARTPULSE_DEBUG')) {
-    define('ARTPULSE_DEBUG', defined('WP_DEBUG') && WP_DEBUG);
-}
-
 // Load Composer autoloader
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
@@ -35,13 +30,9 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
 
 // Optional debug log for class check
 if (class_exists(WooCommerceIntegration::class)) {
-    if (ARTPULSE_DEBUG) {
-        error_log('Plugin class loaded successfully');
-    }
+    error_log('Plugin class loaded successfully');
 } else {
-    if (ARTPULSE_DEBUG) {
-        error_log('Failed to load Plugin class');
-    }
+    error_log('Failed to load Plugin class');
 }
 
 // Instantiate main plugin class
