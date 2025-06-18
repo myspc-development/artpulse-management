@@ -9,7 +9,13 @@ class UserDashboardManager
     {
         add_shortcode('ap_user_dashboard', [ self::class, 'renderDashboard' ]);
         add_action('wp_enqueue_scripts',   [ self::class, 'enqueueAssets' ]);
-        add_action('rest_api_init',        [ self::class, 'registerRestRoutes' ]);
+        add_action('rest_api_init',        [ self::class, 'register_routes' ]);
+    }
+
+    // Aliased method for compatibility with provided code snippet
+    public static function register_routes()
+    {
+        self::registerRestRoutes();
     }
 
     public static function enqueueAssets()

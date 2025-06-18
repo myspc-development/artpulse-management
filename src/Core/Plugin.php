@@ -33,12 +33,10 @@ class Plugin
         register_activation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'activate' ] );
         register_deactivation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'deactivate' ] );
 
-        // Register core modules and front-end submission forms
-        add_action( 'init',               [ $this, 'register_core_modules' ] );
-        add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
+        add_action( 'init', [ $this, 'register_core_modules' ] );
+        add_action( 'init', [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
 
-        // REST API endpoints
         add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
     }
@@ -47,16 +45,14 @@ class Plugin
     {
         $db_version_option = 'artpulse_db_version';
 
-        // Initialize settings
         if ( false === get_option( 'artpulse_settings' ) ) {
             add_option( 'artpulse_settings', [ 'version' => self::VERSION ] );
         } else {
-            $settings            = get_option( 'artpulse_settings' );
+            $settings = get_option( 'artpulse_settings' );
             $settings['version'] = self::VERSION;
             update_option( 'artpulse_settings', $settings );
         }
 
-        // Install/update DB tables
         $stored_db_version = get_option( $db_version_option );
         if ( $stored_db_version !== self::VERSION ) {
             \ArtPulse\Community\FavoritesManager::install_favorites_table();
@@ -66,14 +62,12 @@ class Plugin
             update_option( $db_version_option, self::VERSION );
         }
 
-        // Register CPTs and flush rewrite rules
         \ArtPulse\Core\PostTypeRegistrar::register();
         flush_rewrite_rules();
 
-        // Setup roles and capabilities
         require_once ARTPULSE_PLUGIN_DIR . 'src/Core/RoleSetup.php';
+        \ArtPulse\Core\RoleSetup::install();
 
-        // Schedule daily expiration check
         if ( ! wp_next_scheduled( 'ap_daily_expiry_check' ) ) {
             wp_schedule_event( time(), 'daily', 'ap_daily_expiry_check' );
         }
@@ -99,6 +93,8 @@ class Plugin
         \ArtPulse\Core\AnalyticsManager::register();
         \ArtPulse\Core\AnalyticsDashboard::register();
         \ArtPulse\Core\FrontendMembershipPage::register();
+        
+        
         \ArtPulse\Community\ProfileLinkRequestManager::register();
         \ArtPulse\Core\MyFollowsShortcode::register();
         \ArtPulse\Core\NotificationShortcode::register();
@@ -111,8 +107,13 @@ class Plugin
         \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
         \ArtPulse\Admin\ApprovalManager::register();
         \ArtPulse\Rest\RestRoutes::register();
+        \ArtPulse\Core\CapabilitiesManager::register();
+        \ArtPulse\Rest\ArtistRestController::register();
 
-        // Admin meta box registrations
+
+        require_once ARTPULSE_PLUGIN_DIR . 'src/Core/RoleSetup.php';
+        \ArtPulse\Core\RoleSetup::install();
+
         \ArtPulse\Admin\MetaBoxesArtist::register();
         \ArtPulse\Admin\MetaBoxesArtwork::register();
         \ArtPulse\Admin\MetaBoxesEvent::register();
@@ -145,6 +146,7 @@ class Plugin
             '1.0.0',
             true
         );
+
         wp_enqueue_script(
             'ap-favorites-js',
             plugins_url( 'assets/js/ap-favorites.js', ARTPULSE_PLUGIN_FILE ),
@@ -152,6 +154,7 @@ class Plugin
             '1.0.0',
             true
         );
+
         wp_enqueue_script(
             'ap-notifications-js',
             plugins_url( 'assets/js/ap-notifications.js', ARTPULSE_PLUGIN_FILE ),
@@ -159,6 +162,7 @@ class Plugin
             '1.0.0',
             true
         );
+
         wp_localize_script(
             'ap-notifications-js',
             'APNotifications',
@@ -175,16 +179,16 @@ class Plugin
             '1.0.0',
             true
         );
-        wp_localize_script(
-    'ap-submission-form-js',
-    'APSubmission',
-    [
-        'endpoint'      => esc_url_raw( rest_url( 'artpulse/v1/submissions' ) ),
-        'mediaEndpoint' => esc_url_raw( rest_url( 'wp/v2/media' ) ),
-        'nonce'         => wp_create_nonce( 'wp_rest' ),
-    ]
-);
 
+        wp_localize_script(
+            'ap-submission-form-js',
+            'APSubmission',
+            [
+                'endpoint'      => esc_url_raw( rest_url( 'artpulse/v1/submissions' ) ),
+                'mediaEndpoint' => esc_url_raw( rest_url( 'wp/v2/media' ) ),
+                'nonce'         => wp_create_nonce( 'wp_rest' ),
+            ]
+        );
 
         wp_enqueue_style(
             'ap-forms-css',

@@ -24,6 +24,14 @@ class ArtistRestController extends WP_REST_Controller
     }
 
     /**
+     * Optional static initializer for consistency with other controllers
+     */
+    public static function register(): void
+    {
+        new self();
+    }
+
+    /**
      * Register REST API routes for artists
      */
     public function register_routes(): void
@@ -57,9 +65,6 @@ class ArtistRestController extends WP_REST_Controller
     /**
      * GET /artists
      * Return list of artists
-     *
-     * @param WP_REST_Request $request
-     * @return WP_REST_Response
      */
     public function get_artists(WP_REST_Request $request): WP_REST_Response
     {
@@ -84,9 +89,6 @@ class ArtistRestController extends WP_REST_Controller
     /**
      * GET /artists/{id}
      * Return single artist
-     *
-     * @param WP_REST_Request $request
-     * @return WP_REST_Response
      */
     public function get_artist(WP_REST_Request $request): WP_REST_Response
     {

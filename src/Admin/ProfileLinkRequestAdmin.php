@@ -1,105 +1,61 @@
 <?php
+
 namespace ArtPulse\Admin;
 
-class ProfileLinkRequestAdmin {
-    public static function register() {
+/**
+ * Admin interface for managing profile link requests.
+ */
+class ProfileLinkRequestAdmin
+{
+    /**
+     * Register the admin submenu page for link requests.
+     */
+    public static function register(): void
+    {
+        add_action('admin_menu', [self::class, 'add_link_request_menu']);
+        add_filter('manage_edit-ap_link_request_columns', [self::class, 'custom_columns']);
+        add_action('manage_ap_link_request_posts_custom_column', [self::class, 'render_custom_columns'], 10, 2);
+    }
+
+    /**
+     * Add a submenu for viewing link requests.
+     */
+    public static function add_link_request_menu(): void
+    {
         add_submenu_page(
-            'ap-org-dashboard',
-            'Profile Link Requests',
-            'Profile Link Requests',
-            'manage_options',
-            'ap-link-requests',
-            [self::class, 'render']
+            'edit.php?post_type=ap_link_request',
+            __('Link Requests', 'artpulse'),
+            __('Link Requests', 'artpulse'),
+            'edit_users',
+            'edit.php?post_type=ap_link_request'
         );
     }
 
-    public static function render() {
-        // Get pending requests
-        $args = [
-            'post_type'   => 'ap_profile_link_request',
-            'post_status' => 'publish',
-            'meta_query'  => [
-                ['key' => 'status', 'value' => 'pending'],
-            ],
-            'numberposts' => 100,
-        ];
-        $requests = get_posts($args);
-
-        $nonce = wp_create_nonce('ap_link_request_admin');
-
-        echo '<div class="wrap"><h1>Profile Link Requests</h1>';
-        echo '<form id="ap-link-requests-form">';
-        echo '<table class="widefat"><thead><tr>
-            <th><input type="checkbox" id="ap-lr-select-all" /></th>
-            <th>ID</th><th>Artist</th><th>Org</th><th>Message</th><th>Date</th><th>Status</th>
-        </tr></thead><tbody>';
-        foreach ($requests as $req) {
-            $artist = esc_html(get_post_meta($req->ID, 'artist_user_id', true));
-            $org = esc_html(get_post_meta($req->ID, 'org_id', true));
-            $msg = esc_html(get_post_meta($req->ID, 'message', true));
-            $date = esc_html(get_post_meta($req->ID, 'requested_on', true));
-            $status = esc_html(get_post_meta($req->ID, 'status', true));
-            echo "<tr>
-                <td><input type='checkbox' name='request_ids[]' value='".esc_attr($req->ID)."' /></td>
-                <td>".esc_html($req->ID)."</td>
-                <td>{$artist}</td>
-                <td>{$org}</td>
-                <td>{$msg}</td>
-                <td>{$date}</td>
-                <td>{$status}</td>
-            </tr>";
-        }
-        echo '</tbody></table>';
-        echo '<button type="button" class="button" id="ap-lr-approve">Approve Selected</button> ';
-        echo '<button type="button" class="button" id="ap-lr-deny">Deny Selected</button>';
-        echo '</form></div>';
-
-        // Output the JavaScript for AJAX handling
-        self::print_js($nonce);
+    /**
+     * Customize admin columns for link requests.
+     */
+    public static function custom_columns(array $columns): array
+    {
+        $columns['linked_user'] = __('User', 'artpulse');
+        $columns['target_post'] = __('Requested Org/Artist', 'artpulse');
+        return $columns;
     }
 
-    private static function print_js($nonce) {
-        ?>
-        <script>
-        jQuery(document).ready(function($){
-            // "Select all" checkbox logic
-            $('#ap-lr-select-all').on('change', function(){
-                $('input[name="request_ids[]"]').prop('checked', this.checked);
-            });
+    /**
+     * Render custom column values.
+     */
+    public static function render_custom_columns(string $column, int $post_id): void
+    {
+        if ($column === 'linked_user') {
+            $user_id = get_post_field('post_author', $post_id);
+            $user = get_user_by('id', $user_id);
+            echo $user ? esc_html($user->display_name) : '-';
+        }
 
-            function bulkAction(action) {
-                var ids = $('input[name="request_ids[]"]:checked').map(function(){ return this.value; }).get();
-                if(ids.length === 0) {
-                    alert('Select at least one request.');
-                    return;
-                }
-                var data = {
-                    action: action,
-                    request_ids: ids,
-                    _ajax_nonce: '<?php echo esc_js($nonce); ?>'
-                };
-                $.post(ajaxurl, data, function(resp){
-                    if(resp.success){
-                        alert('Done! Reloading...');
-                        location.reload();
-                    } else {
-                        alert('Error: ' + (resp.data || 'Unknown error.'));
-                    }
-                });
-            }
-
-            $('#ap-lr-approve').on('click', function(e){
-                e.preventDefault();
-                bulkAction('ap_approve_link_requests');
-            });
-            $('#ap-lr-deny').on('click', function(e){
-                e.preventDefault();
-                bulkAction('ap_deny_link_requests');
-            });
-        });
-        </script>
-        <?php
+        if ($column === 'target_post') {
+            $target_id = get_post_meta($post_id, '_ap_target_id', true);
+            $post = get_post($target_id);
+            echo $post ? esc_html($post->post_title) : '-';
+        }
     }
 }
-
-add_action('admin_menu', ['\\ArtPulse\\Admin\\ProfileLinkRequestAdmin', 'register']);

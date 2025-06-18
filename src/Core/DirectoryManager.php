@@ -7,13 +7,13 @@ class DirectoryManager {
     public static function register() {
         add_shortcode('ap_directory',   [ self::class, 'renderDirectory' ]);
         add_action('wp_enqueue_scripts',[ self::class, 'enqueueAssets'  ]);
-        add_action('rest_api_init',     [ self::class, 'registerRestRoutes' ]);
+        add_action('rest_api_init',     [ self::class, 'register_routes' ]);
     }
 
     public static function enqueueAssets() {
         wp_enqueue_script(
             'ap-directory-js',
-            plugins_url('assets/js/ap-directory.js', dirname(__DIR__, 2)), // robust plugin URL
+            plugins_url('assets/js/ap-directory.js', dirname(__DIR__, 2)),
             ['wp-api-fetch'],
             '1.0.0',
             true
@@ -37,7 +37,7 @@ class DirectoryManager {
         );
     }
 
-    public static function registerRestRoutes() {
+    public static function register_routes() {
         register_rest_route('artpulse/v1', '/filter', [
             'methods'             => 'GET',
             'callback'            => [ self::class, 'handleFilter' ],
@@ -45,7 +45,6 @@ class DirectoryManager {
             'args' => [
                 'type' => [ 'type' => 'string', 'required' => true ],
                 'limit'=> [ 'type' => 'integer', 'default' => 10 ],
-                // Add other filter args here (e.g. search, tag, org)
             ]
         ]);
     }
@@ -64,8 +63,6 @@ class DirectoryManager {
             'posts_per_page' => $limit,
         ];
 
-        // Optional: add more filter/sort args here
-
         $posts = get_posts($args);
 
         $data = array_map(function($p) use ($type) {
@@ -75,7 +72,6 @@ class DirectoryManager {
                 'link'    => get_permalink($p),
                 'featured_media_url' => get_the_post_thumbnail_url($p, 'medium'),
             ];
-            // Meta fields per type
             if ($type === 'event') {
                 $item['date']     = get_post_meta($p->ID, '_ap_event_date', true);
                 $item['location'] = get_post_meta($p->ID, '_ap_event_location', true);
