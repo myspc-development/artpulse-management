@@ -1,107 +1,196 @@
 <?php
 
-namespace ArtPulse\Frontend;
+namespace ArtPulse\Core;
 
-class OrganizationDashboardShortcode {
+/**
+ * Main plugin class for the ArtPulse Management Plugin.
+ */
+class Plugin
+{
+    private const VERSION = '1.1.5';
 
-    public static function register() {
-        add_shortcode('ap_org_dashboard', [self::class, 'render']);
-        add_action('wp_ajax_ap_add_event', [self::class, 'handle_ajax_add_event']);
-        // No need for nopriv since this is an org dashboard
-        //add_action('wp_ajax_nopriv_ap_add_event', [self::class, 'handle_ajax_add_event']);
+    public function __construct()
+    {
+        $this->define_constants();
+        $this->register_hooks();
     }
 
-    public static function render($atts) {
-        if (!is_user_logged_in()) return '<p>You must be logged in to view this dashboard.</p>';
-
-        $user_id = get_current_user_id();
-        $org_id = get_user_meta($user_id, 'ap_organization_id', true);
-
-        if (!$org_id) return '<p>No organization assigned.</p>';
-
-        ob_start();
-        ?>
-        <div class="ap-org-dashboard">
-            <h2>Organization Events</h2>
-            <button id="ap-add-event-btn">Add New Event</button>
-
-            <div id="ap-event-modal" style="display:none">
-                <form id="ap-event-form">
-                    <input type="text" name="ap_event_title" placeholder="Event Title" required>
-                    <input type="date" name="ap_event_date" required>
-                    <input type="text" name="ap_event_location" placeholder="Location" required>
-                    <select name="ap_event_type">
-                        <?php
-                        $terms = get_terms('artpulse_event_type', ['hide_empty' => false]);
-                        foreach ($terms as $term) {
-                            echo '<option value="' . esc_attr($term->term_id) . '">' . esc_html($term->name) . '</option>';
-                        }
-                        ?>
-                    </select>
-                    <input type="hidden" name="ap_event_organization" value="<?php echo esc_attr($org_id); ?>">
-                    <button type="submit">Submit</button>
-                </form>
-            </div>
-
-            <ul id="ap-event-list">
-                <?php
-                $events = get_posts([
-                    'post_type' => 'artpulse_event',
-                    'post_status' => 'any',
-                    'meta_key' => '_ap_event_organization',
-                    'meta_value' => $org_id
-                ]);
-                foreach ($events as $event) {
-                    echo '<li>' . esc_html($event->post_title) . '</li>';
-                }
-                ?>
-            </ul>
-        </div>
-        <?php
-        return ob_get_clean();
+    private function define_constants()
+    {
+        if ( ! defined( 'ARTPULSE_VERSION' ) ) {
+            define( 'ARTPULSE_VERSION', self::VERSION );
+        }
+        if ( ! defined( 'ARTPULSE_PLUGIN_DIR' ) ) {
+            define( 'ARTPULSE_PLUGIN_DIR', plugin_dir_path( dirname( dirname( __FILE__ ) ) ) );
+        }
+        if ( ! defined( 'ARTPULSE_PLUGIN_FILE' ) ) {
+            define( 'ARTPULSE_PLUGIN_FILE', ARTPULSE_PLUGIN_DIR . 'artpulse-management.php' );
+        }
     }
 
-    public static function handle_ajax_add_event() {
-        check_ajax_referer('ap_org_dashboard_nonce', 'nonce');
+    private function register_hooks()
+    {
+        register_activation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'activate' ] );
+        register_deactivation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'deactivate' ] );
 
-        $title = sanitize_text_field($_POST['ap_event_title']);
-        $date = sanitize_text_field($_POST['ap_event_date']);
-        $location = sanitize_text_field($_POST['ap_event_location']);
-        $event_type = intval($_POST['ap_event_type']);
-        $org_id = intval($_POST['ap_event_organization']);
+        // Register core modules and front-end submission forms
+        add_action( 'init',               [ $this, 'register_core_modules' ] );
+        add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
+        add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
 
-        // Sanitize title for wp_insert_post
-        $sanitized_title = sanitize_text_field($title);
+        // REST API endpoints
+        add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
+        add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
+    }
 
-        $event_id = wp_insert_post([
-            'post_title' => $sanitized_title,
-            'post_type' => 'artpulse_event',
-            'post_status' => 'pending'
-        ]);
+    public function activate()
+    {
+        $db_version_option = 'artpulse_db_version';
 
-        if (is_wp_error($event_id)) {
-            wp_send_json_error(['message' => 'Failed to insert post: ' . $event_id->get_error_message()]);
-            return;
+        // Initialize settings
+        if ( false === get_option( 'artpulse_settings' ) ) {
+            add_option( 'artpulse_settings', [ 'version' => self::VERSION ] );
+        } else {
+            $settings            = get_option( 'artpulse_settings' );
+            $settings['version'] = self::VERSION;
+            update_option( 'artpulse_settings', $settings );
         }
 
-        update_post_meta($event_id, '_ap_event_date', $date);
-        update_post_meta($event_id, '_ap_event_location', $location);
-        update_post_meta($event_id, '_ap_event_organization', $org_id);
-        wp_set_post_terms($event_id, [$event_type], 'artpulse_event_type');
-
-        // Reload the event list
-        ob_start();
-        $events = get_posts([
-            'post_type' => 'artpulse_event',
-            'post_status' => 'any',
-            'meta_key' => '_ap_event_organization',
-            'meta_value' => $org_id
-        ]);
-        foreach ($events as $event) {
-            echo '<li>' . esc_html($event->post_title) . '</li>';
+        // Install/update DB tables
+        $stored_db_version = get_option( $db_version_option );
+        if ( $stored_db_version !== self::VERSION ) {
+            \ArtPulse\Community\FavoritesManager::install_favorites_table();
+            \ArtPulse\Community\ProfileLinkRequestManager::install_link_request_table();
+            \ArtPulse\Community\FollowManager::install_follows_table();
+            \ArtPulse\Community\NotificationManager::install_notifications_table();
+            update_option( $db_version_option, self::VERSION );
         }
-        $html = ob_get_clean();
 
-        wp_send_json_success(['html' => $html, 'event_id' => $event_id]); // Send event ID
+        // Register CPTs and flush rewrite rules
+        \ArtPulse\Core\PostTypeRegistrar::register();
+        flush_rewrite_rules();
+
+        // Setup roles and capabilities
+        require_once ARTPULSE_PLUGIN_DIR . 'src/Core/RoleSetup.php';
+
+        // Schedule daily expiration check
+        if ( ! wp_next_scheduled( 'ap_daily_expiry_check' ) ) {
+            wp_schedule_event( time(), 'daily', 'ap_daily_expiry_check' );
+        }
+    }
+
+    public function deactivate()
+    {
+        flush_rewrite_rules();
+        wp_clear_scheduled_hook( 'ap_daily_expiry_check' );
+    }
+
+    public function register_core_modules()
+    {
+        \ArtPulse\Core\PostTypeRegistrar::register();
+        \ArtPulse\Core\MetaBoxRegistrar::register();
+        \ArtPulse\Core\AdminDashboard::register();
+        \ArtPulse\Core\ShortcodeManager::register();
+        \ArtPulse\Core\SettingsPage::register();
+        \ArtPulse\Core\MembershipManager::register();
+        \ArtPulse\Core\AccessControlManager::register();
+        \ArtPulse\Core\DirectoryManager::register();
+        \ArtPulse\Core\UserDashboardManager::register();
+        \ArtPulse\Core\AnalyticsManager::register();
+        \ArtPulse\Core\AnalyticsDashboard::register();
+        \ArtPulse\Core\FrontendMembershipPage::register();
+        \ArtPulse\Community\ProfileLinkRequestManager::register();
+        \ArtPulse\Core\MyFollowsShortcode::register();
+        \ArtPulse\Core\NotificationShortcode::register();
+        \ArtPulse\Admin\AdminListSorting::register();
+        \ArtPulse\Rest\RestSortingSupport::register();
+        \ArtPulse\Admin\AdminListColumns::register();
+        \ArtPulse\Admin\EnqueueAssets::register();
+        \ArtPulse\Frontend\Shortcodes::register();
+        \ArtPulse\Admin\MetaBoxesRelationship::register();
+        \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
+        \ArtPulse\Admin\ApprovalManager::register();
+        \ArtPulse\Rest\RestRoutes::register();
+
+        // Admin meta box registrations
+        \ArtPulse\Admin\MetaBoxesArtist::register();
+        \ArtPulse\Admin\MetaBoxesArtwork::register();
+        \ArtPulse\Admin\MetaBoxesEvent::register();
+        \ArtPulse\Admin\MetaBoxesOrganisation::register();
+
+        \ArtPulse\Admin\AdminColumnsArtist::register();
+        \ArtPulse\Admin\AdminColumnsArtwork::register();
+        \ArtPulse\Admin\AdminColumnsEvent::register();
+        \ArtPulse\Admin\AdminColumnsOrganisation::register();
+
+        \ArtPulse\Taxonomies\TaxonomiesRegistrar::register();
+
+        if ( class_exists( '\\ArtPulse\\Ajax\\FrontendFilterHandler' ) ) {
+            \ArtPulse\Ajax\FrontendFilterHandler::register();
+        }
+
+        $opts = get_option( 'artpulse_settings', [] );
+        if ( ! empty( $opts['woo_enabled'] ) ) {
+            \ArtPulse\Core\WooCommerceIntegration::register();
+            \ArtPulse\Core\PurchaseShortcode::register();
+        }
+    }
+
+    public function enqueue_frontend_scripts()
+    {
+        wp_enqueue_script(
+            'ap-membership-account-js',
+            plugins_url( 'assets/js/ap-membership-account.js', ARTPULSE_PLUGIN_FILE ),
+            [ 'wp-api-fetch' ],
+            '1.0.0',
+            true
+        );
+        wp_enqueue_script(
+            'ap-favorites-js',
+            plugins_url( 'assets/js/ap-favorites.js', ARTPULSE_PLUGIN_FILE ),
+            [],
+            '1.0.0',
+            true
+        );
+        wp_enqueue_script(
+            'ap-notifications-js',
+            plugins_url( 'assets/js/ap-notifications.js', ARTPULSE_PLUGIN_FILE ),
+            [ 'wp-api-fetch' ],
+            '1.0.0',
+            true
+        );
+        wp_localize_script(
+            'ap-notifications-js',
+            'APNotifications',
+            [
+                'apiRoot' => esc_url_raw( rest_url() ),
+                'nonce'   => wp_create_nonce( 'wp_rest' ),
+            ]
+        );
+
+        wp_enqueue_script(
+            'ap-submission-form-js',
+            plugins_url( 'assets/js/ap-submission-form.js', ARTPULSE_PLUGIN_FILE ),
+            [ 'wp-api-fetch' ],
+            '1.0.0',
+            true
+        );
+        wp_localize_script(
+    'ap-submission-form-js',
+    'APSubmission',
+    [
+        'endpoint'      => esc_url_raw( rest_url( 'artpulse/v1/submissions' ) ),
+        'mediaEndpoint' => esc_url_raw( rest_url( 'wp/v2/media' ) ),
+        'nonce'         => wp_create_nonce( 'wp_rest' ),
+    ]
+);
+
+
+        wp_enqueue_style(
+            'ap-forms-css',
+            plugins_url( 'assets/css/ap-forms.css', ARTPULSE_PLUGIN_FILE ),
+            [],
+            '1.0.0'
+        );
     }
 }
