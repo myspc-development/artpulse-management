@@ -1,8 +1,8 @@
-namespace ArtPulse\Core;
+namespace ArtPulse\Community;
 
 use ArtPulse\Community\NotificationManager;
 
-class NotificationShortcode {
+class CommunityShortcodeManager {
     public static function register() {
         add_shortcode('ap_notifications', [self::class, 'render']);
     }
