@@ -1,7 +1,9 @@
 <?php
 namespace ArtPulse\Core;
 
-
+class WooCommerceIntegration
+{
+    public static function register(): void
     {
         // Assign on completion
         add_action('woocommerce_order_status_completed', [ self::class, 'handleCompletedOrder' ], 10, 1);
@@ -76,7 +78,7 @@ namespace ArtPulse\Core;
         update_user_meta( $user_id, 'ap_membership_level', $level );
 
         // Determine duration: Basic & Pro 30d, Org 365d
-        $days = in_array( $level, ['Basic','Pro'], true ) ? 30 : 365;
+        $days  = in_array( $level, ['Basic','Pro'], true ) ? 30 : 365;
         $expiry = strtotime( "+{$days} days", current_time('timestamp') );
         update_user_meta( $user_id, 'ap_membership_expires', $expiry );
 
@@ -87,29 +89,6 @@ namespace ArtPulse\Core;
                 __('Thank you! Your membership level is set to %s and expires on %s.','artpulse'),
                 $level,
                 date_i18n( get_option('date_format'), $expiry )
-            )
-        );
-    }
-
-    private static function assignMembership( int $user_id, string $level )
-    {
-        $user = get_userdata( $user_id );
-        if ( ! $user ) {
-            return;
-        }
-
-        $user->set_role( 'subscriber' );
-        update_user_meta( $user_id, 'ap_membership_level', $level );
-
-        $expiry = strtotime( '+1 month', current_time( 'timestamp' ) );
-        update_user_meta( $user_id, 'ap_membership_expires', $expiry );
-
-        wp_mail(
-            $user->user_email,
-            __( 'Your ArtPulse membership details', 'artpulse' ),
-            sprintf(
-                __( 'Your membership expires on %s', 'artpulse' ),
-                date_i18n( 'Y-m-d', $expiry )
             )
         );
     }
