@@ -42,7 +42,7 @@ class MyEventsShortcode {
             ], get_permalink());
 
             echo '<div class="ap-my-event">';
-            echo "<h3><a href=\"" . esc_url(get_permalink($event->ID)) . "\">" . esc_html($event->post_title) . "</a> <span class=\"ap-status\">({$status})</span></h3>";
+            echo "<h3><a href=\"" . esc_url(get_permalink($event->ID)) . "\">" . esc_html($event->post_title) . "</a> <span class=\"ap-status\">(" . esc_html($status) . ")</span></h3>";
             if ($date) echo "<p><strong>Date:</strong> " . esc_html($date) . "</p>";
             if ($location) echo "<p><strong>Location:</strong> " . esc_html($location) . "</p>";
 
