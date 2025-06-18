@@ -1,222 +1,93 @@
 <?php
-
 namespace ArtPulse\Core;
 
-/**
- * Main plugin class for the ArtPulse Management Plugin.
- */
-class WooCommerceIntegration
-{
-    private const VERSION = '1.1.5';
 
-    public static function register()
     {
-        add_action(
-            'woocommerce_order_status_completed',
-            [ self::class, 'handle_order_completed' ]
-        );
+        // Assign on completion
+        add_action('woocommerce_order_status_completed', [ self::class, 'handleCompletedOrder' ], 10, 1);
+
+        // Downgrade on refund or cancel
+        add_action('woocommerce_order_status_refunded',  [ self::class, 'handleRefundOrCancel' ], 10, 1);
+        add_action('woocommerce_order_status_cancelled', [ self::class, 'handleRefundOrCancel' ], 10, 1);
     }
 
-    public static function handle_order_completed( $order_id )
+    public static function handleCompletedOrder( $order_id )
     {
-        if ( ! function_exists( 'wc_get_order' ) ) {
+        if ( ! class_exists('WC_Order') ) {
             return;
         }
 
-        $order = wc_get_order( $order_id );
-        if ( ! $order ) {
-            return;
-        }
-
+        $order   = wc_get_order( $order_id );
         $user_id = $order->get_user_id();
-        if ( $user_id ) {
-            self::assignMembership( $user_id, 'Pro' );
+        if ( ! $user_id ) {
+            return;
+        }
+
+        $opts = get_option('artpulse_settings', []);
+        $map  = [
+            'Basic' => intval( $opts['woo_basic_product_id'] ?? 0 ),
+            'Pro'   => intval( $opts['woo_pro_product_id']   ?? 0 ),
+            'Org'   => intval( $opts['woo_org_product_id']   ?? 0 ),
+        ];
+
+        foreach ( $order->get_items() as $item ) {
+            $prod_id = $item->get_product_id();
+            foreach ( $map as $level => $product_id ) {
+                if ( $product_id && $prod_id === $product_id ) {
+                    self::assignMembership( $user_id, $level );
+                    break 2;
+                }
+            }
         }
     }
 
-    public function __construct()
+    public static function handleRefundOrCancel( $order_id )
     {
-        $this->define_constants();
-        $this->register_hooks();
-    }
-
-    private function define_constants()
-    {
-        if ( ! defined( 'ARTPULSE_VERSION' ) ) {
-            define( 'ARTPULSE_VERSION', self::VERSION );
-        }
-        if ( ! defined( 'ARTPULSE_PLUGIN_DIR' ) ) {
-            define( 'ARTPULSE_PLUGIN_DIR', plugin_dir_path( dirname( dirname( __FILE__ ) ) ) );
-        }
-        if ( ! defined( 'ARTPULSE_PLUGIN_FILE' ) ) {
-            define( 'ARTPULSE_PLUGIN_FILE', ARTPULSE_PLUGIN_DIR . 'artpulse-management.php' );
-        }
-    }
-
-    private function register_hooks()
-    {
-        register_activation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'activate' ] );
-        register_deactivation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'deactivate' ] );
-
-        add_action( 'init',               [ $this, 'register_core_modules' ] );
-        add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
-        add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
-
-        add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
-        add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
-    }
-
-    public function activate()
-    {
-        $db_version_option = 'artpulse_db_version';
-
-        // Initialize settings
-        if ( false === get_option( 'artpulse_settings' ) ) {
-            add_option( 'artpulse_settings', [ 'version' => self::VERSION ] );
-        } else {
-            $settings            = get_option( 'artpulse_settings' );
-            $settings['version'] = self::VERSION;
-            update_option( 'artpulse_settings', $settings );
+        if ( ! class_exists('WC_Order') ) {
+            return;
         }
 
-        // Install/update DB tables
-        $stored_db_version = get_option( $db_version_option );
-        if ( $stored_db_version !== self::VERSION ) {
-            \ArtPulse\Community\FavoritesManager::install_favorites_table();
-            \ArtPulse\Community\ProfileLinkRequestManager::install_link_request_table();
-            \ArtPulse\Community\FollowManager::install_follows_table();
-            \ArtPulse\Community\NotificationManager::install_notifications_table();
-            update_option( $db_version_option, self::VERSION );
+        $order   = wc_get_order( $order_id );
+        $user_id = $order->get_user_id();
+        if ( ! $user_id ) {
+            return;
         }
 
-        // Register CPTs and flush rewrite rules
-        \ArtPulse\Core\PostTypeRegistrar::register();
-        flush_rewrite_rules();
+        // Downgrade to Free
+        $user = get_userdata( $user_id );
+        $user->set_role('subscriber');
+        update_user_meta( $user_id, 'ap_membership_level', 'Free' );
+        update_user_meta( $user_id, 'ap_membership_expires', current_time('timestamp') );
 
-        // Register roles/capabilities
-        require_once ARTPULSE_PLUGIN_DIR . 'src/Core/RoleSetup.php';
-        \ArtPulse\Core\RoleSetup::install();
-
-        // Schedule daily expiration check
-        if ( ! wp_next_scheduled( 'ap_daily_expiry_check' ) ) {
-            wp_schedule_event( time(), 'daily', 'ap_daily_expiry_check' );
-        }
-    }
-
-    public function deactivate()
-    {
-        flush_rewrite_rules();
-        wp_clear_scheduled_hook( 'ap_daily_expiry_check' );
-    }
-
-    public function register_core_modules()
-    {
-        \ArtPulse\Core\PostTypeRegistrar::register();
-        \ArtPulse\Core\MetaBoxRegistrar::register();
-        \ArtPulse\Core\AdminDashboard::register();
-        \ArtPulse\Core\ShortcodeManager::register();
-        \ArtPulse\Core\SettingsPage::register();
-        \ArtPulse\Core\MembershipManager::register();
-        \ArtPulse\Core\AccessControlManager::register();
-        \ArtPulse\Core\DirectoryManager::register();
-        \ArtPulse\Core\UserDashboardManager::register();
-        \ArtPulse\Core\AnalyticsManager::register();
-        \ArtPulse\Core\AnalyticsDashboard::register();
-        \ArtPulse\Core\FrontendMembershipPage::register();
-        \ArtPulse\Community\ProfileLinkRequestManager::register();
-        \ArtPulse\Core\MyFollowsShortcode::register();
-        \ArtPulse\Community\CommunityShortcodeManager::register();
-        \ArtPulse\Admin\AdminListSorting::register();
-        \ArtPulse\Rest\RestSortingSupport::register();
-        \ArtPulse\Admin\AdminListColumns::register();
-        \ArtPulse\Admin\EnqueueAssets::register();
-        \ArtPulse\Frontend\Shortcodes::register();
-        \ArtPulse\Admin\MetaBoxesRelationship::register();
-        \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
-        \ArtPulse\Admin\ApprovalManager::register();
-        \ArtPulse\Rest\RestRoutes::register();
-        \ArtPulse\Core\CapabilitiesManager::register();
-
-        require_once ARTPULSE_PLUGIN_DIR . 'src/Core/RoleSetup.php';
-        \ArtPulse\Core\RoleSetup::install();
-
-        \ArtPulse\Admin\MetaBoxesArtist::register();
-        \ArtPulse\Admin\MetaBoxesArtwork::register();
-        \ArtPulse\Admin\MetaBoxesEvent::register();
-        \ArtPulse\Admin\MetaBoxesOrganisation::register();
-
-        \ArtPulse\Admin\AdminColumnsArtist::register();
-        \ArtPulse\Admin\AdminColumnsArtwork::register();
-        \ArtPulse\Admin\AdminColumnsEvent::register();
-        \ArtPulse\Admin\AdminColumnsOrganisation::register();
-
-        \ArtPulse\Taxonomies\TaxonomiesRegistrar::register();
-
-        if ( class_exists( '\\ArtPulse\\Ajax\\FrontendFilterHandler' ) ) {
-            \ArtPulse\Ajax\FrontendFilterHandler::register();
-        }
-
-        $opts = get_option( 'artpulse_settings', [] );
-        if ( ! empty( $opts['woo_enabled'] ) ) {
-            \ArtPulse\Core\WooCommerceIntegration::register();
-            \ArtPulse\Core\PurchaseShortcode::register();
-        }
-    }
-
-    public function enqueue_frontend_scripts()
-    {
-        wp_enqueue_script(
-            'ap-membership-account-js',
-            plugins_url( 'assets/js/ap-membership-account.js', ARTPULSE_PLUGIN_FILE ),
-            [ 'wp-api-fetch' ],
-            '1.0.0',
-            true
+        wp_mail(
+            $user->user_email,
+            __('Your ArtPulse membership has been cancelled','artpulse'),
+            __('We detected a refund or cancellation. You have been moved to Free membership.','artpulse')
         );
-        wp_enqueue_script(
-            'ap-favorites-js',
-            plugins_url( 'assets/js/ap-favorites.js', ARTPULSE_PLUGIN_FILE ),
-            [],
-            '1.0.0',
-            true
-        );
-        wp_enqueue_script(
-            'ap-notifications-js',
-            plugins_url( 'assets/js/ap-notifications.js', ARTPULSE_PLUGIN_FILE ),
-            [ 'wp-api-fetch' ],
-            '1.0.0',
-            true
-        );
-        wp_localize_script(
-            'ap-notifications-js',
-            'APNotifications',
-            [
-                'apiRoot' => esc_url_raw( rest_url() ),
-                'nonce'   => wp_create_nonce( 'wp_rest' ),
-            ]
-        );
+    }
 
-        wp_enqueue_script(
-            'ap-submission-form-js',
-            plugins_url( 'assets/js/ap-submission-form.js', ARTPULSE_PLUGIN_FILE ),
-            [ 'wp-api-fetch' ],
-            '1.0.0',
-            true
-        );
-        wp_localize_script(
-            'ap-submission-form-js',
-            'APSubmission',
-            [
-                'endpoint'      => esc_url_raw( rest_url( 'artpulse/v1/submissions' ) ),
-                'mediaEndpoint' => esc_url_raw( rest_url( 'wp/v2/media' ) ),
-                'nonce'         => wp_create_nonce( 'wp_rest' ),
-            ]
-        );
+    /**
+     * Assigns the given level to the user and sets an expiry.
+     */
+    protected static function assignMembership( $user_id, $level )
+    {
+        $user = get_userdata( $user_id );
+        $user->set_role('subscriber');
+        update_user_meta( $user_id, 'ap_membership_level', $level );
 
-        wp_enqueue_style(
-            'ap-forms-css',
-            plugins_url( 'assets/css/ap-forms.css', ARTPULSE_PLUGIN_FILE ),
-            [],
-            '1.0.0'
+        // Determine duration: Basic & Pro 30d, Org 365d
+        $days = in_array( $level, ['Basic','Pro'], true ) ? 30 : 365;
+        $expiry = strtotime( "+{$days} days", current_time('timestamp') );
+        update_user_meta( $user_id, 'ap_membership_expires', $expiry );
+
+        wp_mail(
+            $user->user_email,
+            sprintf( __('Your ArtPulse membership is now %s','artpulse'), $level ),
+            sprintf(
+                __('Thank you! Your membership level is set to %s and expires on %s.','artpulse'),
+                $level,
+                date_i18n( get_option('date_format'), $expiry )
+            )
         );
     }
 
