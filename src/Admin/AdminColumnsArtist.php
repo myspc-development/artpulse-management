@@ -1,72 +1,51 @@
 <?php
 namespace ArtPulse\Admin;
 
-class AdminColumnsArtist {
-
-    public static function register() {
-        add_filter('manage_ead_artist_posts_columns', [self::class, 'custom_columns']);
-        add_action('manage_ead_artist_posts_custom_column', [self::class, 'render_columns'], 10, 2);
-        add_filter('manage_edit-ead_artist_sortable_columns', [self::class, 'sortable_columns']);
-        add_action('quick_edit_custom_box', [self::class, 'quick_edit'], 10, 2);
-        add_action('save_post', [self::class, 'save_quick_edit']);
+class AdminColumnsArtist
+{
+    public static function register()
+    {
+        add_filter( 'manage_artpulse_artist_posts_columns',        [ __CLASS__, 'add_columns' ] );
+        add_action( 'manage_artpulse_artist_posts_custom_column',  [ __CLASS__, 'render_columns' ], 10, 2 );
+        add_filter( 'manage_edit-artpulse_artist_sortable_columns', [ __CLASS__, 'make_sortable' ] );
     }
 
-    public static function custom_columns($columns) {
-        unset($columns['date']);
-        $columns['artist_portrait']  = __('Portrait', 'artpulse-management');
-        $columns['artist_name']      = __('Name', 'artpulse-management');
-        $columns['artist_featured']  = __('Featured', 'artpulse-management');
-        $columns['artist_email']     = __('Email', 'artpulse-management');
-        $columns['date']             = __('Date');
-        return $columns;
+    public static function add_columns( array $columns ): array
+    {
+        $new = [];
+        foreach ( $columns as $key => $label ) {
+            if ( 'cb' === $key ) {
+                $new['cb']           = $label;
+                $new['portrait']     = __( 'Portrait', 'artpulse' );
+                $new['artist_name']  = __( 'Name',     'artpulse' );
+            }
+            $new[ $key ] = $label;
+        }
+        return $new;
     }
 
-    public static function render_columns($column, $post_id) {
-        switch ($column) {
-            case 'artist_portrait':
-                $id = get_post_meta($post_id, 'artist_portrait', true);
-                if ($id) echo wp_get_attachment_image($id, [50, 50]);
-                break;
+    public static function render_columns( string $column, int $post_id )
+    {
+        if ( 'portrait' !== $column ) {
+            return;
+        }
 
-            case 'artist_name':
-                echo esc_html(get_the_title($post_id));
-                break;
-
-            case 'artist_featured':
-                $featured = get_post_meta($post_id, 'artist_featured', true);
-                echo $featured === '1' ? '<span class="dashicons dashicons-star-filled"></span>' : '<span class="dashicons dashicons-star-empty"></span>';
-                break;
-
-            case 'artist_email':
-                $email = get_post_meta($post_id, 'artist_email', true);
-                echo $email ? '<a href="mailto:' . esc_attr($email) . '">' . esc_html($email) . '</a>' : '';
-                break;
+        // 1) custom meta portrait; 2) featured image; else dash
+        $id = get_post_meta( $post_id, 'artist_portrait', true );
+        if ( $id ) {
+            echo wp_get_attachment_image( (int)$id, [60,60] );
+        } elseif ( has_post_thumbnail( $post_id ) ) {
+            echo get_the_post_thumbnail( $post_id, [60,60] );
+        } else {
+            echo '&mdash;';
         }
     }
 
-    public static function sortable_columns($columns) {
-        $columns['artist_featured'] = 'artist_featured';
-        $columns['artist_name']     = 'title';
+    public static function make_sortable( array $columns ): array
+    {
+        $columns['artist_name'] = 'artist_name';
         return $columns;
-    }
-
-    public static function quick_edit($column_name, $post_type) {
-        if ($post_type !== 'ead_artist' || $column_name !== 'artist_featured') return;
-        echo '<fieldset class="inline-edit-col-left">
-                <div class="inline-edit-col">
-                    <label class="alignleft">
-                        <input type="checkbox" name="artist_featured" value="1" />
-                        <span>' . __('Featured Artist', 'artpulse-management') . '</span>
-                    </label>
-                </div>
-              </fieldset>';
-    }
-
-    public static function save_quick_edit($post_id) {
-        if (!isset($_POST['artist_featured']) && get_post_type($post_id) === 'ead_artist') {
-            update_post_meta($post_id, 'artist_featured', '0');
-        } elseif (get_post_type($post_id) === 'ead_artist') {
-            update_post_meta($post_id, 'artist_featured', '1');
-        }
     }
 }
+
+AdminColumnsArtist::register();

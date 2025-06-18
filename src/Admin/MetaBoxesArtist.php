@@ -5,7 +5,7 @@ class MetaBoxesArtist {
 
     public static function register() {
         add_action('add_meta_boxes', [self::class, 'add_artist_meta_boxes']);
-        add_action('save_post_ead_artist', [self::class, 'save_artist_meta'], 10, 2);
+        add_action('save_post_artpulse_artist', [self::class, 'save_artist_meta'], 10, 2); // Corrected CPT slug
         add_action('rest_api_init', [self::class, 'register_rest_fields']);
         add_action('restrict_manage_posts', [self::class, 'add_admin_filters']);
         add_filter('pre_get_posts', [self::class, 'filter_admin_query']);
@@ -16,7 +16,7 @@ class MetaBoxesArtist {
             'ead_artist_details',
             __('Artist Details', 'artpulse-management'),
             [self::class, 'render_artist_details'],
-            'ead_artist',
+            'artpulse_artist', // Corrected CPT slug
             'normal',
             'high'
         );
@@ -60,7 +60,7 @@ class MetaBoxesArtist {
         }
 
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-        if ($post->post_type !== 'ead_artist') return;
+        if ($post->post_type !== 'artpulse_artist') return; // Corrected CPT slug
 
         $fields = self::get_registered_artist_meta_fields();
         foreach ($fields as $field => $args) {
@@ -69,7 +69,7 @@ class MetaBoxesArtist {
 
             switch ($type) {
                 case 'email':
-                    if (!is_email($value)) continue 2;
+                    if (!empty($value) && !is_email($value)) continue 2; // Check if not empty before validation
                     break;
                 case 'url':
                     $value = esc_url_raw($value);
@@ -78,7 +78,7 @@ class MetaBoxesArtist {
                     $value = isset($_POST[$field]) ? '1' : '0';
                     break;
                 case 'number':
-                    if (!is_numeric($value)) continue 2;
+                    if (!empty($value) && !is_numeric($value)) continue 2; // Check if not empty
                     break;
                 case 'textarea':
                     $value = sanitize_textarea_field($value);
@@ -93,7 +93,7 @@ class MetaBoxesArtist {
 
     public static function register_rest_fields() {
         foreach (array_keys(self::get_registered_artist_meta_fields()) as $key) {
-            register_rest_field('ead_artist', $key, [
+            register_rest_field('artpulse_artist', $key, [ // Corrected CPT slug
                 'get_callback' => function($object) use ($key) {
                     return get_post_meta($object['id'], $key, true);
                 },
@@ -106,7 +106,8 @@ class MetaBoxesArtist {
     }
 
     public static function add_admin_filters() {
-        if (get_current_screen()->post_type !== 'ead_artist') return;
+        $screen = get_current_screen();
+        if (!$screen || $screen->post_type !== 'artpulse_artist') return; // Corrected CPT slug
         $selected = $_GET['artist_featured'] ?? '';
         echo '<select name="artist_featured">';
         echo '<option value="">' . __('Filter by Featured', 'artpulse-management') . '</option>';
@@ -116,7 +117,7 @@ class MetaBoxesArtist {
     }
 
     public static function filter_admin_query($query) {
-        if (!is_admin() || !$query->is_main_query() || $query->get('post_type') !== 'ead_artist') return;
+        if (!is_admin() || !$query->is_main_query() || $query->get('post_type') !== 'artpulse_artist') return; // Corrected CPT slug
         if (isset($_GET['artist_featured']) && $_GET['artist_featured'] !== '') {
             $query->set('meta_key', 'artist_featured');
             $query->set('meta_value', $_GET['artist_featured']);
@@ -134,7 +135,7 @@ class MetaBoxesArtist {
             'artist_instagram'    => ['text', __('Instagram', 'artpulse-management')],
             'artist_twitter'      => ['text', __('Twitter', 'artpulse-management')],
             'artist_linkedin'     => ['url', __('LinkedIn', 'artpulse-management')],
-            'artist_portrait'     => ['number', __('Portrait ID', 'artpulse-management')],
+            'artist_portrait'     => ['number', __('Portrait ID (Media Library ID)', 'artpulse-management')],
             'artist_specialties'  => ['text', __('Specialties', 'artpulse-management')],
             'artist_featured'     => ['boolean', __('Featured', 'artpulse-management')]
         ];

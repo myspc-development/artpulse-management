@@ -1,11 +1,10 @@
 <?php
+
 namespace ArtPulse\Core;
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-
+/**
+ * Main plugin class for the ArtPulse Management Plugin.
+ */
 class Plugin
 {
     private const VERSION = '1.1.5';
@@ -13,7 +12,6 @@ class Plugin
     public function __construct()
     {
         $this->define_constants();
-        $this->load_dependencies();
         $this->register_hooks();
     }
 
@@ -30,35 +28,35 @@ class Plugin
         }
     }
 
-    private function load_dependencies()
-    {
-        // If not using Composer autoload, require files here
-        // require_once ARTPULSE_PLUGIN_DIR . 'src/Ajax/FrontendFilterHandler.php';
-        // etc.
-    }
-
     private function register_hooks()
     {
         register_activation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'activate' ] );
         register_deactivation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'deactivate' ] );
 
-        add_action( 'init', [ $this, 'register_core_modules' ] );
+        // Register core modules and front-end submission forms
+        add_action( 'init',               [ $this, 'register_core_modules' ] );
+        add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
+
+        // REST API endpoints
         add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
+        add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
     }
 
     public function activate()
     {
         $db_version_option = 'artpulse_db_version';
 
+        // Initialize settings
         if ( false === get_option( 'artpulse_settings' ) ) {
             add_option( 'artpulse_settings', [ 'version' => self::VERSION ] );
         } else {
-            $settings = get_option( 'artpulse_settings' );
+            $settings            = get_option( 'artpulse_settings' );
             $settings['version'] = self::VERSION;
             update_option( 'artpulse_settings', $settings );
         }
 
+        // Install/update DB tables
         $stored_db_version = get_option( $db_version_option );
         if ( $stored_db_version !== self::VERSION ) {
             \ArtPulse\Community\FavoritesManager::install_favorites_table();
@@ -68,21 +66,14 @@ class Plugin
             update_option( $db_version_option, self::VERSION );
         }
 
+        // Register CPTs and flush rewrite rules
         \ArtPulse\Core\PostTypeRegistrar::register();
         flush_rewrite_rules();
 
-        $roles = [ 'administrator', 'editor' ];
-        $caps  = [
-            // Your custom capabilities here...
-        ];
-        foreach ( $roles as $role_name ) {
-            if ( $role = get_role( $role_name ) ) {
-                foreach ( $caps as $cap ) {
-                    $role->add_cap( $cap );
-                }
-            }
-        }
+        // Setup roles and capabilities
+        require_once ARTPULSE_PLUGIN_DIR . 'src/Core/RoleSetup.php';
 
+        // Schedule daily expiration check
         if ( ! wp_next_scheduled( 'ap_daily_expiry_check' ) ) {
             wp_schedule_event( time(), 'daily', 'ap_daily_expiry_check' );
         }
@@ -118,6 +109,14 @@ class Plugin
         \ArtPulse\Frontend\Shortcodes::register();
         \ArtPulse\Admin\MetaBoxesRelationship::register();
         \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
+        \ArtPulse\Admin\ApprovalManager::register();
+        \ArtPulse\Rest\RestRoutes::register();
+
+        // Admin meta box registrations
+        \ArtPulse\Admin\MetaBoxesArtist::register();
+        \ArtPulse\Admin\MetaBoxesArtwork::register();
+        \ArtPulse\Admin\MetaBoxesEvent::register();
+        \ArtPulse\Admin\MetaBoxesOrganisation::register();
 
         \ArtPulse\Admin\AdminColumnsArtist::register();
         \ArtPulse\Admin\AdminColumnsArtwork::register();
@@ -126,7 +125,7 @@ class Plugin
 
         \ArtPulse\Taxonomies\TaxonomiesRegistrar::register();
 
-        if ( class_exists( '\ArtPulse\Ajax\FrontendFilterHandler' ) ) {
+        if ( class_exists( '\\ArtPulse\\Ajax\\FrontendFilterHandler' ) ) {
             \ArtPulse\Ajax\FrontendFilterHandler::register();
         }
 
@@ -160,23 +159,38 @@ class Plugin
             '1.0.0',
             true
         );
-        wp_localize_script( 'ap-notifications-js', 'APNotifications', [
-            'apiRoot' => esc_url_raw( rest_url() ),
-            'nonce'   => wp_create_nonce( 'wp_rest' )
-        ] );
-
         wp_localize_script(
-            'ap-membership-account-js',
-            'ArtPulseApi',
+            'ap-notifications-js',
+            'APNotifications',
             [
-                'root'        => esc_url_raw( rest_url() ),
-                'nonce'       => wp_create_nonce( 'wp_rest' ),
-                'i18n'        => [
-                    'levelLabel'    => __( 'Membership Level', 'artpulse' ),
-                    'expiresLabel'  => __( 'Expires', 'artpulse' ),
-                    'errorFetching' => __( 'Unable to fetch account data. Please try again later.', 'artpulse' ),
-                ],
+                'apiRoot' => esc_url_raw( rest_url() ),
+                'nonce'   => wp_create_nonce( 'wp_rest' ),
             ]
+        );
+
+        wp_enqueue_script(
+            'ap-submission-form-js',
+            plugins_url( 'assets/js/ap-submission-form.js', ARTPULSE_PLUGIN_FILE ),
+            [ 'wp-api-fetch' ],
+            '1.0.0',
+            true
+        );
+        wp_localize_script(
+    'ap-submission-form-js',
+    'APSubmission',
+    [
+        'endpoint'      => esc_url_raw( rest_url( 'artpulse/v1/submissions' ) ),
+        'mediaEndpoint' => esc_url_raw( rest_url( 'wp/v2/media' ) ),
+        'nonce'         => wp_create_nonce( 'wp_rest' ),
+    ]
+);
+
+
+        wp_enqueue_style(
+            'ap-forms-css',
+            plugins_url( 'assets/css/ap-forms.css', ARTPULSE_PLUGIN_FILE ),
+            [],
+            '1.0.0'
         );
     }
 }

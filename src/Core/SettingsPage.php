@@ -22,11 +22,15 @@ class SettingsPage
 
     public static function registerSettings()
     {
-        register_setting('artpulse_settings_group', 'artpulse_settings');
+        register_setting(
+            'artpulse_settings_group',
+            'artpulse_settings',
+            [ 'sanitize_callback' => [ self::class, 'sanitizeSettings' ] ]
+        );
 
         add_settings_section(
             'ap_membership_section',
-            __('Membership Settings', 'artpulse'),
+            __('Membership & Notifications', 'artpulse'),
             '__return_false',
             'artpulse-settings'
         );
@@ -44,6 +48,7 @@ class SettingsPage
             'stripe_test'            => 'Stripe Test Mode',
             'woo_enabled'            => 'Enable WooCommerce Integration',
             'notify_fee'             => 'Email Notification on Fee Change',
+            'notification_email'     => 'Notification Email Address',
 
             // WooCommerce Membership Products
             'woo_basic_product_id'   => 'Product ID for Basic Membership',
@@ -71,10 +76,36 @@ class SettingsPage
         }
     }
 
+    public static function sanitizeSettings($input)
+    {
+        $output = [];
+        foreach ($input as $key => $value) {
+            switch ($key) {
+                case 'notification_email':
+                    $output[$key] = sanitize_email($value);
+                    break;
+                case 'stripe_enabled':
+                case 'stripe_test':
+                case 'woo_enabled':
+                case 'notify_fee':
+                case 'analytics_enabled':
+                case 'analytics_embed_enabled':
+                    $output[$key] = $value ? 1 : 0;
+                    break;
+                default:
+                    $output[$key] = sanitize_text_field($value);
+                    break;
+            }
+        }
+        return $output;
+    }
+
     public static function renderField($args)
     {
         $opts = get_option('artpulse_settings', []);
-        $val  = $opts[$args['label_for']] ?? '';
+        $name = $args['label_for'];
+        $val  = $opts[$name] ?? '';
+
         $checkboxFields = [
             'stripe_enabled',
             'stripe_test',
@@ -84,16 +115,22 @@ class SettingsPage
             'analytics_embed_enabled',
         ];
 
-        if (in_array($args['label_for'], $checkboxFields, true)) {
+        if ('notification_email' === $name) {
+            printf(
+                '<input type="email" id="%1$s" name="artpulse_settings[%1$s]" value="%2$s" class="regular-text" />',
+                esc_attr($name),
+                esc_attr($val)
+            );
+        } elseif (in_array($name, $checkboxFields, true)) {
             printf(
                 '<input type="checkbox" id="%1$s" name="artpulse_settings[%1$s]" value="1" %2$s />',
-                esc_attr($args['label_for']),
+                esc_attr($name),
                 checked($val, 1, false)
             );
         } else {
             printf(
-                '<input type="text" id="%1$s" name="artpulse_settings[%1$s]" value="%2$s" style="width:50%%;" />',
-                esc_attr($args['label_for']),
+                '<input type="text" id="%1$s" name="artpulse_settings[%1$s]" value="%2$s" class="regular-text" />',
+                esc_attr($name),
                 esc_attr($val)
             );
         }
