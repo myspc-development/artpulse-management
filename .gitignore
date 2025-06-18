@@ -1,11 +1,57 @@
-# Dependencies
+# ----------------------------------------
+# ✅ Node.js / NPM
+# ----------------------------------------
 node_modules/
+npm-debug.log*
+yarn.lock
+package-lock.json
+
+# ----------------------------------------
+# ✅ PHP / Composer
+# ----------------------------------------
 vendor/
-# Build outputs
+composer.lock
+
+# ----------------------------------------
+# ✅ Build & Distribution
+# ----------------------------------------
 build/
 dist/
-# Config & temp files
+*.min.js
+*.min.css
+*.map
+
+# ----------------------------------------
+# ✅ PHP Unit & Cache
+# ----------------------------------------
+.phpunit.result.cache
+
+# ----------------------------------------
+# ✅ System / Editor / Temp Files
+# ----------------------------------------
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# ----------------------------------------
+# ✅ IDEs / Editors
+# ----------------------------------------
+.vscode/
+.idea/
+
+# ----------------------------------------
+# ✅ GitHub Workflows (uncomment if unused)
+# .github/
+
+# ----------------------------------------
+# ✅ Local Environment Files
+# ----------------------------------------
 .env
 .env.*
-*.log
-.DS_Store
+.env.local
+.env.production
+.env.development
