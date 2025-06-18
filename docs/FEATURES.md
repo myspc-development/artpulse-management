@@ -10,6 +10,7 @@
 - Add and remove favorites via REST API.
 - Store favorites in user meta.
 - Shortcode and JavaScript for frontend favorites interaction.
+- `[ap_my_follows]` shortcode lists posts or users the current member follows. Output is loaded via JavaScript into a container element.
 
 ## Notifications
 - REST API to list, mark read/unread, and delete notifications.
@@ -35,6 +36,9 @@
 ## WooCommerce Integration
 - Conditional loading of WooCommerce features.
 - Shortcodes and hooks prepared for e-commerce membership sales.
+- `[ap_membership_purchase level="Pro"]` outputs a link to the WooCommerce checkout.
+  - **level**: Membership tier slug (e.g. `Pro`).
+  - **class**: Optional CSS class for the `<a>` element linking to checkout with the level parameter.
 
 ## Testing & CI
 - PHPUnit test suite with Brain Monkey for mocking.
