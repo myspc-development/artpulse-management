@@ -1,33 +1,52 @@
-# ArtPulse Management Plugin — Feature Overview
+# Features of ArtPulse Management Plugin
 
-A comprehensive breakdown of all plugin features, development progress, and planned enhancements.
+## Membership Management
+- Assign Free and Pro membership levels.
+- Automatic membership expiry processing via daily cron.
+- Stripe webhook integration for subscription lifecycle events.
+- User roles and capabilities tailored for membership tiers.
+
+## Favorites System
+- Add and remove favorites via REST API.
+- Store favorites in user meta.
+- Shortcode and JavaScript for frontend favorites interaction.
+
+## Notifications
+- REST API to list, mark read/unread, and delete notifications.
+- Notifications stored in user meta.
+- User dashboard integration for notification display.
+
+## Directory Management
+- Directory shortcode with REST API filtering by type, limit, and more.
+- Supports events, artists, artworks, and organizations.
+- Metadata retrieval for each post type.
+- Enqueued scripts and styles for frontend interactivity.
+
+## Submission Forms
+- REST API endpoint to handle submissions for multiple post types.
+- Supports image attachments with validation.
+- Metadata handling for different submission types.
+
+## User Dashboard
+- Shortcode to display membership info and user content.
+- REST API endpoints for dashboard data retrieval and profile updates.
+- Enqueued scripts for dynamic dashboard UI.
+
+## WooCommerce Integration
+- Conditional loading of WooCommerce features.
+- Shortcodes and hooks prepared for e-commerce membership sales.
+
+## Testing & CI
+- PHPUnit test suite with Brain Monkey for mocking.
+- Code coverage reporting.
+- GitHub Actions workflow for continuous integration.
 
 ---
 
-## ✅ Features
-
-| Feature                     | Status  | Notes |
-|-----------------------------|---------|-------|
-| Custom Post Types (CPTs)    | ✅ Done | Events, Artists, Artworks, Organizations |
-| Taxonomies                  | ✅ Done | Event Types, Medium |
-| Custom Meta Fields (REST)   | ✅ Done | Via `register_post_meta()` |
-| Admin Settings Page         | ✅ Done | Via `SettingsPage` |
-| Meta Boxes                  | ✅ Done | Admin UI for CPTs |
-| Membership Management       | ✅ Done | Free/Pro/Enterprise tiers |
-| WooCommerce Integration     | ✅ Done | Optional product/payment extensions |
-| Shortcodes                  | ✅ Done | `[ap_directory]`, `[ap_user_dashboard]`, `[ap_user_favorites]` |
-| Favorites Button UI         | ✅ Done | REST-safe + template support |
-| Directory Listings          | ✅ Done | Public listing views |
-| Custom DB Tables            | ✅ Done | Follows and Favorites |
-| Profile Linking / Badging   | 🟡 Planned | Social UX and engagement |
-| REST API Extensions         | 🟡 Partial | Meta exposed, endpoints WIP |
-| Custom Capabilities         | 🟡 Partial | Hooked in but not finalized |
-| Internationalization (i18n) | 🟡 In Progress | PO/MO files, translatable strings |
-| Gutenberg Blocks            | 🔲 Not Started | Will support frontend use |
-| CLI Tools                   | 🔲 Not Started | `wp artpulse import` planned |
-| CI/CD Automation            | 🔲 Not Started | GitHub Actions planned |
-
----
-
-## 📌 Roadmap: See `ROADMAP.md` for full development plan.
-
+# Planned Improvements
+- Expanded membership tiers and capabilities.
+- Advanced notification types and push notifications.
+- Enhanced directory filtering and sorting.
+- Bulk favorites management and caching.
+- User activity logs and extended profile editing.
+- Comprehensive API documentation and example snippets.

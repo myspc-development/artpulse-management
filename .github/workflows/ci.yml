@@ -1,0 +1,65 @@
+name: Run Plugin CI Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: PHP Tests
+    runs-on: ubuntu-latest
+
+    env:
+      WP_VERSION: '6.5'
+      DB_NAME: wordpress_test
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: 127.0.0.1
+      WP_MULTISITE: 0
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: xdebug
+          extensions: mbstring, mysqli
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Setup WordPress test suite
+        run: bash ./scripts/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST $WP_VERSION
+
+      - name: Run PHP Lint
+        run: find . -type f -name "*.php" -exec php -l {} \;
+
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist
+
+      - name: Upload coverage report (optional)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: coverage/
+

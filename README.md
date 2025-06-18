@@ -1,79 +1,70 @@
 # ArtPulse Management Plugin
 
-The ArtPulse Management Plugin is a modular WordPress plugin designed for creative communities and cultural organizations. It supports managing artists, artworks, events, memberships, directories, and more, with REST and WooCommerce integrations.
+**Version:** 1.1.5  
+**Requires:** WordPress 6.8+, PHP 8.3+  
+**Description:**  
+A comprehensive management plugin for ArtPulse, providing membership handling, favorites, notifications, REST API endpoints, directory management, user dashboards, and integration with Stripe for subscriptions.
 
 ---
 
-## 🔧 Features
+## Features
 
-- ✅ Custom Post Types: Events, Artists, Artworks, Organizations
-- ✅ Taxonomies: Event Types, Mediums
-- ✅ REST API Meta Fields
-- ✅ Admin Settings Page
-- ✅ Meta Boxes for CPT fields
-- ✅ Membership System (Free, Pro, Enterprise)
-- ✅ WooCommerce Integration (optional)
-- ✅ Shortcodes: `[ap_user_dashboard]`, `[ap_directory]`, `[ap_user_favorites]`
-- ✅ Favorites Button UI with REST Support
-- ✅ Directory Listings (filtered, paginated)
-- ✅ Modular architecture using PSR-4
-- ✅ Custom DB tables for favorites and follows
-- 🟡 Custom Capabilities (partially implemented)
-- 🟡 REST API Extensions (basic coverage)
-- 🔲 Gutenberg Blocks (not yet implemented)
-- 🟡 Internationalization (i18n) in progress
-- 🟡 Profile linking, public badges
-- 🔲 WP-CLI Import Tools
-- 🔲 CI/CD GitHub Actions Pipeline
+- Custom post types: Events, Artists, Artworks, Organizations  
+- REST API endpoints for favorites, notifications, submissions, artists, and more  
+- Membership management with Stripe webhook integration  
+- User dashboard with profile editing and content overview  
+- Directory filters with shortcodes and REST queries  
+- Notification system with read/unread status  
+- Submission forms supporting image attachments and metadata  
+- WooCommerce integration support (optional)  
+- Robust testing suite with PHPUnit and Brain Monkey  
+- CI/CD workflow configured for automated tests and coverage  
 
 ---
 
-## 🚀 Getting Started
+## Installation
 
-1. Clone or download this repository.
-2. Run:
-
-    ```bash
-    composer install
-    ```
-
-3. Activate the plugin in WordPress Admin.
-4. Visit **Settings → Permalinks → Save Changes** to flush rewrite rules.
+1. Upload the `artpulse-management-plugin` folder to your `/wp-content/plugins/` directory.  
+2. Activate the plugin via the WordPress Admin > Plugins page.  
+3. Configure Stripe API keys and webhook secrets in the plugin settings page.  
+4. (Optional) Setup WooCommerce if using e-commerce features.  
 
 ---
 
-## 📁 Architecture
+## Usage
 
-- Composer-based PSR-4 autoloading
-- Folder layout:
-  - `src/Core/`: Core plugin logic
-  - `src/Community/`: Social features (follows, favorites)
-  - `src/Admin/`: Admin UI and CPT customizations
-  - `src/Blocks/`: Future Gutenberg block support
-- Integrations:
-  - WordPress REST API
-  - WooCommerce (optional)
-  - Memberships and roles
+### Shortcodes
 
----
+- `[ap_directory type="event" limit="10"]` — Display a directory of events (types: event, artist, artwork, org).  
+- `[ap_user_dashboard]` — Show the logged-in user’s dashboard with membership and content overview.  
+- Other shortcodes include favorites list, notification display, and submission forms (refer to documentation).
 
-## 📌 Development & Roadmap
+### REST API Endpoints
 
-See [ROADMAP.md](ROADMAP.md) for full development plans, phases, and priorities.
+- `POST /artpulse/v1/favorites` — Add a favorite  
+- `DELETE /artpulse/v1/favorites` — Remove a favorite  
+- `GET /artpulse/v1/notifications` — List user notifications  
+- `POST /artpulse/v1/notifications/read` — Mark notification read  
+- `POST /artpulse/v1/stripe-webhook` — Handle Stripe webhook events  
+- And others for submissions, artists, directory filters (see REST API docs)
 
 ---
 
-## 🛠 To Do
+## Configuration
 
-- [ ] Capability mapping for roles
-- [ ] Custom REST endpoints
-- [ ] Gutenberg blocks
-- [ ] i18n/translation support
-- [ ] PHPUnit test coverage
-- [ ] Profile linking and badges
-- [ ] WP-CLI import tool
-- [ ] GitHub Actions CI/CD pipeline
+- Stripe settings: Set your Stripe secret key and webhook secret in plugin settings.  
+- Membership Levels: Users start with "Free" and can upgrade via Stripe to "Pro".  
+- Daily cron job for membership expiration checks (`ap_daily_expiry_check`) runs automatically.  
 
 ---
 
-© 2025 ArtPulse. GPLv2 Licensed.
+## Testing
+
+### Local Setup
+
+- Install WordPress test suite using the provided `bin/install-wp-tests.sh` script.  
+- Configure database and WP test constants in `wp-tests-config.php`.  
+- Run tests with:  
+
+```bash
+vendor/bin/phpunit --testdox
