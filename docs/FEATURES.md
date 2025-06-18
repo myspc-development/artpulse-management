@@ -33,6 +33,12 @@
 - REST API endpoints for dashboard data retrieval and profile updates.
 - Enqueued scripts for dynamic dashboard UI.
 
+## Organization Dashboard
+- Link artists to your organization profile.
+- Manage events associated with the organization.
+- View audience analytics and insights.
+- Review billing history for subscriptions and upgrades.
+
 ## WooCommerce Integration
 - Conditional loading of WooCommerce features.
 - Shortcodes and hooks prepared for e-commerce membership sales.
