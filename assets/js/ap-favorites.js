@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function(){
       var objectId = this.dataset.objectId;
       var objectType = this.dataset.objectType;
       var isActive = this.classList.contains('active');
+
       fetch(window.ArtPulseApi.root + 'artpulse/v1/favorite', {
         method: 'POST',
         headers: {
@@ -24,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function(){
         } else {
           alert(data.message || 'Error updating favorite');
         }
-      }.bind(this));
+      }); // Removed .bind(this)
     });
   });
 });

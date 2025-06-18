@@ -3,12 +3,9 @@
 namespace ArtPulse\Frontend;
 
 class OrganizationDashboardShortcode {
-
     public static function register() {
         add_shortcode('ap_org_dashboard', [self::class, 'render']);
         add_action('wp_ajax_ap_add_event', [self::class, 'handle_ajax_add_event']);
-        // No need for nopriv since this is an org dashboard
-        //add_action('wp_ajax_nopriv_ap_add_event', [self::class, 'handle_ajax_add_event']);
     }
 
     public static function render($atts) {
@@ -16,7 +13,6 @@ class OrganizationDashboardShortcode {
 
         $user_id = get_current_user_id();
         $org_id = get_user_meta($user_id, 'ap_organization_id', true);
-
         if (!$org_id) return '<p>No organization assigned.</p>';
 
         ob_start();
@@ -30,6 +26,7 @@ class OrganizationDashboardShortcode {
                     <input type="text" name="ap_event_title" placeholder="Event Title" required>
                     <input type="date" name="ap_event_date" required>
                     <input type="text" name="ap_event_location" placeholder="Location" required>
+
                     <select name="ap_event_type">
                         <?php
                         $terms = get_terms('artpulse_event_type', ['hide_empty' => false]);
@@ -38,6 +35,7 @@ class OrganizationDashboardShortcode {
                         }
                         ?>
                     </select>
+
                     <input type="hidden" name="ap_event_organization" value="<?php echo esc_attr($org_id); ?>">
                     <button type="submit">Submit</button>
                 </form>
@@ -70,18 +68,14 @@ class OrganizationDashboardShortcode {
         $event_type = intval($_POST['ap_event_type']);
         $org_id = intval($_POST['ap_event_organization']);
 
-        // Sanitize title for wp_insert_post
-        $sanitized_title = sanitize_text_field($title);
-
         $event_id = wp_insert_post([
-            'post_title' => $sanitized_title,
+            'post_title' => $title,
             'post_type' => 'artpulse_event',
             'post_status' => 'pending'
         ]);
 
-        if (is_wp_error($event_id)) {
-            wp_send_json_error(['message' => 'Failed to insert post: ' . $event_id->get_error_message()]);
-            return;
+        if (!$event_id) {
+            wp_send_json_error(['message' => 'Failed to insert post']);
         }
 
         update_post_meta($event_id, '_ap_event_date', $date);
@@ -102,6 +96,6 @@ class OrganizationDashboardShortcode {
         }
         $html = ob_get_clean();
 
-        wp_send_json_success(['html' => $html, 'event_id' => $event_id]); // Send event ID
+        wp_send_json_success(['html' => $html]);
     }
 }
