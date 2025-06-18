@@ -1,4 +1,5 @@
 <?php
+
 namespace ArtPulse\Admin;
 
 class EnqueueAssets
@@ -7,29 +8,21 @@ class EnqueueAssets
     {
         add_action('enqueue_block_editor_assets', [self::class, 'enqueue_block_editor_assets']);
         add_action('enqueue_block_editor_assets', [self::class, 'enqueue_block_editor_styles']);
-        // Enqueue frontend CSS for AJAX filter UI and item styles
-        add_action('wp_enqueue_scripts', [self::class, 'enqueue_frontend_styles']);
+        add_action('admin_enqueue_scripts', [self::class, 'enqueue']);
     }
 
     public static function enqueue_block_editor_assets()
     {
         // Ensure ARTPULSE_PLUGIN_FILE constant is defined and available.
-        // It should be defined in your main Plugin class.
         if (!defined('ARTPULSE_PLUGIN_FILE')) {
-            // Fallback or error logging if the constant is not defined.
-            // This indicates an issue with plugin initialization order.
-            // For a robust solution, ensure constants are defined before this class is used.
-            // As a temporary fallback, you might try to calculate it, but using the constant is preferred.
-            // $artpulse_plugin_file = dirname(__DIR__, 2) . '/artpulse-management.php'; // Assuming EnqueueAssets.php is in src/Admin/
-            // error_log('ARTPULSE_PLUGIN_FILE constant not defined in EnqueueAssets.php. Attempting fallback.');
-            return; // Or handle error appropriately
+            return;
         }
 
+        $plugin_url = plugin_dir_url(ARTPULSE_PLUGIN_FILE); // Get the plugin URL
+
         // Sidebar taxonomy selector script
-        // Path for filemtime()
-        $sidebar_script_path = ARTPULSE_PLUGIN_DIR . 'assets/js/sidebar-taxonomies.js';
-        // URL for wp_enqueue_script()
-        $sidebar_script_url  = plugins_url('assets/js/sidebar-taxonomies.js', ARTPULSE_PLUGIN_FILE);
+        $sidebar_script_path = ARTPULSE_PLUGIN_DIR . '/assets/js/sidebar-taxonomies.js';
+        $sidebar_script_url = $plugin_url . '/assets/js/sidebar-taxonomies.js';
 
         if (file_exists($sidebar_script_path)) {
             wp_enqueue_script(
@@ -48,8 +41,8 @@ class EnqueueAssets
         }
 
         // Advanced taxonomy filter block script
-        $advanced_script_path = ARTPULSE_PLUGIN_DIR . 'assets/js/advanced-taxonomy-filter-block.js';
-        $advanced_script_url  = plugins_url('assets/js/advanced-taxonomy-filter-block.js', ARTPULSE_PLUGIN_FILE);
+        $advanced_script_path = ARTPULSE_PLUGIN_DIR . '/assets/js/advanced-taxonomy-filter-block.js';
+        $advanced_script_url = $plugin_url . '/assets/js/advanced-taxonomy-filter-block.js';
 
         if (file_exists($advanced_script_path)) {
             wp_enqueue_script(
@@ -57,19 +50,19 @@ class EnqueueAssets
                 $advanced_script_url,
                 [
                     'wp-blocks',
-                    'wp-element',
-                    'wp-editor',
-                    'wp-components',
                     'wp-data',
-                    'wp-api-fetch',
+                    'wp-components',
+                    'wp-element',
+                    'wp-compose',
+                    'wp-plugins',
                 ],
                 filemtime($advanced_script_path)
             );
         }
 
         // Filtered list shortcode block script
-        $filtered_list_script_path = ARTPULSE_PLUGIN_DIR . 'assets/js/filtered-list-shortcode-block.js';
-        $filtered_list_script_url  = plugins_url('assets/js/filtered-list-shortcode-block.js', ARTPULSE_PLUGIN_FILE);
+        $filtered_list_script_path = ARTPULSE_PLUGIN_DIR . '/assets/js/filtered-list-shortcode-block.js';
+        $filtered_list_script_url = $plugin_url . '/assets/js/filtered-list-shortcode-block.js';
 
         if (file_exists($filtered_list_script_path)) {
             wp_enqueue_script(
@@ -80,14 +73,16 @@ class EnqueueAssets
                     'wp-element',
                     'wp-editor',
                     'wp-components',
+                    'wp-compose',
+                    'wp-plugins',
                 ],
                 filemtime($filtered_list_script_path)
             );
         }
 
         // AJAX taxonomy filter block script
-        $ajax_filter_script_path = ARTPULSE_PLUGIN_DIR . 'assets/js/ajax-filter-block.js';
-        $ajax_filter_script_url  = plugins_url('assets/js/ajax-filter-block.js', ARTPULSE_PLUGIN_FILE);
+        $ajax_filter_script_path = ARTPULSE_PLUGIN_DIR . '/assets/js/ajax-filter-block.js';
+        $ajax_filter_script_url = $plugin_url . '/assets/js/ajax-filter-block.js';
 
         if (file_exists($ajax_filter_script_path)) {
             wp_enqueue_script(
@@ -95,10 +90,11 @@ class EnqueueAssets
                 $ajax_filter_script_url,
                 [
                     'wp-blocks',
-                    'wp-element',
+                    'wp-data',
                     'wp-components',
-                    'wp-editor',
-                    'wp-api-fetch',
+                    'wp-element',
+                    'wp-compose',
+                    'wp-plugins',
                 ],
                 filemtime($ajax_filter_script_path)
             );
@@ -111,8 +107,10 @@ class EnqueueAssets
             return;
         }
 
-        $style_path = ARTPULSE_PLUGIN_DIR . 'assets/css/editor-styles.css';
-        $style_url  = plugins_url('assets/css/editor-styles.css', ARTPULSE_PLUGIN_FILE);
+        $plugin_url = plugin_dir_url(ARTPULSE_PLUGIN_FILE); // Get the plugin URL
+
+        $style_path = ARTPULSE_PLUGIN_DIR . '/assets/css/editor-styles.css';
+        $style_url = $plugin_url . '/assets/css/editor-styles.css';
 
         if (file_exists($style_path)) {
             wp_enqueue_style(
@@ -124,36 +122,29 @@ class EnqueueAssets
         }
     }
 
-    public static function enqueue_frontend_styles()
+    public static function enqueue()
     {
-        if (!defined('ARTPULSE_PLUGIN_FILE') || !defined('ARTPULSE_PLUGIN_DIR')) {
-            return;
-        }
+        $screen = get_current_screen();
+        if (!isset($screen->id)) return;
 
-        // AJAX filter UI styles
-        $filter_style_path = ARTPULSE_PLUGIN_DIR . 'assets/css/frontend-filter.css';
-        $filter_style_url  = plugins_url('assets/css/frontend-filter.css', ARTPULSE_PLUGIN_FILE);
+        // Enqueue scripts for Engagement Dashboard
+        if ($screen->id === 'artpulse-settings_page_artpulse-engagement') {
+            wp_enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', [], null, true);
 
-        if (file_exists($filter_style_path)) {
-            wp_enqueue_style(
-                'artpulse-frontend-filter',
-                $filter_style_url,
-                [],
-                filemtime($filter_style_path)
-            );
-        }
+            $plugin_url = plugin_dir_url(ARTPULSE_PLUGIN_FILE); // Get the plugin URL
 
-        // Filtered item styles (partial)
-        $item_style_path = ARTPULSE_PLUGIN_DIR . 'assets/css/frontend-filter-item.css';
-        $item_style_url  = plugins_url('assets/css/frontend-filter-item.css', ARTPULSE_PLUGIN_FILE);
+            $custom_js_path = ARTPULSE_PLUGIN_DIR . '/assets/js/ap-engagement-dashboard.js';
+            $custom_js_url = $plugin_url . '/assets/js/ap-engagement-dashboard.js';
 
-        if (file_exists($item_style_path)) {
-            wp_enqueue_style(
-                'artpulse-frontend-filter-item',
-                $item_style_url,
-                [],
-                filemtime($item_style_path)
-            );
+            if (file_exists($custom_js_path)) {
+                wp_enqueue_script(
+                    'ap-engagement-dashboard',
+                    $custom_js_url,
+                    ['chart-js'],
+                    filemtime($custom_js_path), // Add filemtime for cache busting
+                    true
+                );
+            }
         }
     }
 }
