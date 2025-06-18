@@ -6,45 +6,50 @@ use ArtPulse\Admin\SettingsPage;
 use ArtPulse\Core\PortfolioManager;
 use ArtPulse\Rest\PortfolioRestController;
 
-class Plugin
-{
+class Plugin {
+
     private const VERSION = '1.1.5';
 
-    public function __construct()
-    {
-        $this->define_constants();
+    public function __construct() {
+        // $this->define_constants(); // REMOVE THIS LINE
         $this->register_hooks();
     }
 
-    private function define_constants()
-    {
-        if (!defined('ARTPULSE_VERSION')) {
-            define('ARTPULSE_VERSION', self::VERSION);
-        }
-        if (!defined('ARTPULSE_PLUGIN_DIR')) {
-            define('ARTPULSE_PLUGIN_DIR', plugin_dir_path(dirname(dirname(__FILE__))));
-        }
-        if (!defined('ARTPULSE_PLUGIN_FILE')) {
-            define('ARTPULSE_PLUGIN_FILE', ARTPULSE_PLUGIN_DIR . '/artpulse-management.php');
-        }
-    }
+    // private function define_constants() { // REMOVE THIS ENTIRE METHOD
+    //     if (!defined('ARTPULSE_VERSION')) {
+    //         define('ARTPULSE_VERSION', self::VERSION);
+    //     }
+    //     if (!defined('ARTPULSE_PLUGIN_DIR')) {
+    //         define('ARTPULSE_PLUGIN_DIR', plugin_dir_path(dirname(dirname(__FILE__))));
+    //     }
+    //     // REMOVE this definition. ARTPULSE_PLUGIN_FILE is defined in artpulse-management.php
+    //     // if (!defined('ARTPULSE_PLUGIN_FILE')) {
+    //     // define('ARTPULSE_PLUGIN_FILE', ARTPULSE_PLUGIN_DIR . '/artpulse-management.php');
+    //     // }
+    // }
 
-    private function register_hooks()
-    {
+    private function register_hooks() {
+        // Make sure ARTPULSE_PLUGIN_FILE is defined BEFORE using it.
+        if (!defined('ARTPULSE_PLUGIN_FILE')) {
+            error_log('ARTPULSE_PLUGIN_FILE is not defined!'); // Log an error
+            return; // Exit if the constant is not defined
+        }
+
         register_activation_hook(ARTPULSE_PLUGIN_FILE, [$this, 'activate']);
         register_deactivation_hook(ARTPULSE_PLUGIN_FILE, [$this, 'deactivate']);
         add_action('init', [$this, 'register_core_modules']);
         add_action('init', [\ArtPulse\Frontend\SubmissionForms::class, 'register']);
-        //remove the enqueue scripts from here since the main file will do the enqueuing
-       // add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_assets']);
-       //  add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('rest_api_init', [\ArtPulse\Community\NotificationRestController::class, 'register']);
         add_action('rest_api_init', [\ArtPulse\Rest\SubmissionRestController::class, 'register']);
         add_action('wp_login', [self::class, 'updateLastLogin'], 10, 2);
     }
 
-    public function activate()
-    {
+    public function activate() {
+        if (!defined('ARTPULSE_PLUGIN_FILE')) {
+            error_log('ARTPULSE_PLUGIN_FILE is not defined during activation!');
+            return;
+        }
+
         $db_version_option = 'artpulse_db_version';
 
         if (false === get_option('artpulse_settings')) {
@@ -67,8 +72,7 @@ class Plugin
 
         \ArtPulse\Core\PostTypeRegistrar::register();
         flush_rewrite_rules();
-
-        require_once ARTPULSE_PLUGIN_DIR . '/src/Core/RoleSetup.php';
+        require_once plugin_dir_path(ARTPULSE_PLUGIN_FILE) . '/src/Core/RoleSetup.php';
         \ArtPulse\Core\RoleSetup::install();
 
         if (!wp_next_scheduled('ap_daily_expiry_check')) {
@@ -76,14 +80,12 @@ class Plugin
         }
     }
 
-    public function deactivate()
-    {
+    public function deactivate() {
         flush_rewrite_rules();
         wp_clear_scheduled_hook('ap_daily_expiry_check');
     }
 
-    public function register_core_modules()
-    {
+    public function register_core_modules() {
         \ArtPulse\Core\PostTypeRegistrar::register();
         \ArtPulse\Core\MetaBoxRegistrar::register();
         \ArtPulse\Core\AdminDashboard::register();
@@ -111,9 +113,13 @@ class Plugin
         \ArtPulse\Admin\MemberEnhancements::register();
         \ArtPulse\Admin\EngagementDashboard::register();
         PortfolioManager::register();
-
-        require_once ARTPULSE_PLUGIN_DIR . '/src/Core/RoleSetup.php';
+        require_once plugin_dir_path(ARTPULSE_PLUGIN_FILE) . '/src/Core/RoleSetup.php';
         \ArtPulse\Core\RoleSetup::install();
+
+        // Load the UserProfileShortcode class
+        add_action('init', function () {
+            \ArtPulse\Frontend\UserProfileShortcode::register();
+        });
 
         \ArtPulse\Admin\MetaBoxesArtist::register();
         \ArtPulse\Admin\MetaBoxesArtwork::register();
@@ -133,6 +139,7 @@ class Plugin
         }
 
         $opts = get_option('artpulse_settings', []);
+
         if (!empty($opts['woo_enabled'])) {
             \ArtPulse\Core\WooCommerceIntegration::register();
             \ArtPulse\Core\PurchaseShortcode::register();
@@ -141,99 +148,7 @@ class Plugin
         SettingsPage::register();
     }
 
-    //remove the frontend enqueuing since the main file will be doing it
-   // public function enqueue_frontend_assets()
-   // {
-   //     $plugin_url = plugin_dir_url(ARTPULSE_PLUGIN_FILE);
-   //     wp_enqueue_script(
-   //         'ap-membership-account-js',
-   //         $plugin_url . '/assets/js/ap-membership-account.js',
-   //         ['wp-api-fetch'],
-   //         '1.0.0',
-   //         true
-   //     );
-   //     wp_enqueue_script(
-   //         'ap-favorites-js',
-   //         $plugin_url . '/assets/js/ap-favorites.js',
-   //         [],
-   //         '1.0.0',
-   //         true
-   //     );
-   //     wp_enqueue_script(
-   //         'ap-notifications-js',
-   //         $plugin_url . '/assets/js/ap-notifications.js',
-   //         ['wp-api-fetch'],
-   //         '1.0.0',
-   //         true
-   //     );
-   //     wp_localize_script('ap-notifications-js', 'APNotifications', [
-   //         'apiRoot' => esc_url_raw(rest_url()),
-   //         'nonce'   => wp_create_nonce('wp_rest'),
-   //     ]);
-   //     wp_enqueue_script(
-   //         'ap-submission-form-js',
-   //         $plugin_url . '/assets/js/ap-submission-form.js',
-   //         ['wp-api-fetch'],
-   //         '1.0.0',
-   //         true
-   //     );
-   //     wp_localize_script('ap-submission-form-js', 'APSubmission', [
-   //         'endpoint'      => esc_url_raw(rest_url('artpulse/v1/submissions')),
-   //         'mediaEndpoint' => esc_url_raw(rest_url('wp/v2/media')),
-   //         'nonce'         => wp_create_nonce('wp_rest'),
-   //     ]);
-   //     wp_enqueue_style(
-   //         'ap-forms-css',
-   //         $plugin_url . '/assets/css/ap-forms.css',
-   //         [],
-   //         '1.0.0'
-   //     );
-   //     // Add other frontend assets here
-   //     wp_enqueue_style(
-   //         'ap-directory-css',
-   //         $plugin_url . '/assets/css/ap-directory.css',
-   //         [],
-   //         '1.0.0'
-   //     );
-   // }
-   // public function enqueue_admin_assets()
-   // {
-   //     $plugin_url = plugin_dir_url(ARTPULSE_PLUGIN_FILE);
-   //     // Enqueue assets from the Admin\EnqueueAssets class
-   //     \ArtPulse\Admin\EnqueueAssets::enqueue_block_editor_assets();
-   //     \ArtPulse\Admin\EnqueueAssets::enqueue_block_editor_styles();
-   //     \ArtPulse\Admin\EnqueueAssets::enqueue();
-   //     // Enqueue your Core-specific admin assets here
-   //     wp_enqueue_style(
-   //         'ap-user-dashboard-css',
-   //         $plugin_url . '/assets/css/ap-user-dashboard.css', // Corrected path
-   //         [],
-   //         '1.0.0'
-   //     );
-   //     wp_enqueue_script(
-   //         'ap-user-dashboard-js',
-   //         $plugin_url . '/assets/js/ap-user-dashboard.js', // Corrected path
-   //         [],
-   //         '1.0.0',
-   //         true
-   //     );
-   //     wp_enqueue_script(
-   //         'ap-analytics-js',
-   //         $plugin_url . '/assets/js/ap-analytics.js',
-   //         [],
-   //         '1.0.0',
-   //         true
-   //     );
-   //     wp_enqueue_script(
-   //         'ap-my-follows-js',
-   //         $plugin_url . '/assets/js/ap-my-follows.js',
-   //         [],
-   //         '1.0.0',
-   //         true
-   //     );
-   // }
-    public static function updateLastLogin($user_login, $user)
-    {
+    public static function updateLastLogin($user_login, $user) {
         update_user_meta($user->ID, 'last_login', current_time('mysql'));
     }
 }
