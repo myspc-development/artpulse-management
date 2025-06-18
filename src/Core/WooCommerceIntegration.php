@@ -100,7 +100,7 @@ class Plugin
         \ArtPulse\Core\FrontendMembershipPage::register();
         \ArtPulse\Community\ProfileLinkRequestManager::register();
         \ArtPulse\Core\MyFollowsShortcode::register();
-        \ArtPulse\Core\NotificationShortcode::register();
+        \ArtPulse\Community\CommunityShortcodeManager::register();
         \ArtPulse\Admin\AdminListSorting::register();
         \ArtPulse\Rest\RestSortingSupport::register();
         \ArtPulse\Admin\AdminListColumns::register();
