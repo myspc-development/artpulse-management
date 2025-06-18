@@ -95,3 +95,12 @@ vendor/bin/phpunit --testdox
 ```bash
 vendor/bin/phpunit --testdox
 ```
+
+## Documentation
+
+Admin and member guides should be placed in the `assets/docs/` directory:
+
+- `assets/docs/Admin_Help.md` – Instructions for site administrators.
+- `assets/docs/Member_Help.md` – Instructions for regular members.
+
+Customize these files to fit your deployment.
