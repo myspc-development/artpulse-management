@@ -11,9 +11,10 @@ A comprehensive management plugin for ArtPulse, providing membership handling, f
 
 - Custom post types: Events, Artists, Artworks, Organizations  
 - REST API endpoints for favorites, notifications, submissions, artists, and more  
-- Membership management with Stripe webhook integration  
-- User dashboard with profile editing and content overview  
-- Directory filters with shortcodes and REST queries  
+- Membership management with Stripe webhook integration
+- User dashboard with profile editing and content overview
+- Organization dashboard for linked artists, event management, analytics, and billing history
+- Directory filters with shortcodes and REST queries
 - Notification system with read/unread status  
 - Submission forms supporting image attachments and metadata  
 - WooCommerce integration support (optional)  
