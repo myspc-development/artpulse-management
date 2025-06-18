@@ -1,31 +1,12 @@
 <?php
 // tests/bootstrap.php
 
-// Load Composer autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Define WP test directory
-$_tests_dir = getenv('WP_TESTS_DIR') ?: '/tmp/wordpress-tests-lib';
-
-// Load WP testing framework if integration tests are running
-if (file_exists("{$_tests_dir}/includes/bootstrap.php")) {
-    require_once $_tests_dir . '/includes/functions.php';
-
-    function _manually_load_plugin() {
-        require dirname(__DIR__) . '/artpulse-management.php';
-    }
-    tests_add_filter('muplugins_loaded', '_manually_load_plugin');
-
-    require $_tests_dir . '/includes/bootstrap.php';
-}
-
-// Error visibility
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-// ----------------------
-// WP FUNCTION STUBS
-// ----------------------
+// WP function stubs (safe to stub manually if not mocked in tests)
 if (!function_exists('get_option')) {
     function get_option($key, $default = null) {
         return $default;
@@ -65,28 +46,24 @@ if (!function_exists('date_i18n')) {
 
 if (!function_exists('register_post_meta')) {
     function register_post_meta($post_type, $meta_key, $args = []) {
-        // Stub
+        // no-op; this is a stub for tests
     }
 }
 
 if (!function_exists('register_taxonomy')) {
     function register_taxonomy($taxonomy, $object_type, $args = []) {
-        // Stub
+        // no-op; this is a stub for tests
     }
 }
 
-// ----------------------
-// Polyfill: str_starts_with (PHP < 8.0)
-// ----------------------
+// Polyfill str_starts_with for PHP < 8.0
 if (!function_exists('str_starts_with')) {
     function str_starts_with($haystack, $needle) {
         return substr($haystack, 0, strlen($needle)) === $needle;
     }
 }
 
-// ----------------------
-// PSR-4 Autoloading (for src/Core)
-// ----------------------
+// PSR-4 autoloading for ArtPulse\Core\ classes in src/Core/
 spl_autoload_register(function ($class) {
     $prefix  = 'ArtPulse\\Core\\';
     $baseDir = __DIR__ . '/../src/Core/';
