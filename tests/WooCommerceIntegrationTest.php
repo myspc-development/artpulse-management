@@ -1,6 +1,8 @@
 <?php
 // tests/WooCommerceIntegrationTest.php
 
+namespace ArtPulse\Core;
+
 use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;

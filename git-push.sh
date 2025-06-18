@@ -20,3 +20,12 @@ git push -u origin "${BRANCH}"
 
 echo "✅ Pushed ${BRANCH} to GitHub over HTTPS with PAT."
 gitpush
+ulse-management-plugin"
+BRANCH="main"
+
+# Construct the authenticated HTTPS URL
+AUTHED_URL="https://${GITHUB_USER}:${GITHUB_PAT}@github.com/${REPO}.git"
+
+# Point origin to the authed URL
+git remote set-url origin "${AUTHED_URL}"
+
