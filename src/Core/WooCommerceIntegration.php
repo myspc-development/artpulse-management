@@ -5,9 +5,34 @@ namespace ArtPulse\Core;
 /**
  * Main plugin class for the ArtPulse Management Plugin.
  */
-class Plugin
+class WooCommerceIntegration
 {
     private const VERSION = '1.1.5';
+
+    public static function register()
+    {
+        add_action(
+            'woocommerce_order_status_completed',
+            [ self::class, 'handle_order_completed' ]
+        );
+    }
+
+    public static function handle_order_completed( $order_id )
+    {
+        if ( ! function_exists( 'wc_get_order' ) ) {
+            return;
+        }
+
+        $order = wc_get_order( $order_id );
+        if ( ! $order ) {
+            return;
+        }
+
+        $user_id = $order->get_user_id();
+        if ( $user_id ) {
+            self::assignMembership( $user_id, 'Pro' );
+        }
+    }
 
     public function __construct()
     {
@@ -192,6 +217,29 @@ class Plugin
             plugins_url( 'assets/css/ap-forms.css', ARTPULSE_PLUGIN_FILE ),
             [],
             '1.0.0'
+        );
+    }
+
+    private static function assignMembership( int $user_id, string $level )
+    {
+        $user = get_userdata( $user_id );
+        if ( ! $user ) {
+            return;
+        }
+
+        $user->set_role( 'subscriber' );
+        update_user_meta( $user_id, 'ap_membership_level', $level );
+
+        $expiry = strtotime( '+1 month', current_time( 'timestamp' ) );
+        update_user_meta( $user_id, 'ap_membership_expires', $expiry );
+
+        wp_mail(
+            $user->user_email,
+            __( 'Your ArtPulse membership details', 'artpulse' ),
+            sprintf(
+                __( 'Your membership expires on %s', 'artpulse' ),
+                date_i18n( 'Y-m-d', $expiry )
+            )
         );
     }
 }

@@ -8,7 +8,7 @@
  * License:         GPL2
  */
 
-use ArtPulse\Core\Plugin;
+use ArtPulse\Core\WooCommerceIntegration;
 use ArtPulse\Core\Activator;
 use ArtPulse\Admin\EnqueueAssets;
 
@@ -29,14 +29,14 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
 }
 
 // Optional debug log for class check
-if (class_exists(Plugin::class)) {
+if (class_exists(WooCommerceIntegration::class)) {
     error_log('Plugin class loaded successfully');
 } else {
     error_log('Failed to load Plugin class');
 }
 
 // Instantiate main plugin class
-$plugin = new Plugin();
+$plugin = new WooCommerceIntegration();
 
 // Hook for activation
 register_activation_hook(__FILE__, function () use ($plugin) {
