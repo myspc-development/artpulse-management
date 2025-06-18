@@ -1,33 +1,49 @@
-# Node modules
+# ----------------------------------------
+# Node / JS Build Artifacts
+# ----------------------------------------
 node_modules/
 npm-debug.log*
 package-lock.json
 
-# Composer dependencies
+# ----------------------------------------
+# PHP / Composer Dependencies
+# ----------------------------------------
 vendor/
 composer.lock
 
-# Build output
+# ----------------------------------------
+# Build / Distribution Outputs
+# ----------------------------------------
 build/
 dist/
 
-# PHPUnit
+# ----------------------------------------
+# PHPUnit Test Cache
+# ----------------------------------------
 .phpunit.result.cache
 
-# System & IDE files
+# ----------------------------------------
+# System / Editor Temp Files
+# ----------------------------------------
 .DS_Store
 Thumbs.db
 *.log
 *.swp
 *.swo
 
-# IDE configs
+# ----------------------------------------
+# IDE Configs
+# ----------------------------------------
 .vscode/
 .idea/
 
-# GitHub workflows (optional — keep if used)
-.github/
+# ----------------------------------------
+# GitHub Workflows (optional)
+# Uncomment the next line if not using GitHub Actions
+# .github/
 
-# Local env
+# ----------------------------------------
+# Local Environment Configs
+# ----------------------------------------
 .env
 .env.*
