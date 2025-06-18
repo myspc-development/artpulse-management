@@ -35,8 +35,12 @@ A comprehensive management plugin for ArtPulse, providing membership handling, f
 
 ### Shortcodes
 
-- `[ap_directory type="event" limit="10"]` — Display a directory of events (types: event, artist, artwork, org).  
-- `[ap_user_dashboard]` — Show the logged-in user’s dashboard with membership and content overview.  
+- `[ap_directory type="event" limit="10"]` — Display a directory of events (types: event, artist, artwork, org).
+- `[ap_user_dashboard]` — Show the logged-in user’s dashboard with membership and content overview.
+- `[ap_my_follows]` — List items the current user follows. Output is a container populated via JavaScript.
+- `[ap_membership_purchase level="Pro"]` — Render a purchase link to the WooCommerce checkout.
+  - **level**: Membership tier to purchase (default `Pro`).
+  - **class**: Optional CSS class for the link. Output is an `<a>` tag linking to checkout with the level query parameter.
 - Other shortcodes include favorites list, notification display, and submission forms (refer to documentation).
 
 ### REST API Endpoints
