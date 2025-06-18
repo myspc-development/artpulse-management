@@ -13,7 +13,7 @@ class SubmissionRestControllerTest extends WP_UnitTestCase
     {
         parent::set_up();
         $this->user_id = $this->factory->user->create(['role' => 'subscriber']);
-        wp_set_current_user($this->user_id];
+        wp_set_current_user($this->user_id);
     }
 
     public function test_can_submit_event()
