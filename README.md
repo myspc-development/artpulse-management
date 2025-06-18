@@ -58,6 +58,27 @@ A comprehensive management plugin for ArtPulse, providing membership handling, f
 
 ---
 
+## Development setup
+
+1. Install PHP and JavaScript dependencies:
+
+```bash
+composer install
+npm install
+```
+
+2. Build the plugin assets:
+
+```bash
+npm run build
+```
+
+3. Run the test suite:
+
+```bash
+vendor/bin/phpunit --testdox
+```
+
 ## Testing
 
 ### Local Setup
