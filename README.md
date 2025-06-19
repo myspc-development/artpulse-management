@@ -52,6 +52,11 @@ npm run build
 # Set up the testing environment
 ./setup-tests.sh
 ```
+The script reads database credentials from the environment variables
+`DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_HOST`. If these are not
+set, it defaults to `wordpress_test`, `root`, `root` and `127.0.0.1`
+respectively. You can also create a `.env` file with the same keys to
+override the defaults when running tests.
 
 Optional tools:
 
