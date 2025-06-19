@@ -44,8 +44,22 @@ jobs:
           coverage: xdebug
           extensions: mbstring, mysqli
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Run PHPCS Sniff
+        run: composer run sniff
 
       - name: Setup WordPress test suite
         run: bash ./scripts/src/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST $WP_VERSION
@@ -61,5 +75,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: code-coverage
-          path: coverage/
+          path: coverage/html/
 
