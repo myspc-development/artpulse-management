@@ -35,6 +35,14 @@ class RestRoutes
             // ✅ Register the new SubmissionRestController endpoint
             \ArtPulse\Rest\SubmissionRestController::register();
         });
+
+        $post_types = ['artpulse_event', 'artpulse_artist', 'artpulse_artwork', 'artpulse_org'];
+
+        foreach ($post_types as $type) {
+            add_action("save_post_{$type}", function () use ($type) {
+                delete_transient('ap_rest_posts_' . $type);
+            });
+        }
     }
 
     public static function get_events()
@@ -72,7 +80,14 @@ class RestRoutes
 
     private static function get_posts_with_meta($post_type, $meta_keys = [])
     {
-        $posts = get_posts([
+        $transient_key = 'ap_rest_posts_' . $post_type;
+        $cached        = get_transient($transient_key);
+
+        if (false !== $cached) {
+            return $cached;
+        }
+
+        $posts  = get_posts([
             'post_type'      => $post_type,
             'post_status'    => 'publish',
             'posts_per_page' => -1,
@@ -94,6 +109,8 @@ class RestRoutes
 
             $output[] = $item;
         }
+
+        set_transient($transient_key, $output, HOUR_IN_SECONDS);
 
         return $output;
     }
