@@ -7,8 +7,15 @@ set -e
 PLUGIN_DIR="$(pwd)"
 PLUGIN_NAME="artpulse-management-plugin"
 
-# Extract version from plugin header
-VERSION=$(grep -m1 '^ \* Version:' artpulse-management.php | awk '{print $2}')
+# Extract version from plugin header (e.g. "1.1.5")
+# The third field after splitting on whitespace contains the numeric version
+VERSION=$(grep -m1 '^ \* Version:' artpulse-management.php | awk '{print $3}')
+
+# Sanity check that we parsed a version number
+if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+  echo "❌ Failed to parse plugin version" >&2
+  exit 1
+fi
 RELEASE_DIR="$PLUGIN_DIR/release"
 ZIP_FILE="$PLUGIN_NAME-$VERSION.zip"
 
