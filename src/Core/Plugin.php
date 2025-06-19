@@ -131,6 +131,7 @@ class Plugin
         \ArtPulse\Admin\AdminColumnsArtwork::register();
         \ArtPulse\Admin\AdminColumnsEvent::register();
         \ArtPulse\Admin\AdminColumnsOrganisation::register();
+        \ArtPulse\Admin\QuickStartGuide::register();
 
         \ArtPulse\Taxonomies\TaxonomiesRegistrar::register();
 
