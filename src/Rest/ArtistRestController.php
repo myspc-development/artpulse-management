@@ -71,16 +71,20 @@ class ArtistRestController extends WP_REST_Controller
         $query = new \WP_Query([
             'post_type'      => 'artpulse_artist',
             'posts_per_page' => -1,
+            // Only fetch IDs for a lighter query and skip found rows since
+            // pagination isn't used here.
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
         ]);
 
         $data = [];
-        foreach ($query->posts as $post) {
+        foreach ($query->posts as $post_id) {
             $item = [
-                'id'    => $post->ID,
-                'title' => get_the_title($post),
-                'link'  => get_permalink($post),
+                'id'    => $post_id,
+                'title' => get_the_title($post_id),
+                'link'  => get_permalink($post_id),
             ];
-            $data[] = $this->prepare_item_for_response($item, $post);
+            $data[] = $this->prepare_item_for_response($item, get_post($post_id));
         }
 
         return rest_ensure_response($data);

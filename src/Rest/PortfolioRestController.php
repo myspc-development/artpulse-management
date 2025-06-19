@@ -32,18 +32,21 @@ class PortfolioRestController
             'meta_query'  => [[
                 'key'   => 'portfolio_visibility',
                 'value' => 'public',
-            ]]
+            ]],
+            // Fetch IDs only; no pagination so skip FOUND_ROWS.
+            'fields'       => 'ids',
+            'no_found_rows'=> true,
         ]);
 
         $response = [];
-        foreach ($items as $item) {
+        foreach ($items as $post_id) {
             $response[] = [
-                'id'          => $item->ID,
-                'title'       => $item->post_title,
-                'description' => get_post_meta($item->ID, 'portfolio_description', true),
-                'link'        => get_post_meta($item->ID, 'portfolio_link', true),
-                'image'       => get_post_meta($item->ID, 'portfolio_image', true),
-                'category'    => wp_get_post_terms($item->ID, 'portfolio_category', ['fields' => 'slugs'])[0] ?? '',
+                'id'          => $post_id,
+                'title'       => get_post_field('post_title', $post_id),
+                'description' => get_post_meta($post_id, 'portfolio_description', true),
+                'link'        => get_post_meta($post_id, 'portfolio_link', true),
+                'image'       => get_post_meta($post_id, 'portfolio_image', true),
+                'category'    => wp_get_post_terms($post_id, 'portfolio_category', ['fields' => 'slugs'])[0] ?? '',
             ];
         }
 

@@ -68,18 +68,18 @@ class AjaxFilterBlock {
             ]];
         }
 
+        // Keep found rows for pagination but retrieve IDs only.
+        $args['fields'] = 'ids';
         $query = new \WP_Query($args);
 
         $posts = [];
-        while ($query->have_posts()) {
-            $query->the_post();
+        foreach ($query->posts as $post_id) {
             $posts[] = [
-                'id'    => get_the_ID(),
-                'title' => get_the_title(),
-                'link'  => get_permalink(),
+                'id'    => $post_id,
+                'title' => get_the_title($post_id),
+                'link'  => get_permalink($post_id),
             ];
         }
-        wp_reset_postdata();
 
         return [
             'posts'      => $posts,

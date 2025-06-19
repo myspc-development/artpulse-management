@@ -91,20 +91,23 @@ class RestRoutes
             'post_type'      => $post_type,
             'post_status'    => 'publish',
             'posts_per_page' => -1,
+            // Fetch IDs only and skip FOUND_ROWS for a faster query.
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
         ]);
 
         $output = [];
 
-        foreach ($posts as $post) {
+        foreach ($posts as $post_id) {
             $item = [
-                'id'      => $post->ID,
-                'title'   => get_the_title($post),
-                'content' => apply_filters('the_content', $post->post_content),
-                'link'    => get_permalink($post),
+                'id'      => $post_id,
+                'title'   => get_the_title($post_id),
+                'content' => apply_filters('the_content', get_post_field('post_content', $post_id)),
+                'link'    => get_permalink($post_id),
             ];
 
             foreach ($meta_keys as $field => $meta_key) {
-                $item[$field] = get_post_meta($post->ID, $meta_key, true);
+                $item[$field] = get_post_meta($post_id, $meta_key, true);
             }
 
             $output[] = $item;

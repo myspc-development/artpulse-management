@@ -31,9 +31,12 @@ class Shortcodes {
         }
 
         $query_args = [
-            'post_type' => sanitize_text_field($atts['post_type']),
+            'post_type'      => sanitize_text_field($atts['post_type']),
             'posts_per_page' => intval($atts['posts_per_page']),
-            'post_status' => 'publish',
+            'post_status'    => 'publish',
+            // Fetch IDs only and skip FOUND_ROWS for performance.
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
         ];
 
         if (!empty($tax_query)) {
@@ -42,17 +45,15 @@ class Shortcodes {
 
         $query = new \WP_Query($query_args);
 
-        if (!$query->have_posts()) {
+        if (empty($query->posts)) {
             return '<p>' . __('No items found.', 'artpulse-management') . '</p>';
         }
 
         ob_start();
         echo '<div class="ap-filtered-list">';
-        while ($query->have_posts()) {
-            $query->the_post();
-
+        foreach ($query->posts as $post_id) {
             // Make current post available to template
-            set_query_var('post', get_post());
+            set_query_var('post', get_post($post_id));
 
             // Path to template partial, adjust if needed
             $template_path = plugin_dir_path(__FILE__) . '../../templates/partials/content-artpulse-item.php';
@@ -63,14 +64,13 @@ class Shortcodes {
                 // Fallback output
                 printf(
                     '<li><a href="%s">%s</a></li>',
-                    esc_url(get_permalink()),
-                    esc_html(get_the_title())
+                    esc_url(get_permalink($post_id)),
+                    esc_html(get_the_title($post_id))
                 );
             }
         }
         echo '</div>';
 
-        wp_reset_postdata();
         return ob_get_clean();
     }
 }

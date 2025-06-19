@@ -31,6 +31,9 @@ class FrontendFilterHandler
             'post_status'    => 'publish',
             'posts_per_page' => $per_page,
             'paged'          => $page,
+            // We still rely on found rows for pagination so `no_found_rows` is
+            // intentionally omitted here. Fetch only IDs to reduce memory usage.
+            'fields'         => 'ids',
         ];
 
         if ($tax_query) {
@@ -40,16 +43,14 @@ class FrontendFilterHandler
         $query = new \WP_Query($args);
         $posts = [];
 
-        if ($query->have_posts()) {
-            while ($query->have_posts()) {
-                $query->the_post();
-                $posts[] = [
-                    'id'    => get_the_ID(),
-                    'title' => get_the_title(),
-                    'link'  => get_permalink(),
-                ];
-            }
-            wp_reset_postdata();
+        // `fields => 'ids'` returns an array of post IDs. Loop through IDs and
+        // fetch post data manually.
+        foreach ($query->posts as $post_id) {
+            $posts[] = [
+                'id'    => $post_id,
+                'title' => get_the_title($post_id),
+                'link'  => get_permalink($post_id),
+            ];
         }
 
         wp_send_json([

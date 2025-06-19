@@ -276,21 +276,20 @@ class MetaBoxesRelationship
             'post_status'    => 'publish',
             'posts_per_page' => 20, // Increase for better search results
             's'              => $term,
+            // Search only for IDs to speed up AJAX search.
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
         ];
 
         $query = new \WP_Query($args);
         $results = [];
 
-        if ($query->have_posts()) {
-            while ($query->have_posts()) {
-                $query->the_post();
-                $results[] = [
-                    'id'   => get_the_ID(),
-                    'text' => get_the_title(), // 'text' is what Select2 expects
-                ];
-            }
+        foreach ($query->posts as $post_id) {
+            $results[] = [
+                'id'   => $post_id,
+                'text' => get_the_title($post_id), // 'text' is what Select2 expects
+            ];
         }
-        wp_reset_postdata();
 
         wp_send_json_success(['results' => $results]); // Select2 expects results in a 'results' key for AJAX
     }

@@ -17,18 +17,20 @@ class ShortcodeManager
         $query = new \WP_Query([
             'post_type'      => 'artpulse_event',
             'posts_per_page' => intval($atts['limit']),
+            // Fetch IDs only to reduce memory footprint.
+            'fields'         => 'ids',
+            // No pagination required so skip FOUND_ROWS calculation.
+            'no_found_rows'  => true,
         ]);
         ob_start();
         echo '<div class="ap-portfolio-grid">';
-        while ($query->have_posts()) {
-            $query->the_post();
+        foreach ($query->posts as $post_id) {
             echo '<div class="portfolio-item">';
-            the_post_thumbnail('medium');
-            echo '<h3><a href="' . get_permalink() . '">' . get_the_title() . '</a></h3>';
+            echo get_the_post_thumbnail($post_id, 'medium');
+            echo '<h3><a href="' . esc_url(get_permalink($post_id)) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
             echo '</div>';
         }
         echo '</div>';
-        wp_reset_postdata();
         return ob_get_clean();
     }
 
@@ -38,18 +40,20 @@ class ShortcodeManager
         $query = new \WP_Query([
             'post_type'      => 'artpulse_artist',
             'posts_per_page' => intval($atts['limit']),
+            // Fetch IDs only to reduce memory footprint.
+            'fields'         => 'ids',
+            // No pagination required so skip FOUND_ROWS calculation.
+            'no_found_rows'  => true,
         ]);
         ob_start();
         echo '<div class="ap-portfolio-grid">';
-        while ($query->have_posts()) {
-            $query->the_post();
+        foreach ($query->posts as $post_id) {
             echo '<div class="portfolio-item">';
-            the_post_thumbnail('medium');
-            echo '<h3><a href="' . get_permalink() . '">' . get_the_title() . '</a></h3>';
+            echo get_the_post_thumbnail($post_id, 'medium');
+            echo '<h3><a href="' . esc_url(get_permalink($post_id)) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
             echo '</div>';
         }
         echo '</div>';
-        wp_reset_postdata();
         return ob_get_clean();
     }
 
@@ -59,18 +63,20 @@ class ShortcodeManager
         $query = new \WP_Query([
             'post_type'      => 'artpulse_artwork',
             'posts_per_page' => intval($atts['limit']),
+            // Fetch IDs only to reduce memory footprint.
+            'fields'         => 'ids',
+            // No pagination required so skip FOUND_ROWS calculation.
+            'no_found_rows'  => true,
         ]);
         ob_start();
         echo '<div class="ap-portfolio-grid">';
-        while ($query->have_posts()) {
-            $query->the_post();
+        foreach ($query->posts as $post_id) {
             echo '<div class="portfolio-item">';
-            the_post_thumbnail('medium');
-            echo '<h3><a href="' . get_permalink() . '">' . get_the_title() . '</a></h3>';
+            echo get_the_post_thumbnail($post_id, 'medium');
+            echo '<h3><a href="' . esc_url(get_permalink($post_id)) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
             echo '</div>';
         }
         echo '</div>';
-        wp_reset_postdata();
         return ob_get_clean();
     }
 
@@ -80,18 +86,20 @@ class ShortcodeManager
         $query = new \WP_Query([
             'post_type'      => 'artpulse_org',
             'posts_per_page' => intval($atts['limit']),
+            // Fetch IDs only to reduce memory footprint.
+            'fields'         => 'ids',
+            // No pagination required so skip FOUND_ROWS calculation.
+            'no_found_rows'  => true,
         ]);
         ob_start();
         echo '<div class="ap-portfolio-grid">';
-        while ($query->have_posts()) {
-            $query->the_post();
+        foreach ($query->posts as $post_id) {
             echo '<div class="portfolio-item">';
-            the_post_thumbnail('medium');
-            echo '<h3><a href="' . get_permalink() . '">' . get_the_title() . '</a></h3>';
+            echo get_the_post_thumbnail($post_id, 'medium');
+            echo '<h3><a href="' . esc_url(get_permalink($post_id)) . '">' . esc_html(get_the_title($post_id)) . '</a></h3>';
             echo '</div>';
         }
         echo '</div>';
-        wp_reset_postdata();
         return ob_get_clean();
     }
 }
