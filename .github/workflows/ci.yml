@@ -1,14 +1,12 @@
-name: Run Plugin CI Tests
+name: Plugin CI
 
 on:
   push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   test:
-    name: PHP Tests
+    name: Lint, Build & Test
     runs-on: ubuntu-latest
 
     env:
@@ -67,8 +65,8 @@ jobs:
       - name: Run PHP Lint
         run: find . -type f -name "*.php" -exec php -l {} \;
 
-      - name: Run PHPUnit tests
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist
+      - name: Run PHPUnit tests with coverage
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-text --coverage-clover=coverage.xml
 
       - name: Upload coverage report (optional)
         if: success()
