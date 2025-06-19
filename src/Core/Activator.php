@@ -16,6 +16,7 @@ class Activator
                 'stripe_secret'         => '',
                 'stripe_webhook_secret' => '',
                 'woocommerce_enabled'   => 0,
+                'service_worker_enabled' => 0,
                 'debug_logging'         => 0,
             ]);
         }

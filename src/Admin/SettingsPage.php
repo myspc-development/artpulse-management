@@ -309,6 +309,10 @@ class SettingsPage
             'stripe_webhook_secret' => [
                 'label' => __('Stripe Webhook Secret', 'artpulse'),
                 'desc'  => __('Secret used to verify webhook calls from Stripe.', 'artpulse'),
+            ],
+            'service_worker_enabled' => [
+                'label' => __('Enable Service Worker', 'artpulse'),
+                'desc'  => __('Adds a service worker for basic offline caching.', 'artpulse'),
             ]
         ];
         foreach ($fields as $key => $config) {
@@ -329,7 +333,7 @@ class SettingsPage
     {
         $output = [];
         foreach ($input as $key => $value) {
-            if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging'])) {
+            if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled'])) {
                 $output[$key] = isset($value) ? 1 : 0;
             } else {
                 $output[$key] = sanitize_text_field($value);
@@ -343,7 +347,7 @@ class SettingsPage
         $key     = $args['label_for'];
         $value   = $options[$key] ?? '';
         $desc    = $args['description'] ?? '';
-        if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging'])) {
+        if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled'])) {
             echo '<input type="checkbox" id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" value="1"' . checked(1, $value, false) . ' />';
         } else {
             echo '<input type="text" id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" value="' . esc_attr($value) . '" class="regular-text" />';
