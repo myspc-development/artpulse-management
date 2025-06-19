@@ -48,7 +48,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-suggest
 
       - name: Setup WordPress test suite
-        run: bash ./scripts/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST $WP_VERSION
+        run: bash ./scripts/src/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST $WP_VERSION
 
       - name: Run PHP Lint
         run: find . -type f -name "*.php" -exec php -l {} \;
