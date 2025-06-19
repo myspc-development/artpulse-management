@@ -8,6 +8,8 @@ use WP_Error;
 
 class ProfileLinkRequestManager
 {
+    /** Post type used for storing link requests */
+    public const POST_TYPE = 'ap_link_request';
     public static function register(): void
     {
         add_action('rest_api_init', [self::class, 'register_routes']);
@@ -39,7 +41,7 @@ class ProfileLinkRequestManager
         }
 
         $request_id = wp_insert_post([
-            'post_type'   => 'ap_link_request',
+            'post_type'   => self::POST_TYPE,
             'post_status' => 'pending',
             'post_title'  => "Link Request: User {$user_id} to {$target_id}",
             'post_author' => $user_id,

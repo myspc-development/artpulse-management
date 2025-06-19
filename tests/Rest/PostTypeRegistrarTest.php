@@ -27,6 +27,7 @@ class PostTypeRegistrarTest extends TestCase
             'artpulse_artist',
             'artpulse_artwork',
             'artpulse_org',
+            'ap_link_request',
         ];
 
         Functions\expect('register_post_type')

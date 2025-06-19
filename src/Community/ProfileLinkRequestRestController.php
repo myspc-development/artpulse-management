@@ -107,7 +107,7 @@ class ProfileLinkRequestRestController {
         }
 
         $args = [
-            'post_type'   => 'ap_profile_link_request',
+            'post_type'   => \ArtPulse\Community\ProfileLinkRequestManager::POST_TYPE,
             'post_status' => 'publish',
             'meta_query'  => $meta_query,
             'numberposts' => 200,
