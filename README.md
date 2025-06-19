@@ -45,6 +45,7 @@ Plugins → ArtPulse Management → Activate
 ```bash
 ./setup-environment.sh
 ```
+This project requires **PHP 8.2+** and **Node.js 18+** for development.
 Before running this script, supply your database credentials using the
 environment variables `DB_NAME`, `DB_USER`, `DB_PASSWORD` and
 `DB_HOST`. If any of these are missing, the script falls back to

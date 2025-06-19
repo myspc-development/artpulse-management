@@ -7,6 +7,10 @@
     "start": "wp-scripts start",
     "release": "standard-version"
   },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
+  },
   "devDependencies": {
     "@wordpress/scripts": "^19.2.4",
     "standard-version": "^9.5.0"
