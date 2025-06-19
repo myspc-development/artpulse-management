@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php"
+         colors="true"
+         verbose="true"
+         stopOnFailure="false"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         executionOrder="random"
+         testdox="false">
+
+    <testsuites>
+        <testsuite name="Plugin Test Suite">
+            <directory suffix="Test.php">./tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">./src</directory>
+        </include>
+        <report>
+            <clover outputFile="coverage/clover.xml"/>
+            <html outputDirectory="coverage/html"/>
+            <text showUncoveredFiles="true" showOnlySummary="false"/>
+        </report>
+    </coverage>
+
+    <php>
+        <!-- Path to Composer-installed WP PHPUnit test suite -->
+        <env name="WP_TESTS_DIR" value="vendor/wp-phpunit/wp-phpunit"/>
+        <!-- Path to WP core for tests if needed -->
+        <env name="WP_CORE_DIR" value="/tmp/wordpress"/>
+
+        <!-- Database credentials for test environment -->
+        <env name="DB_NAME" value="wordpress_test"/>
+        <env name="DB_USER" value="root"/>
+        <env name="DB_PASSWORD" value="root"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+    </php>
+</phpunit>

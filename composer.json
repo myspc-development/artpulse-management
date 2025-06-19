@@ -1,0 +1,36 @@
+{
+  "name": "myspc-development/artpulse-management-plugin",
+  "description": "ArtPulse management plugin for WP 6.8/PHP 8.3",
+  "type": "wordpress-plugin",
+  "require": {
+    "php": "^8.3",
+    "stripe/stripe-php": "^17.3",
+    "erusev/parsedown": "^1.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "ArtPulse\\": "src/"
+    }
+  },
+  "require-dev": {
+    "brain/monkey": "^2.6",
+    "phpunit/phpunit": "^9.6",
+    "yoast/phpunit-polyfills": "^4.0",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "phpcompatibility/phpcompatibility-wp": "*",
+    "wp-phpunit/wp-phpunit": "^6.0"
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit",
+    "sniff": "vendor/bin/phpcs --standard=PHPCompatibilityWP --runtime-set testVersion 8.3 ."
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}

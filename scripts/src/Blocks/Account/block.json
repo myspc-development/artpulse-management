@@ -1,0 +1,13 @@
+{
+  "apiVersion": 2,
+  "name": "artpulse/account",
+  "title": "ArtPulse My Membership",
+  "category": "widgets",
+  "icon": "admin-users",
+  "supports": {
+    "html": false
+  },
+  "attributes": {},
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./editor.css"
+}

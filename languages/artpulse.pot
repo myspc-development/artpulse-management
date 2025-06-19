@@ -1,0 +1,339 @@
+# Copyright (C) 2025 craig
+# This file is distributed under the GPL2.
+msgid ""
+msgstr ""
+"Project-Id-Version: ArtPulse Management 1.1.5\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/artpulse\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-06-18T12:53:31+08:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: artpulse\n"
+
+#. Plugin Name of the plugin
+#: artpulse-management.php
+msgid "ArtPulse Management"
+msgstr ""
+
+#. Description of the plugin
+#: artpulse-management.php
+msgid "Management plugin for ArtPulse."
+msgstr ""
+
+#. Author of the plugin
+#: artpulse-management.php
+msgid "craig"
+msgstr ""
+
+#: src/Admin/AdminColumnsArtist.php:19
+msgid "Portrait"
+msgstr ""
+
+#: src/Admin/AdminColumnsArtist.php:20
+#: src/Admin/AdminColumnsOrganisation.php:20
+msgid "Name"
+msgstr ""
+
+#: src/Admin/AdminColumnsArtwork.php:19
+msgid "Image"
+msgstr ""
+
+#: src/Admin/AdminColumnsArtwork.php:20
+msgid "Title"
+msgstr ""
+
+#: src/Admin/AdminColumnsEvent.php:19
+msgid "Banner"
+msgstr ""
+
+#: src/Admin/AdminColumnsEvent.php:20
+msgid "Dates"
+msgstr ""
+
+#: src/Admin/AdminColumnsEvent.php:21
+msgid "Venue"
+msgstr ""
+
+#: src/Admin/AdminColumnsEvent.php:22
+msgid "⭐ Featured"
+msgstr ""
+
+#: src/Admin/AdminColumnsOrganisation.php:19
+msgid "Logo"
+msgstr ""
+
+#: src/Admin/ApprovalManager.php:30
+msgid "Submission Approval"
+msgstr ""
+
+#: src/Admin/ApprovalManager.php:45
+msgid "This submission is already reviewed."
+msgstr ""
+
+#: src/Admin/ApprovalManager.php:55
+msgid "Approve Submission"
+msgstr ""
+
+#: src/Admin/ApprovalManager.php:66
+msgid "Insufficient permissions"
+msgstr ""
+
+#: src/Admin/ApprovalManager.php:70
+msgid "Security check failed"
+msgstr ""
+
+#: src/Admin/ProfileLinkRequestAdmin.php:27
+#: src/Admin/ProfileLinkRequestAdmin.php:28
+msgid "Link Requests"
+msgstr ""
+
+#: src/Admin/ProfileLinkRequestAdmin.php:39
+msgid "User"
+msgstr ""
+
+#: src/Admin/ProfileLinkRequestAdmin.php:40
+msgid "Requested Org/Artist"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:14
+#: src/Core/AdminDashboard.php:15
+#: src/Core/SettingsPage.php:16
+msgid "ArtPulse"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:24
+#: src/Core/AdminDashboard.php:25
+#: src/Core/PostTypeRegistrar.php:23
+msgid "Events"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:31
+#: src/Core/AdminDashboard.php:32
+#: src/Core/PostTypeRegistrar.php:28
+msgid "Artists"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:38
+#: src/Core/AdminDashboard.php:39
+#: src/Core/PostTypeRegistrar.php:33
+msgid "Artworks"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:45
+#: src/Core/AdminDashboard.php:46
+#: src/Core/PostTypeRegistrar.php:38
+msgid "Organizations"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:54
+msgid "ArtPulse Dashboard"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:55
+msgid "Quick links to manage Events, Artists, Artworks, and Organizations."
+msgstr ""
+
+#: src/Core/AdminDashboard.php:57
+msgid "Manage Events"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:58
+msgid "Manage Artists"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:59
+msgid "Manage Artworks"
+msgstr ""
+
+#: src/Core/AdminDashboard.php:60
+msgid "Manage Organizations"
+msgstr ""
+
+#: src/Core/AnalyticsDashboard.php:21
+#: src/Core/AnalyticsDashboard.php:49
+msgid "ArtPulse Analytics"
+msgstr ""
+
+#: src/Core/AnalyticsDashboard.php:22
+msgid "Analytics"
+msgstr ""
+
+#: src/Core/AnalyticsDashboard.php:38
+msgid "Please enable and configure your Analytics Dashboard Embed URL on the ArtPulse Settings page first."
+msgstr ""
+
+#: src/Core/DirectoryManager.php:109
+msgid "Filter by Event Type"
+msgstr ""
+
+#: src/Core/DirectoryManager.php:112
+msgid "Limit"
+msgstr ""
+
+#: src/Core/DirectoryManager.php:114
+msgid "Apply"
+msgstr ""
+
+#: src/Core/DocumentationManager.php:28
+msgid "Admin Help"
+msgstr ""
+
+#: src/Core/DocumentationManager.php:47
+msgid "Member Help"
+msgstr ""
+
+#: src/Core/FrontendMembershipPage.php:32
+msgid "Please log in to view your membership account."
+msgstr ""
+
+#: src/Core/FrontendMembershipPage.php:37
+msgid "My Membership"
+msgstr ""
+
+#: src/Core/FrontendMembershipPage.php:56
+msgid "Never"
+msgstr ""
+
+#: src/Core/MembershipManager.php:37
+msgid "Welcome to ArtPulse – Free Membership"
+msgstr ""
+
+#: src/Core/MembershipManager.php:38
+msgid "Thanks for joining! You now have Free membership."
+msgstr ""
+
+#: src/Core/MembershipManager.php:133
+msgid "Your ArtPulse membership has been cancelled"
+msgstr ""
+
+#: src/Core/MembershipManager.php:134
+msgid "Your subscription has ended or payment failed. You are now on Free membership."
+msgstr ""
+
+#: src/Core/MembershipManager.php:169
+msgid "Your ArtPulse membership has expired"
+msgstr ""
+
+#: src/Core/MembershipManager.php:170
+msgid "Your Pro membership has expired and you have been moved to Free level."
+msgstr ""
+
+#: src/Core/MetaBoxRegistrar.php:31
+msgid "Event Details"
+msgstr ""
+
+#: src/Core/MetaBoxRegistrar.php:56
+msgid "Event Date:"
+msgstr ""
+
+#: src/Core/MetaBoxRegistrar.php:62
+#: templates/salient/content‐artpulse_event.php:44
+msgid "Location:"
+msgstr ""
+
+#: src/Core/PostTypeRegistrar.php:67
+msgid "Event Types"
+msgstr ""
+
+#: src/Core/PostTypeRegistrar.php:79
+msgid "Medium"
+msgstr ""
+
+#: src/Core/SettingsPage.php:15
+#: src/Core/SettingsPage.php:141
+msgid "ArtPulse Settings"
+msgstr ""
+
+#: src/Core/SettingsPage.php:33
+msgid "Membership & Notifications"
+msgstr ""
+
+#: src/Core/UserDashboardManager.php:114
+msgid "Please log in to view your dashboard."
+msgstr ""
+
+#: src/Core/UserDashboardManager.php:118
+msgid "Your Membership"
+msgstr ""
+
+#: src/Core/UserDashboardManager.php:120
+msgid "Your Content"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:43
+msgid "Title*"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:44
+msgid "Title is required"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:47
+msgid "Date*"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:48
+msgid "Date is required"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:51
+msgid "Location*"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:52
+msgid "Location is required"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:55
+msgid "Images (max 5)"
+msgstr ""
+
+#: src/Frontend/SubmissionForms.php:59
+msgid "Submit"
+msgstr ""
+
+#: templates/salient/content-artpulse_artist.php:15
+msgid "Biography:"
+msgstr ""
+
+#: templates/salient/content-artpulse_artist.php:18
+msgid "Organization ID:"
+msgstr ""
+
+#: templates/salient/content-artpulse_artwork.php:16
+msgid "Medium:"
+msgstr ""
+
+#: templates/salient/content-artpulse_artwork.php:19
+msgid "Dimensions:"
+msgstr ""
+
+#: templates/salient/content-artpulse_artwork.php:22
+msgid "Materials:"
+msgstr ""
+
+#: templates/salient/content-artpulse_org.php:15
+msgid "Address:"
+msgstr ""
+
+#: templates/salient/content-artpulse_org.php:18
+msgid "Website:"
+msgstr ""
+
+#: templates/salient/content‐artpulse_event.php:41
+msgid "Date:"
+msgstr ""
+
+#: scripts/src/Blocks/Account/block.json
+msgctxt "block title"
+msgid "ArtPulse My Membership"
+msgstr ""
+
+#: scripts/src/Blocks/Directory/block.json
+msgctxt "block title"
+msgid "ArtPulse Directory"
+msgstr ""

@@ -1,0 +1,118 @@
+/* Container for the filter block */
+.ap-ajax-filter {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Filter label styling */
+.ap-ajax-filter label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: #333;
+}
+
+/* Filter control styling */
+.ap-ajax-filter select,
+.ap-ajax-filter input[type="checkbox"],
+.ap-ajax-filter input[type="radio"] {
+  margin-bottom: 1rem;
+}
+
+/* Buttons inside the filter UI */
+.ap-ajax-filter button {
+  background-color: #0073aa;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.ap-ajax-filter button:hover {
+  background-color: #005177;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .ap-ajax-filter {
+    padding: 0.75rem;
+  }
+}
+
+/* --- New additions for checkbox filters, results, and pagination --- */
+
+/* Container for filter checkboxes */
+.ap-ajax-filter-controls label {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 15px;
+  cursor: pointer;
+  font-weight: 500;
+  user-select: none;
+}
+
+/* Checkbox input */
+.ap-ajax-filter-controls input[type="checkbox"] {
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+/* Results list */
+.ap-ajax-filter-results ul {
+  list-style-type: disc;
+  margin-left: 20px;
+  padding-left: 0;
+  margin-top: 10px;
+}
+
+/* Individual list item */
+.ap-ajax-filter-results li {
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+/* Pagination container */
+.ap-ajax-filter-pagination {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Pagination buttons */
+.ap-ajax-filter-pagination button {
+  background-color: #0073aa;
+  border: none;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.ap-ajax-filter-pagination button:hover,
+.ap-ajax-filter-pagination button:focus {
+  background-color: #005177;
+  outline: none;
+}
+
+/* Disabled buttons style */
+.ap-ajax-filter-pagination button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Loading text */
+.ap-ajax-filter-results p {
+  font-style: italic;
+  color: #555;
+}

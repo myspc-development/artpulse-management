@@ -1,0 +1,24 @@
+{
+  "apiVersion": 2,
+  "name": "artpulse/directory",
+  "title": "ArtPulse Directory",
+  "category": "widgets",
+  "icon": "grid-view",
+  "supports": {
+    "html": false
+  },
+  "attributes": {
+    "type": {
+      "type": "string",
+      "default": "event"
+    },
+    "limit": {
+      "type": "number",
+      "default": 10
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./editor.css",
+  "viewScript": "file:../../assets/js/ap-directory.js",
+  "style": "file:../../assets/css/ap-directory.css"
+}

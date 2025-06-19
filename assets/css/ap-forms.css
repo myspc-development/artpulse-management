@@ -1,0 +1,109 @@
+/*
+Theme Name: ArtPulse Forms
+Description: Styles for ArtPulse plugin forms.
+Version: 1.0.0
+*/
+
+/* General Form Styling */
+.ap-form-container {
+    margin-bottom: 20px;
+}
+
+.ap-form-group {
+    margin-bottom: 15px;
+}
+
+.ap-form-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.ap-form-input,
+.ap-form-textarea,
+.ap-form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; /* Ensures padding and border are included in the element's total width and height */
+    font-size: 16px;
+}
+
+.ap-form-textarea {
+    resize: vertical; /* Allows vertical resizing */
+    min-height: 100px;
+}
+
+.ap-form-select {
+    height: 36px; /* Adjust height to match input */
+}
+
+/* Button Styling */
+.ap-form-button {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.ap-form-button:hover {
+    background-color: #3e8e41;
+}
+
+/* Error and Success Messages */
+.ap-form-error {
+    color: red;
+    margin-top: 5px;
+}
+
+.ap-form-success {
+    color: green;
+    margin-top: 5px;
+}
+
+/* Specific Form Elements (Example - Adjust as needed) */
+.ap-form-input[type="email"] {
+    /* Example: Style email inputs */
+}
+
+.ap-form-input[type="number"] {
+    /* Example: Style number inputs */
+}
+
+/* Responsive Design (Example - Adjust breakpoints as needed) */
+@media (max-width: 768px) {
+    .ap-form-input,
+    .ap-form-textarea,
+    .ap-form-select {
+        font-size: 14px;
+    }
+
+    .ap-form-button {
+        font-size: 14px;
+        padding: 8px 16px;
+    }
+}
+
+/* Custom Styles (Add your specific styles below) */
+
+/* Example: Style a specific form with ID "my-custom-form" */
+#my-custom-form .ap-form-label {
+    color: #333;
+}
+
+#my-custom-form .ap-form-input {
+    border-color: #666;
+}
+
+/* Example: Style a specific class of form elements */
+.ap-form-highlighted {
+    background-color: #f0f0f0;
+}
