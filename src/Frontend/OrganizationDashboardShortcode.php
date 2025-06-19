@@ -22,12 +22,19 @@ class OrganizationDashboardShortcode {
             <button id="ap-add-event-btn">Add New Event</button>
 
             <div id="ap-event-modal" style="display:none">
+                <div class="ap-form-messages" role="status" aria-live="polite"></div>
                 <form id="ap-event-form">
-                    <input type="text" name="ap_event_title" placeholder="Event Title" required>
-                    <input type="date" name="ap_event_date" required>
-                    <input type="text" name="ap_event_location" placeholder="Location" required>
+                    <label for="ap_event_title">Event Title</label>
+                    <input id="ap_event_title" type="text" name="ap_event_title" required>
 
-                    <select name="ap_event_type">
+                    <label for="ap_event_date">Event Date</label>
+                    <input id="ap_event_date" type="date" name="ap_event_date" required>
+
+                    <label for="ap_event_location">Location</label>
+                    <input id="ap_event_location" type="text" name="ap_event_location" required>
+
+                    <label for="ap_event_type">Event Type</label>
+                    <select id="ap_event_type" name="ap_event_type">
                         <?php
                         $terms = get_terms('artpulse_event_type', ['hide_empty' => false]);
                         foreach ($terms as $term) {

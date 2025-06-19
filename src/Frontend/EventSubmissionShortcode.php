@@ -30,37 +30,32 @@ class EventSubmissionShortcode {
 
         ob_start();
         ?>
+        <div class="ap-form-messages" role="status" aria-live="polite"></div>
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
             <?php wp_nonce_field('ap_submit_event', 'ap_event_nonce'); ?>
 
-            <label>Event Title
-                <input type="text" name="event_title" required>
-            </label>
+            <label for="ap_event_title">Event Title</label>
+            <input id="ap_event_title" type="text" name="event_title" required>
 
-            <label>Description
-                <textarea name="event_description" rows="5" required></textarea>
-            </label>
+            <label for="ap_event_description">Description</label>
+            <textarea id="ap_event_description" name="event_description" rows="5" required></textarea>
 
-            <label>Date
-                <input type="date" name="event_date" required>
-            </label>
+            <label for="ap_event_date">Date</label>
+            <input id="ap_event_date" type="date" name="event_date" required>
 
-            <label>Location
-                <input type="text" name="event_location">
-            </label>
+            <label for="ap_event_location">Location</label>
+            <input id="ap_event_location" type="text" name="event_location">
 
-            <label>Organization
-                <select name="event_org" required>
-                    <option value="">Select Organization</option>
-                    <?php foreach ($orgs as $org): ?>
-                        <option value="<?= esc_attr($org->ID) ?>"><?= esc_html($org->post_title) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
+            <label for="ap_event_org">Organization</label>
+            <select id="ap_event_org" name="event_org" required>
+                <option value="">Select Organization</option>
+                <?php foreach ($orgs as $org): ?>
+                    <option value="<?= esc_attr($org->ID) ?>"><?= esc_html($org->post_title) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-            <label>Image
-                <input type="file" name="event_image">
-            </label>
+            <label for="ap_event_image">Image</label>
+            <input id="ap_event_image" type="file" name="event_image">
 
             <button type="submit" name="ap_submit_event">Submit Event</button>
         </form>

@@ -24,23 +24,24 @@ class OrganizationEventForm {
 
         ob_start();
         ?>
+        <div class="ap-form-messages" role="status" aria-live="polite"></div>
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
             <?php wp_nonce_field('submit_event', 'ap_event_nonce'); ?>
 
-            <label>Event Title*</label>
-            <input type="text" name="title" required>
+            <label for="ap_org_event_title">Event Title*</label>
+            <input id="ap_org_event_title" type="text" name="title" required>
 
-            <label>Description*</label>
-            <textarea name="description" required></textarea>
+            <label for="ap_org_event_description">Description*</label>
+            <textarea id="ap_org_event_description" name="description" required></textarea>
 
-            <label>Event Date*</label>
-            <input type="date" name="event_date" required>
+            <label for="ap_org_event_date">Event Date*</label>
+            <input id="ap_org_event_date" type="date" name="event_date" required>
 
-            <label>Location*</label>
-            <input type="text" name="event_location" required>
+            <label for="ap_org_event_location">Location*</label>
+            <input id="ap_org_event_location" type="text" name="event_location" required>
 
-            <label>Event Type</label>
-            <select name="event_type">
+            <label for="ap_org_event_type">Event Type</label>
+            <select id="ap_org_event_type" name="event_type">
                 <option value="">Select Type</option>
                 <?php
                 $terms = get_terms(['taxonomy' => 'artpulse_event_type', 'hide_empty' => false]);
@@ -50,8 +51,8 @@ class OrganizationEventForm {
                 ?>
             </select>
 
-            <label>Event Flyer</label>
-            <input type="file" name="event_flyer">
+            <label for="ap_org_event_flyer">Event Flyer</label>
+            <input id="ap_org_event_flyer" type="file" name="event_flyer">
 
             <button type="submit">Submit Event</button>
         </form>

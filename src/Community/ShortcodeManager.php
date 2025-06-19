@@ -18,8 +18,8 @@ class CommunityShortcodeManager {
         <div id="ap-notifications-widget">
             <h3>Your Notifications</h3>
             <button id="ap-refresh-notifications">🔄 Refresh</button>
-            <ul id="ap-notification-list">
-                <li>Loading...</li>
+            <ul id="ap-notification-list" role="status" aria-live="polite">
+                <li class="ap-loading"><span class="screen-reader-text">Loading...</span><span class="ap-spinner" aria-hidden="true"></span></li>
             </ul>
         </div>
         <?php

@@ -31,6 +31,9 @@ class AdvancedTaxonomyFilterBlock {
 
     public static function render_callback($attributes) {
         // Render fallback content (frontend rendering is handled by JS)
-        return '<div class="artpulse-advanced-taxonomy-filter-block">Loading filtered posts...</div>';
+        return '<div class="artpulse-advanced-taxonomy-filter-block" role="status" aria-live="polite">'
+            . '<span class="screen-reader-text">Loading filtered posts...</span>'
+            . '<span class="ap-spinner" aria-hidden="true"></span>'
+            . '</div>';
     }
 }
