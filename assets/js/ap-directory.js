@@ -29,7 +29,7 @@
 
     // Show spinner during loading
     function showLoading() {
-      results.innerHTML = '<div class="ap-loading">Loading...</div>';
+      results.innerHTML = '<div class="ap-loading"><span class="screen-reader-text">Loading...</span><span class="ap-spinner" aria-hidden="true"></span></div>';
     }
 
     // Core data-loading function

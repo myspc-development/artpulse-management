@@ -56,32 +56,33 @@ class PortfolioBuilder
 
         ob_start();
         ?>
+        <div class="ap-form-messages" role="status" aria-live="polite"></div>
         <form id="ap-portfolio-form">
             <h3>Create or Edit Portfolio Item</h3>
             <input type="hidden" name="post_id" value="" />
-            <p><label>Title<br><input type="text" name="title" required /></label></p>
-            <p><label>Description<br><textarea name="description" rows="3"></textarea></label></p>
-            <p><label>Category<br>
-                <select name="category">
+            <p><label for="ap_portfolio_title">Title</label><br><input id="ap_portfolio_title" type="text" name="title" required /></p>
+            <p><label for="ap_portfolio_description">Description</label><br><textarea id="ap_portfolio_description" name="description" rows="3"></textarea></p>
+            <p><label for="ap_portfolio_category">Category</label><br>
+                <select id="ap_portfolio_category" name="category">
                     <option value="painting">Painting</option>
                     <option value="exhibition">Exhibition</option>
                     <option value="award">Award</option>
                 </select>
-            </label></p>
-            <p><label>Link (optional)<br><input type="url" name="link" /></label></p>
-            <p><label>Visibility<br>
-                <select name="visibility">
+            </p>
+            <p><label for="ap_portfolio_link">Link (optional)</label><br><input id="ap_portfolio_link" type="url" name="link" /></p>
+            <p><label for="ap_portfolio_visibility">Visibility</label><br>
+                <select id="ap_portfolio_visibility" name="visibility">
                     <option value="public">Public</option>
                     <option value="private">Private</option>
                 </select>
-            </label></p>
+            </p>
             <p>
                 <button type="button" id="ap-upload-image">Upload Image</button><br>
                 <img id="ap-preview" style="max-width: 200px; display:none;" />
                 <input type="hidden" name="image" />
             </p>
             <p><button type="submit">Save Portfolio Item</button></p>
-            <p id="ap-portfolio-message" style="color:green;"></p>
+            <p id="ap-portfolio-message" class="ap-form-messages" role="status" aria-live="polite" style="color:green;"></p>
         </form>
         <hr>
 

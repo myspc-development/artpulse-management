@@ -109,7 +109,7 @@ class DirectoryManager {
                 <input type="number" class="ap-filter-limit" value="<?php echo esc_attr($atts['limit']); ?>" />
                 <button class="ap-filter-apply"><?php _e('Apply','artpulse'); ?></button>
             </div>
-            <div class="ap-directory-results"></div>
+            <div class="ap-directory-results" role="status" aria-live="polite"></div>
         </div>
         <?php
         return ob_get_clean();
