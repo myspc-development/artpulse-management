@@ -4,13 +4,11 @@
 node_modules/
 npm-debug.log*
 yarn.lock
-package-lock.json
 
 # ----------------------------------------
 # ✅ PHP / Composer
 # ----------------------------------------
 vendor/
-composer.lock
 
 # ----------------------------------------
 # ✅ Build & Distribution
