@@ -9,6 +9,8 @@ use ArtPulse\Community\NotificationManager;
 
 class ProfileLinkRequestManager
 {
+    /** Post type used for storing link requests */
+    public const POST_TYPE = 'ap_link_request';
     public static function register(): void
     {
         add_action('rest_api_init', [self::class, 'register_routes']);
@@ -39,8 +41,7 @@ class ProfileLinkRequestManager
             return new WP_Error('invalid_target', 'Target post not found.', ['status' => 404]);
         }
 
-        $message    = sanitize_text_field($request['message'] ?? '');
-        $request_id = self::create($user_id, $target_id, $message);
+
 
         return rest_ensure_response([
             'request_id' => $request_id,
