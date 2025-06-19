@@ -43,14 +43,7 @@ Plugins → ArtPulse Management → Activate
 🛠️ Developer Setup
 
 ```bash
-# Install dependencies
-composer install
-npm install # or `npm ci`
-# Build block assets for development
-npm run build
-
-# Set up the testing environment
-./setup-tests.sh
+./setup-environment.sh
 ```
 Before running this script, supply your database credentials using the
 environment variables `DB_NAME`, `DB_USER`, `DB_PASSWORD` and
@@ -58,8 +51,15 @@ environment variables `DB_NAME`, `DB_USER`, `DB_PASSWORD` and
 `wordpress_test`, `root`, `root` and `127.0.0.1`. Alternatively you can
 create a `.env` file with the same keys to override the defaults.
 
-Ensure that `curl` (or `wget`) and `svn` are installed as they are used
-to download WordPress and the official test suite.
+The script installs required system packages (PHP, Node, curl, svn and
+the MySQL client), fetches PHP and Node dependencies, builds the block
+assets and configures the WordPress test environment.
+
+Run the test suite with:
+
+```bash
+vendor/bin/phpunit --testdox
+```
 
 Optional tools:
 
