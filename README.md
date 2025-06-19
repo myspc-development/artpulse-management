@@ -1,106 +1,101 @@
-# ArtPulse Management Plugin
+📦 ArtPulse Management Plugin
+Version: 1.1.5
+Author: Craig
+License: GPL-2.0
+Text Domain: artpulse
 
-**Version:** 1.1.5  
-**Requires:** WordPress 6.8+, PHP 8.3+  
-**Description:**  
-A comprehensive management plugin for ArtPulse, providing membership handling, favorites, notifications, REST API endpoints, directory management, user dashboards, and integration with Stripe for subscriptions.
+🎨 Overview
+ArtPulse Management is a powerful WordPress plugin that enables seamless management of artists, artworks, events, organizations, and user engagement through customizable dashboards and automation tools. Built for modern art platforms and creative collectives.
 
----
+🚀 Features
+🔐 Membership Management — Free, Pro, and Org user roles with capabilities
 
-## Features
+🎭 Custom Post Types — Events, Artists, Artworks, Organizations
 
-- Custom post types: Events, Artists, Artworks, Organizations  
-- REST API endpoints for favorites, notifications, submissions, artists, and more  
-- Membership management with Stripe webhook integration
-- User dashboard with profile editing and content overview
-- Organization dashboard for linked artists, event management, analytics, and billing history
-- Directory filters with shortcodes and REST queries
-- Notification system with read/unread status  
-- Submission forms supporting image attachments and metadata  
-- WooCommerce integration support (optional)  
-- Robust testing suite with PHPUnit and Brain Monkey  
-- CI/CD workflow configured for automated tests and coverage  
+📊 Admin Dashboards — Analytics, Webhooks, and user engagement panels
 
----
+💳 Stripe Integration — Subscription billing and webhook support
 
-## Installation
+🌐 REST API — Extensible endpoints for frontend interaction
 
-1. Upload the `artpulse-management-plugin` folder to your `/wp-content/plugins/` directory.  
-2. Activate the plugin via the WordPress Admin > Plugins page.  
-3. Configure Stripe API keys and webhook secrets in the plugin settings page.  
-4. (Optional) Setup WooCommerce if using e-commerce features.  
+🧩 Gutenberg Blocks — Filterable taxonomies and listing blocks
 
----
+🛠️ Role-based Access — Controls for frontend and backend capabilities
 
-## Usage
+🗃️ User Directory — Filtered views of artist and organization profiles
 
-### Shortcodes
+🧑‍💻 Installation
+Clone or download this repo into your WordPress plugins directory:
 
-- `[ap_directory type="event" limit="10"]` — Display a directory of events (types: event, artist, artwork, org).
-- `[ap_user_dashboard]` — Show the logged-in user’s dashboard with membership and content overview.
-- `[ap_my_follows]` — List items the current user follows. Output is a container populated via JavaScript.
-- `[ap_membership_purchase level="Pro"]` — Render a purchase link to the WooCommerce checkout.
-  - **level**: Membership tier to purchase (default `Pro`).
-  - **class**: Optional CSS class for the link. Output is an `<a>` tag linking to checkout with the level query parameter.
-- Other shortcodes include favorites list, notification display, and submission forms (refer to documentation).
+bash
+Copy
+Edit
+git clone https://github.com/myspc-development/artpulse-management.git
+Navigate into the directory and install dependencies:
 
-### REST API Endpoints
-
-- `POST /artpulse/v1/favorites` — Add a favorite  
-- `DELETE /artpulse/v1/favorites` — Remove a favorite  
-- `GET /artpulse/v1/notifications` — List user notifications  
-- `POST /artpulse/v1/notifications/read` — Mark notification read  
-- `POST /artpulse/v1/stripe-webhook` — Handle Stripe webhook events  
-- And others for submissions, artists, directory filters (see REST API docs)
-
----
-
-## Configuration
-
-- Stripe settings: Set your Stripe secret key and webhook secret in plugin settings.  
-- Membership Levels: Users start with "Free" and can upgrade via Stripe to "Pro".  
-- Daily cron job for membership expiration checks (`ap_daily_expiry_check`) runs automatically.  
-
----
-
-## Development setup
-
-1. Install PHP and JavaScript dependencies:
-
-```bash
+bash
+Copy
+Edit
 composer install
-npm install
-```
+Activate the plugin in WordPress Admin:
+Plugins → ArtPulse Management → Activate
 
-2. Build the plugin assets:
+🛠️ Developer Setup
+bash
+Copy
+Edit
+composer install
+./setup-tests.sh
+Optional tools:
 
-```bash
-npm run build
-```
+phpunit for unit tests
 
-3. Run the test suite:
+phpcs for coding standards (composer run lint)
 
-```bash
-vendor/bin/phpunit --testdox
-```
+🔌 Plugin Structure
+Folder	Purpose
+src/	Core plugin classes
+admin/	Admin-specific logic
+templates/	HTML/PHP template views
+tests/	Unit tests and mocks
+assets/	CSS/JS used across admin/frontend
+languages/	Translations (i18n)
+docs/	Design notes, roadmap, changelog
 
-## Testing
+🔒 Capabilities & Roles
+Role	Key Capabilities
+subscriber	View public profiles
+artist	Submit/manage own artworks
+org	Manage org events/artists
+admin	Full plugin access
 
-### Local Setup
+📈 REST API Highlights
+GET /wp-json/artpulse/v1/submissions
 
-- Install WordPress test suite using the provided `bin/install-wp-tests.sh` script.  
-- Configure database and WP test constants in `wp-tests-config.php`.  
-- Run tests with:  
+POST /wp-json/artpulse/v1/submissions
 
-```bash
-vendor/bin/phpunit --testdox
-```
+GET /wp-json/artpulse/v1/analytics
 
-## Documentation
+Requires wp_rest nonce for authenticated operations.
 
-Admin and member guides should be placed in the `assets/docs/` directory:
+🗺 Roadmap Highlights
+✅ Enhanced analytics widgets
 
-- `assets/docs/Admin_Help.md` – Instructions for site administrators.
-- `assets/docs/Member_Help.md` – Instructions for regular members.
+⏳ Member invoices and payment history
 
-Customize these files to fit your deployment.
+🔜 Public profile directory filtering
+
+🔜 GDPR/data export tools
+
+See docs/ROADMAP.md for full roadmap
+
+📄 License
+GNU General Public License v2.0
+See LICENSE for full text.
+
+🤝 Contributing
+Fork this repo
+
+Create a feature branch: git checkout -b feature/your-feature
+
+Submit a PR with a clear description

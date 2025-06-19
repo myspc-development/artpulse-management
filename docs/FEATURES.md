@@ -1,62 +1,133 @@
-# Features of ArtPulse Management Plugin
+🎨 ArtPulse Management Plugin — Feature Overview
+Empowering artists, organizations, and admins to manage memberships, content, and analytics through a modern WordPress plugin.
 
-## Membership Management
-- Assign Free and Pro membership levels.
-- Automatic membership expiry processing via daily cron.
-- Stripe webhook integration for subscription lifecycle events.
-- User roles and capabilities tailored for membership tiers.
+📊 Role-Based Feature Matrix
+Feature	Admin	Artist	Org	Developer
+Membership Management	✅	✅	✅	⚙️
+Favorites & Follows	✅	✅	✅	✅
+Notifications System	✅	✅	✅	✅
+REST API Access	✅	✅	✅	✅
+Submission Forms	✅	✅	✅	✅
+Custom Post Types (Events, etc)	✅	✅	✅	✅
+Dashboards (User & Org)	✅	✅	✅	⚙️
+Stripe Billing Integration	✅	✅	✅	⚙️
+WooCommerce Checkout Shortcodes	✅	✅	✅	✅
+Directory Listings	✅	✅	✅	✅
+Admin Panels	✅	❌	❌	⚙️
+Testing & CI Support	⚙️	❌	❌	✅
 
-## Favorites System
-- Add and remove favorites via REST API.
-- Store favorites in user meta.
-- Shortcode and JavaScript for frontend favorites interaction.
-- `[ap_my_follows]` shortcode lists posts or users the current member follows. Output is loaded via JavaScript into a container element.
+🔐 Membership Management
+Handles role-based access (Free, Pro, Org)
 
-## Notifications
-- REST API to list, mark read/unread, and delete notifications.
-- Notifications stored in user meta.
-- User dashboard integration for notification display.
+Expiry checks via cron
 
-## Directory Management
-- Directory shortcode with REST API filtering by type, limit, and more.
-- Supports events, artists, artworks, and organizations.
-- Metadata retrieval for each post type.
-- Enqueued scripts and styles for frontend interactivity.
+Stripe webhook syncing
 
-## Submission Forms
-- REST API endpoint to handle submissions for multiple post types.
-- Supports image attachments with validation.
-- Metadata handling for different submission types.
+Shortcode: [ap_membership_account]
 
-## User Dashboard
-- Shortcode to display membership info and user content.
-- REST API endpoints for dashboard data retrieval and profile updates.
-- Enqueued scripts for dynamic dashboard UI.
+📘 Example:
 
-## Organization Dashboard
-- Link artists to your organization profile.
-- Manage events associated with the organization.
-- View audience analytics and insights.
-- Review billing history for subscriptions and upgrades.
+php
+Copy
+Edit
+[ap_membership_account]
+❤️ Favorites & Follows
+REST-based favorite system
 
-## WooCommerce Integration
-- Conditional loading of WooCommerce features.
-- Shortcodes and hooks prepared for e-commerce membership sales.
-- `[ap_membership_purchase level="Pro"]` outputs a link to the WooCommerce checkout.
-  - **level**: Membership tier slug (e.g. `Pro`).
-  - **class**: Optional CSS class for the `<a>` element linking to checkout with the level parameter.
+Stored in user meta
 
-## Testing & CI
-- PHPUnit test suite with Brain Monkey for mocking.
-- Code coverage reporting.
-- GitHub Actions workflow for continuous integration.
+Shortcode: [ap_my_follows]
 
----
+📘 Example:
 
-# Planned Improvements
-- Expanded membership tiers and capabilities.
-- Advanced notification types and push notifications.
-- Enhanced directory filtering and sorting.
-- Bulk favorites management and caching.
-- User activity logs and extended profile editing.
-- Comprehensive API documentation and example snippets.
+php
+Copy
+Edit
+[ap_my_follows]
+🔔 Notifications System
+REST-powered alerts
+
+Supports read/unread/delete
+
+Shortcode: [ap_notifications]
+
+📘 Example:
+
+php
+Copy
+Edit
+[ap_notifications]
+🗃️ Directory Listings
+REST/JS-driven filterable directories
+
+Post types: artist, event, artwork, organization
+
+Shortcode: [ap_directory post_type="artist"]
+
+📘 Example:
+
+php
+Copy
+Edit
+[ap_directory post_type="event" filter="tag" class="grid"]
+📝 Submission Forms
+REST endpoint for new content
+
+Upload support
+
+Shortcode: [ap_submission_form post_type="event"]
+
+📘 Example:
+
+php
+Copy
+Edit
+[ap_submission_form post_type="artwork"]
+👤 User Dashboard
+Membership info + REST widgets
+
+Shortcode: [ap_user_dashboard]
+
+📘 Example:
+
+php
+Copy
+Edit
+[ap_user_dashboard class="dashboard-wrap"]
+🏢 Organization Dashboard
+Org stats, artist links, billing info
+
+Shortcode: [ap_org_dashboard]
+
+📘 Example:
+
+php
+Copy
+Edit
+[ap_org_dashboard]
+💳 WooCommerce Integration
+Stripe checkout integration
+
+Shortcode: [ap_membership_purchase level="Pro"]
+
+📘 Example:
+
+php
+Copy
+Edit
+[ap_membership_purchase level="Pro" class="purchase-btn"]
+🧪 Testing & CI
+PHPUnit coverage via Brain Monkey
+
+GitHub Actions for CI
+
+Linting via phpcs and composer scripts
+
+🔜 Planned Improvements
+Multi-tier pricing
+
+Push notifications
+
+Caching on favorites
+
+Directory export tools
