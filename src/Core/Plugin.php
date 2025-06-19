@@ -201,5 +201,20 @@ class Plugin
             [],
             '1.0.0'
         );
+
+        $opts = get_option( 'artpulse_settings', [] );
+        if ( ! empty( $opts['service_worker_enabled'] ) ) {
+            wp_enqueue_script(
+                'ap-sw-loader',
+                plugins_url( 'assets/js/sw-loader.js', ARTPULSE_PLUGIN_FILE ),
+                [],
+                '1.0.0',
+                true
+            );
+            wp_localize_script( 'ap-sw-loader', 'APServiceWorker', [
+                'url'     => plugins_url( 'assets/js/service-worker.js', ARTPULSE_PLUGIN_FILE ),
+                'enabled' => true,
+            ] );
+        }
     }
 }
