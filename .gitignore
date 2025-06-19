@@ -1,55 +1,11 @@
-# ----------------------------------------
-# ✅ Node.js / NPM
-# ----------------------------------------
-node_modules/
-npm-debug.log*
-yarn.lock
-
-# ----------------------------------------
-# ✅ PHP / Composer
-# ----------------------------------------
-vendor/
-
-# ----------------------------------------
-# ✅ Build & Distribution
-# ----------------------------------------
-build/
-dist/
-*.min.js
-*.min.css
-*.map
-
-# ----------------------------------------
-# ✅ PHP Unit & Cache
-# ----------------------------------------
-.phpunit.result.cache
-
-# ----------------------------------------
-# ✅ System / Editor / Temp Files
-# ----------------------------------------
-.DS_Store
-Thumbs.db
+/vendor/
+/node_modules/
+/composer.lock
+/.idea/
+/.vscode/
 *.log
-*.swp
-*.swo
-*.bak
-*.tmp
-
-# ----------------------------------------
-# ✅ IDEs / Editors
-# ----------------------------------------
-.vscode/
-.idea/
-
-# ----------------------------------------
-# ✅ GitHub Workflows (uncomment if unused)
-# .github/
-
-# ----------------------------------------
-# ✅ Local Environment Files
-# ----------------------------------------
+*.zip
+.DS_Store
 .env
-.env.*
-.env.local
-.env.production
-.env.development
+/tests/
+/phpunit.xml

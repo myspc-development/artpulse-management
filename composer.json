@@ -3,7 +3,7 @@
   "description": "ArtPulse management plugin for WP 6.8/PHP 8.3",
   "type": "wordpress-plugin",
   "require": {
-    "php": "^8.3",
+    "php": ">=8.2 <8.4",
     "stripe/stripe-php": "^17.3",
     "erusev/parsedown": "^1.7"
   },

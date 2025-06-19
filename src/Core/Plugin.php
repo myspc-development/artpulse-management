@@ -60,7 +60,7 @@ class Plugin
         $stored_db_version = get_option( $db_version_option );
         if ( $stored_db_version !== self::VERSION ) {
             \ArtPulse\Community\FavoritesManager::install_favorites_table();
-            \ArtPulse\Community\ProfileLinkRequestManager::install_link_request_table();
+         \ArtPulse\Community\ProfileLinkRequestManager::install_link_request_table();
             \ArtPulse\Community\FollowManager::install_follows_table();
             \ArtPulse\Community\NotificationManager::install_notifications_table();
             update_option( $db_version_option, self::VERSION );
