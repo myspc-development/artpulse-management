@@ -38,6 +38,12 @@ class PostTypeRegistrar
                 'label'           => __('Organizations', 'artpulse'),
                 'rewrite'         => ['slug' => 'organizations'],
             ],
+            'ap_link_request' => [
+                'label'    => __('Link Requests', 'artpulse'),
+                'rewrite'  => ['slug' => 'link-requests'],
+                'supports' => ['title'],
+                'public'   => false,
+            ],
         ];
 
         foreach ($post_types as $post_type => $args) {
