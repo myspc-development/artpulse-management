@@ -8,6 +8,7 @@ class EditEventShortcode {
         add_shortcode('ap_edit_event', [self::class, 'render']);
         add_action('wp_enqueue_scripts', [self::class, 'enqueue_scripts']);
         add_action('wp_ajax_ap_save_event', [self::class, 'handle_ajax']);
+        add_action('wp_ajax_ap_delete_event', [self::class, 'handle_ajax_delete']);
     }
 
     public static function render($atts) {
@@ -121,20 +122,19 @@ class EditEventShortcode {
         wp_send_json_success(['message' => 'Event updated.']);
     }
     
-    add_action('wp_ajax_ap_delete_event', function () {
-    if (!current_user_can('delete_post', $_POST['post_id'])) {
-        wp_send_json_error(['message' => 'Permission denied.']);
+    public static function handle_ajax_delete() {
+        if (!current_user_can('delete_post', $_POST['post_id'])) {
+            wp_send_json_error(['message' => 'Permission denied.']);
+        }
+
+        check_ajax_referer('ap_edit_event_nonce', 'nonce');
+
+        $post_id = intval($_POST['post_id']);
+        if (get_post_type($post_id) !== 'artpulse_event') {
+            wp_send_json_error(['message' => 'Invalid event.']);
+        }
+
+        wp_delete_post($post_id, true);
+        wp_send_json_success(['message' => 'Deleted']);
     }
-
-    check_ajax_referer('ap_edit_event_nonce', 'nonce');
-
-    $post_id = intval($_POST['post_id']);
-    if (get_post_type($post_id) !== 'artpulse_event') {
-        wp_send_json_error(['message' => 'Invalid event.']);
-    }
-
-    wp_delete_post($post_id, true);
-    wp_send_json_success(['message' => 'Deleted']);
-});
-
 }
