@@ -16,7 +16,7 @@ class FilteredListShortcodeBlock {
             'editor_script' => 'artpulse-filtered-list-shortcode-block',
             'render_callback' => [self::class, 'render_callback'],
             'attributes' => [
-                'postType' => ['type' => 'string', 'default' => 'ead_artist'],
+                'postType' => ['type' => 'string', 'default' => 'artpulse_artist'],
                 'taxonomy' => ['type' => 'string', 'default' => 'artist_specialty'],
                 'terms' => ['type' => 'string', 'default' => ''],
                 'postsPerPage' => ['type' => 'number', 'default' => 5],
@@ -33,7 +33,7 @@ class FilteredListShortcodeBlock {
 
     public static function render_callback($attributes) {
         $atts = [
-            'post_type' => $attributes['postType'] ?? 'ead_artist',
+            'post_type' => $attributes['postType'] ?? 'artpulse_artist',
             'taxonomy' => $attributes['taxonomy'] ?? 'artist_specialty',
             'terms' => $attributes['terms'] ?? '',
             'posts_per_page' => $attributes['postsPerPage'] ?? 5,

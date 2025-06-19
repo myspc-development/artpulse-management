@@ -16,7 +16,7 @@ class TaxonomyFilterBlock {
             'editor_script' => 'artpulse-taxonomy-filter-block',
             'render_callback' => [self::class, 'render_callback'],
             'attributes' => [
-                'postType' => ['type' => 'string', 'default' => 'ead_artist'],
+                'postType' => ['type' => 'string', 'default' => 'artpulse_artist'],
                 'taxonomy' => ['type' => 'string', 'default' => 'artist_specialty'],
                 'terms' => ['type' => 'array', 'default' => []],
             ],

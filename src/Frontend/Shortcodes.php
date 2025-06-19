@@ -9,11 +9,11 @@ class Shortcodes {
 
     /**
      * Shortcode to render filtered CPT list by taxonomy terms.
-     * Usage example: [ap_filtered_list post_type="ead_artist" taxonomy="artist_specialty" terms="painting,sculpture" posts_per_page="5"]
+     * Usage example: [ap_filtered_list post_type="artpulse_artist" taxonomy="artist_specialty" terms="painting,sculpture" posts_per_page="5"]
      */
     public static function render_filtered_list($atts) {
         $atts = shortcode_atts([
-            'post_type' => 'ead_artist',
+            'post_type' => 'artpulse_artist',
             'taxonomy' => 'artist_specialty',
             'terms' => '',
             'posts_per_page' => 5,

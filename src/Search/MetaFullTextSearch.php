@@ -6,7 +6,7 @@ class MetaFullTextSearch {
         add_filter('posts_search', [self::class, 'posts_search_meta'], 10, 2);
 
         // REST API filters for meta search on all CPTs
-        foreach (['ead_artist', 'ead_artwork', 'ead_event', 'ead_organization'] as $post_type) {
+        foreach (['artpulse_artist', 'artpulse_artwork', 'artpulse_event', 'artpulse_org'] as $post_type) {
             add_filter("rest_{$post_type}_query", function($args, $request) use ($post_type) {
                 return self::rest_meta_search_filter($args, $request, $post_type);
             }, 10, 2);
@@ -22,7 +22,7 @@ class MetaFullTextSearch {
         }
 
         $post_type = $query->get('post_type');
-        if (!in_array($post_type, ['ead_artist', 'ead_artwork', 'ead_event', 'ead_organization'], true)) {
+        if (!in_array($post_type, ['artpulse_artist', 'artpulse_artwork', 'artpulse_event', 'artpulse_org'], true)) {
             return $search;
         }
 
@@ -77,14 +77,14 @@ class MetaFullTextSearch {
     // Define searchable meta keys per post type
     private static function get_meta_keys_for_post_type(string $post_type): array {
         switch ($post_type) {
-            case 'ead_artist':
+            case 'artpulse_artist':
                 return [
                     'artist_name',
                     'artist_bio',
                     'artist_email',
                     'artist_specialties',
                 ];
-            case 'ead_artwork':
+            case 'artpulse_artwork':
                 return [
                     'artwork_title',
                     'artwork_artist',
@@ -92,14 +92,14 @@ class MetaFullTextSearch {
                     'artwork_description',
                     'artwork_tags',
                 ];
-            case 'ead_event':
+            case 'artpulse_event':
                 return [
                     'venue_name',
                     'event_organizer_name',
                     'event_street_address',
                     'event_city',
                 ];
-            case 'ead_organization':
+            case 'artpulse_org':
                 return [
                     'ead_org_type',
                     'ead_org_description',

@@ -5,14 +5,14 @@ class AdminListColumns
 {
     public static function register()
     {
-        add_filter('manage_ead_artist_posts_columns', [self::class, 'artist_columns']);
-        add_action('manage_ead_artist_posts_custom_column', [self::class, 'render_artist_columns'], 10, 2);
+        add_filter('manage_artpulse_artist_posts_columns', [self::class, 'artist_columns']);
+        add_action('manage_artpulse_artist_posts_custom_column', [self::class, 'render_artist_columns'], 10, 2);
 
-        add_filter('manage_ead_artwork_posts_columns', [self::class, 'artwork_columns']);
-        add_action('manage_ead_artwork_posts_custom_column', [self::class, 'render_artwork_columns'], 10, 2);
+        add_filter('manage_artpulse_artwork_posts_columns', [self::class, 'artwork_columns']);
+        add_action('manage_artpulse_artwork_posts_custom_column', [self::class, 'render_artwork_columns'], 10, 2);
 
-        add_filter('manage_ead_event_posts_columns', [self::class, 'event_columns']);
-        add_action('manage_ead_event_posts_custom_column', [self::class, 'render_event_columns'], 10, 2);
+        add_filter('manage_artpulse_event_posts_columns', [self::class, 'event_columns']);
+        add_action('manage_artpulse_event_posts_custom_column', [self::class, 'render_event_columns'], 10, 2);
     }
 
     // --- Artists ---

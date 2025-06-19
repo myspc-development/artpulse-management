@@ -9,11 +9,11 @@ class RestRelationships
 
     public static function register_rest_fields() {
         $relationship_meta = [
-            '_ap_artist_artworks'     => 'ead_artist',
-            '_ap_event_artworks'      => 'ead_event',
-            '_ap_event_organizations' => 'ead_event',
-            '_ap_artwork_artist'      => 'ead_artwork',
-            '_ap_org_artists'         => 'ead_organization',
+            '_ap_artist_artworks'     => 'artpulse_artist',
+            '_ap_event_artworks'      => 'artpulse_event',
+            '_ap_event_organizations' => 'artpulse_event',
+            '_ap_artwork_artist'      => 'artpulse_artwork',
+            '_ap_org_artists'         => 'artpulse_org',
         ];
 
         foreach ($relationship_meta as $meta_key => $post_type) {

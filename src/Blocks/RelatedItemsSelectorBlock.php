@@ -26,7 +26,7 @@ class RelatedItemsSelectorBlock
         // Example: Register post meta fields with REST API enabled
 
         // Meta for multiple related artworks for artists (array)
-        register_post_meta('ead_artist', '_ap_artist_artworks', [
+        register_post_meta('artpulse_artist', '_ap_artist_artworks', [
             'show_in_rest' => true,
             'single'       => false,
             'type'         => 'array',
@@ -37,7 +37,7 @@ class RelatedItemsSelectorBlock
         ]);
 
         // Meta for single related artist for artwork (integer)
-        register_post_meta('ead_artwork', '_ap_artwork_artist', [
+        register_post_meta('artpulse_artwork', '_ap_artwork_artist', [
             'show_in_rest' => true,
             'single'       => true,
             'type'         => 'integer',
@@ -52,7 +52,7 @@ class RelatedItemsSelectorBlock
             'attributes'    => [
                 'postType' => [
                     'type' => 'string',
-                    'default' => 'ead_artist',
+                    'default' => 'artpulse_artist',
                 ],
                 'metaKey' => [
                     'type' => 'string',
