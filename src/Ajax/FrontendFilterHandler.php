@@ -27,7 +27,7 @@ class FrontendFilterHandler
         }
 
         $args = [
-            'post_type'      => 'ead_artist',  // Adjust post type as needed
+            'post_type'      => 'artpulse_artist',
             'post_status'    => 'publish',
             'posts_per_page' => $per_page,
             'paged'          => $page,

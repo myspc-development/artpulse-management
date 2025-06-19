@@ -7,10 +7,10 @@ class TaxonomyRestFilters
     {
         add_action('rest_api_init', function () {
             $taxonomies = [
-                'ead_artist'       => 'artist_specialty',
-                'ead_artwork'      => 'artwork_style',
-                'ead_event'        => 'event_type',
-                'ead_organization' => 'organization_category',
+                'artpulse_artist'  => 'artist_specialty',
+                'artpulse_artwork' => 'artwork_style',
+                'artpulse_event'   => 'event_type',
+                'artpulse_org'     => 'organization_category',
             ];
 
             foreach ($taxonomies as $post_type => $taxonomy) {

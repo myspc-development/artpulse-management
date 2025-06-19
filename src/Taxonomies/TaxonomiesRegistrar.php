@@ -21,7 +21,7 @@ class TaxonomiesRegistrar {
             'new_item_name' => __('New Specialty Name', 'artpulse-management'),
             'menu_name' => __('Artist Specialties', 'artpulse-management'),
         ];
-        register_taxonomy('artist_specialty', 'ead_artist', [
+        register_taxonomy('artist_specialty', 'artpulse_artist', [
             'hierarchical' => true,
             'labels' => $labels,
             'show_ui' => true,
@@ -43,7 +43,7 @@ class TaxonomiesRegistrar {
             'new_item_name' => __('New Style Name', 'artpulse-management'),
             'menu_name' => __('Artwork Styles', 'artpulse-management'),
         ];
-        register_taxonomy('artwork_style', 'ead_artwork', [
+        register_taxonomy('artwork_style', 'artpulse_artwork', [
             'hierarchical' => true,
             'labels' => $labels,
             'show_ui' => true,
@@ -65,7 +65,7 @@ class TaxonomiesRegistrar {
             'new_item_name' => __('New Event Type Name', 'artpulse-management'),
             'menu_name' => __('Event Types', 'artpulse-management'),
         ];
-        register_taxonomy('event_type', 'ead_event', [
+        register_taxonomy('event_type', 'artpulse_event', [
             'hierarchical' => true,
             'labels' => $labels,
             'show_ui' => true,
@@ -87,7 +87,7 @@ class TaxonomiesRegistrar {
             'new_item_name' => __('New Organization Category Name', 'artpulse-management'),
             'menu_name' => __('Organization Categories', 'artpulse-management'),
         ];
-        register_taxonomy('organization_category', 'ead_organization', [
+        register_taxonomy('organization_category', 'artpulse_org', [
             'hierarchical' => true,
             'labels' => $labels,
             'show_ui' => true,

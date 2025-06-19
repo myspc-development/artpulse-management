@@ -16,7 +16,7 @@ class AdvancedTaxonomyFilterBlock {
             'editor_script' => 'artpulse-advanced-taxonomy-filter-block',
             'render_callback' => [self::class, 'render_callback'],
             'attributes' => [
-                'postType' => ['type' => 'string', 'default' => 'ead_artist'],
+                'postType' => ['type' => 'string', 'default' => 'artpulse_artist'],
                 'taxonomy' => ['type' => 'string', 'default' => 'artist_specialty'],
             ],
         ]);

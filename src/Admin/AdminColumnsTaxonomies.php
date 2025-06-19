@@ -5,26 +5,26 @@ class AdminColumnsTaxonomies {
 
     public static function register() {
         // Artist specialties
-        add_filter('manage_edit-ead_artist_columns', [self::class, 'artist_columns']);
-        add_filter('manage_edit-ead_artist_sortable_columns', [self::class, 'artist_sortable_columns']);
+        add_filter('manage_edit-artpulse_artist_columns', [self::class, 'artist_columns']);
+        add_filter('manage_edit-artpulse_artist_sortable_columns', [self::class, 'artist_sortable_columns']);
 
         // Artwork styles
-        add_filter('manage_edit-ead_artwork_columns', [self::class, 'artwork_columns']);
-        add_filter('manage_edit-ead_artwork_sortable_columns', [self::class, 'artwork_sortable_columns']);
+        add_filter('manage_edit-artpulse_artwork_columns', [self::class, 'artwork_columns']);
+        add_filter('manage_edit-artpulse_artwork_sortable_columns', [self::class, 'artwork_sortable_columns']);
 
         // Event types
-        add_filter('manage_edit-ead_event_columns', [self::class, 'event_columns']);
-        add_filter('manage_edit-ead_event_sortable_columns', [self::class, 'event_sortable_columns']);
+        add_filter('manage_edit-artpulse_event_columns', [self::class, 'event_columns']);
+        add_filter('manage_edit-artpulse_event_sortable_columns', [self::class, 'event_sortable_columns']);
 
         // Organization categories
-        add_filter('manage_edit-ead_organization_columns', [self::class, 'org_columns']);
-        add_filter('manage_edit-ead_organization_sortable_columns', [self::class, 'org_sortable_columns']);
+        add_filter('manage_edit-artpulse_org_columns', [self::class, 'org_columns']);
+        add_filter('manage_edit-artpulse_org_sortable_columns', [self::class, 'org_sortable_columns']);
 
         // Render taxonomy columns
-        add_action('manage_ead_artist_posts_custom_column', [self::class, 'render_artist_columns'], 10, 2);
-        add_action('manage_ead_artwork_posts_custom_column', [self::class, 'render_artwork_columns'], 10, 2);
-        add_action('manage_ead_event_posts_custom_column', [self::class, 'render_event_columns'], 10, 2);
-        add_action('manage_ead_organization_posts_custom_column', [self::class, 'render_org_columns'], 10, 2);
+        add_action('manage_artpulse_artist_posts_custom_column', [self::class, 'render_artist_columns'], 10, 2);
+        add_action('manage_artpulse_artwork_posts_custom_column', [self::class, 'render_artwork_columns'], 10, 2);
+        add_action('manage_artpulse_event_posts_custom_column', [self::class, 'render_event_columns'], 10, 2);
+        add_action('manage_artpulse_org_posts_custom_column', [self::class, 'render_org_columns'], 10, 2);
 
         // Sort query modification
         add_action('pre_get_posts', [self::class, 'taxonomy_sort_order']);
@@ -114,10 +114,10 @@ class AdminColumnsTaxonomies {
 
         $orderby = $query->get('orderby');
         $taxonomies = [
-            'artist_specialty' => 'ead_artist',
-            'artwork_style' => 'ead_artwork',
-            'event_type' => 'ead_event',
-            'organization_category' => 'ead_organization',
+            'artist_specialty' => 'artpulse_artist',
+            'artwork_style'    => 'artpulse_artwork',
+            'event_type'       => 'artpulse_event',
+            'organization_category' => 'artpulse_org',
         ];
 
         if (!isset($taxonomies[$orderby])) {
