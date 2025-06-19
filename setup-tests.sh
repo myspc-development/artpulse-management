@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run this from your plugin root (/www/wwwroot/192.168.88.31/wp-content/plugins/artpulse-management-plugin-main)
+# Run this from your plugin's root directory
 
 set -e
 

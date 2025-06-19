@@ -52,11 +52,14 @@ npm run build
 # Set up the testing environment
 ./setup-tests.sh
 ```
-The script reads database credentials from the environment variables
-`DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_HOST`. If these are not
-set, it defaults to `wordpress_test`, `root`, `root` and `127.0.0.1`
-respectively. You can also create a `.env` file with the same keys to
-override the defaults when running tests.
+Before running this script, supply your database credentials using the
+environment variables `DB_NAME`, `DB_USER`, `DB_PASSWORD` and
+`DB_HOST`. If any of these are missing, the script falls back to
+`wordpress_test`, `root`, `root` and `127.0.0.1`. Alternatively you can
+create a `.env` file with the same keys to override the defaults.
+
+Ensure that `curl` (or `wget`) and `svn` are installed as they are used
+to download WordPress and the official test suite.
 
 Optional tools:
 
