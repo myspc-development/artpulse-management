@@ -108,6 +108,14 @@ class Plugin
         \ArtPulse\Admin\AdminListColumns::register();
         \ArtPulse\Admin\EnqueueAssets::register();
         \ArtPulse\Frontend\Shortcodes::register();
+        \ArtPulse\Frontend\MyEventsShortcode::register();
+        \ArtPulse\Frontend\EventSubmissionShortcode::register();
+        \ArtPulse\Frontend\EditEventShortcode::register();
+        \ArtPulse\Frontend\OrganizationDashboardShortcode::register();
+        \ArtPulse\Frontend\OrganizationEventForm::register();
+        \ArtPulse\Frontend\UserProfileShortcode::register();
+        \ArtPulse\Frontend\ProfileEditShortcode::register();
+        \ArtPulse\Frontend\PortfolioBuilder::register();
         \ArtPulse\Admin\MetaBoxesRelationship::register();
         \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
         \ArtPulse\Admin\ApprovalManager::register();
