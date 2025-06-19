@@ -48,7 +48,7 @@ register_activation_hook(__FILE__, function () {
 });
 
 // ✅ Hook for deactivation
-register_deactivation_hook(__FILE__, [$plugin, 'deactivate']);
+//register_deactivation_hook(__FILE__, [$plugin, 'deactivate']);
 
 // Register REST API routes
 add_action('rest_api_init', function () {
