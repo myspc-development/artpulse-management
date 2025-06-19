@@ -27,25 +27,32 @@ ArtPulse Management is a powerful WordPress plugin that enables seamless managem
 🧑‍💻 Installation
 Clone or download this repo into your WordPress plugins directory:
 
-bash
-Copy
-Edit
+```bash
 git clone https://github.com/myspc-development/artpulse-management.git
-Navigate into the directory and install dependencies:
-
-bash
-Copy
-Edit
+cd artpulse-management
+# Install PHP and Node dependencies
 composer install
+npm install # or `npm ci` for reproducible builds
+# Compile block assets
+npm run build
+```
+
 Activate the plugin in WordPress Admin:
 Plugins → ArtPulse Management → Activate
 
 🛠️ Developer Setup
-bash
-Copy
-Edit
+
+```bash
+# Install dependencies
 composer install
+npm install # or `npm ci`
+# Build block assets for development
+npm run build
+
+# Set up the testing environment
 ./setup-tests.sh
+```
+
 Optional tools:
 
 phpunit for unit tests
