@@ -1,3 +1,4 @@
+<?php
 namespace ArtPulse\Community;
 
 use ArtPulse\Community\NotificationManager;
