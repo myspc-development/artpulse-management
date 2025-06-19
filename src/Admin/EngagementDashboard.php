@@ -12,7 +12,16 @@ class EngagementDashboard
 
     public static function enqueueAssets()
     {
-        wp_enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', [], null, true);
+        if (!defined('ARTPULSE_PLUGIN_FILE')) {
+            return;
+        }
+
+        $path = plugin_dir_path(ARTPULSE_PLUGIN_FILE) . 'assets/vendor/chart.min.js';
+        $url  = plugins_url('assets/vendor/chart.min.js', ARTPULSE_PLUGIN_FILE);
+
+        if (file_exists($path)) {
+            wp_enqueue_script('chart-js', $url, [], filemtime($path), true);
+        }
     }
 
     public static function addMenu()
