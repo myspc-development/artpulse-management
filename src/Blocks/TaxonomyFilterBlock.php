@@ -55,24 +55,25 @@ class TaxonomyFilterBlock {
             ];
         }
 
+        $args['fields']        = 'ids';
+        $args['no_found_rows'] = true;
+
         $query = new \WP_Query($args);
 
-        if (!$query->have_posts()) {
+        if (empty($query->posts)) {
             return '<p>' . __('No posts found.', 'artpulse-management') . '</p>';
         }
 
         ob_start();
         echo '<ul class="artpulse-taxonomy-filter-list">';
-        while ($query->have_posts()) {
-            $query->the_post();
+        foreach ($query->posts as $post_id) {
             printf(
                 '<li><a href="%s">%s</a></li>',
-                esc_url(get_permalink()),
-                esc_html(get_the_title())
+                esc_url(get_permalink($post_id)),
+                esc_html(get_the_title($post_id))
             );
         }
         echo '</ul>';
-        wp_reset_postdata();
 
         return ob_get_clean();
     }
