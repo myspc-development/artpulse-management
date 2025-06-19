@@ -24,7 +24,8 @@ composer install --no-dev --optimize-autoloader
 # 3. Copy plugin files to temp directory
 TMPDIR=$(mktemp -d)
 echo "📂 Copying files to temp dir $TMPDIR"
-rsync -a --exclude 'scripts' --exclude 'tests' --exclude '.git' --exclude 'phpunit.xml.dist' "$PLUGIN_DIR/" "$TMPDIR/"
+# Vendor assets live under assets/vendor and are included by default
+rsync -a --exclude 'scripts' --exclude 'tests' --exclude 'node_modules' --exclude '.git' --exclude 'phpunit.xml.dist' "$PLUGIN_DIR/" "$TMPDIR/"
 
 # 4. Create ZIP archive
 cd "$TMPDIR"

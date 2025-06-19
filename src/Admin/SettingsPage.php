@@ -51,7 +51,11 @@ class SettingsPage
         if (isset($current_screen->id) && $current_screen->id != 'toplevel_page_artpulse-settings') {
             return;
         }
-        wp_enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', [], null, true);
+        $chart_js_path = plugin_dir_path(ARTPULSE_PLUGIN_FILE) . 'assets/vendor/chart.min.js';
+        $chart_js_url  = plugins_url('assets/vendor/chart.min.js', ARTPULSE_PLUGIN_FILE);
+        if (file_exists($chart_js_path)) {
+            wp_enqueue_script('chart-js', $chart_js_url, [], filemtime($chart_js_path), true);
+        }
         wp_enqueue_script('ap-admin-dashboard', plugins_url('/assets/js/ap-admin-dashboard.js', ARTPULSE_PLUGIN_FILE), ['chart-js'], '1.0', true);
         $signup_data = self::getMonthlySignupsByLevel();
         wp_localize_script('ap-admin-dashboard', 'APAdminStats', $signup_data);

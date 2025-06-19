@@ -219,9 +219,18 @@ class MetaBoxesRelationship
             return;
         }
 
-        // Enqueue Select2
-        wp_enqueue_style('select2-css', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css', [], '4.1.0-rc.0');
-        wp_enqueue_script('select2-js', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', ['jquery'], '4.1.0-rc.0', true);
+        // Enqueue Select2 locally
+        $select2_css_path = plugin_dir_path(ARTPULSE_PLUGIN_FILE) . 'assets/vendor/select2.min.css';
+        $select2_css_url  = plugins_url('assets/vendor/select2.min.css', ARTPULSE_PLUGIN_FILE);
+        $select2_js_path  = plugin_dir_path(ARTPULSE_PLUGIN_FILE) . 'assets/vendor/select2.min.js';
+        $select2_js_url   = plugins_url('assets/vendor/select2.min.js', ARTPULSE_PLUGIN_FILE);
+
+        if (file_exists($select2_css_path)) {
+            wp_enqueue_style('select2-css', $select2_css_url, [], filemtime($select2_css_path));
+        }
+        if (file_exists($select2_js_path)) {
+            wp_enqueue_script('select2-js', $select2_js_url, ['jquery'], filemtime($select2_js_path), true);
+        }
 
         // Enqueue your custom admin script for relationship boxes
         // Adjust the path to your admin-relationship.js file
