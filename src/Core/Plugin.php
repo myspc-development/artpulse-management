@@ -72,6 +72,7 @@ class Plugin
 
         // Setup roles and capabilities
         require_once ARTPULSE_PLUGIN_DIR . 'src/Core/RoleSetup.php';
+        \ArtPulse\Core\RoleSetup::install();
 
         // Schedule daily expiration check
         if ( ! wp_next_scheduled( 'ap_daily_expiry_check' ) ) {
