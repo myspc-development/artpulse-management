@@ -14,12 +14,6 @@ class RestRoutes
                 'permission_callback' => '__return_true',
             ]);
 
-            register_rest_route('artpulse/v1', '/artists', [
-                'methods'             => 'GET',
-                'callback'            => [self::class, 'get_artists'],
-                'permission_callback' => '__return_true',
-            ]);
-
             register_rest_route('artpulse/v1', '/artworks', [
                 'methods'             => 'GET',
                 'callback'            => [self::class, 'get_artworks'],

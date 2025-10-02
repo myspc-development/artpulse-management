@@ -122,6 +122,7 @@ class Plugin
         \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
         \ArtPulse\Admin\ApprovalManager::register();
         \ArtPulse\Rest\RestRoutes::register();
+        \ArtPulse\Rest\ArtistRestController::register();
 
         // Admin meta box registrations
         \ArtPulse\Admin\MetaBoxesArtist::register();
