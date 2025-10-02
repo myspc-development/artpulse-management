@@ -8,6 +8,9 @@
 .DS_Store
 .env
 /tests/
+!/tests/
+!/tests/e2e/
+!/tests/e2e/**
 /phpunit.xml
 wordpress/
 release/
