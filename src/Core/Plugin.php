@@ -36,6 +36,7 @@ class Plugin
         // Register core modules and front-end submission forms
         add_action( 'init',               [ $this, 'register_core_modules' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
+        add_action( 'init',               [ \ArtPulse\Core\RoleDashboards::class, 'register' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
 
         // REST API endpoints
@@ -97,7 +98,6 @@ class Plugin
         \ArtPulse\Core\MembershipManager::register();
         \ArtPulse\Core\AccessControlManager::register();
         \ArtPulse\Core\DirectoryManager::register();
-        \ArtPulse\Core\UserDashboardManager::register();
         \ArtPulse\Core\AnalyticsManager::register();
         \ArtPulse\Core\AnalyticsDashboard::register();
         \ArtPulse\Core\FrontendMembershipPage::register();
