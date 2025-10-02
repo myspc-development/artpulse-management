@@ -50,10 +50,32 @@ class RoleDashboards
     {
         $version = defined('ARTPULSE_VERSION') ? ARTPULSE_VERSION : '1.0.0';
 
+        if (!wp_script_is('ap-social-js', 'enqueued')) {
+            wp_enqueue_script(
+                'ap-social-js',
+                plugins_url('assets/js/ap-social.js', dirname(__DIR__, 2)),
+                [],
+                $version,
+                true
+            );
+            wp_localize_script(
+                'ap-social-js',
+                'APSocial',
+                [
+                    'root'     => esc_url_raw($api_root),
+                    'nonce'    => $api_nonce,
+                    'messages' => [
+                        'favoriteError' => __('Unable to update favorite. Please try again.', 'artpulse'),
+                        'followError'   => __('Unable to update follow. Please try again.', 'artpulse'),
+                    ],
+                ]
+            );
+        }
+
         wp_enqueue_script(
             'ap-dashboards-js',
             plugins_url('assets/js/ap-dashboards.js', dirname(__DIR__, 2)),
-            ['wp-api-fetch'],
+            ['wp-api-fetch', 'ap-social-js'],
             $version,
             true
         );
@@ -101,13 +123,17 @@ class RoleDashboards
             ]
         );
 
-        if (wp_script_is('ap-favorites-js', 'enqueued')) {
+        if (wp_script_is('ap-social-js', 'enqueued')) {
             wp_localize_script(
-                'ap-favorites-js',
-                'ArtPulseApi',
+                'ap-social-js',
+                'APSocial',
                 [
-                    'root'  => $api_root,
-                    'nonce' => $api_nonce,
+                    'root'     => $api_root,
+                    'nonce'    => $api_nonce,
+                    'messages' => [
+                        'favoriteError' => __('Unable to update favorite. Please try again.', 'artpulse'),
+                        'followError'   => __('Unable to update follow. Please try again.', 'artpulse'),
+                    ],
                 ]
             );
         }

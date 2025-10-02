@@ -268,9 +268,14 @@
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'ap-favorite-btn active';
-    btn.dataset.objectId = item.id;
-    btn.dataset.objectType = item.object_type;
+    btn.className = 'ap-favorite-btn is-active';
+    btn.dataset.apFav = '1';
+    btn.dataset.apObjectId = item.id;
+    btn.dataset.apObjectType = item.object_type;
+    btn.dataset.apActive = '1';
+    btn.dataset.labelOn = strings.unfavorite || 'Unfavorite';
+    btn.dataset.labelOff = strings.favorite || 'Favorite';
+    btn.setAttribute('aria-pressed', 'true');
     btn.textContent = strings.unfavorite || 'Unfavorite';
     return btn;
   }
@@ -280,35 +285,47 @@
       return null;
     }
 
+    const isFollowing = !!item.following;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'ap-follow-btn';
-    btn.dataset.postId = item.id;
-    btn.dataset.postType = item.post_type;
-    btn.dataset.following = item.following ? '1' : '0';
-    btn.textContent = item.following ? (strings.unfollow || 'Unfollow') : (strings.follow || 'Follow');
+    btn.dataset.apFollow = '1';
+    btn.dataset.apObjectId = item.id;
+    btn.dataset.apObjectType = item.post_type;
+    btn.dataset.apActive = isFollowing ? '1' : '0';
+    btn.dataset.labelOn = strings.unfollow || 'Unfollow';
+    btn.dataset.labelOff = strings.follow || 'Follow';
+    btn.setAttribute('aria-pressed', isFollowing ? 'true' : 'false');
+    btn.classList.toggle('is-following', isFollowing);
+    btn.textContent = isFollowing ? (strings.unfollow || 'Unfollow') : (strings.follow || 'Follow');
     return btn;
   }
 
   function hydrateFavoriteButtons(scope) {
-    scope.querySelectorAll('.ap-favorite-btn').forEach((btn) => {
+    if (bindSocialButtons(scope)) {
+      return;
+    }
+
+    scope.querySelectorAll('[data-ap-fav]').forEach((btn) => {
       if (btn.dataset.apFavoriteBound === '1') {
         return;
       }
       btn.dataset.apFavoriteBound = '1';
       btn.addEventListener('click', (event) => {
         event.preventDefault();
-        const objectId = btn.dataset.objectId;
-        const objectType = btn.dataset.objectType;
+        const objectId = btn.dataset.apObjectId;
+        const objectType = btn.dataset.apObjectType;
         if (!objectId || !objectType) {
           return;
         }
-        const isActive = btn.classList.contains('active');
+        const isActive = btn.dataset.apActive === '1' || btn.classList.contains('is-active');
         toggleFavorite(objectId, objectType, isActive)
           .then((response) => {
-            if (response && response.success) {
-              btn.classList.toggle('active');
-              const nowActive = btn.classList.contains('active');
+            if (response && response.status) {
+              const nowActive = response.status === 'favorited';
+              btn.dataset.apActive = nowActive ? '1' : '0';
+              btn.classList.toggle('is-active', nowActive);
+              btn.classList.toggle('active', nowActive);
               btn.textContent = nowActive ? (strings.unfavorite || 'Unfavorite') : (strings.favorite || 'Favorite');
             }
           })
@@ -318,31 +335,44 @@
   }
 
   function bindFollowButtons(scope) {
-    scope.querySelectorAll('.ap-follow-btn').forEach((btn) => {
+    if (bindSocialButtons(scope)) {
+      return;
+    }
+
+    scope.querySelectorAll('[data-ap-follow]').forEach((btn) => {
       if (btn.dataset.apFollowBound === '1') {
         return;
       }
       btn.dataset.apFollowBound = '1';
       btn.addEventListener('click', (event) => {
         event.preventDefault();
-        const postId = btn.dataset.postId;
-        const postType = btn.dataset.postType;
+        const postId = btn.dataset.apObjectId;
+        const postType = btn.dataset.apObjectType;
         if (!postId || !postType) {
           return;
         }
-        const following = btn.dataset.following === '1';
+        const following = btn.dataset.apActive === '1';
         toggleFollow(postId, postType, following)
           .then((response) => {
             if (!response) {
               return;
             }
             const isFollowing = response.status === 'following';
-            btn.dataset.following = isFollowing ? '1' : '0';
+            btn.dataset.apActive = isFollowing ? '1' : '0';
+            btn.classList.toggle('is-following', isFollowing);
             btn.textContent = isFollowing ? (strings.unfollow || 'Unfollow') : (strings.follow || 'Follow');
           })
           .catch(() => {});
       });
     });
+  }
+
+  function bindSocialButtons(scope) {
+    if (window.APSocial && typeof window.APSocial.bind === 'function') {
+      window.APSocial.bind(scope);
+      return true;
+    }
+    return false;
   }
 
   function toggleFavorite(objectId, objectType, isActive) {
@@ -352,7 +382,9 @@
       action: isActive ? 'remove' : 'add',
     };
 
-    return fetch(joinPath(apiRoot(), 'artpulse/v1/favorite'), {
+    const path = isActive ? 'artpulse/v1/favorites/remove' : 'artpulse/v1/favorites/add';
+
+    return fetch(joinPath(apiRoot(), path), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -371,11 +403,11 @@
 
     const method = isFollowing ? 'DELETE' : 'POST';
 
-    return fetch(joinPath(config.root, 'artpulse/v1/follows'), {
+    return fetch(joinPath(apiRoot(), 'artpulse/v1/follows'), {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'X-WP-Nonce': config.nonce,
+        'X-WP-Nonce': apiNonce(),
       },
       credentials: 'same-origin',
       body: JSON.stringify(payload),
@@ -429,10 +461,16 @@
   }
 
   function apiRoot() {
+    if (window.APSocial && window.APSocial.root) {
+      return window.APSocial.root;
+    }
     return (window.ArtPulseApi && ArtPulseApi.root) || config.root;
   }
 
   function apiNonce() {
+    if (window.APSocial && window.APSocial.nonce) {
+      return window.APSocial.nonce;
+    }
     return (window.ArtPulseApi && ArtPulseApi.nonce) || config.nonce;
   }
 })();

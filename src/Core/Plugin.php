@@ -43,6 +43,7 @@ class Plugin
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
 
         // REST API endpoints
+        add_action( 'rest_api_init', [ \ArtPulse\Community\FavoritesRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
     }
@@ -162,11 +163,23 @@ class Plugin
             true
         );
         wp_enqueue_script(
-            'ap-favorites-js',
-            plugins_url( 'assets/js/ap-favorites.js', ARTPULSE_PLUGIN_FILE ),
+            'ap-social-js',
+            plugins_url( 'assets/js/ap-social.js', ARTPULSE_PLUGIN_FILE ),
             [],
             '1.0.0',
             true
+        );
+        wp_localize_script(
+            'ap-social-js',
+            'APSocial',
+            [
+                'root'     => esc_url_raw( rest_url() ),
+                'nonce'    => wp_create_nonce( 'wp_rest' ),
+                'messages' => [
+                    'favoriteError' => __( 'Unable to update favorite. Please try again.', 'artpulse' ),
+                    'followError'   => __( 'Unable to update follow. Please try again.', 'artpulse' ),
+                ],
+            ]
         );
         wp_enqueue_script(
             'ap-notifications-js',
@@ -192,14 +205,14 @@ class Plugin
             true
         );
         wp_localize_script(
-    'ap-submission-form-js',
-    'APSubmission',
-    [
-        'endpoint'      => esc_url_raw( rest_url( 'artpulse/v1/submissions' ) ),
-        'mediaEndpoint' => esc_url_raw( rest_url( 'wp/v2/media' ) ),
-        'nonce'         => wp_create_nonce( 'wp_rest' ),
-    ]
-);
+            'ap-submission-form-js',
+            'APSubmission',
+            [
+                'endpoint'      => esc_url_raw( rest_url( 'artpulse/v1/submissions' ) ),
+                'mediaEndpoint' => esc_url_raw( rest_url( 'wp/v2/media' ) ),
+                'nonce'         => wp_create_nonce( 'wp_rest' ),
+            ]
+        );
 
 
         wp_enqueue_style(
