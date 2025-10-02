@@ -231,7 +231,7 @@ msgid "Event Date:"
 msgstr ""
 
 #: src/Core/MetaBoxRegistrar.php:62
-#: templates/salient/content‐artpulse_event.php:44
+#: templates/salient/content-artpulse_event.php:44
 msgid "Location:"
 msgstr ""
 
@@ -324,7 +324,7 @@ msgstr ""
 msgid "Website:"
 msgstr ""
 
-#: templates/salient/content‐artpulse_event.php:41
+#: templates/salient/content-artpulse_event.php:41
 msgid "Date:"
 msgstr ""
 
