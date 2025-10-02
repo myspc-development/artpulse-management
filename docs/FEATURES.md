@@ -77,6 +77,10 @@ Upload support
 
 Shortcode: [ap_submission_form post_type="event"]
 
+Event submission:
+
+Shortcodes: [ap_submit_event], [ap_org_submit_event]
+
 📘 Example:
 
 php

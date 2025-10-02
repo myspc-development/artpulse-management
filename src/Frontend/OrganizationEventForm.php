@@ -5,7 +5,16 @@ namespace ArtPulse\Frontend;
 class OrganizationEventForm {
 
     public static function register() {
-        add_shortcode('ap_submit_event', [self::class, 'render']);
+        add_shortcode('ap_org_submit_event', [self::class, 'render']);
+
+        // Ensure the generic event submission shortcode continues to render the
+        // shared public form when this class is loaded after
+        // EventSubmissionShortcode. Without this guard the organization form
+        // would override the shared shortcode registration, hiding the
+        // organization selector and WooCommerce style notices.
+        if (!shortcode_exists('ap_submit_event')) {
+            add_shortcode('ap_submit_event', ['\\ArtPulse\\Frontend\\EventSubmissionShortcode', 'render']);
+        }
     }
 
     public static function render() {
