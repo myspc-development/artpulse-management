@@ -47,5 +47,3 @@ class AdminColumnsArtist
         return $columns;
     }
 }
-
-AdminColumnsArtist::register();
