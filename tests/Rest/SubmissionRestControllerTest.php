@@ -20,10 +20,12 @@ class SubmissionRestControllerTest extends WP_UnitTestCase
     {
         $request = new WP_REST_Request('POST', '/artpulse/v1/submissions');
         $request->set_body_params([
-            'post_type'      => 'artpulse_event',
-            'title'          => 'Sample Event',
-            'event_date'     => '2025-06-30',
-            'event_location' => 'Virtual'
+            'post_type'          => 'artpulse_event',
+            'title'              => 'Sample Event',
+            'content'            => 'Event description',
+            'event_date'         => '2025-06-30',
+            'event_location'     => 'Virtual',
+            'event_organization' => 42,
         ]);
 
         $response = rest_do_request($request);
@@ -33,8 +35,58 @@ class SubmissionRestControllerTest extends WP_UnitTestCase
         $this->assertEquals('Sample Event', $data['title']);
         $this->assertEquals('artpulse_event', $data['type']);
 
+        $post = get_post($data['id']);
+        $this->assertStringContainsString('Event description', $post->post_content);
+
         $meta_date = get_post_meta($data['id'], '_ap_event_date', true);
         $this->assertEquals('2025-06-30', $meta_date);
+
+        $meta_org = (int) get_post_meta($data['id'], '_ap_event_organization', true);
+        $this->assertEquals(42, $meta_org);
+    }
+
+    public function test_artwork_submission_saves_meta()
+    {
+        $request = new WP_REST_Request('POST', '/artpulse/v1/submissions');
+        $request->set_body_params([
+            'post_type'           => 'artpulse_artwork',
+            'title'               => 'Evening Sculpture',
+            'content'             => 'Stone sculpture description',
+            'artwork_medium'      => 'Stone',
+            'artwork_dimensions'  => '12x12',
+            'artwork_materials'   => 'Granite',
+        ]);
+
+        $response = rest_do_request($request);
+        $data = $response->get_data();
+
+        $this->assertSame(200, $response->get_status());
+        $this->assertEquals('artpulse_artwork', $data['type']);
+
+        $this->assertEquals('Stone', get_post_meta($data['id'], '_ap_artwork_medium', true));
+        $this->assertEquals('12x12', get_post_meta($data['id'], '_ap_artwork_dimensions', true));
+        $this->assertEquals('Granite', get_post_meta($data['id'], '_ap_artwork_materials', true));
+    }
+
+    public function test_organization_submission_saves_contact_details()
+    {
+        $request = new WP_REST_Request('POST', '/artpulse/v1/submissions');
+        $request->set_body_params([
+            'post_type'    => 'artpulse_org',
+            'title'        => 'ArtPulse Collective',
+            'content'      => 'Community arts organization.',
+            'org_website'  => 'https://example.org',
+            'org_email'    => 'info@example.org',
+        ]);
+
+        $response = rest_do_request($request);
+        $data = $response->get_data();
+
+        $this->assertSame(200, $response->get_status());
+        $this->assertEquals('artpulse_org', $data['type']);
+
+        $this->assertEquals('https://example.org', get_post_meta($data['id'], '_ap_org_website', true));
+        $this->assertEquals('info@example.org', get_post_meta($data['id'], '_ap_org_email', true));
     }
 
     public function test_invalid_post_type_rejected()

@@ -2,6 +2,9 @@
 
 namespace ArtPulse\Frontend;
 
+use ArtPulse\Rest\SubmissionRestController;
+use WP_REST_Request;
+
 class EventSubmissionShortcode {
 
     /**
@@ -27,53 +30,19 @@ class EventSubmissionShortcode {
             return '<p>You must be logged in to submit an event.</p>';
         }
 
-        $user_id = get_current_user_id();
+        ob_start();
 
-        $orgs = get_posts([
-            'post_type'   => 'artpulse_org',
-            'author'      => $user_id,
-            'numberposts' => -1,
+        echo SubmissionForms::render_form([
+            'post_type'     => 'artpulse_event',
+            'include_nonce' => true,
+            'nonce_action'  => 'ap_submit_event',
+            'nonce_field'   => 'ap_event_nonce',
+            'submit_label'  => __('Submit Event', 'artpulse'),
+            'submit_name'   => 'ap_submit_event',
+            'extra_classes' => 'ap-event-form',
+            'notices'       => self::get_fallback_notices(),
         ]);
 
-        ob_start();
-        ?>
-        <?php $notices = self::get_fallback_notices(); ?>
-        <div class="ap-form-messages" role="status" aria-live="polite">
-            <?php foreach ($notices as $notice): ?>
-                <div class="ap-notice ap-notice-<?= esc_attr($notice['type']); ?>">
-                    <?= esc_html($notice['message']); ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-        <form method="post" enctype="multipart/form-data" class="ap-event-form">
-            <?php wp_nonce_field('ap_submit_event', 'ap_event_nonce'); ?>
-
-            <label for="ap_event_title">Event Title</label>
-            <input id="ap_event_title" type="text" name="event_title" required>
-
-            <label for="ap_event_description">Description</label>
-            <textarea id="ap_event_description" name="event_description" rows="5" required></textarea>
-
-            <label for="ap_event_date">Date</label>
-            <input id="ap_event_date" type="date" name="event_date" required>
-
-            <label for="ap_event_location">Location</label>
-            <input id="ap_event_location" type="text" name="event_location">
-
-            <label for="ap_event_org">Organization</label>
-            <select id="ap_event_org" name="event_org" required>
-                <option value="">Select Organization</option>
-                <?php foreach ($orgs as $org): ?>
-                    <option value="<?= esc_attr($org->ID) ?>"><?= esc_html($org->post_title) ?></option>
-                <?php endforeach; ?>
-            </select>
-
-            <label for="ap_event_image">Image</label>
-            <input id="ap_event_image" type="file" name="event_image">
-
-            <button type="submit" name="ap_submit_event">Submit Event</button>
-        </form>
-        <?php
         return ob_get_clean();
     }
 
@@ -88,86 +57,61 @@ class EventSubmissionShortcode {
             return;
         }
 
-        $user_id = get_current_user_id();
+        $payload = [
+            'post_type'          => 'artpulse_event',
+            'title'              => sanitize_text_field($_POST['title'] ?? ''),
+            'content'            => wp_kses_post($_POST['content'] ?? ''),
+            'event_date'         => sanitize_text_field($_POST['event_date'] ?? ''),
+            'event_location'     => sanitize_text_field($_POST['event_location'] ?? ''),
+            'event_organization' => absint($_POST['event_organization'] ?? 0),
+        ];
 
-        // Validate event data
-        $event_title = sanitize_text_field($_POST['event_title']);
-        $event_description = wp_kses_post($_POST['event_description']);
-        $event_date = sanitize_text_field($_POST['event_date']);
-        $event_location = sanitize_text_field($_POST['event_location']);
-        $event_org = intval($_POST['event_org']);
-
-        if (empty($event_title)) {
-            self::add_notice('Please enter an event title.', 'error'); // Or use your notification system
-            return; // Stop processing
-        }
-
-        if (empty($event_description)) {
-            self::add_notice('Please enter an event description.', 'error');
+        if (empty($payload['title'])) {
+            self::add_notice(__('Please enter an event title.', 'artpulse'), 'error');
             return;
         }
 
-        if (empty($event_date)) {
-            self::add_notice('Please enter an event date.', 'error');
-            return;
-        }
-          // Validate the date format
-        if (!preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $event_date)) {
-            self::add_notice('Please enter a valid date in YYYY-MM-DD format.', 'error');
+        if (empty($payload['content'])) {
+            self::add_notice(__('Please enter an event description.', 'artpulse'), 'error');
             return;
         }
 
-        if ($event_org <= 0) {
-            self::add_notice('Please select an organization.', 'error');
+        if (empty($payload['event_date'])) {
+            self::add_notice(__('Please enter an event date.', 'artpulse'), 'error');
             return;
         }
 
-        $post_id = wp_insert_post([
-            'post_type'   => 'artpulse_event',
-            'post_status' => 'pending',
-            'post_title'  => $event_title,
-            'post_content'=> $event_description,
-            'post_author' => $user_id,
-        ]);
-
-        if (is_wp_error($post_id)) {
-            error_log('Error creating event post: ' . $post_id->get_error_message());
-            self::add_notice('Error submitting event. Please try again later.', 'error');
+        if (empty($payload['event_location'])) {
+            self::add_notice(__('Please enter an event location.', 'artpulse'), 'error');
             return;
         }
 
-        update_post_meta($post_id, '_ap_event_date', $event_date);
-        update_post_meta($post_id, '_ap_event_location', $event_location);
-        update_post_meta($post_id, '_ap_event_organization', $event_org);
-
-        // Handle image upload
-        if (!empty($_FILES['event_image']['name'])) {
-            if ( ! function_exists( 'media_handle_upload' ) ) {
-                require_once ABSPATH . 'wp-admin/includes/image.php';
-                require_once ABSPATH . 'wp-admin/includes/file.php';
-                require_once ABSPATH . 'wp-admin/includes/media.php';
-            }
-
-            $attachment_id = media_handle_upload('event_image', $post_id);
-
-            if (is_wp_error($attachment_id)) {
-                error_log('Error uploading image: ' . $attachment_id->get_error_message());
-                self::add_notice('Error uploading image. Please try again.', 'error');
-            } else {
-                set_post_thumbnail($post_id, $attachment_id);
-            }
+        if (!preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/', $payload['event_date'])) {
+            self::add_notice(__('Please enter a valid date in YYYY-MM-DD format.', 'artpulse'), 'error');
+            return;
         }
 
-        // Success message and redirect
-        self::add_notice('Event submitted successfully! It is awaiting review.', 'success');
+        if ($payload['event_organization'] <= 0) {
+            self::add_notice(__('Please select an organization.', 'artpulse'), 'error');
+            return;
+        }
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/submissions');
+        $request->set_body_params(array_filter($payload, static fn($value) => $value !== '' && $value !== null));
+
+        $response = SubmissionRestController::handle_submission($request);
+
+        if (is_wp_error($response)) {
+            self::add_notice($response->get_error_message(), 'error');
+            return;
+        }
+
+        self::add_notice(__('Event submitted successfully! It is awaiting review.', 'artpulse'), 'success');
 
         if (function_exists('wc_add_notice')) {
-            wp_safe_redirect(home_url('/thank-you-page')); // Replace with your desired URL
+            wp_safe_redirect(home_url('/thank-you-page'));
             exit;
         }
-
-        // Without WooCommerce, allow the request to continue so the fallback notices render.
-        return;
     }
 
     /**
