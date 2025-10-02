@@ -116,6 +116,7 @@ class Plugin
         \ArtPulse\Frontend\Shortcodes::register();
         \ArtPulse\Frontend\MyEventsShortcode::register();
         \ArtPulse\Frontend\EventSubmissionShortcode::register();
+        \ArtPulse\Frontend\OrganizationRegistrationShortcode::register();
         \ArtPulse\Frontend\EditEventShortcode::register();
         \ArtPulse\Frontend\OrganizationDashboardShortcode::register();
         \ArtPulse\Frontend\OrganizationEventForm::register();
