@@ -1,0 +1,50 @@
+name: Community E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Run community E2E tests
+        run: |
+          node - <<'NODE'
+          const { execSync } = require('node:child_process');
+
+          const run = (command) => {
+            console.log(`$ ${command}`);
+            execSync(command, { stdio: 'inherit' });
+          };
+
+          try {
+            run('npx wp-env start');
+            run('npm run test:e2e:community');
+          } finally {
+            run('npx wp-env stop');
+          }
+          NODE

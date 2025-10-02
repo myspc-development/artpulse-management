@@ -6,13 +6,15 @@
     "build": "wp-scripts build",
     "start": "wp-scripts start",
     "release": "standard-version",
-    "i18n:pot": "./vendor/bin/wp i18n make-pot . languages/artpulse.pot --exclude=node_modules,vendor,tests"
+    "i18n:pot": "./vendor/bin/wp i18n make-pot . languages/artpulse.pot --exclude=node_modules,vendor,tests",
+    "test:e2e:community": "wp-scripts test-e2e --config tests/e2e/jest.config.js"
   },
   "engines": {
     "node": ">=18",
     "npm": ">=9"
   },
   "devDependencies": {
+    "@wordpress/env": "^7.4.0",
     "@wordpress/scripts": "^19.2.4",
     "standard-version": "^9.5.0"
   }
