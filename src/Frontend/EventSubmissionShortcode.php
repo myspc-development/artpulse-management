@@ -4,6 +4,13 @@ namespace ArtPulse\Frontend;
 
 class EventSubmissionShortcode {
 
+    /**
+     * Stores fallback notices when WooCommerce helpers are unavailable.
+     *
+     * @var array<int, array{type: string, message: string}>
+     */
+    protected static $fallback_notices = [];
+
     public static function register() {
         add_shortcode('ap_submit_event', [self::class, 'render']);
         add_action('wp_enqueue_scripts', [self::class, 'enqueue_scripts']); // Enqueue scripts and styles
@@ -30,7 +37,14 @@ class EventSubmissionShortcode {
 
         ob_start();
         ?>
-        <div class="ap-form-messages" role="status" aria-live="polite"></div>
+        <?php $notices = self::get_fallback_notices(); ?>
+        <div class="ap-form-messages" role="status" aria-live="polite">
+            <?php foreach ($notices as $notice): ?>
+                <div class="ap-notice ap-notice-<?= esc_attr($notice['type']); ?>">
+                    <?= esc_html($notice['message']); ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
             <?php wp_nonce_field('ap_submit_event', 'ap_event_nonce'); ?>
 
@@ -84,27 +98,27 @@ class EventSubmissionShortcode {
         $event_org = intval($_POST['event_org']);
 
         if (empty($event_title)) {
-            wc_add_notice('Please enter an event title.', 'error'); // Or use your notification system
+            self::add_notice('Please enter an event title.', 'error'); // Or use your notification system
             return; // Stop processing
         }
 
         if (empty($event_description)) {
-            wc_add_notice('Please enter an event description.', 'error');
+            self::add_notice('Please enter an event description.', 'error');
             return;
         }
 
         if (empty($event_date)) {
-            wc_add_notice('Please enter an event date.', 'error');
+            self::add_notice('Please enter an event date.', 'error');
             return;
         }
           // Validate the date format
         if (!preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $event_date)) {
-            wc_add_notice('Please enter a valid date in YYYY-MM-DD format.', 'error');
+            self::add_notice('Please enter a valid date in YYYY-MM-DD format.', 'error');
             return;
         }
 
         if ($event_org <= 0) {
-            wc_add_notice('Please select an organization.', 'error');
+            self::add_notice('Please select an organization.', 'error');
             return;
         }
 
@@ -118,7 +132,7 @@ class EventSubmissionShortcode {
 
         if (is_wp_error($post_id)) {
             error_log('Error creating event post: ' . $post_id->get_error_message());
-            wc_add_notice('Error submitting event. Please try again later.', 'error');
+            self::add_notice('Error submitting event. Please try again later.', 'error');
             return;
         }
 
@@ -138,15 +152,49 @@ class EventSubmissionShortcode {
 
             if (is_wp_error($attachment_id)) {
                 error_log('Error uploading image: ' . $attachment_id->get_error_message());
-                wc_add_notice('Error uploading image. Please try again.', 'error');
+                self::add_notice('Error uploading image. Please try again.', 'error');
             } else {
                 set_post_thumbnail($post_id, $attachment_id);
             }
         }
 
         // Success message and redirect
-        wc_add_notice('Event submitted successfully! It is awaiting review.', 'success');
-        wp_safe_redirect(home_url('/thank-you-page')); // Replace with your desired URL
-        exit;
+        self::add_notice('Event submitted successfully! It is awaiting review.', 'success');
+
+        if (function_exists('wc_add_notice')) {
+            wp_safe_redirect(home_url('/thank-you-page')); // Replace with your desired URL
+            exit;
+        }
+
+        // Without WooCommerce, allow the request to continue so the fallback notices render.
+        return;
+    }
+
+    /**
+     * Adds a notice using WooCommerce if available, otherwise falls back to an internal system.
+     *
+     * @param string $message
+     * @param string $type
+     * @return void
+     */
+    protected static function add_notice($message, $type = 'error') {
+        if (function_exists('wc_add_notice')) {
+            wc_add_notice($message, $type);
+            return;
+        }
+
+        self::$fallback_notices[] = [
+            'type'    => function_exists('sanitize_key') ? sanitize_key($type) : $type,
+            'message' => function_exists('wp_strip_all_tags') ? wp_strip_all_tags($message) : $message,
+        ];
+    }
+
+    /**
+     * Retrieves notices stored in the fallback system.
+     *
+     * @return array<int, array{type: string, message: string}>
+     */
+    protected static function get_fallback_notices() {
+        return self::$fallback_notices;
     }
 }
