@@ -123,7 +123,7 @@ class SettingsPage
                     $user->user_email,
                     implode(', ', $user->roles),
                     $level ?: '—',
-                    count_user_posts($user->ID, 'artwork'), // change to match your CPT
+                    count_user_posts($user->ID, 'artpulse_artwork'), // change to match your CPT
                     $last_login ?: '—',
                     $user->user_registered,
                     $expires ?: '—',
@@ -165,7 +165,7 @@ class SettingsPage
                     $level     = get_user_meta($user->ID, 'ap_membership_level', true);
                     $last_login = get_user_meta($user->ID, 'last_login', true);
                     $expires   = get_user_meta($user->ID, 'ap_membership_expires', true);
-                    $count     = count_user_posts($user->ID, 'artwork'); // change post type if needed
+                    $count     = count_user_posts($user->ID, 'artpulse_artwork'); // change post type if needed
                     ?>
                     <tr>
                         <td><?php echo esc_html($user->display_name ?: $user->user_login); ?></td>
