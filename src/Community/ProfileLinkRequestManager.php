@@ -37,7 +37,7 @@ class ProfileLinkRequestManager
         $target_id = absint($request['target_id']);
 
         if (!get_post($target_id)) {
-            return new WP_Error('invalid_target', 'Target post not found.', ['status' => 404]);
+            return new WP_Error(404, 'Target post not found.', ['status' => 404]);
         }
 
         $request_id = wp_insert_post([
