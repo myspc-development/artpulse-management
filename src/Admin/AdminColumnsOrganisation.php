@@ -52,5 +52,3 @@ class AdminColumnsOrganisation
         return $columns;
     }
 }
-
-AdminColumnsOrganisation::register();

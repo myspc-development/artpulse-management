@@ -66,5 +66,3 @@ class AdminColumnsEvent
         return $columns;
     }
 }
-
-AdminColumnsEvent::register();

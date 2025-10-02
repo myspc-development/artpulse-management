@@ -46,5 +46,3 @@ class AdminColumnsArtwork
         return $columns;
     }
 }
-
-AdminColumnsArtwork::register();
