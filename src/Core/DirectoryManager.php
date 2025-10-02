@@ -55,7 +55,7 @@ class DirectoryManager {
 
         $allowed = ['event', 'artist', 'artwork', 'org'];
         if (!in_array($type, $allowed, true)) {
-            return new \WP_Error('invalid_type', 'Invalid directory type', [ 'status' => 400 ]);
+            return new \WP_Error(400, 'Invalid directory type', [ 'status' => 400 ]);
         }
 
         $args = [
