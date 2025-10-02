@@ -96,11 +96,23 @@ class SubmissionRestController
             );
         }
 
-        $post_id = wp_insert_post( [
+        $post_content = isset( $params['content'] ) ? wp_kses_post( $params['content'] ) : '';
+
+        $post_args = [
             'post_type'   => $post_type,
             'post_title'  => sanitize_text_field( $params['title'] ),
             'post_status' => 'pending',
-        ], true );
+        ];
+
+        if ( ! empty( $post_content ) ) {
+            $post_args['post_content'] = $post_content;
+        }
+
+        if ( is_user_logged_in() ) {
+            $post_args['post_author'] = get_current_user_id();
+        }
+
+        $post_id = wp_insert_post( $post_args, true );
 
         if ( is_wp_error( $post_id ) ) {
             return $post_id;
@@ -109,7 +121,8 @@ class SubmissionRestController
         $meta_fields = self::get_meta_fields_for( $post_type );
         foreach ( $meta_fields as $field_key => $meta_key ) {
             if ( isset( $params[ $field_key ] ) ) {
-                update_post_meta( $post_id, $meta_key, sanitize_text_field( $params[ $field_key ] ) );
+                $value = self::sanitize_meta_value( $field_key, $params[ $field_key ] );
+                update_post_meta( $post_id, $meta_key, $value );
             }
         }
 
@@ -158,6 +171,11 @@ class SubmissionRestController
                 'required'    => true,
                 'description' => 'Title of the post.',
             ],
+            'content' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => 'Post content or long description.',
+            ],
             'event_date' => [
                 'type'        => 'string',
                 'format'      => 'date',
@@ -169,6 +187,33 @@ class SubmissionRestController
                 'required'    => false,
                 'description' => 'Location of the event.',
             ],
+            'event_organization' => [
+                'type'        => 'integer',
+                'required'    => false,
+                'description' => 'Organization associated with an event.',
+            ],
+            'org_website' => [
+                'type'        => 'string',
+                'format'      => 'uri',
+                'required'    => false,
+                'description' => 'Primary organization website.',
+            ],
+            'org_email' => [
+                'type'        => 'string',
+                'format'      => 'email',
+                'required'    => false,
+                'description' => 'Organization contact email.',
+            ],
+            'artist_bio' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => 'Artist biography.',
+            ],
+            'artist_org' => [
+                'type'        => 'integer',
+                'required'    => false,
+                'description' => 'Organization associated with the artist.',
+            ],
             'image_ids' => [
                 'type'        => 'array',
                 'items'       => [
@@ -176,6 +221,21 @@ class SubmissionRestController
                 ],
                 'required'    => false,
                 'description' => 'List of image attachment IDs.',
+            ],
+            'artwork_medium' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => 'Artwork medium.',
+            ],
+            'artwork_dimensions' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => 'Artwork dimensions.',
+            ],
+            'artwork_materials' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => 'Artwork materials.',
             ],
         ];
     }
@@ -189,6 +249,7 @@ class SubmissionRestController
             'artpulse_event'   => [
                 'event_date'     => '_ap_event_date',
                 'event_location' => '_ap_event_location',
+                'event_organization' => '_ap_event_organization',
             ],
             'artpulse_artist'  => [
                 'artist_bio' => '_ap_artist_bio',
@@ -204,6 +265,21 @@ class SubmissionRestController
                 'org_email'   => '_ap_org_email',
             ],
             default            => [],
+        };
+    }
+
+    /**
+     * Sanitize values before saving to post meta.
+     */
+    private static function sanitize_meta_value( string $field_key, $value )
+    {
+        return match ( $field_key ) {
+            'event_organization',
+            'artist_org'        => absint( $value ),
+            'org_email'         => sanitize_email( $value ),
+            'org_website'       => esc_url_raw( $value ),
+            'artist_bio'        => wp_kses_post( $value ),
+            default             => sanitize_text_field( $value ),
         };
     }
 
