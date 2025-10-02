@@ -6,11 +6,15 @@ on:
 
 jobs:
   test:
-    name: Lint, Build & Test
+    name: Lint, Build & Test (PHP ${{ matrix.php-version }}, WP ${{ matrix.wp-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.2', '8.3']
+        wp-version: ['6.5', '6.8']
 
     env:
-      WP_VERSION: '6.5'
+      WP_VERSION: ${{ matrix.wp-version }}
       DB_NAME: wordpress_test
       DB_USER: root
       DB_PASSWORD: root
@@ -38,7 +42,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php-version }}
           coverage: xdebug
           extensions: mbstring, mysqli
 
@@ -60,7 +64,7 @@ jobs:
         run: composer run sniff
 
       - name: Setup WordPress test suite
-        run: bash ./scripts/src/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST $WP_VERSION
+        run: bash ./scripts/src/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST ${{ matrix.wp-version }}
 
       - name: Run PHP Lint
         run: find . -type f -name "*.php" -exec php -l {} \;
