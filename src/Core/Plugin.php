@@ -106,6 +106,7 @@ class Plugin
         \ArtPulse\Core\NotificationShortcode::register();
         \ArtPulse\Admin\AdminListSorting::register();
         \ArtPulse\Rest\RestSortingSupport::register();
+        \ArtPulse\Community\FollowRestController::register();
         \ArtPulse\Admin\AdminListColumns::register();
         \ArtPulse\Admin\EnqueueAssets::register();
         \ArtPulse\Frontend\Shortcodes::register();
