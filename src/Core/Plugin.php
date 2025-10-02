@@ -37,6 +37,7 @@ class Plugin
         add_action( 'init',               [ $this, 'register_core_modules' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Core\RoleDashboards::class, 'register' ] );
+        add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
 
         // REST API endpoints
