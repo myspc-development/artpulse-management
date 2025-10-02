@@ -2,123 +2,119 @@
 
 namespace ArtPulse\Community;
 
+use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
-use WP_Error;
 
 class FavoritesRestController
 {
+    private const REST_NAMESPACE = 'artpulse/v1';
+
     public static function register(): void
     {
-        add_action('rest_api_init', [self::class, 'register_routes']);
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/favorites/add',
+            [
+                'methods'             => 'POST',
+                'callback'            => [self::class, 'handle_add'],
+                'permission_callback' => [self::class, 'check_permissions'],
+                'args'                => self::get_item_args(),
+            ]
+        );
+
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/favorites/remove',
+            [
+                'methods'             => 'POST',
+                'callback'            => [self::class, 'handle_remove'],
+                'permission_callback' => [self::class, 'check_permissions'],
+                'args'                => self::get_item_args(),
+            ]
+        );
     }
 
-    public static function register_routes(): void
+    public static function check_permissions(): bool
     {
-        // Existing routes
-        register_rest_route('artpulse/v1', '/notifications', [
-            'methods'             => 'GET',
-            'callback'            => [self::class, 'get_notifications'],
-            'permission_callback' => fn() => is_user_logged_in(),
-        ]);
-
-        register_rest_route('artpulse/v1', '/notifications/read', [
-            'methods'             => 'POST',
-            'callback'            => [self::class, 'mark_as_read'],
-            'permission_callback' => fn() => is_user_logged_in(),
-            'args'                => self::get_schema(),
-        ]);
-
-        register_rest_route('artpulse/v1', '/notifications', [
-            'methods'             => 'DELETE',
-            'callback'            => [self::class, 'delete_notification'],
-            'permission_callback' => fn() => is_user_logged_in(),
-            'args'                => self::get_schema(),
-        ]);
-
-        // New routes
-        register_rest_route('artpulse/v1', '/notifications', [
-            'methods'  => 'GET',
-            'callback' => [self::class, 'list'],
-            'permission_callback' => fn() => is_user_logged_in(),
-        ]);
-
-        register_rest_route('artpulse/v1', '/notifications/(?P<id>\d+)/read', [
-            'methods'  => 'POST',
-            'callback' => [self::class, 'mark_read'],
-            'permission_callback' => fn() => is_user_logged_in(),
-        ]);
-
-        register_rest_route('artpulse/v1', '/notifications/mark-all-read', [
-            'methods'  => 'POST',
-            'callback' => [self::class, 'mark_all_read'],
-            'permission_callback' => fn() => is_user_logged_in(),
-        ]);
+        return is_user_logged_in();
     }
 
-    public static function get_schema(): array
+    /**
+     * Schema used for both add/remove requests.
+     */
+    private static function get_item_args(): array
     {
         return [
-            'notification_id' => [
+            'object_id' => [
                 'type'        => 'integer',
                 'required'    => true,
-                'description' => 'ID of the notification to update or delete.',
+                'description' => __('The ID of the object being favorited.', 'artpulse'),
+            ],
+            'object_type' => [
+                'type'              => 'string',
+                'required'          => true,
+                'description'       => __('The object type or post type for the favorite.', 'artpulse'),
+                'sanitize_callback' => 'sanitize_key',
             ],
         ];
     }
 
-    public static function get_notifications(WP_REST_Request $request): WP_REST_Response
+    public static function handle_add(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
-        $user_id = get_current_user_id();
-        $notifications = get_user_meta($user_id, '_ap_notifications', true) ?: [];
+        $user_id     = get_current_user_id();
+        $object_id   = (int) $request->get_param('object_id');
+        $object_type = (string) $request->get_param('object_type');
+
+        $validation_error = self::validate_object($object_id, $object_type);
+        if ($validation_error instanceof WP_Error) {
+            return $validation_error;
+        }
+
+        FavoritesManager::add_favorite($user_id, $object_id, $object_type);
 
         return rest_ensure_response([
-            'notifications' => array_values($notifications)
+            'status'      => 'favorited',
+            'object_id'   => $object_id,
+            'object_type' => $object_type,
         ]);
     }
 
-    public static function mark_as_read(WP_REST_Request $request): WP_REST_Response|WP_Error
+    public static function handle_remove(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
-        $user_id = get_current_user_id();
-        $id = absint($request['notification_id']);
-        $notifications = get_user_meta($user_id, '_ap_notifications', true) ?: [];
+        $user_id     = get_current_user_id();
+        $object_id   = (int) $request->get_param('object_id');
+        $object_type = (string) $request->get_param('object_type');
 
-        foreach ($notifications as &$n) {
-            if ((int) $n['id'] === $id) {
-                $n['read'] = true;
-            }
+        $validation_error = self::validate_object($object_id, $object_type);
+        if ($validation_error instanceof WP_Error) {
+            return $validation_error;
         }
 
-        update_user_meta($user_id, '_ap_notifications', $notifications);
+        FavoritesManager::remove_favorite($user_id, $object_id, $object_type);
 
-        return rest_ensure_response(['status' => 'read', 'id' => $id]);
+        return rest_ensure_response([
+            'status'      => 'unfavorited',
+            'object_id'   => $object_id,
+            'object_type' => $object_type,
+        ]);
     }
 
-    public static function delete_notification(WP_REST_Request $request): WP_REST_Response|WP_Error
+    private static function validate_object(int $object_id, string $object_type): WP_Error|bool
     {
-        $user_id = get_current_user_id();
-        $id = absint($request['notification_id']);
-        $notifications = get_user_meta($user_id, '_ap_notifications', true) ?: [];
+        if ($object_id <= 0) {
+            return new WP_Error('invalid_object', __('A valid object ID must be provided.', 'artpulse'), ['status' => 400]);
+        }
 
-        $filtered = array_filter($notifications, fn($n) => (int) $n['id'] !== $id);
-        update_user_meta($user_id, '_ap_notifications', array_values($filtered));
+        if (!post_type_exists($object_type)) {
+            return new WP_Error('invalid_object_type', __('Unsupported object type.', 'artpulse'), ['status' => 400]);
+        }
 
-        return rest_ensure_response(['status' => 'deleted', 'id' => $id]);
-    }
+        $post = get_post($object_id);
+        if (!$post || $post->post_type !== $object_type) {
+            return new WP_Error('object_not_found', __('The specified favorite target could not be found.', 'artpulse'), ['status' => 404]);
+        }
 
-    // Placeholders for newly registered methods
-    public static function list(WP_REST_Request $request): WP_REST_Response
-    {
-        return new WP_REST_Response(['message' => 'Notification list not yet implemented.'], 501);
-    }
-
-    public static function mark_read(WP_REST_Request $request): WP_REST_Response
-    {
-        return new WP_REST_Response(['message' => 'Mark read not yet implemented.'], 501);
-    }
-
-    public static function mark_all_read(WP_REST_Request $request): WP_REST_Response
-    {
-        return new WP_REST_Response(['message' => 'Mark all as read not yet implemented.'], 501);
+        return true;
     }
 }

@@ -168,12 +168,20 @@ class EnqueueAssets {
         );
 
         wp_enqueue_script(
-            'ap-favorites-js',
-            $plugin_url . '/assets/js/ap-favorites.js',
+            'ap-social-js',
+            $plugin_url . '/assets/js/ap-social.js',
             [],
             '1.0.0',
             true
         );
+        wp_localize_script('ap-social-js', 'APSocial', [
+            'root'     => esc_url_raw(rest_url()),
+            'nonce'    => wp_create_nonce('wp_rest'),
+            'messages' => [
+                'favoriteError' => __('Unable to update favorite. Please try again.', 'artpulse'),
+                'followError'   => __('Unable to update follow. Please try again.', 'artpulse'),
+            ],
+        ]);
 
         wp_enqueue_script(
             'ap-notifications-js',
