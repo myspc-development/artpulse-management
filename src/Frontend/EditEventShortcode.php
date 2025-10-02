@@ -81,7 +81,13 @@ class EditEventShortcode {
     }
 
     public static function enqueue_scripts() {
-        wp_enqueue_script('ap-edit-event-js', plugin_dir_url(__FILE__) . 'js/ap-edit-event.js', ['jquery'], '1.0.0', true);
+        wp_enqueue_script(
+            'ap-edit-event-js',
+            plugins_url('assets/js/ap-edit-event.js', ARTPULSE_PLUGIN_FILE),
+            ['jquery'],
+            '1.0.0',
+            true
+        );
         wp_localize_script('ap-edit-event-js', 'APEditEvent', [
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('ap_edit_event_nonce')
