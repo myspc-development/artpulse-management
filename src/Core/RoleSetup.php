@@ -7,6 +7,9 @@ namespace ArtPulse\Core;
  */
 class RoleSetup
 {
+    private const VERSION_OPTION = 'artpulse_roles_version';
+    private const ROLES_VERSION  = '1.1.5';
+
     /**
      * Run this during plugin activation.
      */
@@ -14,6 +17,17 @@ class RoleSetup
     {
         self::add_roles();
         self::assign_capabilities();
+        update_option(self::VERSION_OPTION, self::ROLES_VERSION);
+    }
+
+    public static function maybe_upgrade(): void
+    {
+        $stored_version = get_option(self::VERSION_OPTION);
+
+        if ($stored_version !== self::ROLES_VERSION) {
+            self::assign_capabilities();
+            update_option(self::VERSION_OPTION, self::ROLES_VERSION);
+        }
     }
 
     private static function add_roles(): void
@@ -54,6 +68,7 @@ class RoleSetup
                 'delete_artpulse_artists', 'delete_private_artpulse_artists',
                 'delete_published_artpulse_artists', 'delete_others_artpulse_artists',
                 'edit_private_artpulse_artists', 'edit_published_artpulse_artists',
+                'view_artpulse_dashboard',
             ],
             'organization' => [
                 'read',
@@ -64,6 +79,7 @@ class RoleSetup
                 'delete_artpulse_orgs', 'delete_private_artpulse_orgs',
                 'delete_published_artpulse_orgs', 'delete_others_artpulse_orgs',
                 'edit_private_artpulse_orgs', 'edit_published_artpulse_orgs',
+                'view_artpulse_dashboard',
             ],
             'administrator' => [],
         ];
