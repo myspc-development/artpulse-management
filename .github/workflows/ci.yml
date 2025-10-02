@@ -57,6 +57,16 @@ jobs:
       - name: Build assets
         run: npm run build
 
+      - name: Verify generated assets are committed
+        run: |
+          CHANGED_FILES="$(git status --porcelain -- assets/js assets/css)"
+          if [ -n "${CHANGED_FILES}" ]; then
+            echo "Generated asset files are out of date. Please run 'npm run build' and commit the changes." >&2
+            echo "Changed files:" >&2
+            echo "${CHANGED_FILES}" >&2
+            exit 1
+          fi
+
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress --no-suggest
 

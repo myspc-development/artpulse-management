@@ -115,3 +115,5 @@ Fork this repo
 Create a feature branch: git checkout -b feature/your-feature
 
 Submit a PR with a clear description
+
+Before committing changes that impact block assets, run `npm run build` and include the generated files in your commit. The CI workflow validates that the compiled bundles in `assets/js` and `assets/css` are up to date, and the build will fail if they are not.
