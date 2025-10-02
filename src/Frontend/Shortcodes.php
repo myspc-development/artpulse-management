@@ -52,8 +52,13 @@ class Shortcodes {
         ob_start();
         echo '<div class="ap-filtered-list">';
         foreach ($query->posts as $post_id) {
-            // Make current post available to template
-            set_query_var('post', get_post($post_id));
+            $post = \get_post($post_id);
+
+            if (!$post instanceof \WP_Post) {
+                continue;
+            }
+
+            \setup_postdata($post);
 
             // Path to template partial, adjust if needed
             $template_path = plugin_dir_path(__FILE__) . '../../templates/partials/content-artpulse-item.php';
@@ -64,10 +69,12 @@ class Shortcodes {
                 // Fallback output
                 printf(
                     '<li><a href="%s">%s</a></li>',
-                    esc_url(get_permalink($post_id)),
-                    esc_html(get_the_title($post_id))
+                    esc_url(\get_permalink($post_id)),
+                    esc_html(\get_the_title($post_id))
                 );
             }
+
+            \wp_reset_postdata();
         }
         echo '</div>';
 
