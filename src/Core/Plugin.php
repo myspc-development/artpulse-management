@@ -33,6 +33,8 @@ class Plugin
         register_activation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'activate' ] );
         register_deactivation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'deactivate' ] );
 
+        \ArtPulse\Core\LoginRedirector::register();
+
         // Register core modules and front-end submission forms
         add_action( 'init',               [ $this, 'register_core_modules' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );

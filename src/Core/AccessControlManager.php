@@ -10,6 +10,12 @@ class AccessControlManager
 
     public static function checkAccess()
     {
+        $dashboard_pages = ['dashboard', 'artist-dashboard', 'org-dashboard'];
+
+        if (is_page($dashboard_pages)) {
+            return;
+        }
+
         if ( is_singular(['artpulse_event','artpulse_artwork']) ) {
             $level = get_user_meta(get_current_user_id(),'ap_membership_level',true);
             if ( $level === 'Free' ) {

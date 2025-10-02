@@ -29,6 +29,7 @@ class AccessControlManagerTest extends TestCase
 
     public function testCheckAccessRedirectsFreeMembers()
     {
+        Functions\when('is_page')->alias(fn() => false);
         Functions\when('is_singular')->alias(fn($types) => true);
         Functions\when('get_current_user_id')->alias(fn() => 1);
         Functions\when('get_user_meta')->alias(fn() => 'Free');
@@ -47,6 +48,7 @@ class AccessControlManagerTest extends TestCase
 
     public function testCheckAccessAllowsProMembers()
     {
+        Functions\when('is_page')->alias(fn() => false);
         Functions\when('is_singular')->alias(fn($types) => true);
         Functions\when('get_current_user_id')->alias(fn() => 1);
         Functions\when('get_user_meta')->alias(fn() => 'Pro');
@@ -58,5 +60,15 @@ class AccessControlManagerTest extends TestCase
         AccessControlManager::checkAccess();
 
         \Patchwork\restoreAll();
+    }
+
+    public function testCheckAccessAllowsDashboardPages()
+    {
+        Functions\when('is_page')->alias(fn() => true);
+
+        Functions\expect('is_singular')->never();
+        Functions\expect('wp_redirect')->never();
+
+        AccessControlManager::checkAccess();
     }
 }
