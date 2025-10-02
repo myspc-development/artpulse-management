@@ -10,7 +10,6 @@
 
 use ArtPulse\Core\Plugin;
 use ArtPulse\Core\WooCommerceIntegration;
-use ArtPulse\Core\Activator;
 use ArtPulse\Admin\EnqueueAssets;
 
 // Suppress deprecated notices if WP_DEBUG enabled
@@ -41,13 +40,6 @@ if (class_exists(WooCommerceIntegration::class)) {
 
 // Instantiate WooCommerce integration (if needed for runtime)
 $plugin = new WooCommerceIntegration();
-
-// ✅ Hook for activation
-register_activation_hook(__FILE__, function () {
-    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-    artpulse_create_custom_table();
-    Activator::activate(); // WooCommerceIntegration has no activate() method
-});
 
 // ✅ Hook for deactivation
 //register_deactivation_hook(__FILE__, [$plugin, 'deactivate']);

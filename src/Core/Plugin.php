@@ -50,6 +50,11 @@ class Plugin
 
     public function activate()
     {
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+        \artpulse_create_custom_table();
+        Activator::activate();
+
         $db_version_option = 'artpulse_db_version';
 
         // Initialize settings
