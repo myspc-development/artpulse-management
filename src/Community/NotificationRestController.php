@@ -45,10 +45,10 @@ class NotificationRestController
     public static function get_notifications(WP_REST_Request $request): WP_REST_Response
     {
         $user_id = get_current_user_id();
-        $notifications = get_user_meta($user_id, '_ap_notifications', true) ?: [];
+        $notifications = NotificationManager::get($user_id, 50);
 
         return rest_ensure_response([
-            'notifications' => array_values($notifications)
+            'notifications' => array_map([self::class, 'prepare_notification_response'], $notifications),
         ]);
     }
 
@@ -56,15 +56,7 @@ class NotificationRestController
     {
         $user_id = get_current_user_id();
         $id = absint($request['notification_id']);
-        $notifications = get_user_meta($user_id, '_ap_notifications', true) ?: [];
-
-        foreach ($notifications as &$n) {
-            if ((int) $n['id'] === $id) {
-                $n['read'] = true;
-            }
-        }
-
-        update_user_meta($user_id, '_ap_notifications', $notifications);
+        NotificationManager::mark_read($id, $user_id);
 
         return rest_ensure_response(['status' => 'read', 'id' => $id]);
     }
@@ -73,11 +65,23 @@ class NotificationRestController
     {
         $user_id = get_current_user_id();
         $id = absint($request['notification_id']);
-        $notifications = get_user_meta($user_id, '_ap_notifications', true) ?: [];
-
-        $filtered = array_filter($notifications, fn($n) => (int) $n['id'] !== $id);
-        update_user_meta($user_id, '_ap_notifications', array_values($filtered));
+        NotificationManager::delete($id, $user_id);
 
         return rest_ensure_response(['status' => 'deleted', 'id' => $id]);
+    }
+
+    private static function prepare_notification_response($notification): array
+    {
+        return [
+            'id'         => (int) $notification->id,
+            'type'       => $notification->type,
+            'object_id'  => null !== $notification->object_id ? (int) $notification->object_id : null,
+            'related_id' => null !== $notification->related_id ? (int) $notification->related_id : null,
+            'content'    => $notification->content,
+            'status'     => $notification->status,
+            'read'       => 'read' === $notification->status,
+            'message'    => $notification->content ?: $notification->type,
+            'created_at' => $notification->created_at,
+        ];
     }
 }
