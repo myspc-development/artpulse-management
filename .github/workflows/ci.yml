@@ -75,3 +75,34 @@ jobs:
           name: code-coverage
           path: coverage/html/
 
+  i18n-check:
+    name: Internationalization catalog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install WP-CLI
+        run: |
+          mkdir -p vendor/bin
+          curl -sSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o vendor/bin/wp
+          chmod +x vendor/bin/wp
+
+      - name: Install WP-CLI i18n command
+        run: vendor/bin/wp package install wp-cli/i18n-command:@stable
+
+      - name: Rebuild translation template
+        run: npm run i18n:pot
+
+      - name: Verify translation template is up to date
+        run: git diff --exit-code languages/artpulse.pot
+

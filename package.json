@@ -5,7 +5,8 @@
   "scripts": {
     "build": "wp-scripts build",
     "start": "wp-scripts start",
-    "release": "standard-version"
+    "release": "standard-version",
+    "i18n:pot": "./vendor/bin/wp i18n make-pot . languages/artpulse.pot --exclude=node_modules,vendor,tests"
   },
   "engines": {
     "node": ">=18",
