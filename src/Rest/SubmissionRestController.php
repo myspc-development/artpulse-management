@@ -29,7 +29,7 @@ class SubmissionRestController
             [
                 'methods'             => 'POST',
                 'callback'            => [ self::class, 'handle_submission' ],
-                'permission_callback' => '__return_true',
+                'permission_callback' => [ self::class, 'permissions_check' ],
                 'args'                => self::get_endpoint_args(),
             ]
         );
@@ -62,10 +62,18 @@ class SubmissionRestController
         $params    = $request->get_json_params();
         $post_type = sanitize_key( $params['post_type'] ?? 'artpulse_event' );
 
+        if ( ! in_array( $post_type, self::$allowed_post_types, true ) ) {
+            return new WP_Error(
+                'rest_invalid_post_type',
+                __( 'The requested post type is not allowed.', 'artpulse-management' ),
+                [ 'status' => 400 ]
+            );
+        }
+
         $post_id = wp_insert_post( [
             'post_type'   => $post_type,
             'post_title'  => sanitize_text_field( $params['title'] ),
-            'post_status' => 'publish',
+            'post_status' => 'pending',
         ], true );
 
         if ( is_wp_error( $post_id ) ) {
@@ -171,5 +179,21 @@ class SubmissionRestController
             ],
             default            => [],
         };
+    }
+
+    /**
+     * Ensure the current user has access to submit content.
+     */
+    public static function permissions_check( WP_REST_Request $request ): bool|WP_Error
+    {
+        if ( current_user_can( 'edit_posts' ) ) {
+            return true;
+        }
+
+        return new WP_Error(
+            'rest_forbidden',
+            __( 'You are not allowed to submit content.', 'artpulse-management' ),
+            [ 'status' => rest_authorization_required_code() ]
+        );
     }
 }
