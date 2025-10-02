@@ -5,6 +5,8 @@
   "scripts": {
     "build": "wp-scripts build",
     "start": "wp-scripts start",
+    "lint:js": "wp-scripts lint-js",
+    "lint:css": "wp-scripts lint-style",
     "release": "standard-version"
   },
   "engines": {
@@ -13,6 +15,7 @@
   },
   "devDependencies": {
     "@wordpress/scripts": "^19.2.4",
+    "@wordpress/eslint-plugin": "^9.3.0",
     "standard-version": "^9.5.0"
   }
 }
