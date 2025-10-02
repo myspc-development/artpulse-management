@@ -93,6 +93,51 @@ class FollowManager {
     }
 
     /**
+     * Get enriched follow data for a user.
+     *
+     * @param int         $user_id
+     * @param string|null $object_type
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function get_user_follow_details($user_id, $object_type = null) {
+        $follows = self::get_user_follows($user_id, $object_type);
+
+        if (!$follows) {
+            return [];
+        }
+
+        $results = [];
+
+        foreach ($follows as $follow) {
+            $object_id   = (int) $follow->object_id;
+            $type        = $follow->object_type;
+            $followed_on = $follow->followed_on;
+
+            if (!post_type_exists($type)) {
+                continue;
+            }
+
+            $post = get_post($object_id);
+            if (!$post) {
+                continue;
+            }
+
+            $results[] = [
+                'object_id'   => $object_id,
+                'object_type' => $type,
+                'title'       => get_the_title($post),
+                'permalink'   => get_permalink($post),
+                'thumbnail'   => get_the_post_thumbnail_url($post, 'medium') ?: null,
+                'followed_on' => $followed_on,
+                'followed_on_gmt' => get_gmt_from_date($followed_on, 'Y-m-d H:i:s'),
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
      * Helper: Get the owner user ID of an object.
      */
     private static function get_owner_user_id($object_id, $object_type) {

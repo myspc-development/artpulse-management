@@ -17,17 +17,19 @@
         headers: { 'X-WP-Nonce': ArtPulseFollowsApi.nonce }
       }).then(follows => {
         results.innerHTML = '';
-        if (!follows.length) {
+        if (!Array.isArray(follows) || !follows.length) {
           results.innerHTML = '<div class="ap-empty">You are not following anything yet.</div>';
           return;
         }
         follows.forEach(follow => {
+          const imageUrl = follow.thumbnail || follow.featured_media_url || '';
+          const title = follow.title || 'Untitled';
           const div = document.createElement('div');
           div.className = 'portfolio-item';
           div.innerHTML = `
             <a href="${follow.permalink}">
-              ${follow.featured_media_url ? `<img src="${follow.featured_media_url}" alt="${follow.title}" />` : ''}
-              <h3>${follow.title}</h3>
+              ${imageUrl ? `<img src="${imageUrl}" alt="${title}" />` : ''}
+              <h3>${title}</h3>
             </a>
             <div>
               <small>Type: ${follow.object_type} &mdash; Followed: ${follow.followed_on}</small>
