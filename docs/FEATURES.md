@@ -83,17 +83,17 @@ php
 Copy
 Edit
 [ap_submission_form post_type="artwork"]
-👤 User Dashboard
-Membership info + REST widgets
+👤 Role Dashboards
+Membership info + REST widgets tailored to each role
 
-Shortcode: [ap_user_dashboard]
+Shortcodes: [ap_member_dashboard], [ap_artist_dashboard], [ap_organization_dashboard]
 
 📘 Example:
 
 php
 Copy
 Edit
-[ap_user_dashboard class="dashboard-wrap"]
+[ap_member_dashboard class="dashboard-wrap"]
 🏢 Organization Dashboard
 Org stats, artist links, billing info
 
