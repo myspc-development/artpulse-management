@@ -6,11 +6,16 @@ on:
 
 jobs:
   test:
-    name: Lint, Build & Test
+    name: Lint, Build & Test (PHP ${{ matrix.php }} / WP ${{ matrix.wordpress }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3']
+        wordpress: ['6.5', '6.6', 'latest']
 
     env:
-      WP_VERSION: '6.5'
+      WP_VERSION: ${{ matrix.wordpress }}
       DB_NAME: wordpress_test
       DB_USER: root
       DB_PASSWORD: root
@@ -38,7 +43,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php }}
           coverage: xdebug
           extensions: mbstring, mysqli
 
@@ -72,6 +77,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: code-coverage
+          name: code-coverage-php-${{ matrix.php }}-wp-${{ matrix.wordpress }}
           path: coverage/html/
 
