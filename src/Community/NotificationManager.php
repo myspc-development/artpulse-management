@@ -68,4 +68,14 @@ class NotificationManager {
             'user_id' => $user_id
         ]);
     }
+
+    public static function delete(int $notification_id, int $user_id): void
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'ap_notifications';
+        $wpdb->delete($table, [
+            'id'      => $notification_id,
+            'user_id' => $user_id,
+        ]);
+    }
 }
