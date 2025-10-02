@@ -5,7 +5,8 @@
   "scripts": {
     "build": "wp-scripts build",
     "start": "wp-scripts start",
-    "release": "standard-version"
+    "release": "standard-version",
+    "test:e2e": "wp-scripts test-e2e"
   },
   "engines": {
     "node": ">=18",

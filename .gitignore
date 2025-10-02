@@ -7,7 +7,6 @@
 *.zip
 .DS_Store
 .env
-/tests/
 /phpunit.xml
 wordpress/
 release/
