@@ -59,13 +59,39 @@ class SubmissionRestController
      */
     public static function handle_submission( WP_REST_Request $request ): WP_REST_Response|WP_Error
     {
-        $params    = $request->get_json_params();
-        $post_type = sanitize_key( $params['post_type'] ?? 'artpulse_event' );
+        $json_params = (array) $request->get_json_params();
+        $body_params = (array) $request->get_body_params();
+
+        if ( empty( $json_params ) ) {
+            $params = $body_params;
+        } elseif ( empty( $body_params ) ) {
+            $params = $json_params;
+        } else {
+            $params = array_merge( $body_params, $json_params );
+        }
+
+        $post_type = sanitize_key( $params['post_type'] ?? '' );
+
+        if ( empty( $post_type ) ) {
+            return new WP_Error(
+                'rest_missing_post_type',
+                __( 'The post type is required.', 'artpulse-management' ),
+                [ 'status' => 400 ]
+            );
+        }
 
         if ( ! in_array( $post_type, self::$allowed_post_types, true ) ) {
             return new WP_Error(
                 'rest_invalid_post_type',
                 __( 'The requested post type is not allowed.', 'artpulse-management' ),
+                [ 'status' => 400 ]
+            );
+        }
+
+        if ( empty( $params['title'] ) ) {
+            return new WP_Error(
+                'rest_missing_title',
+                __( 'A title is required for submission.', 'artpulse-management' ),
                 [ 'status' => 400 ]
             );
         }
@@ -186,7 +212,7 @@ class SubmissionRestController
      */
     public static function permissions_check( WP_REST_Request $request ): bool|WP_Error
     {
-        if ( current_user_can( 'edit_posts' ) ) {
+        if ( is_user_logged_in() || current_user_can( 'read' ) ) {
             return true;
         }
 
