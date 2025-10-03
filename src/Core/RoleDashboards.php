@@ -198,7 +198,7 @@ class RoleDashboards
 
     private static function currentUserCanAccess(string $role): bool
     {
-        if (!array_key_exists($role, self::ROLE_CONFIG, true)) {
+        if (!array_key_exists($role, self::ROLE_CONFIG)) {
             return false;
         }
 
