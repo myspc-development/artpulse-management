@@ -26,17 +26,39 @@ if (!defined('ARTPULSE_PLUGIN_FILE')) {
 // Load Composer autoloader
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
+} else {
+    spl_autoload_register(static function ($class) {
+        $prefix = 'ArtPulse\\';
+        if (strpos($class, $prefix) !== 0) {
+            return;
+        }
+
+        $relative = substr($class, strlen($prefix));
+        $relativePath = str_replace('\\', '/', $relative);
+        $path = __DIR__ . '/src/' . $relativePath . '.php';
+
+        if (file_exists($path)) {
+            require $path;
+        }
+    });
+}
+
+if (!class_exists(Plugin::class)) {
+    $message = 'ArtPulse Management bootstrap aborted: Plugin class unavailable.';
+    error_log($message);
+
+    if (function_exists('add_action')) {
+        add_action('admin_notices', static function () use ($message) {
+            $formattedMessage = function_exists('esc_html') ? esc_html($message) : $message;
+            echo '<div class="notice notice-error"><p>' . $formattedMessage . '</p></div>';
+        });
+    }
+
+    return;
 }
 
 // 🔧 Boot the main plugin class (responsible for registering menus, settings, CPTs, etc.)
 $main = new Plugin();
-
-// Optional debug log for class check
-if (class_exists(WooCommerceIntegration::class)) {
-    error_log('Plugin class loaded successfully');
-} else {
-    error_log('Failed to load Plugin class');
-}
 
 // Instantiate WooCommerce integration (if needed for runtime)
 $plugin = new WooCommerceIntegration();
