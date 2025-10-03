@@ -71,11 +71,6 @@ add_action('rest_api_init', function () {
     \ArtPulse\Rest\PortfolioRestController::register();
 });
 
-// Register Enqueue Assets
-add_action('init', function () {
-    EnqueueAssets::register();
-});
-
 function artpulse_create_custom_table() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'artpulse_data';
