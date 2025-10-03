@@ -49,6 +49,8 @@ class RoleDashboards
     public static function enqueueAssets(): void
     {
         $version = defined('ARTPULSE_VERSION') ? ARTPULSE_VERSION : '1.0.0';
+        $api_root  = esc_url_raw(rest_url());
+        $api_nonce = wp_create_nonce('wp_rest');
 
         if (!wp_script_is('ap-social-js', 'enqueued')) {
             wp_enqueue_script(
@@ -57,18 +59,6 @@ class RoleDashboards
                 [],
                 $version,
                 true
-            );
-            wp_localize_script(
-                'ap-social-js',
-                'APSocial',
-                [
-                    'root'     => esc_url_raw($api_root),
-                    'nonce'    => $api_nonce,
-                    'messages' => [
-                        'favoriteError' => __('Unable to update favorite. Please try again.', 'artpulse'),
-                        'followError'   => __('Unable to update follow. Please try again.', 'artpulse'),
-                    ],
-                ]
             );
         }
 
@@ -79,9 +69,6 @@ class RoleDashboards
             $version,
             true
         );
-
-        $api_root  = esc_url_raw(rest_url());
-        $api_nonce = wp_create_nonce('wp_rest');
 
         wp_localize_script(
             'ap-dashboards-js',
