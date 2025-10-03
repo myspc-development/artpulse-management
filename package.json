@@ -14,8 +14,9 @@
     "npm": ">=9"
   },
   "devDependencies": {
-    "@wordpress/env": "^7.4.0",
+    "@wordpress/env": "^7.3.0",
     "@wordpress/scripts": "^19.2.4",
     "standard-version": "^9.5.0"
   }
 }
+
