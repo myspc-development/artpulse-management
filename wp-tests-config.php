@@ -33,8 +33,15 @@ define( 'WP_TESTS_TITLE', 'Test Blog' );
 // PHP binary for running tests
 define( 'WP_PHP_BINARY', 'php' );
 
-// Path to WordPress source; adjust if you use a different setup
-define( 'ABSPATH', dirname( __FILE__ ) . '/wordpress' );
+// Path to WordPress source; honor WP_CORE_DIR when provided
+$wp_core_dir = getenv( 'WP_CORE_DIR' );
+if ( ! $wp_core_dir ) {
+    $wp_core_dir = dirname( __FILE__ ) . '/wordpress';
+}
+
+$wp_core_dir = rtrim( $wp_core_dir, '/\\' ) . '/';
+
+define( 'ABSPATH', $wp_core_dir );
 
 // Bootstrap the WordPress environment for testing
-require_once ABSPATH . '/wp-settings.php';
+require_once ABSPATH . 'wp-settings.php';
