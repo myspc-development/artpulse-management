@@ -31,6 +31,9 @@ class ShortcodeManager
             echo '</div>';
         }
         echo '</div>';
+        if (function_exists('wp_reset_postdata')) {
+            wp_reset_postdata();
+        }
         return ob_get_clean();
     }
 
@@ -54,6 +57,9 @@ class ShortcodeManager
             echo '</div>';
         }
         echo '</div>';
+        if (function_exists('wp_reset_postdata')) {
+            wp_reset_postdata();
+        }
         return ob_get_clean();
     }
 
@@ -77,6 +83,9 @@ class ShortcodeManager
             echo '</div>';
         }
         echo '</div>';
+        if (function_exists('wp_reset_postdata')) {
+            wp_reset_postdata();
+        }
         return ob_get_clean();
     }
 
@@ -100,6 +109,9 @@ class ShortcodeManager
             echo '</div>';
         }
         echo '</div>';
+        if (function_exists('wp_reset_postdata')) {
+            wp_reset_postdata();
+        }
         return ob_get_clean();
     }
 }
