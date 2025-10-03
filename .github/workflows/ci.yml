@@ -80,7 +80,7 @@ jobs:
         run: find . -type f -name "*.php" -exec php -l {} \;
 
       - name: Run PHPUnit tests with coverage
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-text --coverage-clover=coverage.xml
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist
 
       - name: Upload coverage report (optional)
         if: success()
