@@ -4,10 +4,14 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Lint, Build & Test (PHP ${{ matrix.php-version }}, WP ${{ matrix.wp-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       matrix:
         php-version: ['8.2', '8.3']
@@ -43,13 +47,35 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          coverage: xdebug
+          coverage: none
+          tools: composer
           extensions: mbstring, mysqli
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Determine Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ matrix.php-version }}-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-${{ matrix.php-version }}-
+
+      - name: Validate PHP syntax
+        run: |
+          git ls-files '*.php' -z | xargs -0 -n1 php -l
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Install Node dependencies
         run: npm ci
@@ -67,27 +93,23 @@ jobs:
             exit 1
           fi
 
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
-
       - name: Run PHPCS Sniff
         run: composer run sniff
 
       - name: Setup WordPress test suite
         run: bash ./scripts/src/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST ${{ matrix.wp-version }}
 
-      - name: Run PHP Lint
-        run: find . -type f -name "*.php" -exec php -l {} \;
+      - name: Run PHPUnit tests
+        run: |
+          mkdir -p build/logs
+          vendor/bin/phpunit --configuration phpunit.xml.dist --log-junit "build/logs/phpunit-${{ matrix.php-version }}-${{ matrix.wp-version }}.xml"
 
-      - name: Run PHPUnit tests with coverage
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist
-
-      - name: Upload coverage report (optional)
-        if: success()
+      - name: Upload PHPUnit logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: code-coverage
-          path: coverage/html/
+          name: phpunit-${{ matrix.php-version }}-${{ matrix.wp-version }}
+          path: build/logs/phpunit-${{ matrix.php-version }}-${{ matrix.wp-version }}.xml
 
   i18n-check:
     name: Internationalization catalog
@@ -101,6 +123,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install Node dependencies
         run: npm ci
