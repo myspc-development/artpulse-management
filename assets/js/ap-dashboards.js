@@ -3,13 +3,27 @@
   const labels = config.labels || {};
   const strings = config.strings || {};
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function onReady(callback) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', callback);
+    } else {
+      callback();
+    }
+  }
+
+  function initAll() {
     document.querySelectorAll('.ap-role-dashboard[data-ap-dashboard-role]').forEach((container) => {
       initializeDashboard(container);
     });
-  });
+  }
 
   function initializeDashboard(container) {
+    if (!container || container.dataset.apDashboardBound === '1') {
+      return;
+    }
+
+    container.dataset.apDashboardBound = '1';
+
     const role = container.dataset.apDashboardRole;
     if (!role) {
       return;
@@ -30,6 +44,23 @@
       .finally(() => {
         container.classList.remove('is-loading');
       });
+  }
+
+  function init(target) {
+    if (!target) {
+      return;
+    }
+
+    if (target.nodeType === 1) {
+      initializeDashboard(target);
+      return;
+    }
+
+    if (typeof target.length === 'number') {
+      Array.prototype.forEach.call(target, (item) => {
+        init(item);
+      });
+    }
   }
 
   function fetchDashboard(role) {
@@ -473,4 +504,13 @@
     }
     return (window.ArtPulseApi && ArtPulseApi.nonce) || config.nonce;
   }
+
+  const app = {
+    initAll,
+    init,
+  };
+
+  onReady(initAll);
+
+  window.ArtPulseDashboardsApp = Object.assign(window.ArtPulseDashboardsApp || {}, app);
 })();

@@ -311,6 +311,72 @@ class RoleDashboards
         ];
     }
 
+    public static function userCanAccessRole(string $role, ?int $user_id = null): bool
+    {
+        if (!array_key_exists($role, self::ROLE_CONFIG)) {
+            return false;
+        }
+
+        if ($user_id === null) {
+            $user_id = get_current_user_id();
+        }
+
+        if (!$user_id) {
+            return false;
+        }
+
+        $user = get_user_by('id', $user_id);
+
+        if (!$user instanceof WP_User) {
+            return false;
+        }
+
+        if (user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard')) {
+            return true;
+        }
+
+        return self::userCanViewRole($user, $role);
+    }
+
+    public static function getDefaultRoleForUser(?int $user_id = null): ?string
+    {
+        if ($user_id === null) {
+            $user_id = get_current_user_id();
+        }
+
+        if (!$user_id) {
+            return null;
+        }
+
+        $user = get_user_by('id', $user_id);
+
+        if (!$user instanceof WP_User) {
+            return null;
+        }
+
+        $roles   = array_keys(self::ROLE_CONFIG);
+        $default = null;
+
+        foreach ($roles as $role) {
+            if (self::userCanViewRole($user, $role)) {
+                $default = $role;
+                break;
+            }
+        }
+
+        if (!$default && (user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard'))) {
+            $default = $roles[0] ?? null;
+        }
+
+        /**
+         * Filters the default dashboard role for a user.
+         *
+         * @param string|null $default Default role slug or null if none detected.
+         * @param WP_User     $user    The user object.
+         */
+        return apply_filters('artpulse/dashboard/default_role', $default, $user);
+    }
+
     private static function renderDashboard(string $role): string
     {
         if (!is_user_logged_in()) {
@@ -410,21 +476,7 @@ class RoleDashboards
 
     private static function currentUserCanAccess(string $role): bool
     {
-        if (!array_key_exists($role, self::ROLE_CONFIG)) {
-            return false;
-        }
-
-        if (!is_user_logged_in()) {
-            return false;
-        }
-
-        $user = wp_get_current_user();
-
-        if (user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard')) {
-            return true;
-        }
-
-        return self::userCanViewRole($user, $role);
+        return self::userCanAccessRole($role);
     }
 
     private static function userCanViewRole(WP_User $user, string $role): bool
