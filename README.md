@@ -26,6 +26,8 @@ ArtPulse Management is a powerful WordPress plugin that enables seamless managem
 
 🧭 Organization Onboarding — `[ap_register_organization]` shortcode to collect org sign-ups, auto-assign creators, notify admins, and promote follow/favorite actions
 
+📇 Organization Directory — `[ap_orgs_directory]` shortcode renders an A–Z directory with search, favorites, and taxonomy filters
+
 🧑‍💻 Installation
 Clone or download this repo into your WordPress plugins directory:
 
@@ -69,6 +71,14 @@ Optional tools:
 phpunit for unit tests
 
 phpcs for coding standards (composer run lint)
+
+📘 Shortcode Examples
+
+```
+[ap_orgs_directory]
+[ap_orgs_directory taxonomy="sector:music" per_page="12"]
+[ap_orgs_directory show_search="false" letters="A,B,C,All"]
+```
 
 🔌 Plugin Structure
 Folder	Purpose
