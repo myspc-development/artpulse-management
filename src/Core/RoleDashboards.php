@@ -123,8 +123,8 @@ class RoleDashboards
 
     public static function renderEventSubmissionWidget(): void
     {
-        $default_url     = admin_url('post-new.php?post_type=artpulse_event');
-        $submission_url  = apply_filters('artpulse_event_submission_url', $default_url);
+        $submission_url  = self::getEventSubmissionUrl();
+        $submission_url  = apply_filters('artpulse_event_submission_url', $submission_url);
         $submission_url  = is_string($submission_url) ? $submission_url : '';
         $template        = dirname(__DIR__, 2) . '/templates/dashboard/event-submission-widget.php';
 
@@ -147,6 +147,28 @@ class RoleDashboards
         }
 
         include $template;
+    }
+
+    public static function getEventSubmissionUrl(): string
+    {
+        if (self::currentUserCanCreateEvents()) {
+            return admin_url('post-new.php?post_type=artpulse_event');
+        }
+
+        return self::getFrontendEventSubmissionUrl();
+    }
+
+    public static function getFrontendEventSubmissionUrl(): string
+    {
+        $page_id = self::locateFrontendEventSubmissionPage();
+
+        if (!$page_id) {
+            return '';
+        }
+
+        $permalink = get_permalink($page_id);
+
+        return is_string($permalink) ? $permalink : '';
     }
 
     public static function enqueueAssets(): void
@@ -333,6 +355,68 @@ class RoleDashboards
         include $template;
 
         return (string) ob_get_clean();
+    }
+
+    private static function currentUserCanCreateEvents(): bool
+    {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        $capabilities = [
+            'create_artpulse_events',
+            'create_artpulse_event',
+            'edit_artpulse_event',
+            'edit_artpulse_events',
+        ];
+
+        foreach ($capabilities as $capability) {
+            if (current_user_can($capability)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function locateFrontendEventSubmissionPage(): int
+    {
+        $pages = get_posts([
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ]);
+
+        if (empty($pages)) {
+            return 0;
+        }
+
+        foreach ($pages as $page_id) {
+            $content = get_post_field('post_content', $page_id);
+
+            if (!is_string($content) || $content === '') {
+                continue;
+            }
+
+            if (has_shortcode($content, 'ap_submit_event')) {
+                return (int) $page_id;
+            }
+
+            if (!has_shortcode($content, 'ap_submission_form')) {
+                continue;
+            }
+
+            $needs_match = ['post_type="artpulse_event"', "post_type='artpulse_event'", 'post_type=artpulse_event'];
+
+            foreach ($needs_match as $needle) {
+                if (stripos($content, $needle) !== false) {
+                    return (int) $page_id;
+                }
+            }
+        }
+
+        return 0;
     }
 
     private static function currentUserCanAccess(string $role): bool
