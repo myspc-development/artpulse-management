@@ -24,7 +24,7 @@ class OrgDashboardAdmin
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Organization Dashboard', 'artpulse') . '</h1>';
 
-        if (current_user_can('administrator')) {
+        if (current_user_can('manage_options')) {
             self::render_org_selector();
         }
 
@@ -38,8 +38,13 @@ class OrgDashboardAdmin
 
     private static function get_current_org_id(): int
     {
-        if (current_user_can('administrator')) {
+        if (current_user_can('manage_options')) {
             $selected = filter_input(INPUT_GET, 'org_id', FILTER_SANITIZE_NUMBER_INT);
+
+            if (null === $selected) {
+                $selected = $_GET['org_id'] ?? null;
+            }
+
             if (null !== $selected && '' !== $selected) {
                 return absint($selected);
             }
