@@ -1,6 +1,10 @@
 <?php
 namespace ArtPulse\Community;
 
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+
 class ProfileLinkRequestRestController {
 
     public static function register() {
@@ -52,44 +56,72 @@ class ProfileLinkRequestRestController {
         ]);
     }
 
-    public static function create_request($request) {
+    public static function create_request(WP_REST_Request $request): WP_REST_Response|WP_Error {
         $artist_user_id = get_current_user_id();
         $org_id = intval($request['org_id'] ?? 0);
-        $message = sanitize_text_field($request['message'] ?? '');
+        $message = sanitize_textarea_field($request['message'] ?? '');
+
+        if (!$artist_user_id) {
+            return new WP_Error('not_authenticated', 'You must be logged in to create a request.', ['status' => 401]);
+        }
 
         if (!$org_id) {
-            return new \WP_Error('missing_org', 'Missing org_id', ['status' => 400]);
+            return new WP_Error('missing_org', 'Missing org_id', ['status' => 400]);
         }
 
-        $id = \ArtPulse\Community\ProfileLinkRequestManager::create($artist_user_id, $org_id, $message);
+        $result = ProfileLinkRequestManager::create($artist_user_id, $org_id, $message);
 
-        if ($id) {
-            return rest_ensure_response(['success' => true, 'request_id' => $id]);
+        if (is_wp_error($result)) {
+            return $result;
         }
 
-        return new \WP_Error('create_failed', 'Could not create request', ['status' => 500]);
+        return rest_ensure_response([
+            'success'    => true,
+            'request_id' => $result,
+            'status'     => ProfileLinkRequestManager::STATUS_PENDING,
+        ]);
     }
 
-    public static function approve_request($request) {
+    public static function approve_request(WP_REST_Request $request): WP_REST_Response|WP_Error {
         $id = intval($request['id']);
+        $moderator_id = get_current_user_id();
 
-        if (!get_post($id)) {
-            return new \WP_Error('not_found', 'Request not found', ['status' => 404]);
+        if (!$moderator_id) {
+            return new WP_Error('not_authenticated', 'You must be logged in to approve requests.', ['status' => 401]);
         }
 
-        \ArtPulse\Community\ProfileLinkRequestManager::approve($id, get_current_user_id());
-        return rest_ensure_response(['success' => true]);
+        $result = ProfileLinkRequestManager::approve($id, $moderator_id);
+
+        if (is_wp_error($result)) {
+            return $result;
+        }
+
+        return rest_ensure_response([
+            'success'    => true,
+            'request_id' => $result,
+            'status'     => ProfileLinkRequestManager::STATUS_APPROVED,
+        ]);
     }
 
-    public static function deny_request($request) {
+    public static function deny_request(WP_REST_Request $request): WP_REST_Response|WP_Error {
         $id = intval($request['id']);
+        $moderator_id = get_current_user_id();
 
-        if (!get_post($id)) {
-            return new \WP_Error('not_found', 'Request not found', ['status' => 404]);
+        if (!$moderator_id) {
+            return new WP_Error('not_authenticated', 'You must be logged in to deny requests.', ['status' => 401]);
         }
 
-        \ArtPulse\Community\ProfileLinkRequestManager::deny($id, get_current_user_id());
-        return rest_ensure_response(['success' => true]);
+        $result = ProfileLinkRequestManager::deny($id, $moderator_id);
+
+        if (is_wp_error($result)) {
+            return $result;
+        }
+
+        return rest_ensure_response([
+            'success'    => true,
+            'request_id' => $result,
+            'status'     => ProfileLinkRequestManager::STATUS_DENIED,
+        ]);
     }
 
     public static function list_requests($request) {
@@ -152,9 +184,13 @@ class ProfileLinkRequestRestController {
         foreach ($ids as $id) {
             $id = intval($id);
             if ($action === 'approve') {
-                \ArtPulse\Community\ProfileLinkRequestManager::approve($id, get_current_user_id());
+                $result = ProfileLinkRequestManager::approve($id, get_current_user_id());
             } else {
-                \ArtPulse\Community\ProfileLinkRequestManager::deny($id, get_current_user_id());
+                $result = ProfileLinkRequestManager::deny($id, get_current_user_id());
+            }
+
+            if (is_wp_error($result)) {
+                return $result;
             }
         }
 
