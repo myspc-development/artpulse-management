@@ -48,4 +48,52 @@ class RoleDashboardsTest extends \WP_UnitTestCase
         $filtered_url = apply_filters('artpulse_event_submission_url', '');
         $this->assertSame($submission_url, $filtered_url);
     }
+
+    public function test_event_submission_url_defaults_to_admin_editor_for_privileged_users(): void
+    {
+        $admin_id = $this->factory->user->create([
+            'role'       => 'administrator',
+            'user_login' => 'admin_user',
+        ]);
+
+        wp_set_current_user($admin_id);
+
+        $expected = admin_url('post-new.php?post_type=artpulse_event');
+        $this->assertSame($expected, RoleDashboards::getEventSubmissionUrl());
+
+        ob_start();
+        RoleDashboards::renderEventSubmissionWidget();
+        $output = ob_get_clean();
+
+        $this->assertIsString($output);
+        $this->assertStringContainsString('href="' . esc_url($expected) . '"', $output);
+    }
+
+    public function test_event_submission_url_falls_back_to_frontend_page_for_artists(): void
+    {
+        $page_id = $this->factory->post->create([
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_content' => '[ap_submit_event]',
+            'post_title'   => 'Submit Event',
+        ]);
+
+        $artist_id = $this->factory->user->create([
+            'role'       => 'artist',
+            'user_login' => 'artist_frontend',
+        ]);
+
+        wp_set_current_user($artist_id);
+
+        $expected = get_permalink($page_id);
+
+        $this->assertSame($expected, RoleDashboards::getEventSubmissionUrl());
+
+        ob_start();
+        RoleDashboards::renderEventSubmissionWidget();
+        $output = ob_get_clean();
+
+        $this->assertIsString($output);
+        $this->assertStringContainsString('href="' . esc_url($expected) . '"', $output);
+    }
 }
