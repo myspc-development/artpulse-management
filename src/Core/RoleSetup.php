@@ -8,7 +8,12 @@ namespace ArtPulse\Core;
 class RoleSetup
 {
     private const VERSION_OPTION = 'artpulse_roles_version';
-    private const ROLES_VERSION  = '1.1.5';
+    private const ROLES_VERSION  = '1.1.6';
+
+    public static function register(): void
+    {
+        add_filter('map_meta_cap', [self::class, 'map_meta_cap'], 10, 4);
+    }
 
     /**
      * Run this during plugin activation.
@@ -113,6 +118,7 @@ class RoleSetup
             'moderate_link_requests',
             'view_artpulse_dashboard',
             'manage_artpulse_settings',
+            'artpulse_approve_event',
         ];
 
         foreach (['administrator', 'editor'] as $admin_role) {
@@ -131,5 +137,24 @@ class RoleSetup
                 }
             }
         }
+    }
+
+    /**
+     * Map approve capability to existing publish capability.
+     *
+     * @param array<int, string> $caps
+     * @param string             $cap
+     * @param int                $user_id
+     * @param array<int, mixed>  $args
+     *
+     * @return array<int, string>
+     */
+    public static function map_meta_cap(array $caps, string $cap, int $user_id, array $args): array
+    {
+        if ($cap === 'artpulse_approve_event') {
+            return ['publish_artpulse_events'];
+        }
+
+        return $caps;
     }
 }
