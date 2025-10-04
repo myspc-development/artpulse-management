@@ -43,8 +43,28 @@ class RoleDashboards
         }
 
         add_action('wp_enqueue_scripts', [self::class, 'enqueueAssets']);
+        add_action('admin_enqueue_scripts', [self::class, 'enqueueDashboardAssets']);
         add_action('rest_api_init', [self::class, 'registerRoutes']);
         add_action('wp_dashboard_setup', [self::class, 'registerDashboardWidgets']);
+    }
+
+    public static function enqueueDashboardAssets(): void
+    {
+        if (!function_exists('get_current_screen')) {
+            return;
+        }
+
+        $screen = get_current_screen();
+
+        if (!$screen || $screen->base !== 'dashboard') {
+            return;
+        }
+
+        if (wp_script_is('ap-dashboards-js', 'enqueued')) {
+            return;
+        }
+
+        self::enqueueAssets();
     }
 
     public static function registerDashboardWidgets(): void
