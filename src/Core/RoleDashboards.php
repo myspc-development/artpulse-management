@@ -79,11 +79,17 @@ class RoleDashboards
             return;
         }
 
+        $should_register_event_widget = false;
+
         foreach (self::ROLE_CONFIG as $role => $config) {
             $can_manage = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
 
             if (!$can_manage && !self::userCanViewRole($user, $role)) {
                 continue;
+            }
+
+            if (in_array($role, ['artist', 'organization'], true)) {
+                $should_register_event_widget = true;
             }
 
             $widget_id = sprintf('artpulse_dashboard_%s', sanitize_key($role));
@@ -105,6 +111,42 @@ class RoleDashboards
                 }
             );
         }
+
+        if ($should_register_event_widget) {
+            wp_add_dashboard_widget(
+                'artpulse_event_submission',
+                esc_html__('Submit an Event', 'artpulse'),
+                [self::class, 'renderEventSubmissionWidget']
+            );
+        }
+    }
+
+    public static function renderEventSubmissionWidget(): void
+    {
+        $default_url     = admin_url('post-new.php?post_type=artpulse_event');
+        $submission_url  = apply_filters('artpulse_event_submission_url', $default_url);
+        $submission_url  = is_string($submission_url) ? $submission_url : '';
+        $template        = dirname(__DIR__, 2) . '/templates/dashboard/event-submission-widget.php';
+
+        if (!file_exists($template)) {
+            if (empty($submission_url)) {
+                echo '<p>' . esc_html__('Event submissions are currently unavailable.', 'artpulse') . '</p>';
+
+                return;
+            }
+
+            printf(
+                '<div class="ap-dashboard-widget ap-dashboard-widget--event-submission"><div class="ap-dashboard-widget__section ap-dashboard-widget__section--event-submission"><h3 class="ap-dashboard-event-widget__title">%1$s</h3><p class="ap-dashboard-event-widget__description">%2$s</p><a class="ap-dashboard-button ap-dashboard-button--primary" href="%3$s">%4$s</a></div></div>',
+                esc_html__('Share a New Event', 'artpulse'),
+                esc_html__('Bring the community together by sharing details about your upcoming event.', 'artpulse'),
+                esc_url($submission_url),
+                esc_html__('Submit Event', 'artpulse')
+            );
+
+            return;
+        }
+
+        include $template;
     }
 
     public static function enqueueAssets(): void
