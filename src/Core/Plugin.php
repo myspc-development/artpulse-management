@@ -128,6 +128,7 @@ class Plugin
         \ArtPulse\Frontend\UserProfileShortcode::register();
         \ArtPulse\Frontend\ProfileEditShortcode::register();
         \ArtPulse\Frontend\PortfolioBuilder::register();
+        \ArtPulse\Frontend\TemplateLoader::register();
         \ArtPulse\Admin\MetaBoxesRelationship::register();
         \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
         \ArtPulse\Admin\ApprovalManager::register();
