@@ -198,6 +198,68 @@
   min-height: 100%;
 }
 
+.ap-favorite-btn,
+.ap-follow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid #0073aa;
+  background-color: #ffffff;
+  color: #0073aa;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ap-favorite-btn:hover,
+.ap-favorite-btn:focus,
+.ap-favorite-btn:focus-visible,
+.ap-follow-btn:hover,
+.ap-follow-btn:focus,
+.ap-follow-btn:focus-visible {
+  background-color: #005c87;
+  border-color: #005c87;
+  color: #ffffff;
+}
+
+.ap-favorite-btn:focus,
+.ap-favorite-btn:focus-visible,
+.ap-follow-btn:focus,
+.ap-follow-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.35);
+  outline: none;
+}
+
+.ap-favorite-btn.is-active,
+.ap-favorite-btn[aria-pressed='true'],
+.ap-follow-btn.is-following,
+.ap-follow-btn[aria-pressed='true'] {
+  background-color: #0073aa;
+  border-color: #0073aa;
+  color: #ffffff;
+}
+
+.ap-favorite-btn.is-active:hover,
+.ap-favorite-btn.is-active:focus,
+.ap-favorite-btn.is-active:focus-visible,
+.ap-favorite-btn[aria-pressed='true']:hover,
+.ap-favorite-btn[aria-pressed='true']:focus,
+.ap-favorite-btn[aria-pressed='true']:focus-visible,
+.ap-follow-btn.is-following:hover,
+.ap-follow-btn.is-following:focus,
+.ap-follow-btn.is-following:focus-visible,
+.ap-follow-btn[aria-pressed='true']:hover,
+.ap-follow-btn[aria-pressed='true']:focus,
+.ap-follow-btn[aria-pressed='true']:focus-visible {
+  background-color: #005c87;
+  border-color: #005c87;
+  color: #ffffff;
+}
+
 .wp-admin .ap-dashboard-section {
   background: #fff;
 }
@@ -255,6 +317,7 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: auto;
+  align-items: center;
   padding-top: 0.5rem;
 }
 
