@@ -10,6 +10,10 @@ class FollowRestController
 {
     public static function register(): void
     {
+        if ( ! ( did_action( 'rest_api_init' ) || doing_action( 'rest_api_init' ) ) ) {
+            return;
+        }
+
         register_rest_route('artpulse/v1', '/follows', [
             'methods'             => 'GET',
             'callback'            => [self::class, 'get_follows'],

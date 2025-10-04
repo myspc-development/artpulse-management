@@ -44,6 +44,7 @@ class Plugin
 
         // REST API endpoints
         add_action( 'rest_api_init', [ \ArtPulse\Community\FavoritesRestController::class, 'register' ] );
+        add_action( 'rest_api_init', [ \ArtPulse\Community\FollowRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
     }
@@ -115,7 +116,6 @@ class Plugin
         \ArtPulse\Core\NotificationShortcode::register();
         \ArtPulse\Admin\AdminListSorting::register();
         \ArtPulse\Rest\RestSortingSupport::register();
-        \ArtPulse\Community\FollowRestController::register();
         \ArtPulse\Admin\AdminListColumns::register();
         \ArtPulse\Admin\EnqueueAssets::register();
         \ArtPulse\Frontend\Shortcodes::register();
