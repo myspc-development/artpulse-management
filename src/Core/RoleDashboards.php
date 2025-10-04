@@ -123,8 +123,7 @@ class RoleDashboards
 
     public static function renderEventSubmissionWidget(): void
     {
-        $submission_url  = self::getEventSubmissionUrl();
-        $submission_url  = apply_filters('artpulse_event_submission_url', $submission_url);
+
         $submission_url  = is_string($submission_url) ? $submission_url : '';
         $template        = dirname(__DIR__, 2) . '/templates/dashboard/event-submission-widget.php';
 
@@ -149,26 +148,7 @@ class RoleDashboards
         include $template;
     }
 
-    public static function getEventSubmissionUrl(): string
-    {
-        if (self::currentUserCanCreateEvents()) {
-            return admin_url('post-new.php?post_type=artpulse_event');
-        }
 
-        return self::getFrontendEventSubmissionUrl();
-    }
-
-    public static function getFrontendEventSubmissionUrl(): string
-    {
-        $page_id = self::locateFrontendEventSubmissionPage();
-
-        if (!$page_id) {
-            return '';
-        }
-
-        $permalink = get_permalink($page_id);
-
-        return is_string($permalink) ? $permalink : '';
     }
 
     public static function enqueueAssets(): void
