@@ -93,7 +93,15 @@ class RoleDashboards
                 $widget_id,
                 esc_html($title),
                 static function () use ($role) {
-                    echo self::renderDashboard($role);
+                    $data = self::prepareDashboardData($role);
+
+                    if (empty($data)) {
+                        echo '<div class="ap-dashboard-message">' . esc_html__('Unable to load dashboard data.', 'artpulse') . '</div>';
+
+                        return;
+                    }
+
+                    echo self::renderDashboardWidget($data);
                 }
             );
         }
@@ -212,24 +220,42 @@ class RoleDashboards
 
     public static function getDashboard(WP_REST_Request $request): WP_REST_Response
     {
-        $role    = sanitize_key($request->get_param('role'));
-        $user_id = get_current_user_id();
+        $role = sanitize_key($request->get_param('role'));
 
         if (!self::currentUserCanAccess($role)) {
             return new WP_REST_Response(['message' => __('Access denied.', 'artpulse')], 403);
         }
 
-        $data = [
+        return rest_ensure_response(self::prepareDashboardData($role));
+    }
+
+    public static function prepareDashboardData(string $role, ?int $user_id = null): array
+    {
+        if (!array_key_exists($role, self::ROLE_CONFIG)) {
+            return [];
+        }
+
+        if ($user_id === null) {
+            $user_id = get_current_user_id();
+        }
+
+        if (!$user_id) {
+            return [];
+        }
+
+        $favorites   = self::getFavorites($user_id);
+        $follows     = self::getFollows($user_id);
+        $post_types  = self::ROLE_CONFIG[$role]['post_types'] ?? [];
+        $submissions = self::getSubmissions($user_id, $post_types);
+
+        return [
             'role'        => $role,
-            'favorites'   => self::getFavorites($user_id),
-            'follows'     => self::getFollows($user_id),
-            'submissions' => self::getSubmissions($user_id, self::ROLE_CONFIG[$role]['post_types'] ?? []),
+            'favorites'   => $favorites,
+            'follows'     => $follows,
+            'submissions' => $submissions,
+            'metrics'     => self::buildMetrics($favorites, $follows, $submissions),
+            'profile'     => self::getProfileSummary($user_id, $role),
         ];
-
-        $data['metrics'] = self::buildMetrics($data['favorites'], $data['follows'], $data['submissions']);
-        $data['profile'] = self::getProfileSummary($user_id, $role);
-
-        return rest_ensure_response($data);
     }
 
     private static function renderDashboard(string $role): string
@@ -247,6 +273,24 @@ class RoleDashboards
         $loading = esc_html__('Loading dashboard…', 'artpulse');
 
         return sprintf('<div class="%1$s" data-ap-dashboard-role="%2$s"><div class="ap-dashboard-loading">%3$s</div></div>', $classes, esc_attr($role), $loading);
+    }
+
+    private static function renderDashboardWidget(array $data): string
+    {
+        $template = dirname(__DIR__, 2) . '/templates/dashboard/widget.php';
+
+        if (!file_exists($template)) {
+            return '<pre class="ap-dashboard-widget__data">' . esc_html(wp_json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</pre>';
+        }
+
+        ob_start();
+
+        $dashboard = $data;
+        $role      = $data['role'] ?? '';
+
+        include $template;
+
+        return (string) ob_get_clean();
     }
 
     private static function currentUserCanAccess(string $role): bool
