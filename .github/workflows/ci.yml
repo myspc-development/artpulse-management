@@ -19,7 +19,7 @@ jobs:
 
     env:
       WP_VERSION: ${{ matrix.wp-version }}
-      DB_NAME: wordpress_test
+      DB_NAME: wp_phpunit_tests
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: 127.0.0.1
@@ -96,8 +96,8 @@ jobs:
       - name: Run PHPCS Sniff
         run: composer run sniff
 
-      - name: Setup WordPress test suite
-        run: bash ./scripts/src/install-wp-tests.sh $DB_NAME $DB_USER $DB_PASSWORD $DB_HOST ${{ matrix.wp-version }}
+      - name: Prepare test database
+        run: mysql -h "$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
       - name: Run PHPUnit tests
         run: |
