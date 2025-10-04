@@ -43,7 +43,7 @@ class EngagementDashboard
         $per_page = 20;
 
         $all_users = get_users([
-            'role__in' => ['subscriber', 'artpulse_member', 'artpulse_pro', 'artpulse_org'],
+            'role__in' => ['subscriber', 'member', 'artist', 'organization'],
             'orderby'  => 'registered',
             'order'    => 'DESC',
             'number'   => 9999,
@@ -52,8 +52,8 @@ class EngagementDashboard
         $filtered = [];
         foreach ($all_users as $user) {
             $last_login = get_user_meta($user->ID, 'wp_last_login', true);
-            $artworks = count_user_posts($user->ID, 'artwork');
-            $events = count_user_posts($user->ID, 'event');
+            $artworks = count_user_posts($user->ID, 'artpulse_artwork');
+            $events = count_user_posts($user->ID, 'artpulse_event');
             $activity_score = $artworks + $events;
 
             $is_active = strtotime($last_login) > strtotime('-30 days') || $activity_score > 0;
