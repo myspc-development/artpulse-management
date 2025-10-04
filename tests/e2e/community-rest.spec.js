@@ -1,6 +1,6 @@
-const { execFile } = require('node:child_process');
-const { promisify } = require('node:util');
-const crypto = require('node:crypto');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const crypto = require('crypto');
 
 const execFileAsync = promisify(execFile);
 const BASE_URL = process.env.WP_BASE_URL || 'http://localhost:8889';
