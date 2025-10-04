@@ -123,8 +123,20 @@ class RoleDashboards
 
     public static function renderEventSubmissionWidget(): void
     {
+        $submission_url = '';
 
-        $submission_url  = is_string($submission_url) ? $submission_url : '';
+        if (self::currentUserCanCreateEvents()) {
+            $submission_page_id = self::locateFrontendEventSubmissionPage();
+
+            if ($submission_page_id) {
+                $permalink = get_permalink($submission_page_id);
+
+                if (is_string($permalink) && $permalink !== '') {
+                    $submission_url = $permalink;
+                }
+            }
+        }
+
         $template        = dirname(__DIR__, 2) . '/templates/dashboard/event-submission-widget.php';
 
         if (!file_exists($template)) {
