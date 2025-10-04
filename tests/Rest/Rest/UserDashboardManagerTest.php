@@ -4,9 +4,7 @@ namespace Tests\Rest;
 
 use ArtPulse\Core\RoleDashboards;
 use WP_REST_Request;
-use WP_UnitTestCase;
-
-class UserDashboardManagerTest extends WP_UnitTestCase
+class UserDashboardManagerTest extends \WP_UnitTestCase
 {
     protected $user_id;
 

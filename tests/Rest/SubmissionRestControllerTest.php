@@ -5,7 +5,7 @@ namespace Tests\Rest;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
-class SubmissionRestControllerTest extends WP_UnitTestCase
+class SubmissionRestControllerTest extends \WP_UnitTestCase
 {
     protected $user_id;
 

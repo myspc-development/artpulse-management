@@ -5,7 +5,7 @@ namespace Tests\Rest;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
-class DirectoryManagerTest extends WP_UnitTestCase
+class DirectoryManagerTest extends \WP_UnitTestCase
 {
     protected $event;
 

@@ -5,7 +5,7 @@ namespace Tests\Rest;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
-class ProfileLinkRequestManagerTest extends WP_UnitTestCase
+class ProfileLinkRequestManagerTest extends \WP_UnitTestCase
 {
     protected $user_id;
     protected $target_id;
