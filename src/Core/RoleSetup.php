@@ -57,7 +57,7 @@ class RoleSetup
         $roles_caps = [
             'member' => [
                 'read',
-                'create_artpulse_event',
+                'create_artpulse_events',
             ],
             'artist' => [
                 'read',
@@ -68,6 +68,10 @@ class RoleSetup
                 'delete_artpulse_artists', 'delete_private_artpulse_artists',
                 'delete_published_artpulse_artists', 'delete_others_artpulse_artists',
                 'edit_private_artpulse_artists', 'edit_published_artpulse_artists',
+                'create_artpulse_events',
+                'edit_artpulse_event', 'read_artpulse_event', 'delete_artpulse_event',
+                'edit_artpulse_events', 'publish_artpulse_events', 'delete_artpulse_events',
+                'edit_published_artpulse_events', 'delete_published_artpulse_events',
                 'view_artpulse_dashboard',
             ],
             'organization' => [
@@ -79,6 +83,10 @@ class RoleSetup
                 'delete_artpulse_orgs', 'delete_private_artpulse_orgs',
                 'delete_published_artpulse_orgs', 'delete_others_artpulse_orgs',
                 'edit_private_artpulse_orgs', 'edit_published_artpulse_orgs',
+                'create_artpulse_events',
+                'edit_artpulse_event', 'read_artpulse_event', 'delete_artpulse_event',
+                'edit_artpulse_events', 'publish_artpulse_events', 'delete_artpulse_events',
+                'edit_published_artpulse_events', 'delete_published_artpulse_events',
                 'view_artpulse_dashboard',
             ],
             'administrator' => [],
