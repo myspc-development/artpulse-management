@@ -44,6 +44,39 @@ class RoleDashboards
 
         add_action('wp_enqueue_scripts', [self::class, 'enqueueAssets']);
         add_action('rest_api_init', [self::class, 'registerRoutes']);
+        add_action('wp_dashboard_setup', [self::class, 'registerDashboardWidgets']);
+    }
+
+    public static function registerDashboardWidgets(): void
+    {
+        if (!is_user_logged_in()) {
+            return;
+        }
+
+        $user = wp_get_current_user();
+
+        if (!$user instanceof WP_User) {
+            return;
+        }
+
+        foreach (self::ROLE_CONFIG as $role => $config) {
+            $can_manage = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
+
+            if (!$can_manage && !self::userCanViewRole($user, $role)) {
+                continue;
+            }
+
+            $widget_id = sprintf('artpulse_dashboard_%s', sanitize_key($role));
+            $title     = $config['title'] ?? ucfirst($role);
+
+            wp_add_dashboard_widget(
+                $widget_id,
+                esc_html($title),
+                static function () use ($role) {
+                    echo self::renderDashboard($role);
+                }
+            );
+        }
     }
 
     public static function enqueueAssets(): void
