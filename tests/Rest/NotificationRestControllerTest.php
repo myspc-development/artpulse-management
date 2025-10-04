@@ -6,7 +6,7 @@ use ArtPulse\Community\NotificationManager;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
-class NotificationRestControllerTest extends WP_UnitTestCase
+class NotificationRestControllerTest extends \WP_UnitTestCase
 {
     protected $user_id;
     private string $table;

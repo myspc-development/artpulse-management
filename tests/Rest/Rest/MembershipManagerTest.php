@@ -5,7 +5,7 @@ namespace Tests\Rest;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
-class MembershipManagerTest extends WP_UnitTestCase
+class MembershipManagerTest extends \WP_UnitTestCase
 {
     public function test_webhook_invalid_payload_returns_error()
     {

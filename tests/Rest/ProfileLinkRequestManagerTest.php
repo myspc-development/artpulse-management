@@ -1,7 +1,5 @@
 <?php
-use WP_UnitTestCase;
-
-class ProfileLinkRequestManagerTest extends WP_UnitTestCase {
+class ProfileLinkRequestManagerTest extends \WP_UnitTestCase {
     public function test_handle_create_request_invalid_target() {
         wp_set_current_user($this->factory->user->create());
         $request = new WP_REST_Request('POST', '/artpulse/v1/link-requests');

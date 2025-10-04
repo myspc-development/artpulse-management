@@ -5,7 +5,7 @@ namespace Tests\Rest;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
-class ArtistRestControllerTest extends WP_UnitTestCase
+class ArtistRestControllerTest extends \WP_UnitTestCase
 {
     protected $artist_post;
 

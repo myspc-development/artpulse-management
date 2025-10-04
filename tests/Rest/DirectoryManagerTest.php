@@ -1,7 +1,5 @@
 <?php
-use WP_UnitTestCase;
-
-class DirectoryManagerTest extends WP_UnitTestCase {
+class DirectoryManagerTest extends \WP_UnitTestCase {
     public function test_handleFilter_with_invalid_type_returns_error() {
         $request = new WP_REST_Request('GET', '/artpulse/v1/filter');
         $request->set_param('type', 'invalid_type');

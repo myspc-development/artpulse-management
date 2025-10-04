@@ -5,13 +5,14 @@ All notable changes to this project will be documented in this file. See [standa
 ## Unreleased
 
 ### Fix
-- Resolve PHP syntax issues in the organisation dashboard admin, community shortcodes, and REST portfolio controller to ensure clean bootstrap and hardened output sanitisation.
+- Repair membership test fixtures and WooCommerce reflection usage so PHPUnit bootstrap succeeds without typos.
+- Normalize REST test cases to use core `\WP_UnitTestCase` without redundant imports, preventing syntax lint warnings.
 
 ### Chore (ci)
-- Harden the continuous integration workflow with caching, early syntax linting, and test artefact uploads to keep the matrix reliable.
+- Document Composer and npm bootstrap order to support cached installs in CI.
 
 ### Test
-- Repair shortcode unit tests and supporting stubs so Brain Monkey coverage runs without fatal errors.
+- Align Brain Monkey tests with corrected fixtures to keep unit coverage compiling cleanly.
 
 ### [0.1.2](https://github.com/myspc-development/artpulse-management/compare/v0.1.1...v0.1.2) (2025-06-17)
 
