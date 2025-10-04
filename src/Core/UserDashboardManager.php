@@ -8,7 +8,7 @@ class UserDashboardManager
     public static function register()
     {
         add_shortcode('ap_user_dashboard', [ self::class, 'renderDashboard' ]);
-        add_action('wp_enqueue_scripts',   [ self::class, 'enqueueAssets' ]);
+        add_action('wp_enqueue_scripts',   [ self::class, 'enqueueAssets' ], 20);
         add_action('rest_api_init',        [ self::class, 'register_routes' ]);
     }
 
@@ -24,7 +24,7 @@ class UserDashboardManager
         wp_enqueue_script(
             'ap-user-dashboard-js',
             plugins_url('assets/js/ap-user-dashboard.js', __FILE__),
-            ['wp-api-fetch'],
+            ['wp-api-fetch', 'ap-dashboards-js'],
             '1.0.0',
             true
         );
@@ -37,12 +37,6 @@ class UserDashboardManager
             '1.0.0',
             true
         );
-
-        // Localize dashboard REST endpoint
-        wp_localize_script('ap-user-dashboard-js', 'ArtPulseDashboardApi', [
-            'root'  => esc_url_raw(rest_url()),
-            'nonce' => wp_create_nonce('wp_rest'),
-        ]);
 
         // Dashboard styles
         wp_enqueue_style(
@@ -74,28 +68,32 @@ class UserDashboardManager
 
     public static function getDashboardData(WP_REST_Request $request)
     {
-        $user_id = get_current_user_id();
-        $data = [
-            'membership_level'   => get_user_meta($user_id, 'ap_membership_level', true),
-            'membership_expires' => get_user_meta($user_id, 'ap_membership_expires', true),
-            'events'             => [],
-            'artists'            => [],
-            'artworks'           => [],
-        ];
+        $requested_role = sanitize_key($request->get_param('role'));
 
-        foreach ( ['event','artist','artwork'] as $type ) {
-            $posts = get_posts([
-                'post_type'      => "artpulse_{$type}",
-                'author'         => $user_id,
-                'posts_per_page' => -1,
-            ]);
-            foreach ( $posts as $p ) {
-                $data[$type . 's'][] = [
-                    'id'    => $p->ID,
-                    'title' => $p->post_title,
-                    'link'  => get_permalink($p),
-                ];
+        if ($requested_role) {
+            if (!RoleDashboards::userCanAccessRole($requested_role)) {
+                return new \WP_REST_Response([
+                    'message' => __('You do not have permission to view this dashboard.', 'artpulse'),
+                ], 403);
             }
+
+            $role = $requested_role;
+        } else {
+            $role = RoleDashboards::getDefaultRoleForUser();
+        }
+
+        if (!$role) {
+            return new \WP_REST_Response([
+                'message' => __('Unable to determine an applicable dashboard.', 'artpulse'),
+            ], 404);
+        }
+
+        $data = RoleDashboards::prepareDashboardData($role);
+
+        if (empty($data)) {
+            return new \WP_REST_Response([
+                'message' => __('Unable to load dashboard data.', 'artpulse'),
+            ], 404);
         }
 
         return rest_ensure_response($data);
@@ -119,14 +117,20 @@ class UserDashboardManager
         if ( ! is_user_logged_in() ) {
             return '<p>' . __('Please log in to view your dashboard.', 'artpulse') . '</p>';
         }
-        ob_start(); ?>
-        <div class="ap-user-dashboard">
-            <h2><?php _e('Your Membership','artpulse'); ?></h2>
-            <div id="ap-membership-info"></div>
-            <h2><?php _e('Your Content','artpulse'); ?></h2>
-            <div id="ap-user-content"></div>
-        </div>
-        <?php
-        return ob_get_clean();
+        $role = RoleDashboards::getDefaultRoleForUser();
+
+        if (!$role) {
+            return '<div class="ap-dashboard-message">' . esc_html__('No dashboard is available for your account.', 'artpulse') . '</div>';
+        }
+
+        $classes = sprintf('ap-user-dashboard ap-role-dashboard ap-role-dashboard--%s', esc_attr($role));
+        $loading = esc_html__('Loading dashboard…', 'artpulse');
+
+        return sprintf(
+            '<div class="%1$s" data-ap-dashboard-role="%2$s"><div class="ap-dashboard-loading">%3$s</div></div>',
+            $classes,
+            esc_attr($role),
+            $loading
+        );
     }
 }
