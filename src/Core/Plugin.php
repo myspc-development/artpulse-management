@@ -128,6 +128,7 @@ class Plugin
         \ArtPulse\Frontend\OrganizationEventForm::register();
         \ArtPulse\Frontend\UserProfileShortcode::register();
         \ArtPulse\Frontend\ProfileEditShortcode::register();
+        \ArtPulse\Frontend\ArtistsDirectory::register();
         \ArtPulse\Frontend\PortfolioBuilder::register();
         \ArtPulse\Frontend\TemplateLoader::register();
         \ArtPulse\Admin\MetaBoxesRelationship::register();
