@@ -59,7 +59,15 @@ class OrgDashboardAdmin
             return $orgs ? absint($orgs[0]->ID) : 0;
         }
 
-        return (int) get_user_meta(get_current_user_id(), 'ap_org_id', true);
+        $user_id = get_current_user_id();
+
+        $org_id = get_user_meta($user_id, 'ap_organization_id', true);
+
+        if ('' === $org_id || null === $org_id) {
+            $org_id = get_user_meta($user_id, 'ap_org_id', true);
+        }
+
+        return (int) $org_id;
     }
 
     private static function render_org_selector(): void
