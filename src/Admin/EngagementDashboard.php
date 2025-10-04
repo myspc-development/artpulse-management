@@ -4,6 +4,35 @@ namespace ArtPulse\Admin;
 
 class EngagementDashboard
 {
+    private static function getLastLoginTimestamp($user_id)
+    {
+        $last_login = get_user_meta($user_id, 'last_login', true);
+
+        if (!empty($last_login)) {
+            $timestamp = strtotime($last_login);
+            if ($timestamp !== false) {
+                return $timestamp;
+            }
+        }
+
+        $fallback = get_user_meta($user_id, 'wp_last_login', true);
+        if (empty($fallback)) {
+            return false;
+        }
+
+        if (is_numeric($fallback)) {
+            $timestamp = (int) $fallback;
+        } else {
+            $timestamp = strtotime($fallback);
+        }
+
+        if ($timestamp === false) {
+            return false;
+        }
+
+        return $timestamp;
+    }
+
     public static function register()
     {
         add_action('admin_menu', [self::class, 'addMenu']);
@@ -51,17 +80,17 @@ class EngagementDashboard
 
         $filtered = [];
         foreach ($all_users as $user) {
-            $last_login = get_user_meta($user->ID, 'wp_last_login', true);
+            $last_login_timestamp = self::getLastLoginTimestamp($user->ID);
             $artworks = count_user_posts($user->ID, 'artpulse_artwork');
             $events = count_user_posts($user->ID, 'artpulse_event');
             $activity_score = $artworks + $events;
 
-            $is_active = strtotime($last_login) > strtotime('-30 days') || $activity_score > 0;
+            $is_active = ($last_login_timestamp && $last_login_timestamp > strtotime('-30 days')) || $activity_score > 0;
 
             if ($activity_filter === 'active' && !$is_active) continue;
             if ($activity_filter === 'inactive' && $is_active) continue;
 
-            $user->ap_last_login = $last_login;
+            $user->ap_last_login = $last_login_timestamp;
             $user->ap_artworks = $artworks;
             $user->ap_events = $events;
             $user->ap_score = $activity_score;
@@ -80,8 +109,8 @@ class EngagementDashboard
         $weekly_uploads = array_fill(0, 7, 0);
 
         foreach ($filtered as $user) {
-            $login_time = strtotime($user->ap_last_login);
-            if ($login_time >= strtotime('-7 days')) {
+            $login_time = $user->ap_last_login;
+            if ($login_time && $login_time >= strtotime('-7 days')) {
                 $days_ago = 6 - floor((time() - $login_time) / 86400);
                 if (isset($weekly_logins[$days_ago])) {
                     $weekly_logins[$days_ago]++;
@@ -99,13 +128,14 @@ class EngagementDashboard
             header('Content-Disposition: attachment; filename="artpulse-engagement.csv"');
 
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Name', 'Email', 'Logins', 'Artworks', 'Events', 'Followers', 'Following', 'Score']);
+            fputcsv($output, ['Name', 'Email', 'Last Login', 'Artworks', 'Events', 'Followers', 'Following', 'Score']);
 
             foreach ($filtered as $user) {
+                $csv_last_login = $user->ap_last_login ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $user->ap_last_login) : '';
                 fputcsv($output, [
                     $user->display_name ?: $user->user_login,
                     $user->user_email,
-                    $user->ap_last_login,
+                    $csv_last_login,
                     $user->ap_artworks,
                     $user->ap_events,
                     $user->ap_followers,
@@ -189,7 +219,7 @@ class EngagementDashboard
                 <?php foreach ($paged_users as $user): ?>
                     <tr>
                         <td><a href="<?php echo esc_url(get_edit_user_link($user->ID)); ?>"><?php echo esc_html($user->display_name ?: $user->user_login); ?></a></td>
-                        <td><?php echo esc_html($user->ap_last_login ? date_i18n(get_option('date_format'), strtotime($user->ap_last_login)) : '—'); ?></td>
+                        <td><?php echo esc_html($user->ap_last_login ? date_i18n(get_option('date_format'), $user->ap_last_login) : '—'); ?></td>
                         <td><?php echo intval($user->ap_artworks); ?></td>
                         <td><?php echo intval($user->ap_events); ?></td>
                         <td><?php echo intval($user->ap_followers); ?></td>
