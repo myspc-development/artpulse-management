@@ -1,0 +1,141 @@
+.ap-artists-directory {
+    display: block;
+    gap: 1.5rem;
+}
+
+.ap-directory-filter {
+    margin-bottom: 1.5rem;
+}
+
+.ap-directory-filter__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ap-directory-filter__control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--ap-directory-border, #d0d7de);
+    border-radius: 999px;
+    background: var(--ap-directory-background, #ffffff);
+    color: inherit;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.ap-directory-filter__control:hover,
+.ap-directory-filter__control:focus-visible {
+    background: var(--ap-directory-accent, #3c50ff);
+    border-color: var(--ap-directory-accent, #3c50ff);
+    color: #ffffff;
+    outline: none;
+}
+
+.ap-directory-filter__control.is-active,
+.ap-directory-filter__control[aria-pressed="true"] {
+    background: var(--ap-directory-accent, #3c50ff);
+    border-color: var(--ap-directory-accent, #3c50ff);
+    color: #ffffff;
+}
+
+.ap-directory-results[aria-busy="true"] {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.ap-directory-section {
+    margin-bottom: 2.5rem;
+}
+
+.ap-directory-heading {
+    font-size: 1.5rem;
+    margin: 0 0 1rem;
+}
+
+.ap-directory-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.ap-artist-card {
+    background: var(--ap-card-background, #ffffff);
+    border-radius: 0.75rem;
+    border: 1px solid var(--ap-card-border, #e5e7eb);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ap-artist-card:hover,
+.ap-artist-card:focus-within {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+}
+
+.ap-artist-card__thumb img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+.ap-artist-card__body {
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+.ap-artist-card__title {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+}
+
+.ap-artist-card__title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.ap-artist-card__title a:focus-visible,
+.ap-artist-card__title a:hover {
+    text-decoration: underline;
+}
+
+.ap-artist-card__meta {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--ap-card-muted, #4b5563);
+}
+
+.ap-directory-empty {
+    margin: 1rem 0 0;
+    font-style: italic;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .ap-directory-filter__control {
+        min-width: 2rem;
+        padding-inline: 0.6rem;
+    }
+
+    .ap-directory-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+    }
+}

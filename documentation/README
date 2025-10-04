@@ -1,0 +1,45 @@
+# Artists Directory Shortcode
+
+Use the `[ap_artists_directory]` shortcode to output a responsive, accessible listing of published `artpulse_artist` profiles. The directory automatically groups artists alphabetically, presents an A–Z filter bar, and exposes each section through an `aria-live="polite"` results container so screen readers announce updates when visitors change letters.
+
+## Basic Usage
+
+Add the shortcode to any page or post:
+
+```
+[ap_artists_directory]
+```
+
+When the page loads, visitors see an alphabet filter bar and an "All" view that includes every published artist. Clicking or tapping on a letter filters the results client-side, while query parameters such as `?letter=B` keep the experience functional for visitors without JavaScript or for deep-linking to a specific letter.
+
+## Optional Attributes
+
+The shortcode accepts the following optional attributes:
+
+- `orderby` – Field to order by (defaults to `title`).
+- `order` – Sort direction (`ASC` or `DESC`, defaults to `ASC`).
+- `posts_per_page` – Number of artists to retrieve (defaults to `-1` to show all artists).
+- `letter` – Set the default active letter (for example `letter="C"`).
+
+Example:
+
+```
+[ap_artists_directory orderby="title" order="ASC" posts_per_page="200" letter="B"]
+```
+
+## Customising Output
+
+Developers can tailor the directory using these WordPress filters:
+
+- `artpulse_artists_directory_args` – Modify the underlying `WP_Query` arguments before artists are fetched.
+- `artpulse_artists_directory_fields` – Adjust the data displayed for each card (e.g., add organisation details, role, or location metadata).
+
+The shortcode caches rendered artist data for 12 hours to keep the directory fast. Caches are automatically cleared whenever `artpulse_artist` posts are saved, trashed, or deleted.
+
+## Front-End Behaviour
+
+- The filter bar uses focusable controls with `aria-pressed` states for accessibility.
+- The results grid (`.ap-directory-grid`) adapts to various screen sizes.
+- Sections without matching artists are hidden with the `hidden` attribute, and a built-in empty state message appears when a letter has no results.
+
+No additional configuration is required—enqueueing of the associated CSS (`assets/css/ap-artists-directory.css`) and JavaScript (`assets/js/ap-artists-directory.js`) happens automatically when the shortcode is present on a singular page.
