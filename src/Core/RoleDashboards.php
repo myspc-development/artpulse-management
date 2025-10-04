@@ -79,11 +79,17 @@ class RoleDashboards
             return;
         }
 
+        $should_register_event_widget = false;
+
         foreach (self::ROLE_CONFIG as $role => $config) {
             $can_manage = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
 
             if (!$can_manage && !self::userCanViewRole($user, $role)) {
                 continue;
+            }
+
+            if (in_array($role, ['artist', 'organization'], true)) {
+                $should_register_event_widget = true;
             }
 
             $widget_id = sprintf('artpulse_dashboard_%s', sanitize_key($role));
@@ -105,6 +111,142 @@ class RoleDashboards
                 }
             );
         }
+
+        if ($should_register_event_widget) {
+            wp_add_dashboard_widget(
+                'artpulse_event_submission',
+                esc_html__('Submit an Event', 'artpulse'),
+                [self::class, 'renderEventSubmissionWidget']
+            );
+        }
+    }
+
+    public static function renderEventSubmissionWidget(): void
+    {
+        $default_url    = self::getDefaultEventSubmissionUrl();
+        $submission_url = apply_filters('artpulse_event_submission_url', $default_url);
+        $submission_url  = is_string($submission_url) ? $submission_url : '';
+        $template        = dirname(__DIR__, 2) . '/templates/dashboard/event-submission-widget.php';
+
+        if (!file_exists($template)) {
+            if (empty($submission_url)) {
+                echo '<p>' . esc_html__('Event submissions are currently unavailable.', 'artpulse') . '</p>';
+
+                return;
+            }
+
+            printf(
+                '<div class="ap-dashboard-widget ap-dashboard-widget--event-submission"><div class="ap-dashboard-widget__section ap-dashboard-widget__section--event-submission"><h3 class="ap-dashboard-event-widget__title">%1$s</h3><p class="ap-dashboard-event-widget__description">%2$s</p><a class="ap-dashboard-button ap-dashboard-button--primary" href="%3$s">%4$s</a></div></div>',
+                esc_html__('Share a New Event', 'artpulse'),
+                esc_html__('Bring the community together by sharing details about your upcoming event.', 'artpulse'),
+                esc_url($submission_url),
+                esc_html__('Submit Event', 'artpulse')
+            );
+
+            return;
+        }
+
+        include $template;
+    }
+
+    private static function getDefaultEventSubmissionUrl(): string
+    {
+        if (current_user_can('create_artpulse_events')) {
+            return admin_url('post-new.php?post_type=artpulse_event');
+        }
+
+        return self::locateFrontendEventSubmissionUrl();
+    }
+
+    private static function locateFrontendEventSubmissionUrl(): string
+    {
+        $page_id = self::findPageWithShortcode('ap_submit_event');
+
+        if ($page_id) {
+            $permalink = get_permalink($page_id);
+
+            return is_string($permalink) ? $permalink : '';
+        }
+
+        $page_id = self::findPageWithShortcode('ap_submission_form', [
+            'post_type' => ['artpulse_event', 'event'],
+        ]);
+
+        if ($page_id) {
+            $permalink = get_permalink($page_id);
+
+            return is_string($permalink) ? $permalink : '';
+        }
+
+        return '';
+    }
+
+    private static function findPageWithShortcode(string $shortcode, array $attribute_requirements = []): int
+    {
+        $query = get_posts([
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            's'              => $shortcode,
+        ]);
+
+        if (empty($query)) {
+            return 0;
+        }
+
+        $tags = [$shortcode];
+        $regex = '/' . get_shortcode_regex($tags) . '/';
+
+        foreach ($query as $page) {
+            if (!isset($page->post_content) || !has_shortcode($page->post_content, $shortcode)) {
+                continue;
+            }
+
+            if (!preg_match_all($regex, $page->post_content, $matches, PREG_SET_ORDER)) {
+                continue;
+            }
+
+            foreach ($matches as $shortcode_match) {
+                if (($shortcode_match[2] ?? '') !== $shortcode) {
+                    continue;
+                }
+
+                $atts = shortcode_parse_atts($shortcode_match[3] ?? '');
+
+                if (self::shortcodeAttributesMatch($atts, $attribute_requirements)) {
+                    return (int) $page->ID;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    private static function shortcodeAttributesMatch($attributes, array $requirements): bool
+    {
+        if (empty($requirements)) {
+            return true;
+        }
+
+        if (!is_array($attributes)) {
+            $attributes = [];
+        }
+
+        foreach ($requirements as $key => $expected) {
+            if (is_array($expected)) {
+                if (!isset($attributes[$key]) || !in_array($attributes[$key], $expected, true)) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (($attributes[$key] ?? null) !== $expected) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static function enqueueAssets(): void

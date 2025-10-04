@@ -119,3 +119,38 @@
 .ap-user-social-links a:hover {
   color: #005077;
 }
+
+.ap-dashboard-widget--event-submission {
+  display: block;
+}
+
+.ap-dashboard-event-widget__title {
+  margin-bottom: 0.5rem;
+}
+
+.ap-dashboard-event-widget__description {
+  margin: 0 0 1rem;
+  color: #444;
+}
+
+.ap-dashboard-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.ap-dashboard-button--primary {
+  background-color: #0073aa;
+  color: #fff;
+}
+
+.ap-dashboard-button--primary:hover,
+.ap-dashboard-button--primary:focus {
+  background-color: #005c87;
+  color: #fff;
+}
