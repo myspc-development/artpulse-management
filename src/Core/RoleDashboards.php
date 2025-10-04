@@ -148,9 +148,6 @@ class RoleDashboards
         include $template;
     }
 
-
-    }
-
     public static function enqueueAssets(): void
     {
         $version = defined('ARTPULSE_VERSION') ? ARTPULSE_VERSION : '1.0.0';
