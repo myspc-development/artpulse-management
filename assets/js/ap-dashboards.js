@@ -189,6 +189,14 @@
 
       if (!items.length) {
         wrapper.appendChild(createEmptyState());
+
+        if (group.create_url) {
+          const action = document.createElement('a');
+          action.className = 'ap-dashboard-button ap-dashboard-button--primary';
+          action.href = group.create_url;
+          action.textContent = strings.createProfile || 'Create profile';
+          wrapper.appendChild(action);
+        }
       } else {
         const list = document.createElement('ul');
         list.className = 'ap-dashboard-list';
@@ -278,10 +286,20 @@
       </div>
     `;
 
-    if (options.actions && options.actions.length) {
+    const actionNodes = Array.isArray(options.actions) ? options.actions.filter(Boolean) : [];
+
+    if (item.edit_url) {
+      const editLink = document.createElement('a');
+      editLink.className = 'ap-dashboard-card__action ap-dashboard-card__action--edit';
+      editLink.href = item.edit_url;
+      editLink.textContent = strings.editProfile || 'Edit profile';
+      actionNodes.push(editLink);
+    }
+
+    if (actionNodes.length) {
       const actions = document.createElement('div');
       actions.className = 'ap-dashboard-card__actions';
-      options.actions.forEach((action) => {
+      actionNodes.forEach((action) => {
         if (action) {
           actions.appendChild(action);
         }

@@ -21,12 +21,14 @@ class RoleDashboards
             'shortcode'   => 'ap_artist_dashboard',
             'capability'  => 'edit_artpulse_artist',
             'post_types'  => ['artpulse_artist', 'artpulse_artwork'],
+            'profile_post_type' => 'artpulse_artist',
             'title'       => 'Artist Dashboard',
         ],
         'organization' => [
             'shortcode'   => 'ap_organization_dashboard',
             'capability'  => 'edit_artpulse_org',
             'post_types'  => ['artpulse_org', 'artpulse_event'],
+            'profile_post_type' => 'artpulse_org',
             'title'       => 'Organization Dashboard',
         ],
     ];
@@ -211,6 +213,8 @@ class RoleDashboards
                     'unfollow'          => __('Unfollow', 'artpulse'),
                     'updated'           => __('Updated', 'artpulse'),
                     'viewProfile'       => __('View profile', 'artpulse'),
+                    'createProfile'     => __('Create profile', 'artpulse'),
+                    'editProfile'       => __('Edit profile', 'artpulse'),
                 ],
             ]
         );
@@ -296,10 +300,12 @@ class RoleDashboards
             return [];
         }
 
+        $role_config = self::ROLE_CONFIG[$role] ?? [];
+
         $favorites   = self::getFavorites($user_id);
         $follows     = self::getFollows($user_id);
-        $post_types  = self::ROLE_CONFIG[$role]['post_types'] ?? [];
-        $submissions = self::getSubmissions($user_id, $post_types);
+        $post_types  = $role_config['post_types'] ?? [];
+        $submissions = self::getSubmissions($user_id, $post_types, $role_config);
 
         return [
             'role'        => $role,
@@ -474,6 +480,69 @@ class RoleDashboards
         return 0;
     }
 
+    private static function getSubmissionCreateUrl(string $post_type): string
+    {
+        $page_id = self::locateFrontendSubmissionPageForPostType($post_type);
+
+        if ($page_id) {
+            $permalink = get_permalink($page_id);
+
+            if (is_string($permalink) && $permalink !== '') {
+                return $permalink;
+            }
+        }
+
+        $post_type_object = get_post_type_object($post_type);
+
+        if ($post_type_object && $post_type_object->show_ui) {
+            return admin_url(add_query_arg('post_type', $post_type, 'post-new.php'));
+        }
+
+        return '';
+    }
+
+    private static function locateFrontendSubmissionPageForPostType(string $post_type): int
+    {
+        static $cache = [];
+
+        if (array_key_exists($post_type, $cache)) {
+            return $cache[$post_type];
+        }
+
+        $pages = get_posts([
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ]);
+
+        if (!empty($pages)) {
+            $pattern = sprintf('/\\[ap_submission_form\\b[^\]]*post_type\\s*=\\s*(\"|\')?%s\1?/i', preg_quote($post_type, '/'));
+
+            foreach ($pages as $page_id) {
+                $content = get_post_field('post_content', $page_id);
+
+                if (!is_string($content) || $content === '') {
+                    continue;
+                }
+
+                if (!has_shortcode($content, 'ap_submission_form')) {
+                    continue;
+                }
+
+                if (preg_match($pattern, $content)) {
+                    $cache[$post_type] = (int) $page_id;
+
+                    return $cache[$post_type];
+                }
+            }
+        }
+
+        $cache[$post_type] = 0;
+
+        return $cache[$post_type];
+    }
+
     private static function currentUserCanAccess(string $role): bool
     {
         return self::userCanAccessRole($role);
@@ -548,9 +617,10 @@ class RoleDashboards
         return $output;
     }
 
-    private static function getSubmissions(int $user_id, array $post_types): array
+    private static function getSubmissions(int $user_id, array $post_types, array $role_config = []): array
     {
         $submissions = [];
+        $profile_post_type = $role_config['profile_post_type'] ?? null;
 
         foreach ($post_types as $post_type) {
             $posts = get_posts([
@@ -564,6 +634,11 @@ class RoleDashboards
 
             $items         = [];
             $status_counts = [];
+            $create_url    = '';
+
+            if ($profile_post_type && $profile_post_type === $post_type) {
+                $create_url = self::getSubmissionCreateUrl($post_type);
+            }
 
             foreach ($posts as $post) {
                 $items[] = self::formatPostForResponse($post);
@@ -578,6 +653,10 @@ class RoleDashboards
                 'items'  => $items,
                 'counts' => $status_counts,
             ];
+
+            if ($create_url) {
+                $submissions[$post_type]['create_url'] = $create_url;
+            }
         }
 
         return $submissions;
@@ -633,6 +712,7 @@ class RoleDashboards
         $post      = get_post($post);
         $type      = $post ? get_post_type_object($post->post_type) : null;
         $thumbnail = $post ? get_the_post_thumbnail_url($post, 'medium') : false;
+        $edit_link = $post ? get_edit_post_link($post->ID, '') : false;
 
         if (!$post) {
             return [];
@@ -647,6 +727,7 @@ class RoleDashboards
             'post_type'  => $post->post_type,
             'type_label' => $type ? $type->labels->singular_name : $post->post_type,
             'thumbnail'  => $thumbnail ?: null,
+            'edit_url'   => $edit_link ?: null,
         ];
     }
 

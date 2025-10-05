@@ -98,6 +98,12 @@ php
 Copy
 Edit
 [ap_member_dashboard class="dashboard-wrap"]
+ℹ️ Publish dedicated submission pages so the dashboard buttons know where to send creators:
+
+- Artist profile creation: `[ap_submission_form post_type="artpulse_artist"]`
+- Organization profile creation: `[ap_submission_form post_type="artpulse_org"]`
+
+If those pages are missing, the dashboard links fall back to the WordPress editor at `post-new.php` for the relevant custom post type.
 🏢 Organization Dashboard
 Org stats, artist links, billing info
 
