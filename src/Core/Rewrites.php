@@ -13,6 +13,7 @@ class Rewrites
      */
     public static function register(): void
     {
+        add_action('init', [self::class, 'add_rewrite_tags']);
         add_action('init', [self::class, 'add_rewrite_rules']);
         add_action('init', [self::class, 'register_directory_sitemap_route']);
         add_filter('query_vars', [self::class, 'register_query_vars']);
@@ -22,20 +23,36 @@ class Rewrites
     }
 
     /**
+     * Register rewrite tags used by the directory rewrites.
+     */
+    public static function add_rewrite_tags(): void
+    {
+        add_rewrite_tag('%ap_letter%', '([A-Za-z]|%23|#|all)');
+    }
+
+    /**
      * Register rewrite rules for artist and gallery directory letters.
      */
     public static function add_rewrite_rules(): void
     {
         $artists_base = self::get_directory_base_slug('artists');
         $orgs_base    = self::get_directory_base_slug('galleries');
-        $pattern      = '([A-Za-z]|%23|#|all)';
+        $pattern      = 'letter/([A-Za-z]|%23|#|all)';
 
         if ($artists_base !== '') {
-            add_rewrite_rule('^' . $artists_base . '/' . $pattern . '/?$', 'index.php?pagename=' . $artists_base . '&letter=$matches[1]&ap_directory=artists', 'top');
+            add_rewrite_rule(
+                '^' . $artists_base . '/' . $pattern . '/?$',
+                'index.php?pagename=' . $artists_base . '&ap_letter=$matches[1]&ap_directory=artists',
+                'top'
+            );
         }
 
         if ($orgs_base !== '') {
-            add_rewrite_rule('^' . $orgs_base . '/' . $pattern . '/?$', 'index.php?pagename=' . $orgs_base . '&letter=$matches[1]&ap_directory=galleries', 'top');
+            add_rewrite_rule(
+                '^' . $orgs_base . '/' . $pattern . '/?$',
+                'index.php?pagename=' . $orgs_base . '&ap_letter=$matches[1]&ap_directory=galleries',
+                'top'
+            );
         }
     }
 
@@ -52,6 +69,7 @@ class Rewrites
      */
     public static function register_query_vars(array $vars): array
     {
+        $vars[] = 'ap_letter';
         $vars[] = 'letter';
         $vars[] = 'ap_directory';
         $vars[] = self::DIRECTORY_SITEMAP_QUERY;
@@ -161,8 +179,7 @@ class Rewrites
             $segment = rawurlencode('#');
         }
 
-        $path = trailingslashit($base);
-        $path .= trailingslashit($segment);
+        $path = trailingslashit($base) . 'letter/' . trailingslashit($segment);
 
         $url = home_url('/' . ltrim($path, '/'));
         if (!empty($query)) {

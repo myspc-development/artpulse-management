@@ -33,9 +33,9 @@ class DirectoryQueryTest extends WP_UnitTestCase
         TitleTools::update_post_letter($alpha);
         TitleTools::update_post_letter($beta);
 
-        $_GET['letter'] = 'A';
+        $_GET['ap_letter'] = 'A';
         $output = ArtistsDirectory::render_shortcode(['per_page' => 10]);
-        unset($_GET['letter']);
+        unset($_GET['ap_letter']);
 
         $this->assertStringContainsString('Alpha Artist', $output);
         $this->assertStringNotContainsString('Beta Artist', $output);
@@ -135,10 +135,33 @@ class DirectoryQueryTest extends WP_UnitTestCase
         do_action('init');
         flush_rewrite_rules(false);
 
-        $this->go_to(home_url('/artists/a/'));
+        $this->go_to(home_url('/artists/letter/a/'));
 
-        $this->assertSame('A', get_query_var('letter'));
+        $this->assertSame('A', get_query_var('ap_letter'));
         $this->assertEquals($page_id, get_queried_object_id());
+    }
+
+    public function test_rewrite_honours_filtered_base_slug(): void
+    {
+        $page_id = self::factory()->post->create([
+            'post_type'  => 'page',
+            'post_title' => 'Organisations',
+            'post_name'  => 'organisations',
+            'post_status'=> 'publish',
+        ]);
+
+        $callback = static fn () => 'organisations';
+        add_filter('ap_galleries_directory_base', $callback);
+
+        do_action('init');
+        flush_rewrite_rules(false);
+
+        $this->go_to(home_url('/organisations/letter/b/'));
+
+        $this->assertSame('B', get_query_var('ap_letter'));
+        $this->assertEquals($page_id, get_queried_object_id());
+
+        remove_filter('ap_galleries_directory_base', $callback);
     }
 
     public function test_organization_directory_outputs_results()
