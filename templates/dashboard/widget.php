@@ -129,5 +129,5 @@ $metric_labels = [
         </div>
     <?php endif; ?>
 
-    <?php echo \ArtPulse\Core\RoleDashboards::renderUpgradeWidgetSection($upgrades, $upgrade_intro); ?>
+    <?php echo \ArtPulse\Core\RoleDashboards::renderUpgradeWidget($upgrades, $upgrade_intro); ?>
 </div>

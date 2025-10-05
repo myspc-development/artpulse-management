@@ -104,7 +104,7 @@ class RoleDashboards
                             return;
                         }
 
-                        echo self::renderUpgradeWidgetSection(
+                        echo self::renderUpgradeWidget(
                             $upgrades,
                             $member_dashboard['upgrade_intro'] ?? ''
                         );
@@ -598,6 +598,57 @@ class RoleDashboards
 
         $dashboard = $data;
         $role      = $data['role'] ?? '';
+
+        include $template;
+
+        return (string) ob_get_clean();
+    }
+
+    /**
+     * Render the upgrade widget container that wraps the shared upgrade section.
+     *
+     * @param array       $upgrades    Upgrades to display.
+     * @param string      $intro       Introductory copy shown within the section.
+     * @param string|null $title       Optional title for the upgrade section.
+     * @param array       $widget_args Optional arguments for the widget wrapper. Supports 'title' and 'intro'.
+     */
+    public static function renderUpgradeWidget(array $upgrades, string $intro = '', ?string $title = null, array $widget_args = []): string
+    {
+        if (empty($upgrades)) {
+            return '';
+        }
+
+        $template = dirname(__DIR__, 2) . '/templates/dashboard/upgrade-widget.php';
+
+        $widget_title = isset($widget_args['title']) && is_string($widget_args['title'])
+            ? $widget_args['title']
+            : '';
+        $widget_intro = isset($widget_args['intro']) && is_string($widget_args['intro'])
+            ? $widget_args['intro']
+            : '';
+
+        if (!file_exists($template)) {
+            $output = '<div class="ap-upgrade-widget">';
+
+            if ($widget_title !== '') {
+                $output .= sprintf('<h2 class="ap-upgrade-widget__title">%s</h2>', esc_html($widget_title));
+            }
+
+            if ($widget_intro !== '') {
+                $output .= sprintf('<p class="ap-upgrade-widget__intro">%s</p>', esc_html($widget_intro));
+            }
+
+            $output .= self::renderUpgradeWidgetSection($upgrades, $intro, $title);
+            $output .= '</div>';
+
+            return $output;
+        }
+
+        ob_start();
+
+        $widget_upgrades      = $upgrades;
+        $widget_section_intro = $intro;
+        $widget_section_title = $title;
 
         include $template;
 
