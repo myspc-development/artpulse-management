@@ -129,34 +129,5 @@ $metric_labels = [
         </div>
     <?php endif; ?>
 
-    <?php if (!empty($upgrades)) : ?>
-        <div class="ap-dashboard-widget__section ap-dashboard-widget__section--upgrades">
-            <h3><?php esc_html_e('Membership Upgrades', 'artpulse'); ?></h3>
-
-            <?php if (!empty($upgrade_intro)) : ?>
-                <p class="ap-dashboard-widget__upgrade-intro"><?php echo esc_html($upgrade_intro); ?></p>
-            <?php endif; ?>
-
-            <div class="ap-dashboard-widget__upgrades">
-                <?php foreach ($upgrades as $upgrade) :
-                    $url  = $upgrade['url'] ?? '';
-                    if (empty($url)) {
-                        continue;
-                    }
-                    ?>
-                    <div class="ap-dashboard-widget__upgrade-card">
-                        <h4 class="ap-dashboard-widget__upgrade-title"><?php echo esc_html($upgrade['title'] ?? ''); ?></h4>
-
-                        <?php if (!empty($upgrade['description'])) : ?>
-                            <p class="ap-dashboard-widget__upgrade-description"><?php echo esc_html($upgrade['description']); ?></p>
-                        <?php endif; ?>
-
-                        <a class="ap-dashboard-button ap-dashboard-button--primary" href="<?php echo esc_url($url); ?>">
-                            <?php echo esc_html($upgrade['cta'] ?? __('Upgrade now', 'artpulse')); ?>
-                        </a>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    <?php endif; ?>
+    <?php echo \ArtPulse\Core\RoleDashboards::renderUpgradeWidgetSection($upgrades, $upgrade_intro); ?>
 </div>
