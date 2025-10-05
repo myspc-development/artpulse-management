@@ -90,7 +90,7 @@ Edit
 👤 Role Dashboards
 Membership info + REST widgets tailored to each role
 
-Shortcodes: [ap_member_dashboard], [ap_artist_dashboard], [ap_organization_dashboard]
+Shortcodes: [ap_member_dashboard], [ap_artist_dashboard], [ap_organization_dashboard], [ap_member_upgrades_widget]
 
 📘 Example:
 
@@ -98,6 +98,14 @@ php
 Copy
 Edit
 [ap_member_dashboard class="dashboard-wrap"]
+
+Use `[ap_member_upgrades_widget]` anywhere on a member page to surface the standalone upgrade call-to-action for the current user. The shortcode automatically checks the logged-in visitor, builds the intro/options via the dashboard helper, and renders the shared widget UI. Optional attributes include `title`, `section_title`, `widget_intro`, and `empty_message`.
+
+📘 Example:
+
+```php
+[ap_member_upgrades_widget title="Membership Upgrades" section_title="Upgrade Your Access"]
+```
 ℹ️ Publish dedicated submission pages so the dashboard buttons know where to send creators:
 
 - Artist profile creation: `[ap_submission_form post_type="artpulse_artist"]`

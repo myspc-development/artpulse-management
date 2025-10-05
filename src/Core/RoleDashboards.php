@@ -45,6 +45,61 @@ class RoleDashboards
             );
         }
 
+        add_shortcode(
+            'ap_member_upgrades_widget',
+            static function ($atts = [], $content = '', $tag = '') {
+                if (!is_user_logged_in()) {
+                    return '<div class="ap-dashboard-message">' . esc_html__('Please log in to view available upgrades.', 'artpulse') . '</div>';
+                }
+
+                $user_id = get_current_user_id();
+
+                if (!$user_id) {
+                    return '';
+                }
+
+                $atts = shortcode_atts(
+                    [
+                        'title'          => __('Membership Upgrades', 'artpulse'),
+                        'section_title'  => '',
+                        'widget_intro'   => '',
+                        'empty_message'  => __('No upgrades available at this time.', 'artpulse'),
+                    ],
+                    $atts,
+                    $tag
+                );
+
+                $widget_data = self::getUpgradeWidgetData((int) $user_id);
+                $upgrades    = $widget_data['upgrades'] ?? [];
+
+                if (empty($upgrades)) {
+                    return sprintf(
+                        '<p class="ap-member-upgrades-widget__empty">%s</p>',
+                        esc_html($atts['empty_message'])
+                    );
+                }
+
+                $widget_args = [
+                    'title' => (string) $atts['title'],
+                ];
+
+                if ($atts['widget_intro'] !== '') {
+                    $widget_args['intro'] = (string) $atts['widget_intro'];
+                }
+
+                $section_title = $atts['section_title'] !== ''
+                    ? (string) $atts['section_title']
+                    : null;
+
+                return self::renderUpgradeWidget(
+                    $upgrades,
+                    (string) ($widget_data['intro'] ?? ''),
+                    $section_title,
+                    $widget_args
+                );
+            }
+        );
+
         add_action('wp_enqueue_scripts', [self::class, 'enqueueAssets']);
         add_action('admin_enqueue_scripts', [self::class, 'enqueueDashboardAssets']);
         add_action('rest_api_init', [self::class, 'registerRoutes']);
@@ -420,11 +475,9 @@ class RoleDashboards
         $upgrade_intro = '';
 
         if ($role === 'member') {
-            $upgrades = self::getUpgradeOptions($user_id);
-
-            if (!empty($upgrades)) {
-                $upgrade_intro = __('Ready to take the next step? Unlock publishing tools tailored for artists and organizations.', 'artpulse');
-            }
+            $upgrade_data = self::getUpgradeWidgetData($user_id);
+            $upgrades     = $upgrade_data['upgrades'] ?? [];
+            $upgrade_intro = $upgrade_data['intro'] ?? '';
         }
 
         return [
@@ -437,6 +490,42 @@ class RoleDashboards
             'upgrades'    => $upgrades,
             'upgrade_intro' => $upgrade_intro,
         ];
+    }
+
+    /**
+     * Retrieve the upgrade widget data for a member dashboard context.
+     */
+    public static function getUpgradeWidgetData(int $user_id): array
+    {
+        if ($user_id <= 0) {
+            return [
+                'intro'    => '',
+                'upgrades' => [],
+            ];
+        }
+
+        $upgrades = self::getUpgradeOptions($user_id);
+        $intro    = '';
+
+        if (!empty($upgrades)) {
+            $intro = __('Ready to take the next step? Unlock publishing tools tailored for artists and organizations.', 'artpulse');
+        }
+
+        $data = [
+            'intro'    => $intro,
+            'upgrades' => $upgrades,
+        ];
+
+        /**
+         * Filters the upgrade widget data shown to members.
+         *
+         * @param array $data    {
+         *     @type string $intro    Introductory copy shown above the upgrade options.
+         *     @type array  $upgrades Upgrade option data structures.
+         * }
+         * @param int   $user_id The user identifier the data was generated for.
+         */
+        return apply_filters('artpulse/dashboard/member_upgrade_widget_data', $data, $user_id);
     }
 
     public static function userCanAccessRole(string $role, ?int $user_id = null): bool
