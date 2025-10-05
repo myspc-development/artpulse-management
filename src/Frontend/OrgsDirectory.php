@@ -166,7 +166,14 @@ class OrgsDirectory
             <p class="ap-directory__announce" aria-live="polite" aria-atomic="true">
                 <?php echo esc_html($summary); ?>
             </p>
-            <div id="ap-orgs-directory-results" class="ap-directory__results" tabindex="-1">
+            <div
+                id="ap-orgs-directory-results"
+                class="ap-directory__results"
+                tabindex="-1"
+                role="region"
+                aria-live="polite"
+                aria-label="<?php echo esc_attr__('Galleries directory results', 'artpulse-management'); ?>"
+            >
                 <h2 class="ap-directory__heading">
                     <?php echo esc_html($heading); ?>
                 </h2>
@@ -304,6 +311,7 @@ class OrgsDirectory
                 name="s"
                 value="<?php echo esc_attr($search_value); ?>"
                 placeholder="<?php echo esc_attr__('Search galleries', 'artpulse-management'); ?>"
+                aria-controls="ap-orgs-directory-results"
             />
             <input type="hidden" name="letter" value="<?php echo esc_attr($letter_value); ?>" />
             <?php foreach ($state['tax_filters'] as $taxonomy => $terms) :
