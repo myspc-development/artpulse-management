@@ -82,6 +82,34 @@ class RoleDashboards
         }
 
         $should_register_event_widget = false;
+        $member_dashboard            = [];
+
+        if (self::userCanViewRole($user, 'member')) {
+            $member_dashboard = self::prepareDashboardData('member', (int) $user->ID);
+
+            if (!empty($member_dashboard['upgrades'])) {
+                wp_add_dashboard_widget(
+                    'artpulse_member_upgrades',
+                    esc_html__('Membership Upgrades', 'artpulse'),
+                    static function () use ($member_dashboard) {
+                        self::enqueueAssets();
+
+                        $upgrades = $member_dashboard['upgrades'] ?? [];
+
+                        if (empty($upgrades)) {
+                            echo '<p>' . esc_html__('No upgrades available at this time.', 'artpulse') . '</p>';
+
+                            return;
+                        }
+
+                        echo self::renderUpgradeWidgetSection(
+                            $upgrades,
+                            $member_dashboard['upgrade_intro'] ?? ''
+                        );
+                    }
+                );
+            }
+        }
 
         foreach (self::ROLE_CONFIG as $role => $config) {
             $can_manage = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
@@ -428,6 +456,58 @@ class RoleDashboards
 
         $dashboard = $data;
         $role      = $data['role'] ?? '';
+
+        include $template;
+
+        return (string) ob_get_clean();
+    }
+
+    /**
+     * Render the shared upgrade widget section.
+     */
+    public static function renderUpgradeWidgetSection(array $upgrades, string $intro = '', ?string $title = null): string
+    {
+        if (empty($upgrades)) {
+            return '';
+        }
+
+        $template = dirname(__DIR__, 2) . '/templates/dashboard/partials/upgrade-section.php';
+
+        if (!file_exists($template)) {
+            $title_text = $title ?? esc_html__('Membership Upgrades', 'artpulse');
+
+            $output = sprintf('<div class="ap-dashboard-widget__section ap-dashboard-widget__section--upgrades"><h3>%s</h3>', esc_html($title_text));
+
+            if ($intro !== '') {
+                $output .= sprintf('<p class="ap-dashboard-widget__upgrade-intro">%s</p>', esc_html($intro));
+            }
+
+            foreach ($upgrades as $upgrade) {
+                $url = $upgrade['url'] ?? '';
+
+                if ($url === '') {
+                    continue;
+                }
+
+                $output .= sprintf(
+                    '<div class="ap-dashboard-widget__upgrade-card"><h4 class="ap-dashboard-widget__upgrade-title">%1$s</h4>%2$s<a class="ap-dashboard-button ap-dashboard-button--primary" href="%3$s">%4$s</a></div>',
+                    esc_html($upgrade['title'] ?? ''),
+                    !empty($upgrade['description']) ? sprintf('<p class="ap-dashboard-widget__upgrade-description">%s</p>', esc_html($upgrade['description'])) : '',
+                    esc_url($url),
+                    esc_html($upgrade['cta'] ?? __('Upgrade now', 'artpulse'))
+                );
+            }
+
+            $output .= '</div>';
+
+            return $output;
+        }
+
+        ob_start();
+
+        $section_title    = $title ?? esc_html__('Membership Upgrades', 'artpulse');
+        $section_intro    = $intro;
+        $section_upgrades = $upgrades;
 
         include $template;
 
