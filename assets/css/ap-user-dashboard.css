@@ -272,6 +272,63 @@
   color: #1f2933;
 }
 
+.ap-dashboard-section--upgrades {
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  color: #f8fafc;
+}
+
+.ap-dashboard-section--upgrades > h3 {
+  color: inherit;
+}
+
+.ap-dashboard-upgrades__intro {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.ap-dashboard-upgrades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.ap-dashboard-upgrade {
+  background: rgba(15, 23, 42, 0.35);
+  color: inherit;
+  border: 1px solid rgba(248, 250, 252, 0.2);
+}
+
+.ap-dashboard-upgrade__body {
+  gap: 0.75rem;
+}
+
+.ap-dashboard-upgrade__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.ap-dashboard-upgrade__description {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.ap-dashboard-section--upgrades .ap-dashboard-card__actions {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.ap-dashboard-section--upgrades .ap-dashboard-button--primary {
+  background-color: #facc15;
+  color: #0f172a;
+}
+
+.ap-dashboard-section--upgrades .ap-dashboard-button--primary:hover,
+.ap-dashboard-section--upgrades .ap-dashboard-button--primary:focus {
+  background-color: #fde047;
+  color: #0f172a;
+}
+
 .ap-dashboard-card {
   display: flex;
   flex-direction: column;
@@ -323,6 +380,59 @@
 
 .ap-dashboard-card__actions .ap-dashboard-button {
   margin: 0;
+}
+
+.ap-dashboard-widget__section--upgrades {
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  color: #f8fafc;
+}
+
+.ap-dashboard-widget__section--upgrades h3 {
+  color: inherit;
+}
+
+.ap-dashboard-widget__upgrade-intro {
+  margin: 0 0 1rem;
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.ap-dashboard-widget__upgrades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.ap-dashboard-widget__upgrade-card {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(248, 250, 252, 0.2);
+  border-radius: 10px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ap-dashboard-widget__upgrade-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.ap-dashboard-widget__upgrade-description {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.ap-dashboard-widget__upgrade-card .ap-dashboard-button--primary {
+  align-self: flex-start;
+  background-color: #facc15;
+  color: #0f172a;
+}
+
+.ap-dashboard-widget__upgrade-card .ap-dashboard-button--primary:hover,
+.ap-dashboard-widget__upgrade-card .ap-dashboard-button--primary:focus {
+  background-color: #fde047;
+  color: #0f172a;
 }
 
 .ap-dashboard-empty {

@@ -215,6 +215,9 @@ class RoleDashboards
                     'viewProfile'       => __('View profile', 'artpulse'),
                     'createProfile'     => __('Create profile', 'artpulse'),
                     'editProfile'       => __('Edit profile', 'artpulse'),
+                    'upgrades'          => __('Membership Upgrades', 'artpulse'),
+                    'upgradeIntro'      => __('Upgrade to unlock additional features and visibility.', 'artpulse'),
+                    'upgradeCta'        => __('Upgrade now', 'artpulse'),
                 ],
             ]
         );
@@ -307,6 +310,17 @@ class RoleDashboards
         $post_types  = $role_config['post_types'] ?? [];
         $submissions = self::getSubmissions($user_id, $post_types, $role_config);
 
+        $upgrades      = [];
+        $upgrade_intro = '';
+
+        if ($role === 'member') {
+            $upgrades = self::getUpgradeOptions($user_id);
+
+            if (!empty($upgrades)) {
+                $upgrade_intro = __('Ready to take the next step? Unlock publishing tools tailored for artists and organizations.', 'artpulse');
+            }
+        }
+
         return [
             'role'        => $role,
             'favorites'   => $favorites,
@@ -314,6 +328,8 @@ class RoleDashboards
             'submissions' => $submissions,
             'metrics'     => self::buildMetrics($favorites, $follows, $submissions),
             'profile'     => self::getProfileSummary($user_id, $role),
+            'upgrades'    => $upgrades,
+            'upgrade_intro' => $upgrade_intro,
         ];
     }
 
@@ -707,6 +723,68 @@ class RoleDashboards
         ];
     }
 
+    private static function getUpgradeOptions(int $user_id): array
+    {
+        $current_level = strtolower((string) get_user_meta($user_id, 'ap_membership_level', true));
+
+        $options = [
+            'artist' => [
+                'level'       => 'Pro',
+                'title'       => __('Upgrade to Artist', 'artpulse'),
+                'description' => __('Showcase your portfolio, get discovered, and unlock artist-only publishing tools.', 'artpulse'),
+                'cta'         => __('Become an Artist', 'artpulse'),
+            ],
+            'organization' => [
+                'level'       => 'Org',
+                'title'       => __('Upgrade to Organization', 'artpulse'),
+                'description' => __('Promote your events, highlight members, and grow your creative community.', 'artpulse'),
+                'cta'         => __('Upgrade to Organization', 'artpulse'),
+            ],
+        ];
+
+        $upgrades = [];
+
+        foreach ($options as $slug => $option) {
+            $level = $option['level'] ?? '';
+
+            if ($level && strtolower($level) === $current_level) {
+                continue;
+            }
+
+            $url = self::getMembershipPurchaseUrl($level);
+
+            if ($url === '') {
+                continue;
+            }
+
+            $upgrades[] = [
+                'slug'        => $slug,
+                'title'       => $option['title'] ?? '',
+                'description' => $option['description'] ?? '',
+                'cta'         => $option['cta'] ?? __('Upgrade now', 'artpulse'),
+                'url'         => $url,
+            ];
+        }
+
+        return $upgrades;
+    }
+
+    private static function getMembershipPurchaseUrl(string $level): string
+    {
+        if ($level === '') {
+            return '';
+        }
+
+        $level_slug = strtolower($level);
+        $base_url   = home_url('/purchase-membership');
+
+        if (function_exists('wc_get_checkout_url')) {
+            $base_url = wc_get_checkout_url();
+        }
+
+        return add_query_arg('level', $level_slug, $base_url);
+    }
+
     private static function formatPostForResponse($post): array
     {
         $post      = get_post($post);
@@ -741,6 +819,7 @@ class RoleDashboards
                 'favorites'   => __('Saved Favorites', 'artpulse'),
                 'follows'     => __('Following', 'artpulse'),
                 'submissions' => __('Your Submissions', 'artpulse'),
+                'upgrades'    => __('Membership Upgrades', 'artpulse'),
             ],
             'artist' => [
                 'title'       => __('Artist Dashboard', 'artpulse'),

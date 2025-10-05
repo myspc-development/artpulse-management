@@ -100,6 +100,11 @@
     grid.className = 'ap-dashboard-grid';
 
     grid.appendChild(buildProfileSection(data.profile, roleLabels.profile));
+
+    if (role === 'member' && Array.isArray(data.upgrades) && data.upgrades.length) {
+      grid.appendChild(buildUpgradeSection(data.upgrades, roleLabels.upgrades, data.upgrade_intro));
+    }
+
     grid.appendChild(buildMetricsSection(data.metrics, roleLabels.metrics));
     grid.appendChild(buildSubmissionsSection(data.submissions, roleLabels.submissions));
     grid.appendChild(buildFavoritesSection(data.favorites, roleLabels.favorites));
@@ -134,6 +139,75 @@
     `;
 
     section.appendChild(card);
+    return section;
+  }
+
+  function buildUpgradeSection(upgrades = [], titleOverride, introText) {
+    const section = createSection('upgrades', titleOverride || strings.upgrades || 'Membership Upgrades');
+
+    if (!Array.isArray(upgrades) || upgrades.length === 0) {
+      section.appendChild(createEmptyState());
+      return section;
+    }
+
+    const introCopy = introText || strings.upgradeIntro;
+    if (introCopy) {
+      const intro = document.createElement('p');
+      intro.className = 'ap-dashboard-upgrades__intro';
+      intro.textContent = introCopy;
+      section.appendChild(intro);
+    }
+
+    const list = document.createElement('div');
+    list.className = 'ap-dashboard-upgrades';
+
+    upgrades.forEach((upgrade) => {
+      if (!upgrade || !upgrade.url) {
+        return;
+      }
+
+      const card = document.createElement('article');
+      card.className = 'ap-dashboard-card ap-dashboard-upgrade';
+
+      const body = document.createElement('div');
+      body.className = 'ap-dashboard-card__body ap-dashboard-upgrade__body';
+
+      if (upgrade.title) {
+        const title = document.createElement('h4');
+        title.className = 'ap-dashboard-upgrade__title';
+        title.textContent = upgrade.title;
+        body.appendChild(title);
+      }
+
+      if (upgrade.description) {
+        const desc = document.createElement('p');
+        desc.className = 'ap-dashboard-upgrade__description';
+        desc.textContent = upgrade.description;
+        body.appendChild(desc);
+      }
+
+      card.appendChild(body);
+
+      const actions = document.createElement('div');
+      actions.className = 'ap-dashboard-card__actions';
+
+      const link = document.createElement('a');
+      link.className = 'ap-dashboard-button ap-dashboard-button--primary';
+      link.href = upgrade.url;
+      link.textContent = upgrade.cta || strings.upgradeCta || 'Upgrade now';
+
+      actions.appendChild(link);
+      card.appendChild(actions);
+
+      list.appendChild(card);
+    });
+
+    if (!list.children.length) {
+      section.appendChild(createEmptyState());
+      return section;
+    }
+
+    section.appendChild(list);
     return section;
   }
 
