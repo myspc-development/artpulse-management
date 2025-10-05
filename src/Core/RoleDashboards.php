@@ -4,6 +4,7 @@ namespace ArtPulse\Core;
 
 use ArtPulse\Community\FavoritesManager;
 use ArtPulse\Community\FollowManager;
+use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_User;
@@ -81,8 +82,9 @@ class RoleDashboards
             return;
         }
 
-        $should_register_event_widget = false;
-        $member_dashboard            = [];
+        $should_register_event_widget          = false;
+        $should_register_profile_actions_widget = false;
+        $member_dashboard                     = [];
 
         if (self::userCanViewRole($user, 'member')) {
             $member_dashboard = self::prepareDashboardData('member', (int) $user->ID);
@@ -118,10 +120,6 @@ class RoleDashboards
                 continue;
             }
 
-            if (in_array($role, ['artist', 'organization'], true)) {
-                $should_register_event_widget = true;
-            }
-
             $widget_id = sprintf('artpulse_dashboard_%s', sanitize_key($role));
             $title     = $config['title'] ?? ucfirst($role);
 
@@ -140,6 +138,11 @@ class RoleDashboards
                     echo self::renderDashboardWidget($data);
                 }
             );
+
+            if (in_array($role, ['artist', 'organization'], true)) {
+                $should_register_event_widget          = true;
+                $should_register_profile_actions_widget = true;
+            }
         }
 
         if ($should_register_event_widget) {
@@ -147,6 +150,14 @@ class RoleDashboards
                 'artpulse_event_submission',
                 esc_html__('Submit an Event', 'artpulse'),
                 [self::class, 'renderEventSubmissionWidget']
+            );
+        }
+
+        if ($should_register_profile_actions_widget) {
+            wp_add_dashboard_widget(
+                'artpulse_profile_actions',
+                esc_html__('Profile Actions', 'artpulse'),
+                [self::class, 'renderProfileActionsWidget']
             );
         }
     }
@@ -280,6 +291,73 @@ class RoleDashboards
             [],
             $version
         );
+    }
+
+    public static function renderProfileActionsWidget(): void
+    {
+        if (!is_user_logged_in()) {
+            echo '<p>' . esc_html__('Please log in to manage your profile.', 'artpulse') . '</p>';
+
+            return;
+        }
+
+        $user = wp_get_current_user();
+
+        if (!$user instanceof WP_User) {
+            echo '<p>' . esc_html__('Profile actions are currently unavailable.', 'artpulse') . '</p>';
+
+            return;
+        }
+
+        $profile_actions = self::getProfileActionsForUser($user);
+
+        self::enqueueAssets();
+
+        $template = dirname(__DIR__, 2) . '/templates/dashboard/profile-actions-widget.php';
+
+        if (!file_exists($template)) {
+            if (empty($profile_actions)) {
+                echo '<p>' . esc_html__('Profile actions are currently unavailable.', 'artpulse') . '</p>';
+
+                return;
+            }
+
+            foreach ($profile_actions as $profile_action) {
+                $label      = $profile_action['label'] ?? '';
+                $create_url = $profile_action['create_url'] ?? '';
+                $edit_url   = $profile_action['edit_url'] ?? '';
+
+                if ($label !== '') {
+                    printf('<h3 class="ap-dashboard-widget__section-title">%s</h3>', esc_html($label));
+                }
+
+                if ($create_url) {
+                    printf(
+                        '<p><a class="ap-dashboard-button ap-dashboard-button--primary" href="%1$s">%2$s</a></p>',
+                        esc_url($create_url),
+                        esc_html__('Create profile', 'artpulse')
+                    );
+                } else {
+                    echo '<p>' . esc_html__('Profile creation is currently unavailable.', 'artpulse') . '</p>';
+                }
+
+                if ($edit_url) {
+                    printf(
+                        '<p><a class="ap-dashboard-button ap-dashboard-button--secondary" href="%1$s">%2$s</a></p>',
+                        esc_url($edit_url),
+                        esc_html__('Edit profile', 'artpulse')
+                    );
+                } else {
+                    echo '<p>' . esc_html__('A profile has not been created yet.', 'artpulse') . '</p>';
+                }
+            }
+
+            return;
+        }
+
+        $profile_actions_data = $profile_actions;
+
+        include $template;
     }
 
     public static function registerRoutes(): void
@@ -442,6 +520,70 @@ class RoleDashboards
         $loading = esc_html__('Loading dashboard…', 'artpulse');
 
         return sprintf('<div class="%1$s" data-ap-dashboard-role="%2$s"><div class="ap-dashboard-loading">%3$s</div></div>', $classes, esc_attr($role), $loading);
+    }
+
+    private static function getProfileActionsForUser(WP_User $user): array
+    {
+        $user_id      = (int) $user->ID;
+        $actions      = [];
+        $can_override = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
+
+        foreach (self::ROLE_CONFIG as $role => $config) {
+            $post_type = $config['profile_post_type'] ?? '';
+
+            if ($post_type === '') {
+                continue;
+            }
+
+            if (!$can_override && !self::userCanViewRole($user, $role)) {
+                continue;
+            }
+
+            $create_url = self::getSubmissionCreateUrl($post_type);
+            $profile    = self::getUserProfilePost($user_id, $post_type);
+            $edit_url   = '';
+
+            if ($profile instanceof WP_Post) {
+                $edit_link = get_edit_post_link($profile, '');
+
+                if (is_string($edit_link)) {
+                    $edit_url = $edit_link;
+                }
+            }
+
+            $post_type_object = get_post_type_object($post_type);
+
+            $actions[] = [
+                'role'        => $role,
+                'label'       => $post_type_object && isset($post_type_object->labels->singular_name)
+                    ? $post_type_object->labels->singular_name
+                    : ($config['title'] ?? ucfirst($role)),
+                'post_type'   => $post_type,
+                'create_url'  => $create_url,
+                'edit_url'    => $edit_url,
+                'has_profile' => $profile instanceof WP_Post,
+            ];
+        }
+
+        return $actions;
+    }
+
+    private static function getUserProfilePost(int $user_id, string $post_type): ?WP_Post
+    {
+        $posts = get_posts([
+            'post_type'      => $post_type,
+            'post_status'    => ['publish', 'pending', 'draft', 'future'],
+            'author'         => $user_id,
+            'posts_per_page' => 1,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+        ]);
+
+        if (empty($posts) || !isset($posts[0]) || !$posts[0] instanceof WP_Post) {
+            return null;
+        }
+
+        return $posts[0];
     }
 
     private static function renderDashboardWidget(array $data): string
