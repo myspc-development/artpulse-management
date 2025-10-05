@@ -272,63 +272,6 @@
   color: #1f2933;
 }
 
-.ap-dashboard-section--upgrades {
-  background: linear-gradient(135deg, #0f172a, #1d4ed8);
-  color: #f8fafc;
-}
-
-.ap-dashboard-section--upgrades > h3 {
-  color: inherit;
-}
-
-.ap-dashboard-upgrades__intro {
-  margin: 0;
-  font-size: 0.95rem;
-  color: rgba(248, 250, 252, 0.9);
-}
-
-.ap-dashboard-upgrades {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.ap-dashboard-upgrade {
-  background: rgba(15, 23, 42, 0.35);
-  color: inherit;
-  border: 1px solid rgba(248, 250, 252, 0.2);
-}
-
-.ap-dashboard-upgrade__body {
-  gap: 0.75rem;
-}
-
-.ap-dashboard-upgrade__title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.ap-dashboard-upgrade__description {
-  margin: 0;
-  color: rgba(248, 250, 252, 0.85);
-}
-
-.ap-dashboard-section--upgrades .ap-dashboard-card__actions {
-  padding: 0 1.25rem 1.25rem;
-}
-
-.ap-dashboard-section--upgrades .ap-dashboard-button--primary {
-  background-color: #facc15;
-  color: #0f172a;
-}
-
-.ap-dashboard-section--upgrades .ap-dashboard-button--primary:hover,
-.ap-dashboard-section--upgrades .ap-dashboard-button--primary:focus {
-  background-color: #fde047;
-  color: #0f172a;
-}
-
 .ap-dashboard-card {
   display: flex;
   flex-direction: column;
@@ -382,55 +325,114 @@
   margin: 0;
 }
 
-.ap-dashboard-widget__section--upgrades {
+
+.ap-upgrade-widget {
   background: linear-gradient(135deg, #0f172a, #1d4ed8);
   color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border-radius: 12px;
 }
 
-.ap-dashboard-widget__section--upgrades h3 {
+.ap-upgrade-widget--inline {
+  padding: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 30px rgba(22, 35, 52, 0.08);
+}
+
+.ap-upgrade-widget--standalone {
+  padding: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 30px rgba(22, 35, 52, 0.08);
+}
+
+.ap-upgrade-widget--standalone .ap-upgrade-widget--inline {
+  border: none;
+  box-shadow: none;
+}
+
+.ap-upgrade-widget .ap-upgrade-widget__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: inherit;
 }
 
-.ap-dashboard-widget__upgrade-intro {
-  margin: 0 0 1rem;
+.ap-upgrade-widget .ap-upgrade-widget__heading {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.ap-upgrade-widget .ap-upgrade-widget__intro {
+  margin: 0;
+  font-size: 0.95rem;
   color: rgba(248, 250, 252, 0.9);
 }
 
-.ap-dashboard-widget__upgrades {
+.ap-upgrade-widget__list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.ap-dashboard-widget__upgrade-card {
+.ap-upgrade-widget .ap-upgrade-widget__card {
   background: rgba(15, 23, 42, 0.35);
+  color: inherit;
   border: 1px solid rgba(248, 250, 252, 0.2);
   border-radius: 10px;
-  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.ap-upgrade-widget .ap-upgrade-widget__card-body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding: 1rem 1.25rem 1.25rem;
 }
 
-.ap-dashboard-widget__upgrade-title {
+.ap-upgrade-widget .ap-upgrade-widget__card-title {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
+  color: inherit;
 }
 
-.ap-dashboard-widget__upgrade-description {
+.ap-upgrade-widget .ap-upgrade-widget__card-description {
   margin: 0;
   color: rgba(248, 250, 252, 0.85);
 }
 
-.ap-dashboard-widget__upgrade-card .ap-dashboard-button--primary {
+.ap-upgrade-widget .ap-upgrade-widget__card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0 1.25rem 1.25rem;
+  margin-top: auto;
+}
+.ap-upgrade-widget .ap-upgrade-widget__cta {
   align-self: flex-start;
+}
+
+.ap-upgrade-widget .ap-dashboard-button--primary,
+.ap-upgrade-widget .ap-upgrade-widget__cta {
   background-color: #facc15;
   color: #0f172a;
 }
 
-.ap-dashboard-widget__upgrade-card .ap-dashboard-button--primary:hover,
-.ap-dashboard-widget__upgrade-card .ap-dashboard-button--primary:focus {
+.ap-upgrade-widget .ap-dashboard-button--primary:hover,
+.ap-upgrade-widget .ap-dashboard-button--primary:focus,
+.ap-upgrade-widget .ap-upgrade-widget__cta:hover,
+.ap-upgrade-widget .ap-upgrade-widget__cta:focus {
   background-color: #fde047;
   color: #0f172a;
 }

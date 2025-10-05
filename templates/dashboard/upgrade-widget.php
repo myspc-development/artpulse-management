@@ -9,7 +9,7 @@
  * @var string      $widget_intro          Optional intro displayed above the section wrapper.
  */
 ?>
-<div class="ap-upgrade-widget">
+<div class="ap-upgrade-widget ap-upgrade-widget--standalone">
     <?php if ($widget_title !== '') : ?>
         <h2 class="ap-upgrade-widget__title"><?php echo esc_html($widget_title); ?></h2>
     <?php endif; ?>

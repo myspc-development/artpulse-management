@@ -7,14 +7,14 @@
  * @var array  $section_upgrades List of available upgrades.
  */
 ?>
-<div class="ap-dashboard-widget__section ap-dashboard-widget__section--upgrades">
-    <h3><?php echo esc_html($section_title); ?></h3>
+<div class="ap-dashboard-widget__section ap-dashboard-widget__section--upgrades ap-upgrade-widget ap-upgrade-widget--inline">
+    <h3 class="ap-upgrade-widget__heading"><?php echo esc_html($section_title); ?></h3>
 
     <?php if ($section_intro !== '') : ?>
-        <p class="ap-dashboard-widget__upgrade-intro"><?php echo esc_html($section_intro); ?></p>
+        <p class="ap-upgrade-widget__intro"><?php echo esc_html($section_intro); ?></p>
     <?php endif; ?>
 
-    <div class="ap-dashboard-widget__upgrades">
+    <div class="ap-upgrade-widget__list">
         <?php foreach ($section_upgrades as $upgrade) :
             $url = $upgrade['url'] ?? '';
 
@@ -22,19 +22,23 @@
                 continue;
             }
             ?>
-            <div class="ap-dashboard-widget__upgrade-card">
-                <?php if (!empty($upgrade['title'])) : ?>
-                    <h4 class="ap-dashboard-widget__upgrade-title"><?php echo esc_html($upgrade['title']); ?></h4>
-                <?php endif; ?>
+            <article class="ap-dashboard-card ap-upgrade-widget__card">
+                <div class="ap-dashboard-card__body ap-upgrade-widget__card-body">
+                    <?php if (!empty($upgrade['title'])) : ?>
+                        <h4 class="ap-upgrade-widget__card-title"><?php echo esc_html($upgrade['title']); ?></h4>
+                    <?php endif; ?>
 
-                <?php if (!empty($upgrade['description'])) : ?>
-                    <p class="ap-dashboard-widget__upgrade-description"><?php echo esc_html($upgrade['description']); ?></p>
-                <?php endif; ?>
+                    <?php if (!empty($upgrade['description'])) : ?>
+                        <p class="ap-upgrade-widget__card-description"><?php echo esc_html($upgrade['description']); ?></p>
+                    <?php endif; ?>
+                </div>
 
-                <a class="ap-dashboard-button ap-dashboard-button--primary" href="<?php echo esc_url($url); ?>">
-                    <?php echo esc_html($upgrade['cta'] ?? __('Upgrade now', 'artpulse')); ?>
-                </a>
-            </div>
+                <div class="ap-dashboard-card__actions ap-upgrade-widget__card-actions">
+                    <a class="ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta" href="<?php echo esc_url($url); ?>">
+                        <?php echo esc_html($upgrade['cta'] ?? __('Upgrade now', 'artpulse')); ?>
+                    </a>
+                </div>
+            </article>
         <?php endforeach; ?>
     </div>
 </div>
