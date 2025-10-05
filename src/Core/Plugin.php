@@ -34,9 +34,12 @@ class Plugin
         register_deactivation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'deactivate' ] );
 
         \ArtPulse\Core\LoginRedirector::register();
+        \ArtPulse\Core\TitleTools::register();
+        \ArtPulse\Core\Rewrites::register();
 
         // Register core modules and front-end submission forms
         add_action( 'init',               [ $this, 'register_core_modules' ] );
+        add_action( 'init',               [ $this, 'load_textdomain' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Core\RoleDashboards::class, 'register' ] );
         \ArtPulse\Core\RoleSetup::register();
@@ -80,6 +83,8 @@ class Plugin
 
         // Register CPTs and flush rewrite rules
         \ArtPulse\Core\PostTypeRegistrar::register();
+        \ArtPulse\Core\Rewrites::add_rewrite_rules();
+        \ArtPulse\Core\Rewrites::register_directory_sitemap_route();
         flush_rewrite_rules();
 
         // Setup roles and capabilities
@@ -96,6 +101,11 @@ class Plugin
     {
         flush_rewrite_rules();
         wp_clear_scheduled_hook( 'ap_daily_expiry_check' );
+    }
+
+    public function load_textdomain()
+    {
+        load_plugin_textdomain( 'artpulse-management', false, dirname( plugin_basename( ARTPULSE_PLUGIN_FILE ) ) . '/languages' );
     }
 
     public function register_core_modules()

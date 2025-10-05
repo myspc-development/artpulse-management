@@ -4,7 +4,7 @@
  * Description:     Management plugin for ArtPulse.
  * Version:         1.1.5
  * Author:          craig
- * Text Domain:     artpulse
+ * Text Domain:     artpulse-management
  * License:         GPL2
  */
 
