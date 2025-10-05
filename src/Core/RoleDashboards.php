@@ -717,7 +717,7 @@ class RoleDashboards
             : '';
 
         if (!file_exists($template)) {
-            $output = '<div class="ap-upgrade-widget">';
+            $output = '<div class="ap-upgrade-widget ap-upgrade-widget--standalone">';
 
             if ($widget_title !== '') {
                 $output .= sprintf('<h2 class="ap-upgrade-widget__title">%s</h2>', esc_html($widget_title));
@@ -758,11 +758,16 @@ class RoleDashboards
         if (!file_exists($template)) {
             $title_text = $title ?? esc_html__('Membership Upgrades', 'artpulse');
 
-            $output = sprintf('<div class="ap-dashboard-widget__section ap-dashboard-widget__section--upgrades"><h3>%s</h3>', esc_html($title_text));
+            $output = sprintf(
+                '<div class="ap-dashboard-widget__section ap-dashboard-widget__section--upgrades ap-upgrade-widget ap-upgrade-widget--inline"><h3 class="ap-upgrade-widget__heading">%s</h3>',
+                esc_html($title_text)
+            );
 
             if ($intro !== '') {
-                $output .= sprintf('<p class="ap-dashboard-widget__upgrade-intro">%s</p>', esc_html($intro));
+                $output .= sprintf('<p class="ap-upgrade-widget__intro">%s</p>', esc_html($intro));
             }
+
+            $output .= '<div class="ap-upgrade-widget__list">';
 
             foreach ($upgrades as $upgrade) {
                 $url = $upgrade['url'] ?? '';
@@ -771,16 +776,26 @@ class RoleDashboards
                     continue;
                 }
 
+                $title_markup = '';
+                if (!empty($upgrade['title'])) {
+                    $title_markup = sprintf('<h4 class="ap-upgrade-widget__card-title">%s</h4>', esc_html($upgrade['title']));
+                }
+
+                $description_markup = '';
+                if (!empty($upgrade['description'])) {
+                    $description_markup = sprintf('<p class="ap-upgrade-widget__card-description">%s</p>', esc_html($upgrade['description']));
+                }
+
                 $output .= sprintf(
-                    '<div class="ap-dashboard-widget__upgrade-card"><h4 class="ap-dashboard-widget__upgrade-title">%1$s</h4>%2$s<a class="ap-dashboard-button ap-dashboard-button--primary" href="%3$s">%4$s</a></div>',
-                    esc_html($upgrade['title'] ?? ''),
-                    !empty($upgrade['description']) ? sprintf('<p class="ap-dashboard-widget__upgrade-description">%s</p>', esc_html($upgrade['description'])) : '',
+                    '<article class="ap-dashboard-card ap-upgrade-widget__card"><div class="ap-dashboard-card__body ap-upgrade-widget__card-body">%1$s%2$s</div><div class="ap-dashboard-card__actions ap-upgrade-widget__card-actions"><a class="ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta" href="%3$s">%4$s</a></div></article>',
+                    $title_markup,
+                    $description_markup,
                     esc_url($url),
                     esc_html($upgrade['cta'] ?? __('Upgrade now', 'artpulse'))
                 );
             }
 
-            $output .= '</div>';
+            $output .= '</div></div>';
 
             return $output;
         }

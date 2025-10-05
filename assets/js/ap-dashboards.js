@@ -153,13 +153,13 @@
     const introCopy = introText || strings.upgradeIntro;
     if (introCopy) {
       const intro = document.createElement('p');
-      intro.className = 'ap-dashboard-upgrades__intro';
+      intro.className = 'ap-upgrade-widget__intro';
       intro.textContent = introCopy;
       section.appendChild(intro);
     }
 
     const list = document.createElement('div');
-    list.className = 'ap-dashboard-upgrades';
+    list.className = 'ap-upgrade-widget__list';
 
     upgrades.forEach((upgrade) => {
       if (!upgrade || !upgrade.url) {
@@ -167,21 +167,21 @@
       }
 
       const card = document.createElement('article');
-      card.className = 'ap-dashboard-card ap-dashboard-upgrade';
+      card.className = 'ap-dashboard-card ap-upgrade-widget__card';
 
       const body = document.createElement('div');
-      body.className = 'ap-dashboard-card__body ap-dashboard-upgrade__body';
+      body.className = 'ap-dashboard-card__body ap-upgrade-widget__card-body';
 
       if (upgrade.title) {
         const title = document.createElement('h4');
-        title.className = 'ap-dashboard-upgrade__title';
+        title.className = 'ap-upgrade-widget__card-title';
         title.textContent = upgrade.title;
         body.appendChild(title);
       }
 
       if (upgrade.description) {
         const desc = document.createElement('p');
-        desc.className = 'ap-dashboard-upgrade__description';
+        desc.className = 'ap-upgrade-widget__card-description';
         desc.textContent = upgrade.description;
         body.appendChild(desc);
       }
@@ -189,10 +189,10 @@
       card.appendChild(body);
 
       const actions = document.createElement('div');
-      actions.className = 'ap-dashboard-card__actions';
+      actions.className = 'ap-dashboard-card__actions ap-upgrade-widget__card-actions';
 
       const link = document.createElement('a');
-      link.className = 'ap-dashboard-button ap-dashboard-button--primary';
+      link.className = 'ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta';
       link.href = upgrade.url;
       link.textContent = upgrade.cta || strings.upgradeCta || 'Upgrade now';
 
@@ -335,7 +335,14 @@
   function createSection(slug, title) {
     const section = document.createElement('section');
     section.className = `ap-dashboard-section ap-dashboard-section--${slug}`;
-    section.innerHTML = `<h3>${escapeHtml(title || '')}</h3>`;
+    let headingClass = '';
+
+    if (slug === 'upgrades') {
+      section.classList.add('ap-upgrade-widget', 'ap-upgrade-widget--inline');
+      headingClass = ' class="ap-upgrade-widget__heading"';
+    }
+
+    section.innerHTML = `<h3${headingClass}>${escapeHtml(title || '')}</h3>`;
     return section;
   }
 
