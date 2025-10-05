@@ -1,84 +1,128 @@
 <?php
 
-namespace ArtPulse\Tests\Frontend;
-
+use ArtPulse\Core\TitleTools;
 use ArtPulse\Frontend\OrgsDirectory;
+use WP_UnitTestCase;
 
-class OrgsDirectoryTest extends \WP_UnitTestCase
+class OrgsDirectoryTest extends WP_UnitTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->resetDirectoryState();
+    }
+
     protected function tearDown(): void
     {
-        OrgsDirectory::flush_cache();
         $_GET = [];
         parent::tearDown();
     }
 
-    public function test_normalized_letter_strips_articles(): void
+    public function test_shortcode_outputs_directory_structure(): void
     {
-        $this->assertSame('B', OrgsDirectory::get_normalized_letter('The Blue Whale'));
-        $this->assertSame('A', OrgsDirectory::get_normalized_letter('An Apple Farm'));
-        $this->assertSame('#', OrgsDirectory::get_normalized_letter('123 Collective'));
+        $alpha = self::factory()->post->create([
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Atlas Center',
+            'post_status'=> 'publish',
+        ]);
+        $beta = self::factory()->post->create([
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Beacon Arts',
+            'post_status'=> 'publish',
+        ]);
+
+        TitleTools::update_post_letter($alpha);
+        TitleTools::update_post_letter($beta);
+
+        $_GET['letter'] = 'all';
+        $output = OrgsDirectory::render_shortcode(['per_page' => 10]);
+        unset($_GET['letter']);
+
+        $this->assertStringContainsString('<div class="ap-directory ap-directory--orgs" data-letter="all">', $output);
+        $this->assertStringContainsString('<nav class="ap-directory__letters"', $output);
+        $this->assertStringContainsString('aria-current="page">All</a>', $output);
+        $this->assertStringContainsString('<ul class="ap-directory__list">', $output);
+        $this->assertStringContainsString('Atlas Center', $output);
+        $this->assertStringContainsString('Beacon Arts', $output);
     }
 
     public function test_taxonomy_filter_limits_results(): void
     {
-        $music = wp_insert_term('Music', 'organization_category');
-        $visual = wp_insert_term('Visual', 'organization_category');
-
-        $this->assertFalse(is_wp_error($music));
-        $this->assertFalse(is_wp_error($visual));
-        $this->assertIsArray($music);
-        $this->assertIsArray($visual);
+        $music = self::factory()->term->create([
+            'taxonomy' => 'organization_category',
+            'slug'     => 'music',
+            'name'     => 'Music',
+        ]);
+        $visual = self::factory()->term->create([
+            'taxonomy' => 'organization_category',
+            'slug'     => 'visual',
+            'name'     => 'Visual',
+        ]);
 
         $alpha = self::factory()->post->create([
-            'post_type'   => 'artpulse_org',
-            'post_status' => 'publish',
-            'post_title'  => 'Alpha Arts',
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Alpha Arts',
+            'post_status'=> 'publish',
         ]);
         $beta = self::factory()->post->create([
-            'post_type'   => 'artpulse_org',
-            'post_status' => 'publish',
-            'post_title'  => 'Beta Collective',
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Beta Collective',
+            'post_status'=> 'publish',
         ]);
 
-        wp_set_object_terms($alpha, [$music['term_id']], 'organization_category');
-        wp_set_object_terms($beta, [$visual['term_id']], 'organization_category');
+        wp_set_object_terms($alpha, [$music], 'organization_category');
+        wp_set_object_terms($beta, [$visual], 'organization_category');
 
-        $_GET['letter'] = 'All';
+        TitleTools::update_post_letter($alpha);
+        TitleTools::update_post_letter($beta);
 
-        $output = do_shortcode('[ap_orgs_directory taxonomy="organization_category:' . $music['term_id'] . '" show_search="false" letters="A,B,All"]');
+        $_GET['letter'] = 'all';
+        $_GET['tax'] = [ 'organization_category' => ['music'] ];
+        $output = OrgsDirectory::render_shortcode(['per_page' => 10]);
+        unset($_GET['letter'], $_GET['tax']);
 
         $this->assertStringContainsString('Alpha Arts', $output);
         $this->assertStringNotContainsString('Beta Collective', $output);
     }
 
-    public function test_pagination_respects_page_query(): void
+    public function test_pagination_respects_paged_query(): void
     {
         $first = self::factory()->post->create([
-            'post_type'   => 'artpulse_org',
-            'post_status' => 'publish',
-            'post_title'  => 'Atlas Center',
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Atlas Center',
+            'post_status'=> 'publish',
         ]);
         $second = self::factory()->post->create([
-            'post_type'   => 'artpulse_org',
-            'post_status' => 'publish',
-            'post_title'  => 'Beacon Arts',
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Beacon Arts',
+            'post_status'=> 'publish',
         ]);
         $third = self::factory()->post->create([
-            'post_type'   => 'artpulse_org',
-            'post_status' => 'publish',
-            'post_title'  => 'Civic Studio',
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Civic Studio',
+            'post_status'=> 'publish',
         ]);
 
-        $this->assertNotEquals(0, $first + $second + $third);
+        TitleTools::update_post_letter($first);
+        TitleTools::update_post_letter($second);
+        TitleTools::update_post_letter($third);
 
-        $_GET['letter'] = 'All';
-        $_GET['page'] = 2;
-
-        $output = do_shortcode('[ap_orgs_directory per_page="1" show_search="false" letters="A-Z,All"]');
+        $_GET['letter'] = 'all';
+        $_GET['paged'] = 2;
+        $output = OrgsDirectory::render_shortcode(['per_page' => 1]);
+        unset($_GET['letter'], $_GET['paged']);
 
         $this->assertStringContainsString('Beacon Arts', $output);
         $this->assertStringNotContainsString('Atlas Center', $output);
         $this->assertStringNotContainsString('Civic Studio', $output);
+    }
+
+    private function resetDirectoryState(): void
+    {
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_ap_dir:%'");
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_ap_dir:%'");
+        delete_option('ap_directory_cache_versions');
+        $_GET = [];
     }
 }
