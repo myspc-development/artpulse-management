@@ -122,12 +122,35 @@ class TitleTools
      */
     public static function backfill_missing_letters(string $post_type, int $limit = 50): void
     {
+        $ids = self::get_posts_missing_letter_ids($post_type, $limit);
+
+        if (empty($ids)) {
+            return;
+        }
+
+        foreach ($ids as $post_id) {
+            $post = get_post((int) $post_id);
+            if ($post && $post->post_type === $post_type) {
+                self::update_post_letter((int) $post->ID, $post->post_title);
+            }
+        }
+    }
+
+    /**
+     * Retrieve IDs for published posts missing a cached letter.
+     *
+     * @return int[]
+     */
+    public static function get_posts_missing_letter_ids(string $post_type, int $limit = 50): array
+    {
         global $wpdb;
 
         $post_type = sanitize_key($post_type);
         if ('' === $post_type) {
-            return;
+            return [];
         }
+
+        $limit = max(1, (int) $limit);
 
         $ids = $wpdb->get_col($wpdb->prepare(
             "SELECT p.ID FROM {$wpdb->posts} AS p
@@ -140,15 +163,10 @@ class TitleTools
         ));
 
         if (empty($ids)) {
-            return;
+            return [];
         }
 
-        foreach ($ids as $post_id) {
-            $post = get_post((int) $post_id);
-            if ($post && $post->post_type === $post_type) {
-                self::update_post_letter((int) $post->ID, $post->post_title);
-            }
-        }
+        return array_map('intval', $ids);
     }
 
     /**
