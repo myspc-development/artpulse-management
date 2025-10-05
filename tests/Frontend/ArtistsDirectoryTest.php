@@ -1,47 +1,90 @@
 <?php
 
+use ArtPulse\Core\TitleTools;
 use ArtPulse\Frontend\ArtistsDirectory;
+use WP_UnitTestCase;
 
 class ArtistsDirectoryTest extends WP_UnitTestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
-        ArtistsDirectory::register();
-        ArtistsDirectory::clear_cache();
+        $this->resetDirectoryState();
     }
 
     protected function tearDown(): void
     {
-        ArtistsDirectory::clear_cache();
+        $_GET = [];
         parent::tearDown();
     }
 
-    public function testShortcodeGroupsArtistsByLetter(): void
+    public function test_shortcode_outputs_directory_structure(): void
     {
-        self::factory()->post->create([
-            'post_type' => 'artpulse_artist',
+        $alpha = self::factory()->post->create([
+            'post_type'  => 'artpulse_artist',
             'post_title' => 'Alice Aardvark',
-            'post_status' => 'publish',
+            'post_status'=> 'publish',
         ]);
-        self::factory()->post->create([
-            'post_type' => 'artpulse_artist',
+        $beta = self::factory()->post->create([
+            'post_type'  => 'artpulse_artist',
             'post_title' => 'Bruno Brass',
-            'post_status' => 'publish',
+            'post_status'=> 'publish',
         ]);
-        self::factory()->post->create([
-            'post_type' => 'artpulse_artist',
+        $symbol = self::factory()->post->create([
+            'post_type'  => 'artpulse_artist',
             'post_title' => '3D Collective',
-            'post_status' => 'publish',
+            'post_status'=> 'publish',
         ]);
 
-        $output = do_shortcode('[ap_artists_directory]');
+        TitleTools::update_post_letter($alpha);
+        TitleTools::update_post_letter($beta);
+        TitleTools::update_post_letter($symbol);
 
-        $this->assertStringContainsString('ap-directory-filter', $output, 'Expected alphabet filter navigation to be present.');
-        $this->assertMatchesRegularExpression('/<section[^>]+data-letter="All"[^>]*>.*Alice Aardvark.*Bruno Brass/s', $output);
-        $this->assertMatchesRegularExpression('/<section[^>]+data-letter="A"[^>]*>.*Alice Aardvark/s', $output);
-        $this->assertMatchesRegularExpression('/<section[^>]+data-letter="B"[^>]*>.*Bruno Brass/s', $output);
-        $this->assertMatchesRegularExpression('/<section[^>]+data-letter="#"[^>]*>.*3D Collective/s', $output);
-        $this->assertDoesNotMatchRegularExpression('/<section[^>]+data-letter="B"[^>]*>.*Alice Aardvark/s', $output, 'Letter sections should only include matching artists.');
+        $_GET['letter'] = 'all';
+        $output = ArtistsDirectory::render_shortcode(['per_page' => 10]);
+        unset($_GET['letter']);
+
+        $this->assertStringContainsString('<div class="ap-directory" data-letter="all">', $output);
+        $this->assertStringContainsString('<nav class="ap-directory__letters"', $output);
+        $this->assertStringContainsString('aria-current="page">All</a>', $output);
+        $this->assertStringContainsString('<ul class="ap-directory__list">', $output);
+        $this->assertStringContainsString('Alice Aardvark', $output);
+        $this->assertStringContainsString('Bruno Brass', $output);
+        $this->assertStringContainsString('3D Collective', $output);
+    }
+
+    public function test_letter_filter_shows_matching_results(): void
+    {
+        $alpha = self::factory()->post->create([
+            'post_type'  => 'artpulse_artist',
+            'post_title' => 'Alice Aardvark',
+            'post_status'=> 'publish',
+        ]);
+        $beta = self::factory()->post->create([
+            'post_type'  => 'artpulse_artist',
+            'post_title' => 'Bruno Brass',
+            'post_status'=> 'publish',
+        ]);
+
+        TitleTools::update_post_letter($alpha);
+        TitleTools::update_post_letter($beta);
+
+        $_GET['letter'] = 'B';
+        $output = ArtistsDirectory::render_shortcode(['per_page' => 10]);
+        unset($_GET['letter']);
+
+        $this->assertStringContainsString('data-letter="B"', $output);
+        $this->assertStringContainsString('aria-current="page">B</a>', $output);
+        $this->assertStringContainsString('Bruno Brass', $output);
+        $this->assertStringNotContainsString('Alice Aardvark', $output);
+    }
+
+    private function resetDirectoryState(): void
+    {
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_ap_dir:%'");
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_ap_dir:%'");
+        delete_option('ap_directory_cache_versions');
+        $_GET = [];
     }
 }
