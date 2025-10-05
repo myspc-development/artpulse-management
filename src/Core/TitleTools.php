@@ -50,6 +50,19 @@ class TitleTools
             }
         }
 
+        if (class_exists('\\Normalizer')) {
+            $normalized = \Normalizer::normalize($working, \Normalizer::FORM_D);
+            if (is_string($normalized)) {
+                $stripped = preg_replace('/\p{Mn}+/u', '', $normalized);
+                if (is_string($stripped)) {
+                    $working = $stripped;
+                } else {
+                    $working = $normalized;
+                }
+            }
+        }
+
+        $working = trim($working);
         if ('' === $working) {
             return '#';
         }
@@ -64,7 +77,25 @@ class TitleTools
             return '#';
         }
 
-        $first = strtoupper(substr($transliterated, 0, 1));
+        if (function_exists('mb_substr')) {
+            $first = mb_substr($transliterated, 0, 1, 'UTF-8');
+            if (false === $first) {
+                $first = substr($transliterated, 0, 1);
+            }
+        } else {
+            $first = substr($transliterated, 0, 1);
+        }
+
+        if (function_exists('mb_strtoupper')) {
+            $upper = mb_strtoupper($first, 'UTF-8');
+            if (false === $upper) {
+                $upper = strtoupper($first);
+            }
+        } else {
+            $upper = strtoupper($first);
+        }
+
+        $first = $upper;
         $first = apply_filters('ap_letter_map', $first, $title, $locale);
 
         return preg_match('/^[A-Z]$/', $first) ? $first : '#';
