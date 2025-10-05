@@ -18,51 +18,36 @@ class EnqueueAssets {
         $plugin_url = plugin_dir_url(ARTPULSE_PLUGIN_FILE);
         $plugin_dir = plugin_dir_path(ARTPULSE_PLUGIN_FILE);
 
-        // Sidebar taxonomy selector script
-        $sidebar_script_path = $plugin_dir . '/assets/js/sidebar-taxonomies.js';
-        $sidebar_script_url = $plugin_url . '/assets/js/sidebar-taxonomies.js';
-        if (file_exists($sidebar_script_path)) {
-            wp_enqueue_script(
-                'artpulse-taxonomy-sidebar',
-                $sidebar_script_url,
-                ['wp-edit-post', 'wp-data', 'wp-components', 'wp-element', 'wp-compose', 'wp-plugins'],
-                filemtime($sidebar_script_path)
-            );
-        }
+        $editor_scripts = [
+            'artpulse-taxonomy-sidebar' => 'sidebar-taxonomies',
+            'artpulse-advanced-taxonomy-filter-block' => 'advanced-taxonomy-filter-block',
+            'artpulse-filtered-list-shortcode-block' => 'filtered-list-shortcode-block',
+            'artpulse-ajax-filter-block' => 'ajax-filter-block',
+        ];
 
-        // Advanced taxonomy filter block script
-        $advanced_script_path = $plugin_dir . '/assets/js/advanced-taxonomy-filter-block.js';
-        $advanced_script_url = $plugin_url . '/assets/js/advanced-taxonomy-filter-block.js';
-        if (file_exists($advanced_script_path)) {
-            wp_enqueue_script(
-                'artpulse-advanced-taxonomy-filter-block',
-                $advanced_script_url,
-                ['wp-blocks', 'wp-data', 'wp-components', 'wp-element', 'wp-compose', 'wp-plugins'],
-                filemtime($advanced_script_path)
-            );
-        }
+        foreach ($editor_scripts as $handle => $filename) {
+            $asset_file = $plugin_dir . '/build/' . $filename . '.asset.php';
+            $script_file = $plugin_dir . '/build/' . $filename . '.js';
 
-        // Filtered list shortcode block script
-        $filtered_list_path = $plugin_dir . '/assets/js/filtered-list-shortcode-block.js';
-        $filtered_list_url = $plugin_url . '/assets/js/filtered-list-shortcode-block.js';
-        if (file_exists($filtered_list_path)) {
-            wp_enqueue_script(
-                'artpulse-filtered-list-shortcode-block',
-                $filtered_list_url,
-                ['wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'wp-compose', 'wp-plugins'],
-                filemtime($filtered_list_path)
-            );
-        }
+            if (!file_exists($script_file)) {
+                continue;
+            }
 
-        // AJAX taxonomy filter block script
-        $ajax_filter_script_path = $plugin_dir . '/assets/js/ajax-filter-block.js';
-        $ajax_filter_script_url = $plugin_url . '/assets/js/ajax-filter-block.js';
-        if (file_exists($ajax_filter_script_path)) {
+            $asset = [
+                'dependencies' => [],
+                'version' => filemtime($script_file),
+            ];
+
+            if (file_exists($asset_file)) {
+                $asset = include $asset_file;
+            }
+
             wp_enqueue_script(
-                'artpulse-ajax-filter-block',
-                $ajax_filter_script_url,
-                ['wp-blocks', 'wp-data', 'wp-components', 'wp-element', 'wp-compose', 'wp-plugins'],
-                filemtime($ajax_filter_script_path)
+                $handle,
+                $plugin_url . '/build/' . $filename . '.js',
+                $asset['dependencies'],
+                $asset['version'],
+                true
             );
         }
     }
