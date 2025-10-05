@@ -37,6 +37,9 @@ class Plugin
         \ArtPulse\Core\TitleTools::register();
         \ArtPulse\Core\Rewrites::register();
 
+        add_action( 'admin_init', [ $this, 'maybe_retry_letter_index' ] );
+        add_action( 'admin_notices', [ $this, 'maybe_display_letter_index_notice' ] );
+
         // Register core modules and front-end submission forms
         add_action( 'init',               [ $this, 'register_core_modules' ] );
         add_action( 'init',               [ $this, 'load_textdomain' ] );
@@ -59,6 +62,13 @@ class Plugin
 
         \artpulse_create_custom_table();
         Activator::activate();
+
+        $index_result = DatabaseUtils::add_letter_meta_index();
+        if ( DatabaseUtils::INDEX_RESULT_FAILED === $index_result ) {
+            update_option( 'artpulse_letter_index_error', DatabaseUtils::get_last_error() );
+        } elseif ( DatabaseUtils::INDEX_RESULT_SUCCESS === $index_result ) {
+            delete_option( 'artpulse_letter_index_error' );
+        }
 
         $db_version_option = 'artpulse_db_version';
 
@@ -95,6 +105,88 @@ class Plugin
         if ( ! wp_next_scheduled( 'ap_daily_expiry_check' ) ) {
             wp_schedule_event( time(), 'daily', 'ap_daily_expiry_check' );
         }
+    }
+
+    public function maybe_retry_letter_index()
+    {
+        if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( empty( $_GET['ap_retry_letter_index'] ) ) {
+            return;
+        }
+
+        check_admin_referer( 'ap-retry-letter-index' );
+
+        $result = DatabaseUtils::add_letter_meta_index();
+
+        if ( DatabaseUtils::INDEX_RESULT_FAILED === $result ) {
+            update_option( 'artpulse_letter_index_error', DatabaseUtils::get_last_error() );
+        } elseif ( DatabaseUtils::INDEX_RESULT_SUCCESS === $result ) {
+            delete_option( 'artpulse_letter_index_error' );
+        }
+
+        $redirect_url = remove_query_arg(
+            [ 'ap_retry_letter_index', '_wpnonce' ],
+            add_query_arg( 'ap_letter_index_status', $result )
+        );
+
+        wp_safe_redirect( $redirect_url );
+        exit;
+    }
+
+    public function maybe_display_letter_index_notice()
+    {
+        if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $status = isset( $_GET['ap_letter_index_status'] ) ? sanitize_key( wp_unslash( $_GET['ap_letter_index_status'] ) ) : '';
+
+        if ( DatabaseUtils::INDEX_RESULT_SUCCESS === $status ) {
+            printf(
+                '<div class="notice notice-success"><p>%s</p></div>',
+                esc_html__( 'ArtPulse letter index created successfully.', 'artpulse-management' )
+            );
+        } elseif ( DatabaseUtils::INDEX_RESULT_UNSUPPORTED === $status ) {
+            printf(
+                '<div class="notice notice-info"><p>%s</p></div>',
+                esc_html__( 'The database server does not support the optional ArtPulse letter index.', 'artpulse-management' )
+            );
+        } elseif ( DatabaseUtils::INDEX_RESULT_FAILED === $status ) {
+            printf(
+                '<div class="notice notice-error"><p>%s</p></div>',
+                esc_html__( 'Failed to create the ArtPulse letter index. Please review the database logs.', 'artpulse-management' )
+            );
+        }
+
+        $error_message = get_option( 'artpulse_letter_index_error' );
+
+        if ( empty( $error_message ) ) {
+            return;
+        }
+
+        $message  = esc_html__( 'ArtPulse could not create the optional letter index used for directory filtering.', 'artpulse-management' );
+        $message .= ' '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Added below.
+        $message .= esc_html__( 'Database error:', 'artpulse-management' ) . ' ' . esc_html( $error_message );
+
+        $retry_button = '';
+
+        if ( DatabaseUtils::supports_letter_meta_index() ) {
+            $retry_url = wp_nonce_url( add_query_arg( 'ap_retry_letter_index', 1 ), 'ap-retry-letter-index' );
+            $retry_button = sprintf(
+                ' <a href="%s" class="button button-secondary">%s</a>',
+                esc_url( $retry_url ),
+                esc_html__( 'Retry index creation', 'artpulse-management' )
+            );
+        }
+
+        printf(
+            '<div class="notice notice-warning"><p>%s%s</p></div>',
+            $message,
+            $retry_button
+        );
     }
 
     public function deactivate()
