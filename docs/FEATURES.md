@@ -58,18 +58,42 @@ Copy
 Edit
 [ap_notifications]
 🗃️ Directory Listings
-REST/JS-driven filterable directories
+REST-enhanced, cache-backed directories for artists and organizations.
 
-Post types: artist, event, artwork, organization
+Shortcodes:
 
-Shortcode: [ap_directory post_type="artist"]
+- `[ap_artists_directory]` — renders published `artpulse_artist` profiles.
+- `[ap_orgs_directory]` — renders published `artpulse_org` profiles.
 
-📘 Example:
+📘 Examples:
 
-php
-Copy
-Edit
-[ap_directory post_type="event" filter="tag" class="grid"]
+```php
+[ap_artists_directory per_page="36" letter="C"]
+[ap_orgs_directory per_page="18" letter="all"]
+```
+
+Key behaviour:
+
+- Friendly letter routes are registered for each directory. Out of the box the
+  plugin expects pages at `/artists/letter/{letter}/` and `/galleries/letter/{letter}/`
+  (e.g. `/artists/letter/B/` or `/galleries/letter/all/`). Query parameters such as
+  `?s=sculpture` or `?tax[artist_specialty][]=ceramics` continue to work for search and
+  taxonomy filtering when permalinks are disabled.
+- Every render outputs a canonical `<link>` tag for the active letter URL,
+  including any search or taxonomy query arguments.
+- Responses are cached in a WordPress transient for six hours. The cache is
+  automatically invalidated when related posts are saved, their taxonomy terms
+  change, or associated metadata is updated.
+- Letter metadata is lazily generated when directories are viewed. To warm
+  caches in bulk, run:
+
+  ```bash
+  wp artpulse backfill-letters --post_type=artpulse_artist --batch=100
+  wp artpulse backfill-letters --post_type=artpulse_org --batch=250
+  ```
+
+  The command loops until all published posts have cached letters and prints a
+  success message with the number of processed posts.
 📝 Submission Forms
 REST endpoint for new content
 

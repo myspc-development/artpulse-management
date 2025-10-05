@@ -22,11 +22,9 @@ ArtPulse Management is a powerful WordPress plugin that enables seamless managem
 
 🛠️ Role-based Access — Controls for frontend and backend capabilities
 
-🗃️ User Directory — Filtered views of artist and organization profiles
+🗃️ User Directory — Filtered views of artist and organization profiles powered by `[ap_artists_directory]` and `[ap_orgs_directory]`
 
 🧭 Organization Onboarding — `[ap_register_organization]` shortcode to collect org sign-ups, auto-assign creators, notify admins, and promote follow/favorite actions
-
-📇 Organization Directory — `[ap_orgs_directory]` shortcode renders an A–Z directory with search, favorites, and taxonomy filters
 
 🧑‍💻 Installation
 Clone or download this repo into your WordPress plugins directory:
@@ -68,14 +66,20 @@ vendor/bin/phpunit --testdox
 
 ### WP-CLI utilities
 
-Backfill missing directory letter metadata with:
+Backfill cached directory letter metadata for artists or organizations. This keeps
+canonical directory URLs fast when a large amount of content is imported.
 
 ```bash
 wp artpulse backfill-letters --post_type=artpulse_artist --batch=100
+wp artpulse backfill-letters --post_type=artpulse_org --batch=250
 ```
 
-`--post_type` defaults to `artpulse_artist` and `--batch` controls how many
-posts are processed per query.
+`--post_type` accepts any registered directory post type (`artpulse_artist` or
+`artpulse_org`). `--batch` controls how many posts are processed per query and
+defaults to `100`.
+
+The command loops until all published posts have a cached letter and outputs a
+success message summarising the number of records updated.
 
 Optional tools:
 
@@ -83,13 +87,22 @@ phpunit for unit tests
 
 phpcs for coding standards (composer run lint)
 
-📘 Shortcode Examples
+📘 Directory Shortcode Examples
 
 ```
+[ap_artists_directory]
+[ap_artists_directory per_page="36" letter="B"]
 [ap_orgs_directory]
-[ap_orgs_directory taxonomy="sector:music" per_page="12"]
-[ap_orgs_directory show_search="false" letters="A,B,C,All"]
+[ap_orgs_directory per_page="18" letter="all"]
 ```
+
+Both directory shortcodes honour the `per_page` attribute and use query
+parameters for deep filtering (e.g. `?s=sculpture` or `?tax[artist_specialty][]=ceramics`).
+When permalinks are enabled, letters map to friendly URLs such as
+`/artists/letter/B/` and `/galleries/letter/all/`. Each directory renders a
+canonical `<link>` tag pointing to the active letter URL (including search and
+taxonomy query strings) and caches rendered output for six hours. Caches flush
+when relevant posts, taxonomies, or metadata change.
 
 🔌 Plugin Structure
 Folder	Purpose
