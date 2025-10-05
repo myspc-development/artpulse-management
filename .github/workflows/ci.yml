@@ -51,6 +51,9 @@ jobs:
           tools: composer
           extensions: mbstring, mysqli
 
+      - name: Validate Composer configuration
+        run: composer validate --no-check-publish
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
