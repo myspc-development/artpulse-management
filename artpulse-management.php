@@ -11,6 +11,7 @@
 use ArtPulse\Core\Plugin;
 use ArtPulse\Core\WooCommerceIntegration;
 use ArtPulse\Admin\EnqueueAssets;
+use ArtPulse\Tools\CLI\BackfillLetters;
 
 // Suppress deprecated notices if WP_DEBUG enabled
 if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -70,6 +71,11 @@ $plugin = new WooCommerceIntegration();
 add_action('rest_api_init', function () {
     \ArtPulse\Rest\PortfolioRestController::register();
 });
+
+if (defined('WP_CLI') && WP_CLI) {
+    require_once __DIR__ . '/tools/cli/BackfillLetters.php';
+    \WP_CLI::add_command('artpulse backfill-letters', [BackfillLetters::class, 'handle']);
+}
 
 function artpulse_create_custom_table() {
     global $wpdb;

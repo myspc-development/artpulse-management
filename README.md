@@ -66,6 +66,17 @@ Run the test suite with:
 vendor/bin/phpunit --testdox
 ```
 
+### WP-CLI utilities
+
+Backfill missing directory letter metadata with:
+
+```bash
+wp artpulse backfill-letters --post_type=artpulse_artist --batch=100
+```
+
+`--post_type` defaults to `artpulse_artist` and `--batch` controls how many
+posts are processed per query.
+
 Optional tools:
 
 phpunit for unit tests
