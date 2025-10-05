@@ -71,7 +71,13 @@ class OrgsDirectory
 
         $per_page = max(1, (int) $atts['per_page']);
 
-        $requested_letter = get_query_var('letter');
+        $requested_letter = get_query_var('ap_letter');
+        if ('' === $requested_letter) {
+            $requested_letter = get_query_var('letter');
+        }
+        if ('' === $requested_letter && isset($_GET['ap_letter'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $requested_letter = sanitize_text_field(wp_unslash((string) $_GET['ap_letter']));
+        }
         if ('' === $requested_letter && isset($_GET['letter'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             $requested_letter = sanitize_text_field(wp_unslash((string) $_GET['letter']));
         }
@@ -297,7 +303,7 @@ class OrgsDirectory
     {
         $action = Rewrites::get_directory_letter_url('galleries', $state['letter']);
         $search_value = $state['search'];
-        $letter_value = $state['letter'];
+        $permalink_structure = (string) get_option('permalink_structure');
 
         ob_start();
         ?>
@@ -313,7 +319,9 @@ class OrgsDirectory
                 placeholder="<?php echo esc_attr__('Search galleries', 'artpulse-management'); ?>"
                 aria-controls="ap-orgs-directory-results"
             />
-            <input type="hidden" name="letter" value="<?php echo esc_attr($letter_value); ?>" />
+            <?php if ('' === $permalink_structure) : ?>
+                <input type="hidden" name="ap_letter" value="<?php echo esc_attr($state['letter']); ?>" />
+            <?php endif; ?>
             <?php foreach ($state['tax_filters'] as $taxonomy => $terms) :
                 foreach ($terms as $term) : ?>
                     <input type="hidden" name="tax[<?php echo esc_attr($taxonomy); ?>][]" value="<?php echo esc_attr($term); ?>" />
@@ -428,8 +436,6 @@ class OrgsDirectory
     private static function build_letter_url(string $letter, array $state): string
     {
         $query = self::build_canonical_query_args($state, false);
-        $query['letter'] = $letter;
-        unset($query['paged']);
 
         return Rewrites::get_directory_letter_url('galleries', $letter, $query);
     }
