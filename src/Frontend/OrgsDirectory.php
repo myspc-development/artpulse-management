@@ -561,6 +561,13 @@ class OrgsDirectory
     private static function parse_tax_filters(): array
     {
         $filters = [];
+
+        $valid_taxonomies = get_object_taxonomies(self::POST_TYPE, 'names');
+        if (!is_array($valid_taxonomies)) {
+            $valid_taxonomies = [];
+        }
+        $valid_taxonomies = array_filter(array_map('sanitize_key', $valid_taxonomies));
+        $valid_taxonomies = array_fill_keys($valid_taxonomies, true);
         if (!isset($_GET['tax'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             return $filters;
         }
@@ -572,7 +579,7 @@ class OrgsDirectory
 
         foreach ($raw as $taxonomy => $terms) {
             $taxonomy = sanitize_key($taxonomy);
-            if ('' === $taxonomy) {
+            if ('' === $taxonomy || !isset($valid_taxonomies[$taxonomy])) {
                 continue;
             }
 
