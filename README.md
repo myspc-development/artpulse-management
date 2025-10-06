@@ -64,6 +64,13 @@ Run the test suite with:
 vendor/bin/phpunit --testdox
 ```
 
+Tests also run automatically in CI via GitHub Actions, which installs Composer
+dependencies (`composer install --no-interaction --prefer-dist`) and executes
+`vendor/bin/phpunit --testdox --colors=always` with `WP_PHPUNIT__DIR` pointing to
+`vendor/wp-phpunit/wp-phpunit`. Build Composer vendors on CI or a development
+machine and deploy the generated `vendor/` directory—avoid running Composer or
+PHPUnit on production servers.
+
 ### WP-CLI utilities
 
 Backfill cached directory letter metadata for artists or organizations. This keeps

@@ -102,17 +102,10 @@ jobs:
       - name: Prepare test database
         run: mysql -h "$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-      - name: Run PHPUnit tests
-        run: |
-          mkdir -p build/logs
-          vendor/bin/phpunit --configuration phpunit.xml.dist --log-junit "build/logs/phpunit-${{ matrix.php-version }}-${{ matrix.wp-version }}.xml"
-
-      - name: Upload PHPUnit logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: phpunit-${{ matrix.php-version }}-${{ matrix.wp-version }}
-          path: build/logs/phpunit-${{ matrix.php-version }}-${{ matrix.wp-version }}.xml
+      - name: PHPUnit
+        env:
+          WP_PHPUNIT__DIR: vendor/wp-phpunit/wp-phpunit
+        run: vendor/bin/phpunit --testdox --colors=always
 
   i18n-check:
     name: Internationalization catalog
