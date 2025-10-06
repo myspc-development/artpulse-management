@@ -1,0 +1,222 @@
+.ap-events {
+    position: relative;
+    margin: 2rem 0;
+    color: inherit;
+}
+
+.ap-events__filters {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    background: rgba(0, 0, 0, 0.03);
+    padding: 1.5rem;
+    border-radius: 12px;
+}
+
+.ap-events__filters label span {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.ap-events__filters input,
+.ap-events__filters select {
+    width: 100%;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 0.5rem 0.75rem;
+    background: var(--nectar-input-bg, #fff);
+}
+
+.ap-events__filter-submit {
+    align-self: end;
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    background: var(--nectar-accent-color, #ff4d6d);
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+
+.ap-events__calendar {
+    min-height: 400px;
+}
+
+.ap-events__fallback-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ap-events__fallback-list li {
+    margin-bottom: 1rem;
+}
+
+.ap-events__tab-content.is-hidden {
+    display: none;
+}
+
+.ap-events__tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.ap-events__tab {
+    border: none;
+    background: transparent;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.ap-events__tab.is-active {
+    border-bottom-color: var(--nectar-accent-color, #ff4d6d);
+}
+
+.ap-events-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+}
+
+.ap-events-grid li {
+    opacity: 0;
+    transform: translateY(16px);
+}
+
+.ap-events-grid li.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.ap-events-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    box-shadow: 0 10px 35px rgba(20, 20, 20, 0.08);
+    background: var(--nectar-card-bg, #fff);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.ap-events-card__media img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+.ap-events-card__content {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ap-events-card__title {
+    font-size: 1.125rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+.ap-events-card__meta {
+    font-size: 0.875rem;
+    color: var(--nectar-text-muted, rgba(0,0,0,0.6));
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ap-events-card__favorite {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: rgba(0,0,0,0.4);
+    border-radius: 999px;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    text-decoration: none;
+}
+
+.ap-events-card__favorite.is-active,
+.ap-events-card__favorite:hover {
+    background: var(--nectar-accent-color, #ff4d6d);
+}
+
+.ap-events__badge {
+    background: rgba(255,255,255,0.9);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    margin-right: 0.25rem;
+}
+
+.ap-events__pagination {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.ap-events__pagination ul {
+    display: inline-flex;
+    gap: 0.75rem;
+    padding: 0;
+    list-style: none;
+}
+
+.ap-events__pagination a {
+    text-decoration: none;
+    color: inherit;
+    font-weight: 600;
+}
+
+.ap-events__pagination a.is-active {
+    color: var(--nectar-accent-color, #ff4d6d);
+}
+
+.ap-events-tooltip {
+    position: absolute;
+    background: var(--nectar-card-bg, #fff);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    padding: 1rem;
+    z-index: 9999;
+    max-width: 320px;
+    color: inherit;
+}
+
+.ap-events-tooltip strong {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .ap-events__filters {
+        background: rgba(255,255,255,0.05);
+    }
+
+    .ap-events-card {
+        background: rgba(20,20,20,0.8);
+        color: #f6f6f6;
+    }
+
+    .ap-events-card__meta {
+        color: rgba(255,255,255,0.7);
+    }
+
+    .ap-events-tooltip {
+        background: rgba(30,30,30,0.95);
+        color: #fff;
+    }
+}

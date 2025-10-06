@@ -106,6 +106,34 @@ canonical `<link>` tag pointing to the active letter URL (including search and
 taxonomy query strings) and caches rendered output for six hours. Caches flush
 when relevant posts, taxonomies, or metadata change.
 
+📅 Events Calendar & Portfolio
+
+Embed the FullCalendar-powered interface or Salient-ready portfolio grid using the
+new `[ap_events]` shortcode or the matching "ArtPulse Events" block.
+
+```
+[ap_events layout="calendar" view="dayGridMonth" show_filters="true"]
+[ap_events layout="grid" per_page="12" category="openings" orderby="event_start" order="ASC"]
+[ap_events layout="tabs" favorites="true" show_filters="true"]
+```
+
+Supported shortcode/block attributes:
+
+* `layout` – `calendar`, `grid`, or `tabs` (default `calendar`).
+* `start` / `end` – Pre-filter by ISO date strings (falls back to filter UI values).
+* `category` – Comma-separated list of `artpulse_event_type` slugs.
+* `org` – Organization post ID to scope events.
+* `favorites` – `true` to show only the current user's favourites.
+* `view` – Default FullCalendar view (e.g. `dayGridMonth`, `timeGridWeek`, `listWeek`).
+* `initialDate` – ISO date for the initial calendar focus.
+* `show_filters` – Toggle the Salient-styled filter toolbar.
+* `per_page` – Number of expanded event occurrences rendered per page.
+
+The block exposes the same controls inside the Gutenberg inspector for editors who
+prefer point-and-click configuration. Filters sync with URL query arguments such as
+`?ap_event_start=2024-09-01&ap_event_category[]=openings`, making curated views easy
+to bookmark or share.
+
 🔌 Plugin Structure
 Folder	Purpose
 src/	Core plugin classes
