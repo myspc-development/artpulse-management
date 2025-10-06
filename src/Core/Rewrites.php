@@ -162,7 +162,7 @@ class Rewrites
      */
     public static function get_directory_base_slug(string $type): string
     {
-        $default = $type === 'artists' ? 'artists' : 'galleries';
+        $default = $type === 'artists' ? 'artists' : 'organizations';
         $slug    = apply_filters('ap_' . $type . '_directory_base', $default);
 
         return trim((string) $slug, '/');

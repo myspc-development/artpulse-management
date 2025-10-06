@@ -75,8 +75,10 @@ Shortcodes:
 Key behaviour:
 
 - Friendly letter routes are registered for each directory. Out of the box the
-  plugin expects pages at `/artists/letter/{letter}/` and `/galleries/letter/{letter}/`
-  (e.g. `/artists/letter/B/` or `/galleries/letter/all/`). Query parameters such as
+  plugin expects pages at `/artists/letter/{letter}/` and `/organizations/letter/{letter}/`
+  (e.g. `/artists/letter/B/` or `/organizations/letter/all/`). Legacy installs can
+  continue using the `/galleries/letter/{letter}/` structure by filtering the
+  `ap_galleries_directory_base` hook. Query parameters such as
   `?s=sculpture` or `?tax[artist_specialty][]=ceramics` continue to work for search and
   taxonomy filtering when permalinks are disabled.
 - Every render outputs a canonical `<link>` tag for the active letter URL,
