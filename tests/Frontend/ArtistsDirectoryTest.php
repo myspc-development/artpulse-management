@@ -1,5 +1,6 @@
 <?php
 
+use ArtPulse\Core\Rewrites;
 use ArtPulse\Core\TitleTools;
 use ArtPulse\Frontend\ArtistsDirectory;
 use WP_UnitTestCase;
@@ -103,6 +104,36 @@ class ArtistsDirectoryTest extends WP_UnitTestCase
         $this->assertArrayHasKey('artist_specialty', $filters);
         $this->assertSame(['painter'], $filters['artist_specialty']);
         $this->assertArrayNotHasKey('category', $filters);
+    }
+
+    public function test_canonical_link_output_for_query_letter(): void
+    {
+        $beta = self::factory()->post->create([
+            'post_type'  => 'artpulse_artist',
+            'post_title' => 'Bruno Brass',
+            'post_status'=> 'publish',
+        ]);
+
+        TitleTools::update_post_letter($beta);
+
+        $_GET['ap_letter'] = 'b';
+
+        $output = ArtistsDirectory::render_shortcode(['per_page' => 10]);
+        unset($_GET['ap_letter']);
+
+        $this->assertStringContainsString('data-letter="B"', $output);
+
+        ob_start();
+        ArtistsDirectory::output_canonical();
+        $canonical = (string) ob_get_clean();
+
+        $expected = esc_url(Rewrites::get_directory_letter_url('artists', 'B'));
+
+        $this->assertStringContainsString('<link rel="canonical" href="' . $expected . '" />', $canonical);
+
+        ob_start();
+        ArtistsDirectory::output_canonical();
+        $this->assertSame('', (string) ob_get_clean(), 'Canonical output should reset after rendering.');
     }
 
     private function resetDirectoryState(): void

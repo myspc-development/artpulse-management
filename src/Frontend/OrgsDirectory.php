@@ -294,7 +294,7 @@ class OrgsDirectory
 
         return sprintf(
             '<nav class="ap-directory__letters" aria-label="%s"><ul class="ap-directory__letters-list">%s</ul></nav>',
-            esc_attr__('Browse galleries by letter', 'artpulse-management'),
+            esc_attr__('Alphabet', 'artpulse-management'),
             implode('', $items)
         );
     }
