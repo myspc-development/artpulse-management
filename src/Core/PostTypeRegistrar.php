@@ -4,6 +4,15 @@ namespace ArtPulse\Core;
 
 class PostTypeRegistrar
 {
+    public const EVENT_POST_TYPE = 'artpulse_event';
+
+    public const EVENT_TAXONOMY = 'artpulse_event_type';
+
+    /**
+     * @var string[]
+     */
+    public const EVENT_TAXONOMIES = [self::EVENT_TAXONOMY];
+
     public static function register()
     {
         // Base config shared by all CPTs
@@ -19,10 +28,10 @@ class PostTypeRegistrar
 
         // Register CPTs
         $post_types = [
-            'artpulse_event'   => [
+            self::EVENT_POST_TYPE   => [
                 'label'           => __('Events', 'artpulse'),
                 'rewrite'         => ['slug' => 'events'],
-                'taxonomies'      => ['artpulse_event_type'],
+                'taxonomies'      => self::EVENT_TAXONOMIES,
             ],
             'artpulse_artist'  => [
                 'label'           => __('Artists', 'artpulse'),
@@ -67,8 +76,8 @@ class PostTypeRegistrar
 
         // Taxonomies
         register_taxonomy(
-            'artpulse_event_type',
-            'artpulse_event',
+            self::EVENT_TAXONOMY,
+            self::EVENT_POST_TYPE,
             [
                 'label'        => __('Event Types', 'artpulse'),
                 'public'       => true,
@@ -94,7 +103,7 @@ class PostTypeRegistrar
     private static function register_meta_boxes()
     {
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_date',
             [
                 'show_in_rest' => true,
@@ -104,7 +113,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_location',
             [
                 'show_in_rest' => true,
@@ -114,7 +123,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_start',
             [
                 'show_in_rest' => true,
@@ -124,7 +133,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_end',
             [
                 'show_in_rest' => true,
@@ -134,7 +143,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_all_day',
             [
                 'show_in_rest' => true,
@@ -145,7 +154,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_timezone',
             [
                 'show_in_rest' => true,
@@ -155,7 +164,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_cost',
             [
                 'show_in_rest' => true,
@@ -165,7 +174,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_recurrence',
             [
                 'show_in_rest' => true,
@@ -175,7 +184,7 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
-            'artpulse_event',
+            self::EVENT_POST_TYPE,
             '_ap_event_organization',
             [
                 'show_in_rest' => true,
