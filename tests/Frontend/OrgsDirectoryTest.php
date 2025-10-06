@@ -1,5 +1,6 @@
 <?php
 
+use ArtPulse\Core\Rewrites;
 use ArtPulse\Core\TitleTools;
 use ArtPulse\Frontend\OrgsDirectory;
 use WP_UnitTestCase;
@@ -141,6 +142,36 @@ class OrgsDirectoryTest extends WP_UnitTestCase
         $this->assertStringContainsString('Beacon Arts', $output);
         $this->assertStringNotContainsString('Atlas Center', $output);
         $this->assertStringNotContainsString('Civic Studio', $output);
+    }
+
+    public function test_canonical_link_output_for_query_letter(): void
+    {
+        $org = self::factory()->post->create([
+            'post_type'  => 'artpulse_org',
+            'post_title' => 'Beacon Arts',
+            'post_status'=> 'publish',
+        ]);
+
+        TitleTools::update_post_letter($org);
+
+        $_GET['ap_letter'] = 'b';
+
+        $output = OrgsDirectory::render_shortcode(['per_page' => 10]);
+        unset($_GET['ap_letter']);
+
+        $this->assertStringContainsString('data-letter="B"', $output);
+
+        ob_start();
+        OrgsDirectory::output_canonical();
+        $canonical = (string) ob_get_clean();
+
+        $expected = esc_url(Rewrites::get_directory_letter_url('galleries', 'B'));
+
+        $this->assertStringContainsString('<link rel="canonical" href="' . $expected . '" />', $canonical);
+
+        ob_start();
+        OrgsDirectory::output_canonical();
+        $this->assertSame('', (string) ob_get_clean(), 'Canonical output should reset after rendering.');
     }
 
     private function resetDirectoryState(): void
