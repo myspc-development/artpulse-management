@@ -68,7 +68,7 @@ class RewritesTest extends WP_UnitTestCase
         $this->assertNotNull($artist_url);
         $this->assertSame(gmdate('c', strtotime($artist_latest . ' UTC')), (string) $artist_url->lastmod);
 
-        $gallery_url = $this->find_url_node($xml, home_url('/galleries/letter/B/'));
+        $gallery_url = $this->find_url_node($xml, home_url('/organizations/letter/B/'));
         $this->assertNotNull($gallery_url);
         $this->assertSame(gmdate('c', strtotime($gallery_latest . ' UTC')), (string) $gallery_url->lastmod);
     }

@@ -99,7 +99,9 @@ phpcs for coding standards (composer run lint)
 Both directory shortcodes honour the `per_page` attribute and use query
 parameters for deep filtering (e.g. `?s=sculpture` or `?tax[artist_specialty][]=ceramics`).
 When permalinks are enabled, letters map to friendly URLs such as
-`/artists/letter/B/` and `/galleries/letter/all/`. Each directory renders a
+`/artists/letter/B/` and `/organizations/letter/all/`. Legacy installs can
+continue using `/galleries/letter/{letter}/` by filtering the
+`ap_galleries_directory_base` hook. Each directory renders a
 canonical `<link>` tag pointing to the active letter URL (including search and
 taxonomy query strings) and caches rendered output for six hours. Caches flush
 when relevant posts, taxonomies, or metadata change.
