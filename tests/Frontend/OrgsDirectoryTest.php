@@ -85,6 +85,32 @@ class OrgsDirectoryTest extends WP_UnitTestCase
         $this->assertStringNotContainsString('Beta Collective', $output);
     }
 
+    public function test_taxonomy_filter_skips_unregistered_taxonomies(): void
+    {
+        self::factory()->term->create([
+            'taxonomy' => 'organization_category',
+            'slug'     => 'music',
+            'name'     => 'Music',
+        ]);
+
+        $_GET['tax'] = [
+            'organization_category' => ['music'],
+            'post_tag'              => ['featured'],
+        ];
+
+        $reflection = new \ReflectionClass(OrgsDirectory::class);
+        $method = $reflection->getMethod('parse_tax_filters');
+        $method->setAccessible(true);
+
+        $filters = $method->invoke(null);
+
+        unset($_GET['tax']);
+
+        $this->assertArrayHasKey('organization_category', $filters);
+        $this->assertSame(['music'], $filters['organization_category']);
+        $this->assertArrayNotHasKey('post_tag', $filters);
+    }
+
     public function test_pagination_respects_paged_query(): void
     {
         $first = self::factory()->post->create([

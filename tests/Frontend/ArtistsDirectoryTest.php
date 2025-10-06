@@ -79,6 +79,32 @@ class ArtistsDirectoryTest extends WP_UnitTestCase
         $this->assertStringNotContainsString('Alice Aardvark', $output);
     }
 
+    public function test_taxonomy_filter_ignores_unregistered_taxonomies(): void
+    {
+        self::factory()->term->create([
+            'taxonomy' => 'artist_specialty',
+            'slug'     => 'painter',
+            'name'     => 'Painter',
+        ]);
+
+        $_GET['tax'] = [
+            'artist_specialty' => ['painter'],
+            'category'         => ['news'],
+        ];
+
+        $reflection = new \ReflectionClass(ArtistsDirectory::class);
+        $method = $reflection->getMethod('parse_tax_filters');
+        $method->setAccessible(true);
+
+        $filters = $method->invoke(null);
+
+        unset($_GET['tax']);
+
+        $this->assertArrayHasKey('artist_specialty', $filters);
+        $this->assertSame(['painter'], $filters['artist_specialty']);
+        $this->assertArrayNotHasKey('category', $filters);
+    }
+
     private function resetDirectoryState(): void
     {
         global $wpdb;
