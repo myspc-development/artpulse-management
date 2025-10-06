@@ -514,7 +514,7 @@ class ArtistsDirectory
         update_option(self::CACHE_OPTION, $versions, false);
     }
 
-    private static function flush_cache_on_save(int $post_id, WP_Post $post, bool $update): void
+    public static function flush_cache_on_save(int $post_id, WP_Post $post, bool $update): void
     {
         if ($post->post_type !== self::POST_TYPE) {
             return;
@@ -523,7 +523,7 @@ class ArtistsDirectory
         self::bump_cache_version();
     }
 
-    private static function flush_cache_on_status(string $new_status, string $old_status, WP_Post $post): void
+    public static function flush_cache_on_status(string $new_status, string $old_status, WP_Post $post): void
     {
         if ($post->post_type !== self::POST_TYPE) {
             return;
@@ -534,7 +534,7 @@ class ArtistsDirectory
         }
     }
 
-    private static function flush_cache_on_terms(int $object_id, array $terms, array $tt_ids, string $taxonomy, bool $append, array $old_tt_ids): void
+    public static function flush_cache_on_terms(int $object_id, array $terms, array $tt_ids, string $taxonomy, bool $append, array $old_tt_ids): void
     {
         if (get_post_type($object_id) !== self::POST_TYPE) {
             return;
@@ -543,7 +543,7 @@ class ArtistsDirectory
         self::bump_cache_version();
     }
 
-    private static function flush_cache_on_meta($meta_id, int $object_id, $meta_key = '', $meta_value = ''): void
+    public static function flush_cache_on_meta($meta_id, int $object_id, $meta_key = '', $meta_value = ''): void
     {
         if (get_post_type($object_id) !== self::POST_TYPE) {
             return;
