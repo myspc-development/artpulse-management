@@ -114,6 +114,77 @@ class PostTypeRegistrar
         );
 
         register_post_meta(
+            'artpulse_event',
+            '_ap_event_start',
+            [
+                'show_in_rest' => true,
+                'single'       => true,
+                'type'         => 'string',
+            ]
+        );
+
+        register_post_meta(
+            'artpulse_event',
+            '_ap_event_end',
+            [
+                'show_in_rest' => true,
+                'single'       => true,
+                'type'         => 'string',
+            ]
+        );
+
+        register_post_meta(
+            'artpulse_event',
+            '_ap_event_all_day',
+            [
+                'show_in_rest' => true,
+                'single'       => true,
+                'type'         => 'boolean',
+                'default'      => false,
+            ]
+        );
+
+        register_post_meta(
+            'artpulse_event',
+            '_ap_event_timezone',
+            [
+                'show_in_rest' => true,
+                'single'       => true,
+                'type'         => 'string',
+            ]
+        );
+
+        register_post_meta(
+            'artpulse_event',
+            '_ap_event_cost',
+            [
+                'show_in_rest' => true,
+                'single'       => true,
+                'type'         => 'string',
+            ]
+        );
+
+        register_post_meta(
+            'artpulse_event',
+            '_ap_event_recurrence',
+            [
+                'show_in_rest' => true,
+                'single'       => true,
+                'type'         => 'string',
+            ]
+        );
+
+        register_post_meta(
+            'artpulse_event',
+            '_ap_event_organization',
+            [
+                'show_in_rest' => true,
+                'single'       => true,
+                'type'         => 'integer',
+            ]
+        );
+
+        register_post_meta(
             'artpulse_artist',
             '_ap_artist_bio',
             [

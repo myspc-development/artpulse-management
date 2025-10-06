@@ -233,12 +233,14 @@ class Plugin
         \ArtPulse\Frontend\ArtistsDirectory::register();
         \ArtPulse\Frontend\OrgsDirectory::register();
         \ArtPulse\Frontend\PortfolioBuilder::register();
+        \ArtPulse\Frontend\EventsCalendar::register();
         \ArtPulse\Frontend\TemplateLoader::register();
         \ArtPulse\Admin\MetaBoxesRelationship::register();
         \ArtPulse\Blocks\RelatedItemsSelectorBlock::register();
         \ArtPulse\Admin\ApprovalManager::register();
         \ArtPulse\Admin\EventApprovals::register();
         \ArtPulse\Rest\RestRoutes::register();
+        \ArtPulse\Rest\EventsController::boot();
         \ArtPulse\Rest\ArtistRestController::register();
 
         // Admin meta box registrations
