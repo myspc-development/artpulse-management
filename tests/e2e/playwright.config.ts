@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = process.env.WP_BASE_URL || 'http://localhost:8889';
+const baseURL = process.env.WP_BASE_URL || 'http://localhost:8888';
 
 export default defineConfig({
   testDir: './',

@@ -49,7 +49,7 @@ jobs:
           php-version: ${{ matrix.php-version }}
           coverage: none
           tools: composer
-          extensions: mbstring, mysqli
+          extensions: mbstring, mysqli, gd
 
       - name: Validate Composer configuration
         run: composer validate --no-check-publish
