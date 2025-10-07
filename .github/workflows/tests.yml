@@ -1,10 +1,7 @@
 name: Tests
-
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [ main, develop ]
   pull_request:
 
 jobs:
@@ -13,45 +10,72 @@ jobs:
     strategy:
       matrix:
         php: ['8.1']
-        wordpress: ['6.5']
-    env:
-      WP_ENV_PHP_VERSION: ${{ matrix.php }}
-      WP_ENV_WP_VERSION: ${{ matrix.wordpress }}
-      WP_BASE_URL: http://localhost:8888
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: mbstring, gd, intl, zip
+          tools: composer:v2
           coverage: none
-          tools: composer
-          extensions: mbstring, mysqli, gd
 
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-progress
+      # Give Composer GitHub auth so it won't rate-limit
+      - name: Configure Composer GitHub OAuth
+        run: composer config -g github-oauth.github.com ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install npm dependencies
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache/files
+            vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run unit/integration tests
+        run: |
+          composer test:unit
+          composer test:int
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Cache Composer (for wp-cli/wp-env deps if needed)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache/files
+            vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Install PHP deps for tooling
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install npm deps
         run: npm ci
 
-      - name: Start wp-env
+      - name: Start wp-env (port 8888)
         run: npx wp-env start
-
-      - name: Run unit tests
-        run: composer test:unit
-
-      - name: Run integration tests
-        run: composer test:int
 
       - name: Install Playwright browsers
         run: npx --yes @playwright/test install --with-deps
 
       - name: Run Playwright smoke tests
-        run: npm run test:e2e
-        env:
-          WP_ENV: test
+        run: WP_BASE_URL=http://localhost:8888 npm run test:e2e
 
       - name: Stop wp-env
         if: always()
