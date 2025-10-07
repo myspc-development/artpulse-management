@@ -16,6 +16,9 @@ class EventsControllerTest extends WP_UnitTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        if (!extension_loaded('gd') && !extension_loaded('imagick')) {
+            $this->markTestSkipped('GD/Imagick not available.');
+        }
         PostTypeRegistrar::register();
         FavoritesManager::install_favorites_table();
         EventsController::purge_cache();
@@ -264,6 +267,8 @@ class EventsControllerTest extends WP_UnitTestCase
         $this->assertIsArray($event_data['image']);
         $this->assertSame($expected_url, $event_data['image']['url']);
         $this->assertSame('full', $event_data['image']['size']);
+        $this->assertSame($attachment_id, $event_data['image']['id']);
+        $this->assertSame('Fallback Thumbnail Event', $event_data['image']['alt']);
         $this->assertSame($event_data['image']['url'], $event_data['thumbnail']);
     }
 

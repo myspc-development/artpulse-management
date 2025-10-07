@@ -18,7 +18,7 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         parent::setUp();
 
         if (!extension_loaded('gd') && !extension_loaded('imagick')) {
-            $this->markTestSkipped('Image manipulation extension (gd or imagick) is required.');
+            $this->markTestSkipped('GD/Imagick not available.');
         }
 
         PostTypeRegistrar::register();
@@ -135,6 +135,10 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $this->assertNotFalse($expected_url);
         $this->assertStringContainsString('nectar-portfolio-single-media', $output);
         $this->assertMatchesRegularExpression('/<div class="nectar-portfolio-single-media">.*<img[^>]+src="[^"]+"/s', $output);
+        $this->assertMatchesRegularExpression('/<img[^>]+class="[^"]*ap-event-img[^"]*"/i', $output);
+        $this->assertStringContainsString('loading="lazy"', $output);
+        $this->assertStringContainsString('decoding="async"', $output);
+        $this->assertStringContainsString('alt="Single Template Event"', $output);
 
         $uploads = wp_get_upload_dir();
         $this->assertStringContainsString($uploads['baseurl'], $output);
@@ -169,6 +173,35 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $this->assertIsArray($best);
         $this->assertStringContainsString('nectar-portfolio-single-media', $output);
         $this->assertStringContainsString((string) $best['url'], $output);
+        $this->assertMatchesRegularExpression('/<img[^>]+class="[^"]*ap-event-img[^"]*"/i', $output);
+        $this->assertStringContainsString('loading="lazy"', $output);
+        $this->assertStringContainsString('decoding="async"', $output);
+        $this->assertStringContainsString('alt="Fallback Single Image Event"', $output);
+
+        wp_reset_postdata();
+        wp_reset_query();
+    }
+
+    public function test_single_template_renders_placeholder_without_images(): void
+    {
+        $event_id = self::factory()->post->create([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Placeholder Event',
+        ]);
+
+        global $wp_query;
+        $wp_query = new WP_Query([
+            'p'         => $event_id,
+            'post_type' => 'artpulse_event',
+        ]);
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/templates/salient/content-artpulse_event.php';
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('<div class="ap-event-placeholder" aria-hidden="true"></div>', $output);
+        $this->assertDoesNotMatchRegularExpression('/<img[^>]+ap-event-img/', $output);
 
         wp_reset_postdata();
         wp_reset_query();
