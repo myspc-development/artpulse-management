@@ -100,6 +100,10 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $thumbnail_id = get_post_thumbnail_id($post_id);
         $this->assertSame($attachment_id, $thumbnail_id);
 
+        $image_url = wp_get_attachment_url($attachment_id);
+        $this->assertNotFalse($image_url);
+        $this->assertContains($image_url, $data['images']);
+
         $metadata = wp_get_attachment_metadata($thumbnail_id);
         $this->assertIsArray($metadata);
         $this->assertArrayHasKey('sizes', $metadata);
