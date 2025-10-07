@@ -69,7 +69,7 @@ class OrganizationEventForm {
         return ob_get_clean();
     }
 
-    public static function handle_submission() {
+    public static function handle_submission(bool $should_redirect = true) {
         $title = sanitize_text_field($_POST['title']);
         $description = wp_kses_post($_POST['description']);
         $date = sanitize_text_field($_POST['event_date']);
@@ -84,7 +84,9 @@ class OrganizationEventForm {
             'post_author'  => get_current_user_id(),
         ]);
 
-        if (is_wp_error($post_id)) return;
+        if (is_wp_error($post_id)) {
+            return;
+        }
 
         update_post_meta($post_id, '_ap_event_date', $date);
         update_post_meta($post_id, '_ap_event_location', $location);
@@ -122,7 +124,11 @@ class OrganizationEventForm {
         $user_message = "Hi {$current_user->display_name},\n\nThanks for submitting your event \"{$title}\". It is now pending review.";
         wp_mail($user_email, $user_subject, $user_message);
 
-        wp_redirect(add_query_arg('event_submitted', '1', wp_get_referer()));
-        exit;
+        if ($should_redirect) {
+            wp_redirect(add_query_arg('event_submitted', '1', wp_get_referer()));
+            exit;
+        }
+
+        return $post_id;
     }
 }
