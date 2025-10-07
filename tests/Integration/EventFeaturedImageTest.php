@@ -302,6 +302,49 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         wp_reset_query();
     }
 
+
+    public function test_archive_template_renders_placeholder_without_images(): void
+    {
+        $event_id = self::factory()->post->create([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Archive Placeholder Event',
+        ]);
+
+        global $wp_query;
+        $wp_query = new WP_Query([
+            'post_type'      => 'artpulse_event',
+            'posts_per_page' => 1,
+            'post__in'       => [$event_id],
+        ]);
+
+        $callback = static function (string $slug, ?string $name = null): void {
+            echo '<div class="ap-test-archive-placeholder">';
+            while (have_posts()) {
+                the_post();
+                the_post_thumbnail('medium', ['class' => 'ap-archive-thumb']);
+            }
+            echo '</div>';
+            rewind_posts();
+        };
+
+        add_action('get_template_part_templates/salient/content', $callback, 10, 2);
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/templates/salient/archive-artpulse_event.php';
+        $output = ob_get_clean();
+
+        remove_action('get_template_part_templates/salient/content', $callback, 10);
+
+        $this->assertStringContainsString('<div class="ap-test-archive-placeholder">', $output);
+        $this->assertMatchesRegularExpression('/<div class="[^"]*ap-event-placeholder[^"]*" aria-hidden="true"><\/div>/', $output);
+        $this->assertStringContainsString('ap-archive-thumb', $output);
+        $this->assertDoesNotMatchRegularExpression('/<img[^>]+ap-archive-thumb/', $output);
+
+        wp_reset_postdata();
+        wp_reset_query();
+    }
+
     private static function attach_from_base64(string $b64, string $name = 'fixture.jpg'): int
     {
         $data = base64_decode($b64, true);

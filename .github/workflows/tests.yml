@@ -20,6 +20,14 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Ensure Composer auth present
+        run: |
+          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "::error ::Composer auth missing. Add GITHUB_TOKEN (or set Composer OAuth locally)."
+            echo "Docs: README -> Composer auth section."
+            exit 1
+          fi
+
       # Give Composer GitHub auth so it won't rate-limit
       - name: Configure Composer GitHub OAuth
         run: composer config -g github-oauth.github.com ${{ secrets.GITHUB_TOKEN }}
@@ -59,6 +67,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Ensure Composer auth present
+        run: |
+          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "::error ::Composer auth missing. Add GITHUB_TOKEN (or set Composer OAuth locally)."
+            echo "Docs: README -> Composer auth section."
+            exit 1
+          fi
 
       - name: Configure Composer GitHub OAuth
         run: composer config -g github-oauth.github.com ${{ secrets.GITHUB_TOKEN }}
