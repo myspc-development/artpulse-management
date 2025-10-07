@@ -17,6 +17,7 @@ class ImageFallback
     {
         add_filter('post_thumbnail_id', [self::class, 'maybe_use_submission_image'], 10, 2);
         add_filter('wp_get_attachment_image_src', [self::class, 'maybe_adjust_image_src'], 10, 4);
+        add_filter('post_thumbnail_html', [self::class, 'maybe_render_placeholder'], 10, 5);
     }
 
     /**
@@ -70,5 +71,47 @@ class ImageFallback
         }
 
         return [$best['url'], $best['width'], $best['height'], false];
+    }
+
+    /**
+     * @param string $html
+     * @param int    $post_id
+     * @param int    $post_thumbnail_id
+     * @param string|int[] $size
+     * @param string|array<string, mixed> $attr
+     */
+    public static function maybe_render_placeholder($html, int $post_id, int $post_thumbnail_id, $size, $attr): string
+    {
+        if ('' !== trim((string) $html)) {
+            return $html;
+        }
+
+        $post = get_post($post_id);
+        if (!$post instanceof WP_Post || PostTypeRegistrar::EVENT_POST_TYPE !== $post->post_type) {
+            return $html;
+        }
+
+        $classes = ['ap-event-placeholder'];
+
+        if (is_string($size) && '' !== $size) {
+            $classes[] = 'attachment-' . sanitize_html_class($size);
+            $classes[] = 'size-' . sanitize_html_class($size);
+        }
+
+        $classes[] = 'wp-post-image';
+
+        if (is_array($attr) && !empty($attr['class'])) {
+            foreach (preg_split('/\s+/', (string) $attr['class']) as $class) {
+                $class = trim($class);
+                if ('' !== $class) {
+                    $classes[] = $class;
+                }
+            }
+        }
+
+        $classes = array_unique(array_filter($classes));
+        $class_attr = implode(' ', $classes);
+
+        return sprintf('<div class="%s" aria-hidden="true"></div>', esc_attr($class_attr));
     }
 }

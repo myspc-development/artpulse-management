@@ -272,6 +272,46 @@ class EventsControllerTest extends WP_UnitTestCase
         $this->assertSame($event_data['image']['url'], $event_data['thumbnail']);
     }
 
+    public function test_fetch_events_returns_null_image_when_no_media(): void
+    {
+        $event_id = self::factory()->post->create([
+            'post_type'    => PostTypeRegistrar::EVENT_POST_TYPE,
+            'post_status'  => 'publish',
+            'post_title'   => 'Text Only Event',
+            'post_content' => 'Event without imagery.',
+        ]);
+
+        update_post_meta($event_id, '_ap_event_start', '2024-11-10T18:00:00+00:00');
+        update_post_meta($event_id, '_ap_event_end', '2024-11-10T20:00:00+00:00');
+        update_post_meta($event_id, '_ap_event_location', 'Gallery Hall');
+
+        $results = EventsController::fetch_events([
+            'start' => '2024-11-01T00:00:00+00:00',
+            'end'   => '2024-11-30T23:59:59+00:00',
+        ]);
+
+        $this->assertNotEmpty($results['events']);
+
+        $event_data = null;
+        foreach ($results['events'] as $candidate) {
+            if (($candidate['id'] ?? 0) === $event_id) {
+                $event_data = $candidate;
+                break;
+            }
+        }
+
+        $this->assertIsArray($event_data);
+        $this->assertArrayHasKey('image', $event_data);
+        $this->assertNull($event_data['image']);
+        $this->assertArrayHasKey('thumbnail', $event_data);
+        $this->assertSame('', $event_data['thumbnail']);
+        $this->assertSame('Text Only Event', $event_data['title']);
+        $this->assertSame('2024-11-10T18:00:00+00:00', $event_data['start']);
+        $this->assertSame('Gallery Hall', $event_data['location']);
+        $this->assertArrayHasKey('schema', $event_data);
+        $this->assertIsArray($event_data['schema']);
+    }
+
     public function test_generate_ics_contains_event_summary(): void
     {
         $event = [

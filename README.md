@@ -95,6 +95,19 @@ dependencies (`composer install --no-interaction --prefer-dist`) and executes
 machine and deploy the generated `vendor/` directory—avoid running Composer or
 PHPUnit on production servers.
 
+### Local development quickstart
+
+```bash
+# One-time Composer OAuth
+composer config -g github-oauth.github.com YOUR_GH_PAT
+
+# Install & test
+composer install
+composer test   # or test:unit / test:int
+npm ci
+npm run test:e2e  # if using wp-env locally
+```
+
 ### WP-CLI utilities
 
 Backfill cached directory letter metadata for artists or organizations. This keeps
