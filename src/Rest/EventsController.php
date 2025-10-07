@@ -3,6 +3,7 @@
 namespace ArtPulse\Rest;
 
 use ArtPulse\Community\FavoritesManager;
+use ArtPulse\Core\ImageTools;
 use ArtPulse\Core\PostTypeRegistrar;
 use ArtPulse\Integration\Recurrence\RecurrenceExpander;
 use DateTimeImmutable;
@@ -199,7 +200,8 @@ class EventsController
                     'categoryNames'     => $event['categoryNames'],
                     'organization'      => $event['organization'],
                     'organizationName'  => $event['organizationName'],
-                    'thumbnail'         => $event['thumbnail'],
+                    'image'             => $event['image'],
+                    'thumbnail'         => $event['image']['url'] ?? '',
                     'excerpt'           => $event['excerpt'],
                     'schema'            => $event['schema'],
                     'description'       => $event['excerpt'],
@@ -641,16 +643,13 @@ class EventsController
         $org_name = $org_id ? get_the_title($org_id) : '';
 
         $thumb_id = get_post_thumbnail_id($post_id);
-        $thumbnail = '';
-        if ($thumb_id) {
-            $thumbnail = wp_get_attachment_image_url($thumb_id, 'large') ?: '';
-            if (!$thumbnail) {
-                $thumbnail = wp_get_attachment_image_url($thumb_id, 'medium_large') ?: '';
-            }
-            if (!$thumbnail) {
-                $thumbnail = wp_get_attachment_image_url($thumb_id, 'full') ?: '';
-            }
+        if (!$thumb_id) {
+            $fallback_images = (array) get_post_meta($post_id, '_ap_submission_images', true);
+            $thumb_id = (int) ($fallback_images[0] ?? 0);
         }
+
+        $image = $thumb_id ? ImageTools::best_image_src($thumb_id) : null;
+        $thumbnail = $image['url'] ?? '';
         $excerpt   = wp_strip_all_tags(get_the_excerpt($post_id));
 
         $categories = wp_get_post_terms($post_id, PostTypeRegistrar::EVENT_TAXONOMY, ['fields' => 'slugs']);
@@ -705,6 +704,7 @@ class EventsController
             'organization'     => $org_id,
             'organizationName' => $org_name,
             'thumbnail'        => $thumbnail,
+            'image'            => $image,
             'excerpt'          => $excerpt,
             'schema'           => $schema,
             'recurrence'       => get_post_meta($post_id, '_ap_event_recurrence', true),

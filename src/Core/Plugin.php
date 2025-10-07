@@ -48,6 +48,7 @@ class Plugin
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
+        add_action( 'after_setup_theme',  [ \ArtPulse\Frontend\Salient\ImageFallback::class, 'register' ] );
 
         // REST API endpoints
         add_action( 'rest_api_init', [ \ArtPulse\Community\FavoritesRestController::class, 'register' ] );

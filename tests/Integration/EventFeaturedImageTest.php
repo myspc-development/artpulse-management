@@ -144,6 +144,36 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         wp_reset_query();
     }
 
+    public function test_single_template_falls_back_to_submission_image(): void
+    {
+        $attachment_id = self::attach_from_base64(self::JPEG_FIXTURE_BASE64);
+        $event_id = self::factory()->post->create([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Fallback Single Image Event',
+        ]);
+
+        update_post_meta($event_id, '_ap_submission_images', [$attachment_id]);
+
+        global $wp_query;
+        $wp_query = new WP_Query([
+            'p'         => $event_id,
+            'post_type' => 'artpulse_event',
+        ]);
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/templates/salient/content-artpulse_event.php';
+        $output = ob_get_clean();
+
+        $best = \ArtPulse\Core\ImageTools::best_image_src($attachment_id);
+        $this->assertIsArray($best);
+        $this->assertStringContainsString('nectar-portfolio-single-media', $output);
+        $this->assertStringContainsString((string) $best['url'], $output);
+
+        wp_reset_postdata();
+        wp_reset_query();
+    }
+
     public function test_archive_renders_thumbnail(): void
     {
         $attachment_id = self::attach_from_base64(self::JPEG_FIXTURE_BASE64);
@@ -186,6 +216,52 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $this->assertNotFalse($expected_url);
         $this->assertStringContainsString('<div class="ap-test-archive-callback">', $output);
         $this->assertStringContainsString((string) $expected_url, $output);
+        $this->assertMatchesRegularExpression('/<img[^>]+src="[^"]+"/i', $output);
+
+        wp_reset_postdata();
+        wp_reset_query();
+    }
+
+    public function test_archive_template_uses_submission_image_when_missing_thumbnail(): void
+    {
+        $attachment_id = self::attach_from_base64(self::JPEG_FIXTURE_BASE64);
+        $event_id = self::factory()->post->create([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Archive Submission Fallback Event',
+        ]);
+
+        update_post_meta($event_id, '_ap_submission_images', [$attachment_id]);
+
+        global $wp_query;
+        $wp_query = new WP_Query([
+            'post_type'      => 'artpulse_event',
+            'posts_per_page' => 1,
+            'post__in'       => [$event_id],
+        ]);
+
+        $callback = static function (string $slug, ?string $name = null): void {
+            echo '<div class="ap-test-archive-callback">';
+            while (have_posts()) {
+                the_post();
+                the_post_thumbnail('medium');
+            }
+            echo '</div>';
+            rewind_posts();
+        };
+
+        add_action('get_template_part_templates/salient/content', $callback, 10, 2);
+
+        ob_start();
+        include dirname(__DIR__, 2) . '/templates/salient/archive-artpulse_event.php';
+        $output = ob_get_clean();
+
+        remove_action('get_template_part_templates/salient/content', $callback, 10);
+
+        $best = \ArtPulse\Core\ImageTools::best_image_src($attachment_id);
+        $this->assertIsArray($best);
+        $this->assertStringContainsString('<div class="ap-test-archive-callback">', $output);
+        $this->assertStringContainsString((string) $best['url'], $output);
         $this->assertMatchesRegularExpression('/<img[^>]+src="[^"]+"/i', $output);
 
         wp_reset_postdata();

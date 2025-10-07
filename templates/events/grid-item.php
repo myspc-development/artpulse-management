@@ -15,7 +15,10 @@ $start_formatted = $start ? wp_date(get_option('date_format') . ' ' . get_option
 $end_formatted   = $end ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $end) : '';
 $location        = isset($event['location']) ? $event['location'] : '';
 $cost            = isset($event['cost']) ? $event['cost'] : '';
-$thumbnail       = isset($event['thumbnail']) ? $event['thumbnail'] : '';
+$image           = isset($event['image']) && is_array($event['image']) ? $event['image'] : null;
+$thumbnail       = $image['url'] ?? (isset($event['thumbnail']) ? $event['thumbnail'] : '');
+$thumb_width     = isset($image['width']) ? (int) $image['width'] : 0;
+$thumb_height    = isset($image['height']) ? (int) $image['height'] : 0;
 $categories      = isset($event['categoryNames']) ? (array) $event['categoryNames'] : [];
 $favorite        = !empty($event['favorite']);
 $schema          = isset($event['schema']) ? $event['schema'] : [];
@@ -26,7 +29,7 @@ $schema_json = $schema ? wp_json_encode($schema) : '';
     <a class="work-item-link" href="<?php echo esc_url($url); ?>">
         <div class="ap-events-card__media">
             <?php if ($thumbnail) : ?>
-                <img src="<?php echo esc_url($thumbnail); ?>" alt="<?php echo esc_attr($title); ?>" loading="lazy" />
+                <img src="<?php echo esc_url($thumbnail); ?>" alt="<?php echo esc_attr($title); ?>" loading="lazy"<?php echo $thumb_width > 0 ? ' width="' . esc_attr((string) $thumb_width) . '"' : ''; ?><?php echo $thumb_height > 0 ? ' height="' . esc_attr((string) $thumb_height) . '"' : ''; ?> />
             <?php else : ?>
                 <div class="ap-events-card__media--placeholder" aria-hidden="true"></div>
             <?php endif; ?>
