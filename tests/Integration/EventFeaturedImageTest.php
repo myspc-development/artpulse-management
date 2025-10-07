@@ -11,9 +11,16 @@ use WP_UnitTestCase;
 
 class EventFeaturedImageTest extends WP_UnitTestCase
 {
+    private const JPEG_FIXTURE_BASE64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxISEhUQEhIWFRUVFRUVFRUVFRUVFRUVFRUXFhUVFRUYHSggGBolGxUVITEhJSkrLi4uFx8zODMsNygtLisBCgoKDg0OGxAQGy0lICUtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIALcBEwMBIgACEQEDEQH/xAAbAAACAgMBAAAAAAAAAAAAAAAEBQMGAAECB//EADkQAAEDAgMFBgQEBQMFAQAAAAEAAhEDIQQSMUEFUWEGEyJxgZGh8BRCUrHB0fAjM2KCktLh8RZTc4KS/8QAGgEAAwEBAQEAAAAAAAAAAAAAAAECAwQFBv/EACcRAQEAAgICAwACAwEAAAAAAAABAhESITFBEyJRYXGB8AUiMv/aAAwDAQACEQMRAD8A9ziIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiIP/Z';
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        if (!extension_loaded('gd') && !extension_loaded('imagick')) {
+            $this->markTestSkipped('Image manipulation extension (gd or imagick) is required.');
+        }
+
         PostTypeRegistrar::register();
         add_theme_support('post-thumbnails');
     }
@@ -30,10 +37,7 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
         wp_set_current_user($user_id);
 
-        $tempFile = wp_tempnam('fixture-image.jpg');
-        $this->assertNotFalse($tempFile, 'Failed to create temporary upload file.');
-        $bytesWritten = file_put_contents($tempFile, $this->getFixtureImageContents());
-        $this->assertNotFalse($bytesWritten, 'Failed to write fixture image to temporary file.');
+        [$tempFile, $fileSize] = self::create_temp_file_from_base64(self::JPEG_FIXTURE_BASE64, 'fixture-image.jpg');
 
         $_POST = [
             'title'          => 'Form Submission Event',
@@ -45,11 +49,11 @@ class EventFeaturedImageTest extends WP_UnitTestCase
 
         $_FILES = [
             'event_flyer' => [
-                'name'     => 'image.jpg',
+                'name'     => 'fixture-image.jpg',
                 'type'     => 'image/jpeg',
                 'tmp_name' => $tempFile,
                 'error'    => UPLOAD_ERR_OK,
-                'size'     => filesize($tempFile),
+                'size'     => $fileSize,
             ],
         ];
 
@@ -61,19 +65,19 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $this->assertNotEmpty($attachment_id);
         $this->assertSame('attachment', get_post_type($attachment_id));
 
-        if (file_exists($tempFile)) {
-            unlink($tempFile);
-        }
-
         $metadata = wp_get_attachment_metadata($attachment_id);
         $this->assertIsArray($metadata);
         $this->assertArrayHasKey('sizes', $metadata);
         $this->assertNotEmpty($metadata['sizes']);
+
+        if (file_exists($tempFile)) {
+            unlink($tempFile);
+        }
     }
 
     public function test_rest_submission_sets_featured_image(): void
     {
-        $attachment_id = $this->createAttachmentFromFixture();
+        $attachment_id = self::attach_from_base64(self::JPEG_FIXTURE_BASE64);
 
         $request = new WP_REST_Request('POST', '/artpulse/v1/submissions');
         $request->set_body_params([
@@ -104,7 +108,7 @@ class EventFeaturedImageTest extends WP_UnitTestCase
 
     public function test_single_template_renders_featured_image_html(): void
     {
-        $attachment_id = $this->createAttachmentFromFixture();
+        $attachment_id = self::attach_from_base64(self::JPEG_FIXTURE_BASE64);
         $event_id = self::factory()->post->create([
             'post_type'   => 'artpulse_event',
             'post_status' => 'publish',
@@ -126,6 +130,10 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $expected_url = wp_get_attachment_image_url($attachment_id, 'full');
         $this->assertNotFalse($expected_url);
         $this->assertStringContainsString('nectar-portfolio-single-media', $output);
+        $this->assertMatchesRegularExpression('/<div class="nectar-portfolio-single-media">.*<img[^>]+src="[^"]+"/s', $output);
+
+        $uploads = wp_get_upload_dir();
+        $this->assertStringContainsString($uploads['baseurl'], $output);
         $this->assertStringContainsString((string) $expected_url, $output);
 
         wp_reset_postdata();
@@ -134,7 +142,7 @@ class EventFeaturedImageTest extends WP_UnitTestCase
 
     public function test_archive_renders_thumbnail(): void
     {
-        $attachment_id = $this->createAttachmentFromFixture();
+        $attachment_id = self::attach_from_base64(self::JPEG_FIXTURE_BASE64);
         $event_id = self::factory()->post->create([
             'post_type'   => 'artpulse_event',
             'post_status' => 'publish',
@@ -149,7 +157,7 @@ class EventFeaturedImageTest extends WP_UnitTestCase
             'post__in'       => [$event_id],
         ]);
 
-        $callback = static function () {
+        $callback = static function (string $slug, ?string $name = null): void {
             echo '<div class="ap-test-archive-callback">';
             while (have_posts()) {
                 the_post();
@@ -168,43 +176,67 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         remove_action('get_template_part_templates/salient/content', $callback, 10);
 
         $expected_url = wp_get_attachment_image_url($attachment_id, 'medium');
+        if (!$expected_url) {
+            $expected_url = wp_get_attachment_image_url($attachment_id, 'full');
+        }
         $this->assertNotFalse($expected_url);
         $this->assertStringContainsString('<div class="ap-test-archive-callback">', $output);
         $this->assertStringContainsString((string) $expected_url, $output);
+        $this->assertMatchesRegularExpression('/<img[^>]+src="[^"]+"/i', $output);
 
         wp_reset_postdata();
         wp_reset_query();
     }
 
-    private function createAttachmentFromFixture(): int
+    private static function attach_from_base64(string $b64, string $name = 'fixture.jpg'): int
     {
-        $upload = wp_upload_bits('fixture-image.jpg', null, $this->getFixtureImageContents());
-        $this->assertIsArray($upload);
-        $this->assertEmpty($upload['error']);
+        $data = base64_decode($b64, true);
+        if ($data === false) {
+            throw new \RuntimeException('Unable to decode base64 fixture data.');
+        }
 
-        $filetype = wp_check_filetype(basename($upload['file']), null);
+        $upload = wp_upload_bits($name, null, $data);
+        if (!empty($upload['error'])) {
+            throw new \RuntimeException('Failed to write fixture image to uploads directory: ' . $upload['error']);
+        }
 
+        $file = $upload['file'];
+        $type = wp_check_filetype(basename($file), null)['type'] ?? 'image/jpeg';
         $attachment_id = wp_insert_attachment([
-            'post_mime_type' => $filetype['type'] ?? 'image/jpeg',
-            'post_title'     => 'Fixture Image',
-            'post_content'   => '',
+            'post_mime_type' => $type,
+            'post_title'     => 'fixture-image',
             'post_status'    => 'inherit',
-        ], $upload['file']);
+        ], $file);
 
         require_once ABSPATH . 'wp-admin/includes/image.php';
-        $metadata = wp_generate_attachment_metadata($attachment_id, $upload['file']);
-        wp_update_attachment_metadata($attachment_id, $metadata);
+        $meta = wp_generate_attachment_metadata($attachment_id, $file);
+        wp_update_attachment_metadata($attachment_id, $meta);
 
         return (int) $attachment_id;
     }
 
-    private function getFixtureImageContents(): string
+    /**
+     * @return array{0: string, 1: int}
+     */
+    private static function create_temp_file_from_base64(string $b64, string $name = 'fixture.jpg'): array
     {
-        $base64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxISEhUQEhIWFRUVFRUVFRUVFRUVFRUVFRUXFhUVFRUYHSggGBolGxUVITEhJSkrLi4uFx8zODMsNygtLisBCgoKDg0OGxAQGy0lICUtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIALcBEwMBIgACEQEDEQH/xAAbAAACAgMBAAAAAAAAAAAAAAAEBQMGAAECB//EADkQAAEDAgMFBgQEBQMFAQAAAAEAAhEDIQQSMUEFUWEGEyJxgZGh8BRCUrHB0fAjM2KCktLh8RZTc4KS/8QAGgEAAwEBAQEAAAAAAAAAAAAAAAECAwQFBv/EACcRAQEAAgICAwACAwEAAAAAAAABAhESITFBEyJRYXGB8AUiMv/aAAwDAQACEQMRAD8A9ziIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiIP/Z';
+        $data = base64_decode($b64, true);
+        if ($data === false) {
+            throw new \RuntimeException('Unable to decode base64 fixture data.');
+        }
 
-        $contents = base64_decode($base64, true);
-        $this->assertNotFalse($contents, 'Failed to decode base64 fixture image.');
+        $temp_file = wp_tempnam($name);
+        if ($temp_file === false) {
+            throw new \RuntimeException('Unable to create temporary upload file.');
+        }
 
-        return $contents;
+        $bytes_written = file_put_contents($temp_file, $data);
+        if ($bytes_written === false) {
+            throw new \RuntimeException('Unable to write fixture data to temporary upload file.');
+        }
+
+        $size = filesize($temp_file);
+
+        return [$temp_file, $size !== false ? $size : strlen($data)];
     }
 }
