@@ -47,10 +47,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, gd, intl, zip
+          tools: composer:v2
+          coverage: none
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Configure Composer GitHub OAuth
+        run: composer config -g github-oauth.github.com ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Composer (for wp-cli/wp-env deps if needed)
         uses: actions/cache@v4

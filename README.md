@@ -64,6 +64,30 @@ Run the test suite with:
 vendor/bin/phpunit --testdox
 ```
 
+### Composer authentication
+
+Composer requires GitHub authentication to avoid API rate limits when installing
+packages from repositories hosted on GitHub. Configure OAuth once locally before
+running `composer install`:
+
+```bash
+composer config -g github-oauth.github.com YOUR_GH_PAT
+```
+
+Alternatively, write the credentials directly to `~/.composer/auth.json`:
+
+```bash
+mkdir -p ~/.composer
+printf '{ "github-oauth": { "github.com": "YOUR_GH_PAT" } }' > ~/.composer/auth.json
+```
+
+If you must work in an environment without GitHub access, restore a pre-built
+`vendor/` directory or point Composer at an internal Packagist mirror:
+
+```bash
+composer config -g repos.packagist composer https://packagist.mycompany.com
+```
+
 Tests also run automatically in CI via GitHub Actions, which installs Composer
 dependencies (`composer install --no-interaction --prefer-dist`) and executes
 `vendor/bin/phpunit --testdox --colors=always` with `WP_PHPUNIT__DIR` pointing to
