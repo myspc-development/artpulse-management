@@ -10,8 +10,33 @@
          testdox="false">
 
     <testsuites>
-        <testsuite name="Plugin Test Suite">
+        <testsuite name="all">
             <directory suffix="Test.php">./tests</directory>
+            <file>./tests/test-title-tools.php</file>
+            <file>./tests/test-directory-query-artists.php</file>
+            <file>./tests/test-directory-query-orgs.php</file>
+            <file>./tests/test-rewrites.php</file>
+            <file>./tests/test-cache-invalidation.php</file>
+            <file>./tests/test-sitemap.php</file>
+        </testsuite>
+        <testsuite name="unit">
+            <directory suffix="Test.php">./tests/Core</directory>
+            <file>./tests/test-title-tools.php</file>
+        </testsuite>
+        <testsuite name="integration">
+            <directory suffix="Test.php">./tests/Admin</directory>
+            <directory suffix="Test.php">./tests/Blocks</directory>
+            <directory suffix="Test.php">./tests/Community</directory>
+            <directory suffix="Test.php">./tests/Frontend</directory>
+            <directory suffix="Test.php">./tests/Integration</directory>
+            <directory suffix="Test.php">./tests/Rest</directory>
+            <file>./tests/MembershipManagerTest.php</file>
+            <file>./tests/WooCommerceIntegrationTest.php</file>
+            <file>./tests/test-directory-query-artists.php</file>
+            <file>./tests/test-directory-query-orgs.php</file>
+            <file>./tests/test-rewrites.php</file>
+            <file>./tests/test-cache-invalidation.php</file>
+            <file>./tests/test-sitemap.php</file>
         </testsuite>
     </testsuites>
 
