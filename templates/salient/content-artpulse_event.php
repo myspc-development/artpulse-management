@@ -16,11 +16,25 @@ get_header(); ?>
           <?php
           while ( have_posts() ) : the_post();
 
-            // Featured image
+            $img_html = '';
             if ( has_post_thumbnail() ) {
-              echo '<div class="nectar-portfolio-single-media">';
-              the_post_thumbnail( 'full', [ 'class' => 'img-responsive' ] );
-              echo '</div>';
+              $img_html = get_the_post_thumbnail( null, 'full', [ 'class' => 'img-responsive', 'loading' => 'lazy' ] );
+            } else {
+              $ids = (array) get_post_meta( get_the_ID(), '_ap_submission_images', true );
+              if ( ! empty( $ids[0] ) ) {
+                $best = \ArtPulse\Core\ImageTools::best_image_src( (int) $ids[0] );
+                if ( $best && ! empty( $best['url'] ) ) {
+                  $img_html = sprintf(
+                    '<img src="%s" alt="%s" class="img-responsive" loading="lazy" />',
+                    esc_url( $best['url'] ),
+                    esc_attr( get_the_title() )
+                  );
+                }
+              }
+            }
+
+            if ( $img_html ) {
+              echo '<div class="nectar-portfolio-single-media">' . $img_html . '</div>';
             }
 
             ?>

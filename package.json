@@ -6,6 +6,7 @@
     "build": "wp-scripts build",
     "start": "wp-scripts start",
     "release": "standard-version",
+    "test": "echo \"No JS unit tests\" && exit 0",
     "i18n:pot": "./vendor/bin/wp i18n make-pot . languages/artpulse.pot --exclude=node_modules,vendor,tests",
     "test:e2e": "npx --yes @playwright/test test --config=tests/e2e/playwright.config.ts",
     "test:e2e:community": "wp-scripts test-e2e --config tests/e2e/jest.config.js"

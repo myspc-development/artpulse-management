@@ -49,7 +49,10 @@ jobs:
           php-version: ${{ matrix.php-version }}
           coverage: none
           tools: composer
-          extensions: mbstring, mysqli, gd
+          extensions: mbstring, mysqli, gd, intl, zip
+
+      - name: Configure Composer GitHub OAuth
+        run: composer config -g github-oauth.github.com ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate Composer configuration
         run: composer validate --no-check-publish
@@ -86,6 +89,9 @@ jobs:
       - name: Build assets
         run: npm run build
 
+      - name: Run npm test script
+        run: npm test
+
       - name: Verify generated assets are committed
         run: |
           CHANGED_FILES="$(git status --porcelain -- assets/js assets/css)"
@@ -105,7 +111,7 @@ jobs:
       - name: PHPUnit
         env:
           WP_PHPUNIT__DIR: vendor/wp-phpunit/wp-phpunit
-        run: vendor/bin/phpunit --testdox --colors=always
+        run: composer test
 
   i18n-check:
     name: Internationalization catalog

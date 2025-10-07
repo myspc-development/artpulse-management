@@ -22,7 +22,7 @@
     "wp-coding-standards/wpcs": "^3.1"
   },
   "scripts": {
-    "test": "vendor/bin/phpunit",
+    "test": "vendor/bin/phpunit --testdox --colors=always",
     "test:unit": "vendor/bin/phpunit --testsuite unit",
     "test:int": "vendor/bin/phpunit --testsuite integration",
     "lint": "vendor/bin/phpcs --standard=WordPress --extensions=php src templates tests",

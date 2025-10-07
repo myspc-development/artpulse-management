@@ -260,7 +260,11 @@ class EventsControllerTest extends WP_UnitTestCase
 
         $this->assertNotEmpty($results['events']);
         $event_data = $results['events'][0];
-        $this->assertSame($expected_url, $event_data['thumbnail']);
+        $this->assertArrayHasKey('image', $event_data);
+        $this->assertIsArray($event_data['image']);
+        $this->assertSame($expected_url, $event_data['image']['url']);
+        $this->assertSame('full', $event_data['image']['size']);
+        $this->assertSame($event_data['image']['url'], $event_data['thumbnail']);
     }
 
     public function test_generate_ics_contains_event_summary(): void
