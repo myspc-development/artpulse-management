@@ -16,25 +16,42 @@ get_header(); ?>
           <?php
           while ( have_posts() ) : the_post();
 
-            $img_html = '';
+            $attachment_id = 0;
+            $img_html      = '';
+
             if ( has_post_thumbnail() ) {
-              $img_html = get_the_post_thumbnail( null, 'full', [ 'class' => 'img-responsive', 'loading' => 'lazy' ] );
+              $attachment_id = (int) get_post_thumbnail_id();
             } else {
               $ids = (array) get_post_meta( get_the_ID(), '_ap_submission_images', true );
-              if ( ! empty( $ids[0] ) ) {
-                $best = \ArtPulse\Core\ImageTools::best_image_src( (int) $ids[0] );
-                if ( $best && ! empty( $best['url'] ) ) {
-                  $img_html = sprintf(
-                    '<img src="%s" alt="%s" class="img-responsive" loading="lazy" />',
-                    esc_url( $best['url'] ),
-                    esc_attr( get_the_title() )
-                  );
-                }
+              $attachment_id = ! empty( $ids[0] ) ? (int) $ids[0] : 0;
+            }
+
+            if ( $attachment_id > 0 ) {
+              $best = \ArtPulse\Core\ImageTools::best_image_src( $attachment_id );
+              $size = $best['size'] ?? 'full';
+              $alt  = (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+              if ( '' === trim( $alt ) ) {
+                $alt = get_the_title();
               }
+              $alt = sanitize_text_field( $alt );
+
+              $img_html = wp_get_attachment_image(
+                $attachment_id,
+                $size,
+                false,
+                [
+                  'alt'      => $alt,
+                  'loading'  => 'lazy',
+                  'decoding' => 'async',
+                  'class'    => 'ap-event-img img-responsive',
+                ]
+              );
             }
 
             if ( $img_html ) {
               echo '<div class="nectar-portfolio-single-media">' . $img_html . '</div>';
+            } else {
+              echo '<div class="nectar-portfolio-single-media"><div class="ap-event-placeholder" aria-hidden="true"></div></div>';
             }
 
             ?>

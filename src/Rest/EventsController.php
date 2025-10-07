@@ -648,7 +648,15 @@ class EventsController
             $thumb_id = (int) ($fallback_images[0] ?? 0);
         }
 
-        $image = $thumb_id ? ImageTools::best_image_src($thumb_id) : null;
+        $image = $thumb_id ? array_merge(
+            ImageTools::best_image_src($thumb_id) ?: [],
+            [
+                'id'  => $thumb_id,
+                'alt' => sanitize_text_field(
+                    get_post_meta($thumb_id, '_wp_attachment_image_alt', true) ?: get_the_title($post_id)
+                ),
+            ]
+        ) : null;
         $thumbnail = $image['url'] ?? '';
         $excerpt   = wp_strip_all_tags(get_the_excerpt($post_id));
 
