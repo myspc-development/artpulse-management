@@ -48,7 +48,7 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
-          tools: composer
+          tools: composer:v2
           extensions: mbstring, mysqli, gd, intl, zip
 
       - name: Configure Composer GitHub OAuth
@@ -64,17 +64,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Determine Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Composer dependencies
+      - name: Cache Composer
         uses: actions/cache@v4
         with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ matrix.php-version }}-${{ hashFiles('composer.lock') }}
+          path: |
+            ~/.composer/cache/files
+            vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            ${{ runner.os }}-composer-${{ matrix.php-version }}-
+            composer-${{ runner.os }}-
 
       - name: Validate PHP syntax
         run: |

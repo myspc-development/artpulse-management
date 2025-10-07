@@ -201,6 +201,7 @@ class EventFeaturedImageTest extends WP_UnitTestCase
         $output = ob_get_clean();
 
         $this->assertStringContainsString('<div class="ap-event-placeholder" aria-hidden="true"></div>', $output);
+        $this->assertMatchesRegularExpression('/<div class="nectar-portfolio-single-media">\s*<div class="ap-event-placeholder"[^>]*><\/div>\s*<\/div>/', $output);
         $this->assertDoesNotMatchRegularExpression('/<img[^>]+ap-event-img/', $output);
 
         wp_reset_postdata();
