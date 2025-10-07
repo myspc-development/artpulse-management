@@ -641,7 +641,16 @@ class EventsController
         $org_name = $org_id ? get_the_title($org_id) : '';
 
         $thumb_id = get_post_thumbnail_id($post_id);
-        $thumbnail = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'large') : '';
+        $thumbnail = '';
+        if ($thumb_id) {
+            $thumbnail = wp_get_attachment_image_url($thumb_id, 'large') ?: '';
+            if (!$thumbnail) {
+                $thumbnail = wp_get_attachment_image_url($thumb_id, 'medium_large') ?: '';
+            }
+            if (!$thumbnail) {
+                $thumbnail = wp_get_attachment_image_url($thumb_id, 'full') ?: '';
+            }
+        }
         $excerpt   = wp_strip_all_tags(get_the_excerpt($post_id));
 
         $categories = wp_get_post_terms($post_id, PostTypeRegistrar::EVENT_TAXONOMY, ['fields' => 'slugs']);

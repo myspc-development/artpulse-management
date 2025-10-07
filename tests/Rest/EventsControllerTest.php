@@ -11,12 +11,15 @@ use WP_UnitTestCase;
 
 class EventsControllerTest extends WP_UnitTestCase
 {
+    private const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jrV8AAAAASUVORK5CYII=';
+
     protected function setUp(): void
     {
         parent::setUp();
         PostTypeRegistrar::register();
         FavoritesManager::install_favorites_table();
         EventsController::purge_cache();
+        add_theme_support('post-thumbnails');
     }
 
     public function test_fetch_events_respects_date_range(): void
@@ -233,6 +236,33 @@ class EventsControllerTest extends WP_UnitTestCase
         $this->assertNull($notModified->get_data());
     }
 
+    public function test_fetch_events_includes_thumbnail_with_fallback_sizes(): void
+    {
+        $attachment_id = self::create_attachment_without_large_size();
+        $this->assertFalse(wp_get_attachment_image_url($attachment_id, 'large'));
+        $expected_url = wp_get_attachment_image_url($attachment_id, 'full');
+        $this->assertNotFalse($expected_url);
+
+        $event = self::factory()->post->create([
+            'post_type'   => PostTypeRegistrar::EVENT_POST_TYPE,
+            'post_status' => 'publish',
+            'post_title'  => 'Fallback Thumbnail Event',
+        ]);
+
+        update_post_meta($event, '_ap_event_start', '2024-04-10T18:00:00+00:00');
+        update_post_meta($event, '_ap_event_end', '2024-04-10T20:00:00+00:00');
+        set_post_thumbnail($event, $attachment_id);
+
+        $results = EventsController::fetch_events([
+            'start' => '2024-04-01T00:00:00+00:00',
+            'end'   => '2024-04-30T23:59:59+00:00',
+        ]);
+
+        $this->assertNotEmpty($results['events']);
+        $event_data = $results['events'][0];
+        $this->assertSame($expected_url, $event_data['thumbnail']);
+    }
+
     public function test_generate_ics_contains_event_summary(): void
     {
         $event = [
@@ -248,5 +278,43 @@ class EventsControllerTest extends WP_UnitTestCase
         $ics = EventsController::generate_ics([$event]);
         $this->assertStringContainsString('SUMMARY:Sunset Session', $ics);
         $this->assertStringContainsString('LOCATION:ArtPulse HQ', $ics);
+    }
+
+    private static function create_attachment_without_large_size(string $filename = 'no-large.png'): int
+    {
+        $data = base64_decode(self::TINY_PNG_BASE64, true);
+        if (false === $data) {
+            throw new \RuntimeException('Failed to decode base64 image fixture.');
+        }
+
+        $upload = wp_upload_bits($filename, null, $data);
+        if (!empty($upload['error'])) {
+            throw new \RuntimeException('Failed to write attachment fixture: ' . $upload['error']);
+        }
+
+        $file     = $upload['file'];
+        $filetype = wp_check_filetype($filename, null);
+
+        $attachment_id = wp_insert_attachment([
+            'post_mime_type' => $filetype['type'] ?? 'image/png',
+            'post_title'     => sanitize_file_name($filename),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ], $file);
+
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        add_filter('intermediate_image_sizes_advanced', [self::class, 'filter_remove_large_sizes']);
+        $metadata = wp_generate_attachment_metadata($attachment_id, $file);
+        remove_filter('intermediate_image_sizes_advanced', [self::class, 'filter_remove_large_sizes']);
+        wp_update_attachment_metadata($attachment_id, $metadata);
+
+        return $attachment_id;
+    }
+
+    public static function filter_remove_large_sizes($sizes)
+    {
+        unset($sizes['large'], $sizes['medium_large']);
+
+        return $sizes;
     }
 }
