@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="./bootstrap.php"
+         colors="true"
+         verbose="true">
+    <testsuites>
+        <testsuite name="default">
+            <directory suffix="Test.php">.</directory>
+            <file>test-title-tools.php</file>
+            <file>test-directory-query-artists.php</file>
+            <file>test-directory-query-orgs.php</file>
+            <file>test-rewrites.php</file>
+            <file>test-cache-invalidation.php</file>
+            <file>test-sitemap.php</file>
+        </testsuite>
+    </testsuites>
+</phpunit>

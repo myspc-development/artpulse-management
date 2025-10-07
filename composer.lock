@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a473d3f3862fb4a1e679260c12c04875",
+    "content-hash": "eee2d6f6962a89c0c56ebc096400f864",
     "packages": [
         {
             "name": "erusev/parsedown",
@@ -961,6 +961,48 @@
                 }
             ],
             "time": "2025-05-12T16:38:37+00:00"
+        },
+        {
+            "name": "wp-coding-standards/wpcs",
+            "version": "3.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/WordPress-Coding-Standards.git",
+                "reference": "3.1.0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/WordPress-Coding-Standards/zipball/3.1.0",
+                "reference": "3.1.0",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.4",
+                "squizlabs/php_codesniffer": "^3.7"
+            },
+            "type": "phpcodesniffer-standard",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Contributors",
+                    "homepage": "https://github.com/WordPress/WordPress-Coding-Standards/graphs/contributors"
+                }
+            ],
+            "description": "PHP_CodeSniffer rules (sniffs) to enforce WordPress coding standards.",
+            "homepage": "https://github.com/WordPress/WordPress-Coding-Standards/WordPress-Coding-Standards",
+            "keywords": [
+                "coding standards",
+                "phpcs",
+                "wordpress"
+            ],
+            "support": {
+                "issues": "https://github.com/WordPress/WordPress-Coding-Standards/WordPress-Coding-Standards/issues",
+                "source": "https://github.com/WordPress/WordPress-Coding-Standards/WordPress-Coding-Standards"
+            },
+            "time": "2023-03-07T00:00:00+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",

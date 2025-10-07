@@ -94,6 +94,35 @@ phpunit for unit tests
 
 phpcs for coding standards (composer run lint)
 
+### Verification
+
+This repository ships with PHPUnit, PHPCS, and Playwright checks that mirror the
+expected production environment (WordPress 6.5+, PHP 8.1+). Run the full suite
+locally before shipping directory changes:
+
+```bash
+composer test        # All suites
+composer test:unit   # WordPress-aware unit tests
+composer test:int    # Integration/UI layer coverage
+npm run test:e2e     # Lightweight Playwright smoke run (requires wp-env)
+```
+
+Handy WP-CLI and curl commands for manual spot checks:
+
+```bash
+wp rewrite flush --hard
+
+curl -I https://example.test/artists/letter/a/ \
+  | grep -i "rel=\"canonical\""
+curl -s https://example.test/artists/letter/a/ \
+  | grep -i "aria-current=\"page\""
+curl -s https://example.test/sitemap-artpulse-directories.xml \
+  | grep '/artists/letter/a/'
+```
+
+The curl examples confirm that canonical URLs, active letter states, and the
+directory sitemap respond with server-rendered HTML (no JavaScript required).
+
 📘 Directory Shortcode Examples
 
 ```

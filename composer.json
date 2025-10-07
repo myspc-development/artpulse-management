@@ -18,10 +18,15 @@
     "yoast/phpunit-polyfills": "^4.0",
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
     "phpcompatibility/phpcompatibility-wp": "*",
-    "wp-phpunit/wp-phpunit": "^6.0"
+    "wp-phpunit/wp-phpunit": "^6.0",
+    "wp-coding-standards/wpcs": "^3.1"
   },
   "scripts": {
     "test": "vendor/bin/phpunit",
+    "test:unit": "vendor/bin/phpunit --testsuite unit",
+    "test:int": "vendor/bin/phpunit --testsuite integration",
+    "lint": "vendor/bin/phpcs --standard=WordPress --extensions=php src templates tests",
+    "format": "vendor/bin/phpcbf --standard=WordPress --extensions=php src templates tests",
     "sniff": "vendor/bin/phpcs --standard=PHPCompatibilityWP --runtime-set testVersion 8.3 ."
   },
   "config": {

@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.1']
+        wordpress: ['6.5']
+    env:
+      WP_ENV_PHP_VERSION: ${{ matrix.php }}
+      WP_ENV_WP_VERSION: ${{ matrix.wordpress }}
+      WP_BASE_URL: http://localhost:8889
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Start wp-env
+        run: npx wp-env start
+
+      - name: Run unit tests
+        run: composer test:unit
+
+      - name: Run integration tests
+        run: composer test:int
+
+      - name: Install Playwright browsers
+        run: npx --yes @playwright/test install --with-deps
+
+      - name: Run Playwright smoke tests
+        run: npm run test:e2e
+        env:
+          WP_ENV: test
+
+      - name: Stop wp-env
+        if: always()
+        run: npx wp-env stop
