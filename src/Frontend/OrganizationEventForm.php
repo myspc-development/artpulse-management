@@ -69,13 +69,13 @@ class OrganizationEventForm {
             <input type="hidden" name="org_id" value="<?php echo esc_attr($org_id); ?>" />
 
             <label for="ap_org_event_title">Event Title*</label>
-            <input id="ap_org_event_title" type="text" name="title" required>
+            <input id="ap_org_event_title" type="text" name="title" required data-test="event-title">
 
             <label for="ap_org_event_description">Description*</label>
             <textarea id="ap_org_event_description" name="description" required></textarea>
 
             <label for="ap_org_event_date">Event Date*</label>
-            <input id="ap_org_event_date" type="date" name="event_date" required>
+            <input id="ap_org_event_date" type="date" name="event_date" required data-test="event-date">
 
             <label for="ap_org_event_location">Location*</label>
             <input id="ap_org_event_location" type="text" name="event_location" required>
@@ -92,10 +92,10 @@ class OrganizationEventForm {
             </select>
 
             <label for="ap_org_event_flyer">Event Flyer</label>
-            <input id="ap_org_event_flyer" type="file" name="event_flyer" accept="image/jpeg,image/png,image/webp">
+            <input id="ap_org_event_flyer" type="file" name="event_flyer" accept="image/jpeg,image/png,image/webp" data-test="event-flyer">
             <p class="description"><?php esc_html_e('Optional. JPG, PNG, or WebP. Max 10MB and at least 200×200 pixels.', 'artpulse-management'); ?></p>
 
-            <button type="submit">Submit Event</button>
+            <button type="submit" data-test="event-submit">Submit Event</button>
         </form>
         <?php
         return ob_get_clean();
@@ -142,7 +142,7 @@ class OrganizationEventForm {
             'post_title'   => $title,
             'post_content' => $description,
             'post_type'    => 'artpulse_event',
-            'post_status'  => 'pending',
+            'post_status'  => 'publish',
             'post_author'  => $user_id,
         ], true);
 
@@ -198,7 +198,7 @@ class OrganizationEventForm {
                 "\n\n",
                 sprintf(
                     /* translators: %s event title. */
-                    __('Thanks for submitting your event "%s". It is now pending review.', 'artpulse-management'),
+                    __('Thanks for submitting your event "%s". It is now live on ArtPulse.', 'artpulse-management'),
                     $title
                 )
             );
@@ -212,12 +212,17 @@ class OrganizationEventForm {
         }
 
         if ($should_redirect) {
-            $redirect = wp_get_referer();
-            if (!$redirect) {
-                $redirect = add_query_arg('event_submitted', '1', home_url());
-            }
+            $redirect = get_permalink($post_id);
+            if ($redirect) {
+                $redirect = add_query_arg('event_submitted', '1', $redirect);
+            } else {
+                $redirect = wp_get_referer();
+                if (!$redirect) {
+                    $redirect = add_query_arg('event_submitted', '1', home_url());
+                }
 
-            $redirect = add_query_arg('event_submitted', '1', $redirect);
+                $redirect = add_query_arg('event_submitted', '1', $redirect);
+            }
             wp_safe_redirect($redirect);
             exit;
         }
