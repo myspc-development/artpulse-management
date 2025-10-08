@@ -18,6 +18,8 @@ class RoleUpgradeManager
         'organization' => 'Organization',
     ];
 
+    private const UPGRADE_NOTIFICATION_META_PREFIX = '_ap_upgrade_notified_';
+
     /**
      * Register WordPress hooks.
      */
@@ -79,6 +81,25 @@ class RoleUpgradeManager
         self::send_upgrade_email($user, $role);
     }
 
+    public static function grant_role_if_missing(int $user_id, string $role, array $context = []): void
+    {
+        $user = get_user_by('id', $user_id);
+
+        if (!$user instanceof WP_User) {
+            return;
+        }
+
+        if (in_array($role, $user->roles, true)) {
+            if (isset(self::MEMBERSHIP_LABELS[$role])) {
+                update_user_meta($user_id, 'ap_membership_level', self::MEMBERSHIP_LABELS[$role]);
+            }
+
+            return;
+        }
+
+        self::grant_role($user_id, $role, $context);
+    }
+
     /**
      * Automatically grant roles when a submission is approved/published.
      */
@@ -118,6 +139,13 @@ class RoleUpgradeManager
             return;
         }
 
+        $meta_key = self::UPGRADE_NOTIFICATION_META_PREFIX . sanitize_key($role);
+        $already_notified = get_user_meta($user->ID, $meta_key, true);
+
+        if ($already_notified) {
+            return;
+        }
+
         $role_label = self::MEMBERSHIP_LABELS[$role] ?? ucfirst($role);
         $subject    = sprintf(
             /* translators: %s is the new role label. */
@@ -140,5 +168,7 @@ class RoleUpgradeManager
         );
 
         wp_mail($user->user_email, $subject, $message);
+
+        update_user_meta($user->ID, $meta_key, current_time('mysql')); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
     }
 }

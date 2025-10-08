@@ -25,6 +25,7 @@ ArtPulse Management is a powerful WordPress plugin that enables seamless managem
 🗃️ User Directory — Filtered views of artist and organization profiles powered by `[ap_artists_directory]` and `[ap_orgs_directory]`
 
 🧭 Organization Onboarding — `[ap_register_organization]` shortcode to collect org sign-ups, auto-assign creators, notify admins, and promote follow/favorite actions
+🏗️ Organization Builder — `[ap_org_builder]` shortcode for approved org owners to edit profiles, manage media, preview, publish, and submit events
 
 🧑‍💻 Installation
 Clone or download this repo into your WordPress plugins directory:

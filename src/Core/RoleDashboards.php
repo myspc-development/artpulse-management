@@ -480,7 +480,7 @@ class RoleDashboards
             $upgrade_intro = $upgrade_data['intro'] ?? '';
         }
 
-        return [
+        $data = [
             'role'        => $role,
             'favorites'   => $favorites,
             'follows'     => $follows,
@@ -490,6 +490,15 @@ class RoleDashboards
             'upgrades'    => $upgrades,
             'upgrade_intro' => $upgrade_intro,
         ];
+
+        /**
+         * Filter the prepared dashboard payload before it is rendered or returned via REST.
+         *
+         * @param array  $data    Dashboard payload.
+         * @param string $role    Role slug.
+         * @param int    $user_id Current user identifier.
+         */
+        return apply_filters('artpulse/dashboard/data', $data, $role, $user_id);
     }
 
     /**

@@ -129,5 +129,18 @@ $metric_labels = [
         </div>
     <?php endif; ?>
 
+    <?php if (!empty($dashboard['org_upgrade'])) : ?>
+        <?php
+        $org_upgrade = $dashboard['org_upgrade'];
+        $org_upgrade_template = dirname(__DIR__) . '/org-builder/member-upgrade-card.php';
+        if (!file_exists($org_upgrade_template)) {
+            $org_upgrade_template = __DIR__ . '/partials/member-org-upgrade.php';
+        }
+        if (file_exists($org_upgrade_template)) {
+            include $org_upgrade_template;
+        }
+        ?>
+    <?php endif; ?>
+
     <?php echo \ArtPulse\Core\RoleDashboards::renderUpgradeWidget($upgrades, $upgrade_intro); ?>
 </div>

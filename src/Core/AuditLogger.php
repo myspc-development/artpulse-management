@@ -9,6 +9,11 @@ use WP_User;
  */
 class AuditLogger
 {
+    public static function info(string $action, array $context = []): void
+    {
+        self::log($action, $context);
+    }
+
     /**
      * Log an action with structured context for easier debugging.
      *
