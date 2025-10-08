@@ -14,6 +14,9 @@ class MobileRestController
 {
     public static function register(): void
     {
+        RateLimiter::register();
+        RestErrorFormatter::register();
+
         register_rest_route('artpulse/v1', '/mobile/login', [
             'methods'             => 'POST',
             'callback'            => [self::class, 'login'],
@@ -22,6 +25,16 @@ class MobileRestController
                 'username'    => ['required' => true],
                 'password'    => ['required' => true],
                 'push_token'  => ['required' => false],
+                'device_id'   => ['required' => false],
+            ],
+        ]);
+
+        register_rest_route('artpulse/v1', '/mobile/auth/refresh', [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'refresh'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'refresh_token' => ['required' => true],
             ],
         ]);
 
@@ -103,15 +116,49 @@ class MobileRestController
             update_user_meta($user->ID, 'ap_mobile_push_token', sanitize_text_field((string) $push));
         }
 
-        $token = JWT::issue($user->ID);
+        $device_id    = sanitize_text_field((string) $request->get_param('device_id'));
+        $access_token = JWT::issue($user->ID);
+        $refresh      = RefreshTokens::mint($user->ID, $device_id);
 
         $data = [
-            'token'   => $token['token'],
-            'expires' => $token['expires'],
-            'user'    => self::format_user($user->ID),
+            'token'          => $access_token['token'],
+            'expires'        => $access_token['expires'],
+            'refreshToken'   => $refresh['token'],
+            'refreshExpires' => $refresh['expires'],
+            'user'           => self::format_user($user->ID),
         ];
 
         return rest_ensure_response($data);
+    }
+
+    public static function refresh(WP_REST_Request $request)
+    {
+        $token = (string) $request->get_param('refresh_token');
+        $validated = RefreshTokens::validate($token);
+        if ($validated instanceof WP_Error) {
+            return $validated;
+        }
+
+        $user_id = (int) $validated['user_id'];
+        $user    = get_userdata($user_id);
+        if (!$user) {
+            RefreshTokens::revoke_all($user_id);
+
+            return new WP_Error('ap_invalid_refresh', __('User for refresh token no longer exists.', 'artpulse-management'), ['status' => 401]);
+        }
+
+        wp_set_current_user($user_id);
+
+        $access  = JWT::issue($user_id);
+        $refresh = RefreshTokens::rotate($validated);
+
+        return rest_ensure_response([
+            'token'          => $access['token'],
+            'expires'        => $access['expires'],
+            'refreshToken'   => $refresh['token'],
+            'refreshExpires' => $refresh['expires'],
+            'user'           => self::format_user($user_id),
+        ]);
     }
 
     public static function me(WP_REST_Request $request): WP_REST_Response
@@ -125,19 +172,59 @@ class MobileRestController
 
     public static function geosearch_events(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
-        $lat = $request->get_param('lat');
-        $lng = $request->get_param('lng');
-
-        if (!is_numeric($lat) || !is_numeric($lng)) {
-            return new WP_Error('ap_geo_invalid', __('Latitude and longitude are required.', 'artpulse-management'), ['status' => 400]);
-        }
-
-        $lat    = (float) $lat;
-        $lng    = (float) $lng;
-        $radius = (float) ($request->get_param('radius') ?? 50);
-        $radius = max(1, min(500, $radius));
+        $lat    = $request->get_param('lat');
+        $lng    = $request->get_param('lng');
+        $bounds = $request->get_param('bounds');
         $limit  = (int) ($request->get_param('limit') ?? 25);
         $limit  = max(1, min(100, $limit));
+
+        $use_bounds = is_string($bounds) && '' !== trim($bounds);
+
+        $center_lat = null;
+        $center_lng = null;
+        $filters    = '';
+        $params     = [];
+
+        if ($use_bounds) {
+            $parts = array_map('trim', explode(',', (string) $bounds));
+            if (4 !== count($parts) || !self::all_numeric($parts)) {
+                return new WP_Error('ap_geo_invalid', __('Invalid bounds provided.', 'artpulse-management'), ['status' => 400]);
+            }
+
+            [$sw_lat, $sw_lng, $ne_lat, $ne_lng] = array_map('floatval', $parts);
+
+            if ($sw_lat > $ne_lat) {
+                return new WP_Error('ap_geo_invalid', __('Invalid latitude bounds.', 'artpulse-management'), ['status' => 400]);
+            }
+
+            $center_lat = ($sw_lat + $ne_lat) / 2;
+            $center_lng = self::normalize_longitude(($sw_lng + $ne_lng) / 2);
+
+            $filters .= ' AND geo.latitude BETWEEN %f AND %f';
+            $params[] = $sw_lat;
+            $params[] = $ne_lat;
+
+            if ($sw_lng <= $ne_lng) {
+                $filters .= ' AND geo.longitude BETWEEN %f AND %f';
+                $params[] = $sw_lng;
+                $params[] = $ne_lng;
+            } else {
+                $filters .= ' AND (geo.longitude >= %f OR geo.longitude <= %f)';
+                $params[] = $sw_lng;
+                $params[] = $ne_lng;
+            }
+        } else {
+            if (!is_numeric($lat) || !is_numeric($lng)) {
+                return new WP_Error('ap_geo_invalid', __('Latitude and longitude are required.', 'artpulse-management'), ['status' => 400]);
+            }
+
+            $lat    = (float) $lat;
+            $lng    = (float) $lng;
+            $radius = (float) ($request->get_param('radius') ?? 50);
+            $radius = max(1, min(500, $radius));
+            $center_lat = $lat;
+            $center_lng = self::normalize_longitude($lng);
+        }
 
         global $wpdb;
 
@@ -147,9 +234,9 @@ class MobileRestController
 
         $distance_sql = $wpdb->prepare(
             '(6371 * ACOS(LEAST(1.0, COS(RADIANS(%f)) * COS(RADIANS(geo.latitude)) * COS(RADIANS(geo.longitude) - RADIANS(%f)) + SIN(RADIANS(%f)) * SIN(RADIANS(geo.latitude)))))',
-            $lat,
-            $lng,
-            $lat
+            $center_lat,
+            $center_lng,
+            $center_lat
         );
 
         $query = $wpdb->prepare(
@@ -162,8 +249,16 @@ class MobileRestController
             PostTypeRegistrar::EVENT_POST_TYPE
         );
 
-        if ($radius > 0) {
-            $query .= $wpdb->prepare(' HAVING distance_km <= %f', $radius);
+        if ($filters) {
+            $query .= $wpdb->prepare($filters, ...$params);
+        }
+
+        if (!$use_bounds) {
+            $radius = (float) ($request->get_param('radius') ?? 50);
+            $radius = max(1, min(500, $radius));
+            if ($radius > 0) {
+                $query .= $wpdb->prepare(' HAVING distance_km <= %f', $radius);
+            }
         }
 
         $query .= ' ORDER BY distance_km ASC, start_time ASC';
@@ -196,10 +291,6 @@ class MobileRestController
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
 
-        if ($error = RateLimiter::enforce('like:' . $user_id)) {
-            return $error;
-        }
-
         $state = EventInteractions::like_event($event_id, $user_id);
         if ($state instanceof WP_Error) {
             return $state;
@@ -212,10 +303,6 @@ class MobileRestController
     {
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
-
-        if ($error = RateLimiter::enforce('unlike:' . $user_id)) {
-            return $error;
-        }
 
         $state = EventInteractions::unlike_event($event_id, $user_id);
         if ($state instanceof WP_Error) {
@@ -230,10 +317,6 @@ class MobileRestController
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
 
-        if ($error = RateLimiter::enforce('save:' . $user_id)) {
-            return $error;
-        }
-
         $state = EventInteractions::save_event($event_id, $user_id);
         if ($state instanceof WP_Error) {
             return $state;
@@ -246,10 +329,6 @@ class MobileRestController
     {
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
-
-        if ($error = RateLimiter::enforce('unsave:' . $user_id)) {
-            return $error;
-        }
 
         $state = EventInteractions::unsave_event($event_id, $user_id);
         if ($state instanceof WP_Error) {
@@ -265,10 +344,6 @@ class MobileRestController
         $type    = (string) $request->get_param('type');
         $object_id = (int) $request->get_param('id');
 
-        if ($error = RateLimiter::enforce('follow:' . $user_id)) {
-            return $error;
-        }
-
         $state = FollowService::follow($user_id, $object_id, $type);
         if ($state instanceof WP_Error) {
             return $state;
@@ -282,10 +357,6 @@ class MobileRestController
         $user_id = (int) $request->get_attribute('ap_user_id');
         $type    = (string) $request->get_param('type');
         $object_id = (int) $request->get_param('id');
-
-        if ($error = RateLimiter::enforce('unfollow:' . $user_id)) {
-            return $error;
-        }
 
         $state = FollowService::unfollow($user_id, $object_id, $type);
         if ($state instanceof WP_Error) {
@@ -422,6 +493,7 @@ class MobileRestController
             'start'       => $start,
             'location'    => $location,
             'distanceKm'  => null !== $distance_km ? round($distance_km, 2) : null,
+            'distance_m'  => null !== $distance_km ? (int) round($distance_km * 1000) : null,
             'likes'       => (int) ($state['likes'] ?? 0),
             'liked'       => (bool) ($state['liked'] ?? false),
             'saves'       => (int) ($state['saves'] ?? 0),
@@ -432,5 +504,29 @@ class MobileRestController
                 'title' => $org->post_title,
             ] : null,
         ];
+    }
+
+    private static function all_numeric(array $values): bool
+    {
+        foreach ($values as $value) {
+            if (!is_numeric($value)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function normalize_longitude(float $longitude): float
+    {
+        while ($longitude > 180) {
+            $longitude -= 360;
+        }
+
+        while ($longitude < -180) {
+            $longitude += 360;
+        }
+
+        return $longitude;
     }
 }
