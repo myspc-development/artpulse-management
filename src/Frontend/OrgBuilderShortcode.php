@@ -4,10 +4,21 @@ namespace ArtPulse\Frontend;
 
 use ArtPulse\Core\ImageTools;
 use ArtPulse\Core\UpgradeReviewRepository;
+use WP_Error;
 use WP_Post;
+use WP_User;
 
 class OrgBuilderShortcode
 {
+    private const ERROR_TRANSIENT_KEY = 'ap_org_builder_errors_';
+    private const MAX_UPLOAD_BYTES = 10 * MB_IN_BYTES;
+    private const MIN_IMAGE_DIMENSION = 200;
+    private const ALLOWED_MIME_TYPES = [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+    ];
+
     public static function register(): void
     {
         add_shortcode('ap_org_builder', [self::class, 'render']);
@@ -41,12 +52,15 @@ class OrgBuilderShortcode
         $step = in_array($step, ['profile', 'images', 'preview', 'publish'], true) ? $step : 'profile';
 
         $message = '';
+        $errors  = self::pull_errors($user_id);
         if (!empty($_GET['ap_builder'])) {
             $message_key = sanitize_key(wp_unslash($_GET['ap_builder']));
             if ('saved' === $message_key) {
                 $message = esc_html__('Changes saved.', 'artpulse-management');
             } elseif ('published' === $message_key) {
                 $message = esc_html__('Organization published successfully.', 'artpulse-management');
+            } elseif ('error' === $message_key && empty($errors)) {
+                $message = esc_html__('We could not save your changes. Please review the messages below.', 'artpulse-management');
             }
         }
 
@@ -64,6 +78,7 @@ class OrgBuilderShortcode
         $builder_message = $message;
         $builder_step = $step;
         $builder_event_url = $event_url;
+        $builder_errors = $errors;
 
         include self::get_template_path('wrapper');
 
@@ -77,20 +92,24 @@ class OrgBuilderShortcode
             exit;
         }
 
-        check_admin_referer('ap-org-builder');
-
         $user_id = get_current_user_id();
         $org_id  = isset($_POST['org_id']) ? absint($_POST['org_id']) : 0;
         $step    = isset($_POST['builder_step']) ? sanitize_key(wp_unslash($_POST['builder_step'])) : 'profile';
 
+        if (!$org_id) {
+            wp_safe_redirect(add_query_arg('ap_builder', 'error', wp_get_referer() ?: home_url('/dashboard/')));
+            exit;
+        }
+
+        $nonce = isset($_POST['ap_org_builder_nonce']) ? wp_unslash($_POST['ap_org_builder_nonce']) : '';
+        if (!is_string($nonce) || !wp_verify_nonce($nonce, 'ap-org-builder-' . $org_id)) {
+            wp_safe_redirect(add_query_arg('ap_builder', 'error', wp_get_referer() ?: home_url('/dashboard/')));
+            exit;
+        }
+
         $redirect = add_query_arg([
             'step' => $step,
         ], wp_get_referer() ?: add_query_arg(['step' => $step], home_url('/dashboard/')));
-
-        if (!$org_id) {
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
-            exit;
-        }
 
         $org = get_post($org_id);
         if (!$org instanceof WP_Post) {
@@ -98,22 +117,38 @@ class OrgBuilderShortcode
             exit;
         }
 
-        if ((int) get_post_meta($org_id, '_ap_owner_user', true) !== $user_id && (int) $org->post_author !== $user_id) {
+        if (!self::user_can_manage_org($org)) {
+            self::remember_errors($user_id, [__('You do not have permission to update this organization.', 'artpulse-management')]);
             wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
             exit;
         }
+
+        $errors = [];
 
         if ('profile' === $step) {
             self::save_profile($org_id);
             $status = 'saved';
         } elseif ('images' === $step) {
-            self::save_images($org_id);
-            $status = 'saved';
+            if (!current_user_can('upload_files')) {
+                $errors[] = __('You do not have permission to upload images.', 'artpulse-management');
+            } else {
+                $errors = self::save_images($org_id);
+            }
+            $status = empty($errors) ? 'saved' : 'error';
         } elseif ('publish' === $step) {
-            self::publish_org($org_id);
-            $status = 'published';
+            if (!current_user_can('publish_post', $org_id)) {
+                $errors[] = __('You do not have permission to publish this organization.', 'artpulse-management');
+                $status = 'error';
+            } else {
+                self::publish_org($org_id);
+                $status = 'published';
+            }
         } else {
             $status = 'saved';
+        }
+
+        if (!empty($errors)) {
+            self::remember_errors($user_id, $errors);
         }
 
         wp_safe_redirect(add_query_arg('ap_builder', $status, $redirect));
@@ -123,13 +158,13 @@ class OrgBuilderShortcode
     private static function save_profile(int $org_id): void
     {
         $fields = [
-            '_ap_tagline'   => sanitize_text_field($_POST['ap_tagline'] ?? ''),
-            '_ap_about'     => wp_kses_post($_POST['ap_about'] ?? ''),
-            '_ap_website'   => esc_url_raw($_POST['ap_website'] ?? ''),
-            '_ap_socials'   => sanitize_textarea_field($_POST['ap_socials'] ?? ''),
-            '_ap_phone'     => sanitize_text_field($_POST['ap_phone'] ?? ''),
-            '_ap_email'     => sanitize_email($_POST['ap_email'] ?? ''),
-            '_ap_address'   => sanitize_textarea_field($_POST['ap_address'] ?? ''),
+            '_ap_tagline'   => sanitize_text_field(wp_unslash($_POST['ap_tagline'] ?? '')),
+            '_ap_about'     => wp_kses_post(wp_unslash($_POST['ap_about'] ?? '')),
+            '_ap_website'   => esc_url_raw(wp_unslash($_POST['ap_website'] ?? '')),
+            '_ap_socials'   => sanitize_textarea_field(wp_unslash($_POST['ap_socials'] ?? '')),
+            '_ap_phone'     => sanitize_text_field(wp_unslash($_POST['ap_phone'] ?? '')),
+            '_ap_email'     => sanitize_email(wp_unslash($_POST['ap_email'] ?? '')),
+            '_ap_address'   => sanitize_textarea_field(wp_unslash($_POST['ap_address'] ?? '')),
         ];
 
         foreach ($fields as $key => $value) {
@@ -141,45 +176,112 @@ class OrgBuilderShortcode
         }
     }
 
-    private static function save_images(int $org_id): void
+    private static function save_images(int $org_id): array
     {
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        require_once ABSPATH . 'wp-admin/includes/media.php';
-        require_once ABSPATH . 'wp-admin/includes/image.php';
+        self::ensure_media_dependencies();
+
+        $errors = [];
+        $logo_id  = (int) get_post_meta($org_id, '_ap_logo_id', true);
+        $cover_id = (int) get_post_meta($org_id, '_ap_cover_id', true);
 
         if (!empty($_FILES['ap_logo']['name'])) {
-            $logo_id = media_handle_upload('ap_logo', $org_id);
-            if (!is_wp_error($logo_id)) {
-                update_post_meta($org_id, '_ap_logo_id', (int) $logo_id);
-            }
-        }
-
-        if (!empty($_FILES['ap_cover']['name'])) {
-            $cover_id = media_handle_upload('ap_cover', $org_id);
-            if (!is_wp_error($cover_id)) {
-                update_post_meta($org_id, '_ap_cover_id', (int) $cover_id);
-            }
-        }
-
-        $gallery_ids = isset($_POST['existing_gallery_ids']) ? array_map('absint', (array) $_POST['existing_gallery_ids']) : [];
-
-        if (!empty($_FILES['ap_gallery']['name'][0])) {
-            $files = self::normalize_files_array($_FILES['ap_gallery']);
-            foreach ($files as $file_key => $details) {
-                $_FILES['single_gallery_upload'] = $details;
-                $attachment_id = media_handle_upload('single_gallery_upload', $org_id);
-                if (!is_wp_error($attachment_id)) {
-                    $gallery_ids[] = (int) $attachment_id;
+            $logo_file = self::prepare_file_array($_FILES['ap_logo']);
+            $validation = self::validate_image_upload($logo_file, __('Logo', 'artpulse-management'));
+            if ($validation) {
+                $errors[] = $validation;
+            } else {
+                $upload = self::process_upload_field('ap_logo', $org_id);
+                if ($upload instanceof WP_Error) {
+                    $errors[] = $upload->get_error_message();
+                } else {
+                    $logo_id = (int) $upload;
+                    update_post_meta($org_id, '_ap_logo_id', $logo_id);
                 }
             }
         }
 
-        update_post_meta($org_id, '_ap_gallery_ids', array_filter($gallery_ids));
-
-        $featured = isset($_POST['ap_featured_image']) ? absint($_POST['ap_featured_image']) : 0;
-        if ($featured > 0) {
-            set_post_thumbnail($org_id, $featured);
+        if (!empty($_FILES['ap_cover']['name'])) {
+            $cover_file = self::prepare_file_array($_FILES['ap_cover']);
+            $validation = self::validate_image_upload($cover_file, __('Cover image', 'artpulse-management'));
+            if ($validation) {
+                $errors[] = $validation;
+            } else {
+                $upload = self::process_upload_field('ap_cover', $org_id);
+                if ($upload instanceof WP_Error) {
+                    $errors[] = $upload->get_error_message();
+                } else {
+                    $cover_id = (int) $upload;
+                    update_post_meta($org_id, '_ap_cover_id', $cover_id);
+                }
+            }
         }
+
+        $gallery_ids = isset($_POST['existing_gallery_ids'])
+            ? array_map('absint', (array) wp_unslash($_POST['existing_gallery_ids']))
+            : [];
+
+        if (!empty($_FILES['ap_gallery']['name'][0])) {
+            $files = self::normalize_files_array($_FILES['ap_gallery']);
+            foreach ($files as $details) {
+                $validation = self::validate_image_upload($details, __('Gallery image', 'artpulse-management'));
+                if ($validation) {
+                    $errors[] = $validation;
+                    continue;
+                }
+
+                $_FILES['ap_single_gallery'] = $details;
+                $upload = self::process_upload_field('ap_single_gallery', $org_id);
+
+                if ($upload instanceof WP_Error) {
+                    $errors[] = $upload->get_error_message();
+                    continue;
+                }
+
+                $gallery_ids[] = (int) $upload;
+            }
+
+            unset($_FILES['ap_single_gallery']);
+        }
+
+        $gallery_ids = array_values(array_filter(array_unique($gallery_ids)));
+
+        $order_input = isset($_POST['gallery_order']) ? (array) wp_unslash($_POST['gallery_order']) : [];
+        $order = [];
+        foreach ($order_input as $attachment_id => $position) {
+            $attachment_id = absint($attachment_id);
+            if ($attachment_id <= 0) {
+                continue;
+            }
+
+            $order[$attachment_id] = absint($position);
+        }
+
+        if (!empty($order)) {
+            $gallery_ids = self::apply_gallery_order($gallery_ids, $order);
+        }
+
+        update_post_meta($org_id, '_ap_gallery_ids', $gallery_ids);
+
+        $eligible_featured = $gallery_ids;
+        if ($cover_id) {
+            $eligible_featured[] = $cover_id;
+        }
+        $eligible_featured = array_values(array_unique(array_filter($eligible_featured)));
+
+        $featured = isset($_POST['ap_featured_image']) ? absint(wp_unslash($_POST['ap_featured_image'])) : 0;
+        $current_featured = (int) get_post_thumbnail_id($org_id);
+
+        if ($featured > 0 && in_array($featured, $eligible_featured, true)) {
+            set_post_thumbnail($org_id, $featured);
+        } elseif (!in_array($current_featured, $eligible_featured, true)) {
+            if (!empty($eligible_featured)) {
+                set_post_thumbnail($org_id, (int) $eligible_featured[0]);
+            } else {
+                delete_post_thumbnail($org_id);
+            }
+        }
+
+        return $errors;
     }
 
     private static function publish_org(int $org_id): void
@@ -205,7 +307,7 @@ class OrgBuilderShortcode
             'address' => get_post_meta($org_id, '_ap_address', true),
             'logo_id' => (int) get_post_meta($org_id, '_ap_logo_id', true),
             'cover_id'=> (int) get_post_meta($org_id, '_ap_cover_id', true),
-            'gallery_ids' => array_filter((array) get_post_meta($org_id, '_ap_gallery_ids', true)),
+            'gallery_ids' => array_values(array_filter(array_map('absint', (array) get_post_meta($org_id, '_ap_gallery_ids', true)))),
             'featured_id' => (int) get_post_thumbnail_id($org_id),
         ];
     }
@@ -245,54 +347,242 @@ class OrgBuilderShortcode
     private static function normalize_files_array(array $files): array
     {
         $normalized = [];
-        foreach ($files['name'] as $index => $name) {
-            if (empty($name)) {
+        $names = isset($files['name']) ? (array) wp_unslash($files['name']) : [];
+
+        foreach ($names as $index => $name) {
+            if ('' === trim((string) $name)) {
                 continue;
             }
 
-            $normalized[] = [
+            $normalized[] = self::prepare_file_array([
                 'name'     => $name,
-                'type'     => $files['type'][$index],
-                'tmp_name' => $files['tmp_name'][$index],
-                'error'    => $files['error'][$index],
-                'size'     => $files['size'][$index],
-            ];
+                'type'     => $files['type'][$index] ?? '',
+                'tmp_name' => $files['tmp_name'][$index] ?? '',
+                'error'    => $files['error'][$index] ?? 0,
+                'size'     => $files['size'][$index] ?? 0,
+            ]);
         }
 
         return $normalized;
     }
 
     private static function get_template_path(string $view): string
-        {
-            $base = trailingslashit(ARTPULSE_PLUGIN_DIR) . 'templates/org-builder/' . $view . '.php';
-            if (file_exists($base)) {
-                return $base;
-            }
-
+    {
+        $base = trailingslashit(ARTPULSE_PLUGIN_DIR) . 'templates/org-builder/' . $view . '.php';
+        if (file_exists($base)) {
             return $base;
         }
 
-    private static function build_preview_data(WP_Post $org, array $meta): array
-    {
-        $logo  = $meta['logo_id'] ? wp_get_attachment_image_url($meta['logo_id'], 'thumbnail') : '';
-        $cover = $meta['cover_id'] ? wp_get_attachment_image_url($meta['cover_id'], 'large') : '';
+        return $base;
+    }
 
-        if (!$cover && $meta['gallery_ids']) {
-            $first = (int) $meta['gallery_ids'][0];
-            $cover = wp_get_attachment_image_url($first, 'large');
+    private static function prepare_file_array(array $file): array
+    {
+        return [
+            'name'     => isset($file['name']) ? (string) $file['name'] : '',
+            'type'     => isset($file['type']) ? (string) $file['type'] : '',
+            'tmp_name' => isset($file['tmp_name']) ? (string) $file['tmp_name'] : '',
+            'error'    => isset($file['error']) ? (int) $file['error'] : 0,
+            'size'     => isset($file['size']) ? (int) $file['size'] : 0,
+        ];
+    }
+
+    private static function ensure_media_dependencies(): void
+    {
+        static $loaded = false;
+
+        if ($loaded) {
+            return;
         }
 
-        if (!$cover) {
-            $cover = ImageTools::best_image_src($org, 'ap-grid');
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $loaded = true;
+    }
+
+    private static function process_upload_field(string $field, int $post_id)
+    {
+        $result = media_handle_upload($field, $post_id);
+
+        if (is_wp_error($result)) {
+            return new WP_Error($result->get_error_code(), $result->get_error_message());
+        }
+
+        return (int) $result;
+    }
+
+    private static function validate_image_upload(array $file, string $context_label): ?string
+    {
+        if (!empty($file['error']) && UPLOAD_ERR_OK !== $file['error']) {
+            $message = match ((int) $file['error']) {
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => __('The file exceeds the maximum allowed size.', 'artpulse-management'),
+                UPLOAD_ERR_PARTIAL                       => __('The file upload was incomplete.', 'artpulse-management'),
+                UPLOAD_ERR_NO_FILE                       => __('No file was uploaded.', 'artpulse-management'),
+                default                                  => __('The file could not be uploaded.', 'artpulse-management'),
+            };
+
+            return sprintf('%s: %s', $context_label, $message);
+        }
+
+        if (empty($file['tmp_name']) || !file_exists($file['tmp_name'])) {
+            return sprintf(__('Unable to read the %s upload.', 'artpulse-management'), strtolower($context_label));
+        }
+
+        if ($file['size'] > self::MAX_UPLOAD_BYTES) {
+            return sprintf(
+                /* translators: 1: Field label, 2: size in megabytes. */
+                __('%1$s must be smaller than %2$dMB.', 'artpulse-management'),
+                $context_label,
+                10
+            );
+        }
+
+        $check = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
+        $type = $check['type'] ?? '';
+        if ('' === $type || !in_array($type, self::ALLOWED_MIME_TYPES, true)) {
+            return sprintf(
+                /* translators: %s field label. */
+                __('%s must be a JPG, PNG, or WebP image.', 'artpulse-management'),
+                $context_label
+            );
+        }
+
+        $dimensions = @getimagesize($file['tmp_name']); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        if (!is_array($dimensions) || count($dimensions) < 2) {
+            return sprintf(__('We could not determine the size of the %s.', 'artpulse-management'), strtolower($context_label));
+        }
+
+        [$width, $height] = $dimensions;
+        if ($width < self::MIN_IMAGE_DIMENSION || $height < self::MIN_IMAGE_DIMENSION) {
+            return sprintf(
+                /* translators: 1: Field label, 2: minimum dimension. */
+                __('%1$s must be at least %2$d×%2$d pixels.', 'artpulse-management'),
+                $context_label,
+                self::MIN_IMAGE_DIMENSION
+            );
+        }
+
+        return null;
+    }
+
+    private static function apply_gallery_order(array $gallery_ids, array $order): array
+    {
+        if (empty($gallery_ids)) {
+            return $gallery_ids;
+        }
+
+        usort($gallery_ids, static function ($a, $b) use ($order) {
+            $position_a = $order[$a] ?? PHP_INT_MAX;
+            $position_b = $order[$b] ?? PHP_INT_MAX;
+
+            if ($position_a === $position_b) {
+                return $a <=> $b;
+            }
+
+            return $position_a <=> $position_b;
+        });
+
+        return $gallery_ids;
+    }
+
+    private static function remember_errors(int $user_id, array $messages): void
+    {
+        $messages = array_filter(array_map(static function ($message) {
+            return sanitize_text_field((string) $message);
+        }, $messages));
+
+        if (empty($messages)) {
+            return;
+        }
+
+        set_transient(self::ERROR_TRANSIENT_KEY . $user_id, $messages, 5 * MINUTE_IN_SECONDS);
+    }
+
+    private static function pull_errors(int $user_id): array
+    {
+        $key = self::ERROR_TRANSIENT_KEY . $user_id;
+        $messages = get_transient($key);
+
+        if (!is_array($messages)) {
+            return [];
+        }
+
+        delete_transient($key);
+
+        return array_map('sanitize_text_field', $messages);
+    }
+
+    private static function user_can_manage_org(WP_Post $org): bool
+    {
+        $user = wp_get_current_user();
+
+        if (!$user instanceof WP_User) {
+            return false;
+        }
+
+        $user_id = (int) $user->ID;
+
+        if ($user_id <= 0) {
+            return false;
+        }
+
+        $owner_id = (int) get_post_meta($org->ID, '_ap_owner_user', true);
+        $is_owner = $owner_id === $user_id || (int) $org->post_author === $user_id;
+
+        if ($is_owner) {
+            return current_user_can('edit_post', $org->ID);
+        }
+
+        if (current_user_can('edit_post', $org->ID)) {
+            return true;
+        }
+
+        if (in_array('organization', (array) $user->roles, true)) {
+            $owned = self::get_owned_org($user_id);
+            if ($owned instanceof WP_Post && (int) $owned->ID === (int) $org->ID) {
+                return true;
+            }
+        }
+
+        return current_user_can('manage_options');
+    }
+
+    private static function build_preview_data(WP_Post $org, array $meta): array
+    {
+        $logo_id   = (int) ($meta['logo_id'] ?? 0);
+        $cover_id  = (int) ($meta['cover_id'] ?? 0);
+        $gallery   = $meta['gallery_ids'] ?? [];
+
+        if (!$cover_id && !empty($gallery)) {
+            $cover_id = (int) $gallery[0];
+        }
+
+        if (!$cover_id) {
+            $featured = (int) get_post_thumbnail_id($org);
+            if ($featured) {
+                $cover_id = $featured;
+            }
+        }
+
+        $cover_src = '';
+        if ($cover_id) {
+            $best = ImageTools::best_image_src($cover_id, ['ap-grid', 'large', 'medium_large', 'medium']);
+            if ($best) {
+                $cover_src = $best['url'];
+            }
         }
 
         return [
-            'title'   => get_the_title($org),
-            'tagline' => $meta['tagline'] ?? '',
-            'about'   => $meta['about'] ?? '',
-            'logo'    => $logo,
-            'cover'   => $cover,
-            'permalink' => get_permalink($org),
+            'title'        => get_the_title($org),
+            'tagline'      => $meta['tagline'] ?? '',
+            'about'        => $meta['about'] ?? '',
+            'logo_id'      => $logo_id,
+            'cover_id'     => $cover_id,
+            'cover_src'    => $cover_src,
+            'gallery_ids'  => $gallery,
+            'permalink'    => get_permalink($org),
         ];
     }
 }

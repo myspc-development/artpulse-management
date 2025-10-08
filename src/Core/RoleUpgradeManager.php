@@ -37,7 +37,10 @@ class RoleUpgradeManager
             return;
         }
 
-        update_post_meta($post_id, '_ap_owner_user', $user_id);
+        $current_owner = (int) get_post_meta($post_id, '_ap_owner_user', true);
+        if ($current_owner !== $user_id) {
+            update_post_meta($post_id, '_ap_owner_user', $user_id);
+        }
 
         $post = get_post($post_id);
         if ($post instanceof WP_Post && (int) $post->post_author !== $user_id) {
@@ -98,6 +101,26 @@ class RoleUpgradeManager
         }
 
         self::grant_role($user_id, $role, $context);
+    }
+
+    public static function revoke_role_if_present(int $user_id, string $role, array $context = []): void
+    {
+        if ($user_id <= 0 || '' === $role) {
+            return;
+        }
+
+        $user = get_user_by('id', $user_id);
+
+        if (!$user instanceof WP_User || !in_array($role, $user->roles, true)) {
+            return;
+        }
+
+        $user->remove_role($role);
+
+        AuditLogger::log('role_revoked', array_merge($context, [
+            'user_id' => $user_id,
+            'role'    => $role,
+        ]));
     }
 
     /**

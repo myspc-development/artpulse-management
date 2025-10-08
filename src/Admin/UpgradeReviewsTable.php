@@ -91,7 +91,17 @@ class UpgradeReviewsTable extends WP_List_Table
             esc_html__('Deny', 'artpulse-management')
         );
 
-        return sprintf('<strong>%s</strong>%s', esc_html($user->display_name ?: $user->user_login), $this->row_actions($actions));
+        $display_name = esc_html($user->display_name ?: $user->user_login);
+        $email_markup = '';
+
+        if ($user->user_email) {
+            $email_markup = sprintf(
+                '<span class="ap-upgrade-review__email"><a href="mailto:%1$s">%1$s</a></span>',
+                esc_attr($user->user_email)
+            );
+        }
+
+        return sprintf('<strong>%1$s</strong><br>%2$s%3$s', $display_name, $email_markup, $this->row_actions($actions));
     }
 
     protected function column_org($item): string
@@ -132,11 +142,28 @@ class UpgradeReviewsTable extends WP_List_Table
 
     protected function column_default($item, $column_name)
     {
-        if ('submitted' === $column_name) {
-            return esc_html(get_date_from_gmt(gmdate('Y-m-d H:i:s', strtotime($item['date_gmt'] ?? 'now'))));
+        return isset($item[$column_name]) ? esc_html((string) $item[$column_name]) : '';
+    }
+
+    protected function column_submitted($item): string
+    {
+        if (empty($item['date_gmt'])) {
+            return '—';
         }
 
-        return isset($item[$column_name]) ? esc_html((string) $item[$column_name]) : '';
+        $timestamp_gmt = strtotime($item['date_gmt'] . ' GMT');
+        if (!$timestamp_gmt) {
+            return '—';
+        }
+
+        $relative = human_time_diff($timestamp_gmt, current_time('timestamp', true));
+        $absolute = get_date_from_gmt($item['date_gmt'], get_option('date_format') . ' ' . get_option('time_format'));
+
+        return sprintf(
+            '<span title="%1$s">%2$s</span>',
+            esc_attr($absolute),
+            esc_html(sprintf(__('%s ago', 'artpulse-management'), $relative))
+        );
     }
 
     public function prepare_items(): void
