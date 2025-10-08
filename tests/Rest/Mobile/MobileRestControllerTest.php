@@ -84,7 +84,7 @@ class MobileRestControllerTest extends WP_UnitTestCase
 
         $second = rest_do_request($refresh);
         $this->assertSame(401, $second->get_status());
-        $this->assertSame('ap_refresh_revoked', $second->get_data()['code']);
+        $this->assertSame('refresh_reuse', $second->get_data()['code']);
     }
 
     public function test_refresh_rejects_expired_token(): void
@@ -93,7 +93,7 @@ class MobileRestControllerTest extends WP_UnitTestCase
 
         $records = get_user_meta($this->user_id, 'ap_mobile_refresh_tokens', true);
         $this->assertIsArray($records);
-        $records[0]['expires'] = time() - HOUR_IN_SECONDS;
+        $records[0]['expires_at'] = time() - HOUR_IN_SECONDS;
         update_user_meta($this->user_id, 'ap_mobile_refresh_tokens', $records);
 
         $request = new WP_REST_Request('POST', '/artpulse/v1/mobile/auth/refresh');
@@ -119,6 +119,95 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $response = rest_do_request($request);
         $this->assertSame(401, $response->get_status());
         $this->assertSame('ap_invalid_refresh', $response->get_data()['code']);
+    }
+
+    public function test_refresh_reuse_revokes_device_sessions(): void
+    {
+        $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+        $login->set_body_params([
+            'username'  => 'mobile-user',
+            'password'  => $this->password,
+            'device_id' => 'reuse-device',
+        ]);
+
+        $login_response = rest_do_request($login);
+        $this->assertSame(200, $login_response->get_status());
+        $data           = $login_response->get_data();
+        $refresh_token  = $data['refreshToken'];
+
+        $refresh_request = new WP_REST_Request('POST', '/artpulse/v1/mobile/auth/refresh');
+        $refresh_request->set_body_params([
+            'refresh_token' => $refresh_token,
+        ]);
+
+        $rotate = rest_do_request($refresh_request);
+        $this->assertSame(200, $rotate->get_status());
+        $rotate_data = $rotate->get_data();
+
+        $reuse = rest_do_request($refresh_request);
+        $this->assertSame(401, $reuse->get_status());
+        $this->assertSame('refresh_reuse', $reuse->get_data()['code']);
+
+        $sessions = new WP_REST_Request('GET', '/artpulse/v1/mobile/auth/sessions');
+        $sessions->set_header('Authorization', 'Bearer ' . $rotate_data['token']);
+        $sessions_response = rest_do_request($sessions);
+        $this->assertSame(200, $sessions_response->get_status());
+        $this->assertSame([], $sessions_response->get_data()['sessions']);
+    }
+
+    public function test_password_change_revokes_refresh_tokens(): void
+    {
+        $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+        $login->set_body_params([
+            'username'  => 'mobile-user',
+            'password'  => $this->password,
+            'device_id' => 'password-device',
+        ]);
+
+        $login_response = rest_do_request($login);
+        $this->assertSame(200, $login_response->get_status());
+        $refresh_token = $login_response->get_data()['refreshToken'];
+
+        wp_set_password('new-pass-123', $this->user_id);
+
+        $refresh = new WP_REST_Request('POST', '/artpulse/v1/mobile/auth/refresh');
+        $refresh->set_body_params([
+            'refresh_token' => $refresh_token,
+        ]);
+
+        $response = rest_do_request($refresh);
+        $this->assertSame(401, $response->get_status());
+        $this->assertSame('refresh_reuse', $response->get_data()['code']);
+    }
+
+    public function test_sessions_endpoint_lists_devices_and_allows_revocation(): void
+    {
+        $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+        $login->set_body_params([
+            'username'  => 'mobile-user',
+            'password'  => $this->password,
+            'device_id' => 'tablet-01',
+        ]);
+
+        $login_response = rest_do_request($login);
+        $this->assertSame(200, $login_response->get_status());
+        $token = $login_response->get_data()['token'];
+
+        $list = new WP_REST_Request('GET', '/artpulse/v1/mobile/auth/sessions');
+        $list->set_header('Authorization', 'Bearer ' . $token);
+        $sessions = rest_do_request($list);
+        $this->assertSame(200, $sessions->get_status());
+        $session_data = $sessions->get_data();
+        $this->assertCount(1, $session_data['sessions']);
+        $this->assertSame('tablet-01', $session_data['sessions'][0]['deviceId']);
+
+        $delete = new WP_REST_Request('DELETE', '/artpulse/v1/mobile/auth/sessions/tablet-01');
+        $delete->set_header('Authorization', 'Bearer ' . $token);
+        $delete_response = rest_do_request($delete);
+        $this->assertSame(200, $delete_response->get_status());
+
+        $sessions = rest_do_request($list);
+        $this->assertSame([], $sessions->get_data()['sessions']);
     }
 
     public function test_like_event_is_idempotent_and_counts_update(): void
@@ -162,6 +251,18 @@ class MobileRestControllerTest extends WP_UnitTestCase
 
     public function test_geosearch_orders_by_distance_then_time(): void
     {
+        $ongoing_event = wp_insert_post([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Ongoing Event',
+        ]);
+        update_post_meta($ongoing_event, '_ap_event_start', gmdate('c', strtotime('-1 hour')));
+        update_post_meta($ongoing_event, '_ap_event_end', gmdate('c', strtotime('+1 hour')));
+        update_post_meta($ongoing_event, '_ap_event_location', 'Gallery Live');
+        update_post_meta($ongoing_event, '_ap_event_latitude', '40.2');
+        update_post_meta($ongoing_event, '_ap_event_longitude', '-70.3');
+        EventGeo::sync($ongoing_event);
+
         $near_event = wp_insert_post([
             'post_type'   => 'artpulse_event',
             'post_status' => 'publish',
@@ -195,11 +296,14 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $response = rest_do_request($request);
         $this->assertSame(200, $response->get_status());
         $data = $response->get_data();
-        $this->assertCount(2, $data['events']);
-        $this->assertSame($near_event, $data['events'][0]['id']);
-        $this->assertSame($far_event, $data['events'][1]['id']);
+        $this->assertCount(3, $data['events']);
+        $this->assertSame($ongoing_event, $data['events'][0]['id']);
+        $this->assertTrue($data['events'][0]['isOngoing']);
+        $this->assertSame($near_event, $data['events'][1]['id']);
+        $this->assertFalse($data['events'][1]['isOngoing']);
+        $this->assertSame($far_event, $data['events'][2]['id']);
         $this->assertNotNull($data['events'][0]['distance_m']);
-        $this->assertGreaterThan(0, $data['events'][1]['distance_m']);
+        $this->assertGreaterThan(0, $data['events'][2]['distance_m']);
     }
 
     public function test_geosearch_with_bounds_filters_results(): void
@@ -256,7 +360,25 @@ class MobileRestControllerTest extends WP_UnitTestCase
         foreach ($data['events'] as $event) {
             $this->assertArrayHasKey('distance_m', $event);
             $this->assertIsInt($event['distance_m']);
+            $this->assertArrayHasKey('isOngoing', $event);
+            $this->assertIsBool($event['isOngoing']);
         }
+    }
+
+    public function test_geosearch_invalid_bounds_returns_error(): void
+    {
+        $token = JWT::issue($this->user_id)['token'];
+
+        $request = new WP_REST_Request('GET', '/artpulse/v1/mobile/events');
+        $request->set_param('bounds', 'invalid-bbox');
+        $request->set_header('Authorization', 'Bearer ' . $token);
+
+        $response = rest_do_request($request);
+        $this->assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        $this->assertSame('ap_geo_invalid', $data['code']);
+        $this->assertArrayHasKey('details', $data);
+        $this->assertArrayHasKey('ap_geo_invalid', $data['details']);
     }
 
     public function test_feed_returns_followed_org_events(): void
@@ -327,6 +449,7 @@ class MobileRestControllerTest extends WP_UnitTestCase
             $headers = array_change_key_case($third->get_headers(), CASE_LOWER);
             $this->assertSame('2', $headers['x-ratelimit-limit'] ?? null);
             $this->assertSame('0', $headers['x-ratelimit-remaining'] ?? null);
+            $this->assertArrayHasKey('x-ratelimit-reset', $headers);
             $this->assertArrayHasKey('retry-after', $headers);
         } finally {
             remove_all_filters('artpulse_mobile_rate_limit');

@@ -1,5 +1,8 @@
 <?php
 namespace ArtPulse\Admin;
+
+use ArtPulse\Mobile\JWT;
+
 class SettingsPage
 {
     public static function register()
@@ -196,6 +199,36 @@ class SettingsPage
     }
     public static function render()
     {
+        if (isset($_POST['ap_add_jwt_key']) && check_admin_referer('ap_add_jwt_key_action')) {
+            $created = JWT::add_key();
+            $message = sprintf(
+                /* translators: %s: fingerprint */
+                __('New signing key created (fingerprint %s).', 'artpulse-management'),
+                esc_html($created['fingerprint'])
+            );
+            echo '<div class="notice notice-success"><p>' . esc_html($message) . '</p></div>';
+        } elseif (isset($_POST['ap_retire_jwt_key']) && isset($_POST['ap_jwt_kid']) && check_admin_referer('ap_manage_jwt_key_action')) {
+            $kid    = sanitize_text_field(wp_unslash($_POST['ap_jwt_kid']));
+            $result = JWT::retire_key($kid);
+            if ($result) {
+                $message = __('Signing key retired.', 'artpulse-management');
+                echo '<div class="notice notice-success"><p>' . esc_html($message) . '</p></div>';
+            } else {
+                $message = __('Signing key could not be retired.', 'artpulse-management');
+                echo '<div class="notice notice-error"><p>' . esc_html($message) . '</p></div>';
+            }
+        } elseif (isset($_POST['ap_activate_jwt_key']) && isset($_POST['ap_jwt_kid']) && check_admin_referer('ap_manage_jwt_key_action')) {
+            $kid    = sanitize_text_field(wp_unslash($_POST['ap_jwt_kid']));
+            $result = JWT::set_current_key($kid);
+            if ($result) {
+                $message = __('Signing key promoted to current.', 'artpulse-management');
+                echo '<div class="notice notice-success"><p>' . esc_html($message) . '</p></div>';
+            } else {
+                $message = __('Unable to promote the selected signing key.', 'artpulse-management');
+                echo '<div class="notice notice-error"><p>' . esc_html($message) . '</p></div>';
+            }
+        }
+
         if (isset($_POST['ap_test_webhook']) && check_admin_referer('ap_test_webhook_action')) {
             $log = get_option('artpulse_webhook_log', []);
             $log[] = ['type' => 'invoice.paid', 'time' => current_time('mysql')];
@@ -214,6 +247,8 @@ class SettingsPage
         $webhook_status = get_option('artpulse_webhook_status', 'Unknown');
         $last_event     = get_option('artpulse_webhook_last_event', []);
         $log            = get_option('artpulse_webhook_log', []);
+        $jwt_keys = JWT::get_keys_for_admin();
+
         ?>
         <div class="wrap">
             <h1><?php esc_html_e('ArtPulse Settings', 'artpulse'); ?></h1>
@@ -224,6 +259,62 @@ class SettingsPage
                 submit_button();
                 ?>
             </form>
+            <hr>
+            <h2><?php esc_html_e('Mobile Authentication Keys', 'artpulse-management'); ?></h2>
+            <p><?php esc_html_e('Manage the signing keys used for mobile API access tokens. Retired keys remain valid until the grace period expires.', 'artpulse-management'); ?></p>
+            <form method="post" style="margin-bottom: 10px;">
+                <?php wp_nonce_field('ap_add_jwt_key_action'); ?>
+                <button type="submit" name="ap_add_jwt_key" class="button button-primary"><?php esc_html_e('Add Signing Key', 'artpulse-management'); ?></button>
+            </form>
+            <table class="widefat fixed striped" style="max-width: 900px;">
+                <thead>
+                <tr>
+                    <th><?php esc_html_e('Key ID', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Fingerprint', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Status', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Created', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Retired', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Actions', 'artpulse-management'); ?></th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php if (empty($jwt_keys)) : ?>
+                    <tr>
+                        <td colspan="6"><?php esc_html_e('No signing keys found.', 'artpulse-management'); ?></td>
+                    </tr>
+                <?php else : ?>
+                    <?php foreach ($jwt_keys as $key) : ?>
+                        <tr>
+                            <td><code><?php echo esc_html($key['kid']); ?></code><?php if (!empty($key['is_current'])) : ?> <span class="dashicons dashicons-yes" title="<?php esc_attr_e('Current key', 'artpulse-management'); ?>"></span><?php endif; ?></td>
+                            <td><code><?php echo esc_html($key['fingerprint']); ?></code></td>
+                            <td><?php echo esc_html(ucfirst($key['status'])); ?></td>
+                            <td><?php echo $key['created_at'] ? esc_html(date_i18n(get_option('date_format'), (int) $key['created_at'])) : '—'; ?></td>
+                            <td><?php echo $key['retired_at'] ? esc_html(date_i18n(get_option('date_format'), (int) $key['retired_at'])) : '—'; ?></td>
+                            <td>
+                                <?php if ('active' === $key['status']) : ?>
+                                    <?php if (empty($key['is_current'])) : ?>
+                                        <form method="post" style="display:inline">
+                                            <?php wp_nonce_field('ap_manage_jwt_key_action'); ?>
+                                            <input type="hidden" name="ap_jwt_kid" value="<?php echo esc_attr($key['kid']); ?>" />
+                                            <button type="submit" name="ap_activate_jwt_key" class="button button-link"><?php esc_html_e('Make Current', 'artpulse-management'); ?></button>
+                                        </form>
+                                        |
+                                    <?php endif; ?>
+                                    <form method="post" style="display:inline">
+                                        <?php wp_nonce_field('ap_manage_jwt_key_action'); ?>
+                                        <input type="hidden" name="ap_jwt_kid" value="<?php echo esc_attr($key['kid']); ?>" />
+                                        <button type="submit" name="ap_retire_jwt_key" class="button button-link-delete" onclick="return confirm('<?php echo esc_js(__('Retire this signing key?', 'artpulse-management')); ?>');"><?php esc_html_e('Retire', 'artpulse-management'); ?></button>
+                                    </form>
+                                <?php else : ?>
+                                    <em><?php esc_html_e('Retired', 'artpulse-management'); ?></em>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                </tbody>
+            </table>
+            <p class="description"><?php esc_html_e('Retired keys are automatically purged 14 days after retirement.', 'artpulse-management'); ?></p>
             <hr>
             <h2><?php esc_html_e('System Status', 'artpulse'); ?></h2>
             <p>
