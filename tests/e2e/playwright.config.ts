@@ -9,6 +9,9 @@ export default defineConfig({
   use: {
     baseURL,
     headless: true,
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   reporter: [['list']],
 });

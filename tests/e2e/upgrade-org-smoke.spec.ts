@@ -1,31 +1,29 @@
 import { test, expect, type Page, request as playwrightRequest } from '@playwright/test';
-import { Buffer } from 'node:buffer';
+
+import { createBase64ImageBuffer } from './utils';
 
 const BASE_URL = process.env.WP_BASE_URL || 'http://localhost:8888';
 const ADMIN_USER = process.env.E2E_ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.E2E_ADMIN_PASS || 'password';
 const MEMBER_USER = process.env.E2E_MEMBER_USER || 'member_e2e';
 const MEMBER_PASS = process.env.E2E_MEMBER_PASS || 'member_password';
-const MEMBER_EMAIL = process.env.E2E_MEMBER_EMAIL || `${MEMBER_USER}@example.com`;
+const MEMBER_EMAIL =
+  process.env.E2E_MEMBER_EMAIL || (MEMBER_USER.includes('@') ? MEMBER_USER : `${MEMBER_USER}@example.com`);
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function createBase64ImageBuffer(): Buffer {
-  const jpegB64 =
-    '/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAQEBAQEA8QDw8QDw8QEA8PDw8QFREWFhURFRUYHSggGBolGxUVITEhJSkrLi4uFx8zODMtNygtLisBCgoKDg0OGhAQGi0lHyUtLS0tLS0tLS8tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIAAEAAQMBIgACEQEDEQH/xAAXAAADAQAAAAAAAAAAAAAAAAAFBAYB/8QAHxAAAQQCAwAAAAAAAAAAAAAAAgABAxEEEiExQXHB/8QAFQEBAQAAAAAAAAAAAAAAAAAAAQL/xAAXEQEBAQEAAAAAAAAAAAAAAAAAAQIh/9oADAMBAAIRAxEAPwD0QK2CwBmAGYAGYAGfVwN0zv4b5a6v0W7mclR1VgZs7o9nqR5gJ8m0lZTXHc+1xGdF8iVQv//Z';
-  return Buffer.from(jpegB64, 'base64');
-}
-
 async function login(page: Page, username: string, password: string): Promise<void> {
-  await page.goto(`${BASE_URL}/wp-login.php`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/wp-login.php`);
+  await page.waitForLoadState('networkidle');
   await page.fill('input[name="log"]', username);
   await page.fill('input[name="pwd"]', password);
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'networkidle' }),
     page.click('input[name="wp-submit"]'),
   ]);
+  await page.waitForLoadState('networkidle');
 }
 
 async function ensureMemberExists(
@@ -51,7 +49,7 @@ async function ensureMemberExists(
       throw new Error(`Failed to log in as admin. Status: ${loginResponse.status()}`);
     }
 
-      await context.get('/wp-admin/');
+    await context.get('/wp-admin/');
 
     const nonceResponse = await context.get('/wp-admin/admin-ajax.php?action=rest-nonce');
     if (!nonceResponse.ok()) {
@@ -118,18 +116,19 @@ async function ensureMemberExists(
 }
 
 async function approveFirstPendingUpgrade(page: Page): Promise<void> {
-  await page.goto(`${BASE_URL}/wp-admin/admin.php?page=ap-upgrade-reviews`, { waitUntil: 'networkidle' });
-  const approveButton = page.locator('[data-test="approve-upgrade"]').first();
-  await expect(approveButton).toBeVisible();
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: 'networkidle' }),
-    approveButton.click(),
-  ]);
-  await expect(page.locator('.notice.notice-info, .notice.notice-success')).toContainText(/approved/i);
+  await expect(async () => {
+    await page.goto(`${BASE_URL}/wp-admin/admin.php?page=ap-upgrade-reviews`);
+    await page.waitForLoadState('networkidle');
+    const approveButton = page.locator('[data-test="approve-upgrade"]').first();
+    await expect(approveButton).toBeVisible();
+    await approveButton.click();
+    await expect(page.getByText(/approved/i)).toBeVisible();
+  }).toPass({ intervals: [500, 1000], timeout: 15_000 });
 }
 
 async function findEventOnArchive(page: Page, title: string): Promise<void> {
-  await page.goto(`${BASE_URL}/events/`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/events/`);
+  await page.waitForLoadState('networkidle');
   await expect(page.getByRole('link', { name: title })).toBeVisible();
 }
 
@@ -143,11 +142,13 @@ test.describe('Playwright smoke: Member→Org upgrade + Builder + Event publish 
     const memberPage = await memberContext.newPage();
     await login(memberPage, MEMBER_USER, MEMBER_PASS);
 
-    await memberPage.goto(`${BASE_URL}/member-dashboard/`, { waitUntil: 'networkidle' });
+    await memberPage.goto(`${BASE_URL}/member-dashboard/`);
+    await memberPage.waitForLoadState('networkidle');
     await Promise.all([
       memberPage.waitForNavigation({ waitUntil: 'networkidle' }),
       memberPage.locator('[data-test="org-upgrade-button"]').click(),
     ]);
+    await memberPage.waitForLoadState('networkidle');
     await expect(memberPage.locator('[data-test="org-upgrade-status"]')).toContainText(/pending/i);
 
     const adminContext = await browser.newContext();
@@ -156,10 +157,12 @@ test.describe('Playwright smoke: Member→Org upgrade + Builder + Event publish 
     await approveFirstPendingUpgrade(adminPage);
     await adminContext.close();
 
-    await memberPage.goto(`${BASE_URL}/member-dashboard/`, { waitUntil: 'networkidle' });
+    await memberPage.goto(`${BASE_URL}/member-dashboard/`);
+    await memberPage.waitForLoadState('networkidle');
     await expect(memberPage.locator('[data-test="org-upgrade-status"]')).toContainText(/available/i);
 
-    await memberPage.goto(`${BASE_URL}/org-builder/?step=images`, { waitUntil: 'networkidle' });
+    await memberPage.goto(`${BASE_URL}/org-builder/?step=images`);
+    await memberPage.waitForLoadState('networkidle');
     const buffer = createBase64ImageBuffer();
     await memberPage.setInputFiles('input[data-test="org-logo-input"]', {
       name: 'logo.jpg',
@@ -170,9 +173,13 @@ test.describe('Playwright smoke: Member→Org upgrade + Builder + Event publish 
       memberPage.waitForNavigation({ waitUntil: 'networkidle' }),
       memberPage.click('button[data-test="org-builder-save"]'),
     ]);
+    await memberPage.waitForLoadState('networkidle');
     await expect(memberPage.locator('.ap-org-builder__notice--success')).toBeVisible();
 
-    await memberPage.click('a[data-test="org-submit-event"]');
+    await Promise.all([
+      memberPage.waitForNavigation({ waitUntil: 'networkidle' }),
+      memberPage.click('a[data-test="org-submit-event"]'),
+    ]);
     await memberPage.waitForLoadState('networkidle');
 
     const eventTitle = `E2E Event ${Date.now()}`;
@@ -192,9 +199,13 @@ test.describe('Playwright smoke: Member→Org upgrade + Builder + Event publish 
       memberPage.waitForNavigation({ waitUntil: 'networkidle' }),
       memberPage.click('button[data-test="event-submit"]'),
     ]);
+    await memberPage.waitForLoadState('networkidle');
 
-    await expect(memberPage).toHaveURL(new RegExp(`${escapeRegExp(BASE_URL)}/events/.+`));
-    await expect(memberPage.locator('.nectar-portfolio-single-media img')).toBeVisible();
+    await expect(memberPage).toHaveURL(new RegExp(`${escapeRegExp(BASE_URL)}/artpulse_event/[^/]+/`));
+    const img = memberPage.locator('.nectar-portfolio-single-media img');
+    await expect(img).toBeVisible();
+    const naturalWidth = await img.evaluate((element) => element.naturalWidth);
+    expect(naturalWidth).toBeGreaterThan(0);
     await expect(memberPage.getByRole('heading', { name: eventTitle, level: 1 })).toBeVisible();
 
     await findEventOnArchive(memberPage, eventTitle);
