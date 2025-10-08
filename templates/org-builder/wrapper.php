@@ -35,10 +35,20 @@
         </div>
     <?php endif; ?>
 
+    <?php if (!empty($builder_errors)) : ?>
+        <div class="ap-org-builder__notice ap-org-builder__notice--error" role="alert">
+            <ul>
+                <?php foreach ($builder_errors as $error_message) : ?>
+                    <li><?php echo esc_html($error_message); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
     <div class="ap-org-builder__content">
         <?php if ('profile' === $builder_step) : ?>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="ap-org-builder__form">
-                <?php wp_nonce_field('ap-org-builder'); ?>
+                <?php wp_nonce_field('ap-org-builder-' . $org_post->ID, 'ap_org_builder_nonce'); ?>
                 <input type="hidden" name="action" value="ap_org_builder_save" />
                 <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
                 <input type="hidden" name="builder_step" value="profile" />
@@ -98,7 +108,7 @@
             </form>
         <?php elseif ('images' === $builder_step) : ?>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="ap-org-builder__form">
-                <?php wp_nonce_field('ap-org-builder'); ?>
+                <?php wp_nonce_field('ap-org-builder-' . $org_post->ID, 'ap_org_builder_nonce'); ?>
                 <input type="hidden" name="action" value="ap_org_builder_save" />
                 <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
                 <input type="hidden" name="builder_step" value="images" />
@@ -106,74 +116,102 @@
                 <fieldset class="ap-org-builder__field">
                     <legend><?php esc_html_e('Logo', 'artpulse-management'); ?></legend>
                     <?php if (!empty($builder_meta['logo_id'])) : ?>
-                        <div class="ap-org-builder__image-preview">
-                            <?php echo wp_get_attachment_image((int) $builder_meta['logo_id'], 'thumbnail'); ?>
+                        <div class="ap-org-builder__image-preview" style="aspect-ratio: 1 / 1;">
+                            <?php echo wp_get_attachment_image((int) $builder_meta['logo_id'], 'ap-grid', false, [
+                                'class'     => 'ap-org-builder__image',
+                                'loading'   => 'lazy',
+                                'decoding'  => 'async',
+                            ]); ?>
                         </div>
                     <?php endif; ?>
-                    <input type="file" name="ap_logo" accept="image/png,image/jpeg,image/webp" />
+                    <input type="file" name="ap_logo" accept="image/jpeg,image/png,image/webp" />
+                    <p class="description"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
                 </fieldset>
 
                 <fieldset class="ap-org-builder__field">
                     <legend><?php esc_html_e('Cover Image', 'artpulse-management'); ?></legend>
                     <?php if (!empty($builder_meta['cover_id'])) : ?>
-                        <div class="ap-org-builder__image-preview">
-                            <?php echo wp_get_attachment_image((int) $builder_meta['cover_id'], 'large'); ?>
+                        <div class="ap-org-builder__image-preview" style="aspect-ratio: 3 / 2;">
+                            <?php echo wp_get_attachment_image((int) $builder_meta['cover_id'], 'ap-grid', false, [
+                                'class'     => 'ap-org-builder__image',
+                                'loading'   => 'lazy',
+                                'decoding'  => 'async',
+                            ]); ?>
                         </div>
                     <?php endif; ?>
-                    <input type="file" name="ap_cover" accept="image/png,image/jpeg,image/webp" />
+                    <input type="file" name="ap_cover" accept="image/jpeg,image/png,image/webp" />
+                    <p class="description"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
+                    <?php if (!empty($builder_meta['cover_id'])) : ?>
+                        <label class="ap-org-builder__radio">
+                            <input type="radio" name="ap_featured_image" value="<?php echo esc_attr((int) $builder_meta['cover_id']); ?>" <?php checked((int) $builder_meta['featured_id'], (int) $builder_meta['cover_id']); ?> />
+                            <span><?php esc_html_e('Use cover image as featured', 'artpulse-management'); ?></span>
+                        </label>
+                    <?php endif; ?>
                 </fieldset>
 
                 <fieldset class="ap-org-builder__field">
                     <legend><?php esc_html_e('Gallery', 'artpulse-management'); ?></legend>
                     <div class="ap-org-builder__gallery">
-                        <?php foreach ($builder_meta['gallery_ids'] as $gallery_id) : ?>
+                        <?php foreach ($builder_meta['gallery_ids'] as $index => $gallery_id) : ?>
                             <div class="ap-org-builder__gallery-item">
+                                <div class="ap-org-builder__image-preview" style="aspect-ratio: 1 / 1;">
+                                    <?php echo wp_get_attachment_image((int) $gallery_id, 'ap-grid', false, [
+                                        'class'     => 'ap-org-builder__image',
+                                        'loading'   => 'lazy',
+                                        'decoding'  => 'async',
+                                    ]); ?>
+                                </div>
+                                <div class="ap-org-builder__gallery-controls">
+                                    <label>
+                                        <span class="screen-reader-text"><?php esc_html_e('Display order', 'artpulse-management'); ?></span>
+                                        <input type="number" name="gallery_order[<?php echo esc_attr((int) $gallery_id); ?>]" value="<?php echo esc_attr($index + 1); ?>" min="1" />
+                                    </label>
+                                    <label class="ap-org-builder__radio">
+                                        <input type="radio" name="ap_featured_image" value="<?php echo esc_attr((int) $gallery_id); ?>" <?php checked((int) $builder_meta['featured_id'], (int) $gallery_id); ?> />
+                                        <span><?php esc_html_e('Use as featured', 'artpulse-management'); ?></span>
+                                    </label>
+                                </div>
                                 <input type="hidden" name="existing_gallery_ids[]" value="<?php echo esc_attr((int) $gallery_id); ?>" />
-                                <?php echo wp_get_attachment_image((int) $gallery_id, 'medium'); ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
-                    <input type="file" name="ap_gallery[]" multiple accept="image/png,image/jpeg,image/webp" />
+                    <input type="file" name="ap_gallery[]" multiple accept="image/jpeg,image/png,image/webp" />
+                    <p class="description"><?php esc_html_e('Upload multiple JPG, PNG, or WebP images up to 10MB each. Use the order fields above to sort.', 'artpulse-management'); ?></p>
                 </fieldset>
-
-                <?php
-                $featured_options = [];
-                if ($builder_meta['cover_id']) {
-                    $featured_options[$builder_meta['cover_id']] = __('Cover Image', 'artpulse-management');
-                }
-                foreach ($builder_meta['gallery_ids'] as $gallery_id) {
-                    $featured_options[$gallery_id] = sprintf(__('Gallery Image #%d', 'artpulse-management'), $gallery_id);
-                }
-                ?>
-                <?php if (!empty($featured_options)) : ?>
-                    <fieldset class="ap-org-builder__field">
-                        <legend><?php esc_html_e('Featured Image', 'artpulse-management'); ?></legend>
-                        <?php foreach ($featured_options as $attachment_id => $label) : ?>
-                            <label class="ap-org-builder__radio">
-                                <input type="radio" name="ap_featured_image" value="<?php echo esc_attr((int) $attachment_id); ?>" <?php checked((int) $builder_meta['featured_id'], (int) $attachment_id); ?> />
-                                <span><?php echo esc_html($label); ?></span>
-                            </label>
-                        <?php endforeach; ?>
-                    </fieldset>
-                <?php endif; ?>
 
                 <button type="submit" class="ap-org-builder__submit button button-primary"><?php esc_html_e('Save images', 'artpulse-management'); ?></button>
             </form>
         <?php elseif ('preview' === $builder_step) : ?>
             <article class="ap-org-builder__preview">
-                <?php if ($builder_preview['cover']) : ?>
-                    <img class="ap-org-builder__preview-cover" src="<?php echo esc_url($builder_preview['cover']); ?>" alt="" loading="lazy" />
+                <?php if (!empty($builder_preview['cover_id'])) : ?>
+                    <div class="ap-org-builder__preview-cover" style="aspect-ratio: 3 / 2;">
+                        <?php echo wp_get_attachment_image((int) $builder_preview['cover_id'], 'ap-grid', false, [
+                            'class'     => 'ap-org-builder__preview-cover-img',
+                            'loading'   => 'lazy',
+                            'decoding'  => 'async',
+                        ]); ?>
+                    </div>
+                <?php elseif (!empty($builder_preview['cover_src'])) : ?>
+                    <div class="ap-org-builder__preview-cover" style="aspect-ratio: 3 / 2; background-image: url('<?php echo esc_url($builder_preview['cover_src']); ?>');" aria-hidden="true"></div>
+                <?php else : ?>
+                    <div class="ap-org-builder__preview-cover ap-org-builder__preview-cover--placeholder" style="aspect-ratio: 3 / 2;" aria-hidden="true"></div>
                 <?php endif; ?>
                 <div class="ap-org-builder__preview-content">
-                    <?php if ($builder_preview['logo']) : ?>
-                        <img class="ap-org-builder__preview-logo" src="<?php echo esc_url($builder_preview['logo']); ?>" alt="" loading="lazy" />
+                    <?php if (!empty($builder_preview['logo_id'])) : ?>
+                        <div class="ap-org-builder__preview-logo" style="aspect-ratio: 1 / 1;">
+                            <?php echo wp_get_attachment_image((int) $builder_preview['logo_id'], 'thumbnail', false, [
+                                'class'     => 'ap-org-builder__preview-logo-img',
+                                'loading'   => 'lazy',
+                                'decoding'  => 'async',
+                            ]); ?>
+                        </div>
                     <?php endif; ?>
                     <h3><?php echo esc_html($builder_preview['title']); ?></h3>
                     <?php if ($builder_preview['tagline']) : ?>
                         <p class="ap-org-builder__preview-tagline"><?php echo esc_html($builder_preview['tagline']); ?></p>
                     <?php endif; ?>
                     <?php if ($builder_preview['about']) : ?>
-                        <div class="ap-org-builder__preview-about"><?php echo wpautop(wp_kses_post($builder_preview['about'])); ?></div>
+                        <div class="ap-org-builder__preview-about"><?php echo wp_kses_post(wpautop($builder_preview['about'])); ?></div>
                     <?php endif; ?>
                     <p>
                         <a class="button button-secondary" href="<?php echo esc_url($builder_preview['permalink']); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('View live profile', 'artpulse-management'); ?></a>
@@ -184,7 +222,7 @@
             <section class="ap-org-builder__publish">
                 <p><?php esc_html_e('Ready to share your organization with the community? Publish to make your profile publicly visible.', 'artpulse-management'); ?></p>
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                    <?php wp_nonce_field('ap-org-builder'); ?>
+                    <?php wp_nonce_field('ap-org-builder-' . $org_post->ID, 'ap_org_builder_nonce'); ?>
                     <input type="hidden" name="action" value="ap_org_builder_save" />
                     <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
                     <input type="hidden" name="builder_step" value="publish" />

@@ -72,6 +72,7 @@ class SubmissionRestController
         }
 
         $post_type = sanitize_key( $params['post_type'] ?? '' );
+        $current_user_id = get_current_user_id();
 
         if ( empty( $post_type ) ) {
             return new WP_Error(
@@ -87,6 +88,28 @@ class SubmissionRestController
                 __( 'The requested post type is not allowed.', 'artpulse-management' ),
                 [ 'status' => 400 ]
             );
+        }
+
+        if ( 'artpulse_event' === $post_type ) {
+            if ( ! $current_user_id || ! current_user_can( 'create_artpulse_events' ) ) {
+                return new WP_Error(
+                    'rest_forbidden',
+                    __( 'You do not have permission to submit events.', 'artpulse-management' ),
+                    [ 'status' => rest_authorization_required_code() ]
+                );
+            }
+
+            $owned_org_id = self::resolve_owned_org_id( $current_user_id, absint( $params['event_organization'] ?? 0 ) );
+
+            if ( ! $owned_org_id ) {
+                return new WP_Error(
+                    'rest_forbidden',
+                    __( 'You must manage an organization before submitting events.', 'artpulse-management' ),
+                    [ 'status' => rest_authorization_required_code() ]
+                );
+            }
+
+            $params['event_organization'] = $owned_org_id;
         }
 
         if ( empty( $params['title'] ) ) {
@@ -127,7 +150,9 @@ class SubmissionRestController
         foreach ( $meta_fields as $field_key => $meta_key ) {
             if ( isset( $params[ $field_key ] ) ) {
                 $value = self::sanitize_meta_value( $field_key, $params[ $field_key ] );
-                update_post_meta( $post_id, $meta_key, $value );
+                if ( '' !== $value && null !== $value ) {
+                    update_post_meta( $post_id, $meta_key, $value );
+                }
             }
         }
 
@@ -279,7 +304,7 @@ class SubmissionRestController
     private static function sanitize_meta_value( string $field_key, $value )
     {
         return match ( $field_key ) {
-            'event_organization',
+            'event_organization' => ( $value = absint( $value ) ) ? $value : null,
             'artist_org'        => absint( $value ),
             'org_email'         => sanitize_email( $value ),
             'org_website'       => esc_url_raw( $value ),
@@ -293,6 +318,26 @@ class SubmissionRestController
      */
     public static function permissions_check( WP_REST_Request $request ): bool|WP_Error
     {
+        $post_type = sanitize_key( $request->get_param( 'post_type' ) ?? '' );
+
+        if ( 'artpulse_event' === $post_type ) {
+            if ( ! is_user_logged_in() || ! current_user_can( 'create_artpulse_events' ) ) {
+                return new WP_Error(
+                    'rest_forbidden',
+                    __( 'You are not allowed to submit events.', 'artpulse-management' ),
+                    [ 'status' => rest_authorization_required_code() ]
+                );
+            }
+
+            if ( empty( self::get_user_owned_org_ids( get_current_user_id() ) ) ) {
+                return new WP_Error(
+                    'rest_forbidden',
+                    __( 'You must manage an organization before submitting events.', 'artpulse-management' ),
+                    [ 'status' => rest_authorization_required_code() ]
+                );
+            }
+        }
+
         if ( is_user_logged_in() || current_user_can( 'read' ) ) {
             return true;
         }
@@ -302,5 +347,60 @@ class SubmissionRestController
             __( 'You are not allowed to submit content.', 'artpulse-management' ),
             [ 'status' => rest_authorization_required_code() ]
         );
+    }
+
+    /**
+     * Determine the appropriate organisation ID for an event submission.
+     */
+    private static function resolve_owned_org_id( int $user_id, int $requested ): int
+    {
+        $owned = self::get_user_owned_org_ids( $user_id );
+
+        if ( empty( $owned ) ) {
+            return 0;
+        }
+
+        if ( $requested && in_array( $requested, $owned, true ) ) {
+            return $requested;
+        }
+
+        return (int) $owned[0];
+    }
+
+    /**
+     * Fetch all organisation IDs managed by a user.
+     *
+     * @return int[]
+     */
+    private static function get_user_owned_org_ids( int $user_id ): array
+    {
+        if ( $user_id <= 0 ) {
+            return [];
+        }
+
+        $owned_meta = get_posts([
+            'post_type'      => 'artpulse_org',
+            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'meta_query'     => [
+                [
+                    'key'   => '_ap_owner_user',
+                    'value' => $user_id,
+                ],
+            ],
+        ]);
+
+        $owned_author = get_posts([
+            'post_type'      => 'artpulse_org',
+            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'author'         => $user_id,
+        ]);
+
+        $ids = array_map( 'absint', array_merge( $owned_meta, $owned_author ) );
+
+        return array_values( array_unique( array_filter( $ids ) ) );
     }
 }

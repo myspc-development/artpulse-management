@@ -5,6 +5,7 @@ namespace ArtPulse\Frontend;
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\RoleUpgradeManager;
 use ArtPulse\Core\UpgradeReviewRepository;
+use WP_Error;
 use WP_Post;
 use WP_User;
 
@@ -78,9 +79,15 @@ class MemberDashboard
             exit;
         }
 
+        $user_id = get_current_user_id();
+
+        if (!current_user_can('read')) {
+            wp_safe_redirect(home_url('/dashboard/'));
+            exit;
+        }
+
         check_admin_referer('ap-member-upgrade-request');
 
-        $user_id = get_current_user_id();
         $user    = get_user_by('id', $user_id);
 
         if (!$user instanceof WP_User) {
@@ -88,44 +95,76 @@ class MemberDashboard
             exit;
         }
 
-        if (in_array('organization', (array) $user->roles, true)) {
-            wp_safe_redirect(add_query_arg('ap_org_upgrade', 'exists', wp_get_referer() ?: home_url('/dashboard/')));
+        $result = self::process_upgrade_request_for_user($user);
+
+        $redirect_base = wp_get_referer() ?: home_url('/dashboard/');
+
+        if (is_wp_error($result)) {
+            $code = $result->get_error_code();
+            $target = match ($code) {
+                'ap_org_upgrade_exists'  => 'exists',
+                'ap_org_upgrade_pending' => 'pending',
+                default                  => 'failed',
+            };
+
+            wp_safe_redirect(add_query_arg('ap_org_upgrade', $target, $redirect_base));
             exit;
         }
 
+        AuditLogger::info('org.upgrade.requested', [
+            'user_id'    => $user_id,
+            'post_id'    => $result['org_id'],
+            'request_id' => $result['request_id'],
+        ]);
+
+        self::send_member_email('upgrade_requested', $user, [
+            'org_id' => $result['org_id'],
+        ]);
+
+        wp_safe_redirect(add_query_arg('ap_org_upgrade', 'pending', $redirect_base));
+        exit;
+    }
+
+    /**
+     * Validate and prepare an organisation upgrade request for a user.
+     *
+     * @return array{org_id:int, request_id:int}|WP_Error
+     */
+    public static function process_upgrade_request_for_user(WP_User $user)
+    {
+        $user_id = (int) $user->ID;
+
+        if ($user_id <= 0) {
+            return new WP_Error('ap_org_upgrade_invalid_user', __('Invalid user.', 'artpulse-management'));
+        }
+
+        if (in_array('organization', (array) $user->roles, true)) {
+            return new WP_Error('ap_org_upgrade_exists', __('You already manage an organisation.', 'artpulse-management'));
+        }
+
         $existing = UpgradeReviewRepository::get_latest_for_user($user_id);
-        if ($existing instanceof WP_Post && 'pending' === UpgradeReviewRepository::get_status($existing)) {
-            wp_safe_redirect(add_query_arg('ap_org_upgrade', 'pending', wp_get_referer() ?: home_url('/dashboard/')));
-            exit;
+        if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
+            return new WP_Error('ap_org_upgrade_pending', __('Your previous request is still pending.', 'artpulse-management'));
         }
 
         $org_id = self::create_placeholder_org($user_id, $user);
 
         if (!$org_id) {
-            wp_safe_redirect(add_query_arg('ap_org_upgrade', 'failed', wp_get_referer() ?: home_url('/dashboard/')));
-            exit;
+            return new WP_Error('ap_org_upgrade_org_failed', __('Unable to create the organisation draft.', 'artpulse-management'));
         }
 
         $request_id = UpgradeReviewRepository::create_org_upgrade($user_id, $org_id);
 
         if (!$request_id) {
             wp_delete_post($org_id, true);
-            wp_safe_redirect(add_query_arg('ap_org_upgrade', 'failed', wp_get_referer() ?: home_url('/dashboard/')));
-            exit;
+
+            return new WP_Error('ap_org_upgrade_request_failed', __('Unable to create the review request.', 'artpulse-management'));
         }
 
-        AuditLogger::info('org.upgrade.requested', [
-            'user_id'   => $user_id,
-            'post_id'   => $org_id,
+        return [
+            'org_id'    => $org_id,
             'request_id'=> $request_id,
-        ]);
-
-        self::send_member_email('upgrade_requested', $user, [
-            'org_id' => $org_id,
-        ]);
-
-        wp_safe_redirect(add_query_arg('ap_org_upgrade', 'pending', wp_get_referer() ?: home_url('/dashboard/')));
-        exit;
+        ];
     }
 
     private static function create_placeholder_org(int $user_id, WP_User $user): ?int

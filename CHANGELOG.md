@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## Unreleased
 
+### Added
+- Harden the organization upgrade workflow: attach ownership metadata idempotently, guard builder/event submission with
+  nonces and capability checks, expand the shortcode to cover profile/images/preview/publish steps, and surface owner-locked
+  event submissions with friendly validation.
+- Extend REST endpoints and admin review tools with requester context, approval/denial logging, and normalized metadata for
+  owned organizations.
+- Document the member → organization lifecycle and add integration coverage for approvals, builder saves, featured media,
+  and event submission locking.
+
 ### Fix
 - Repair membership test fixtures and WooCommerce reflection usage so PHPUnit bootstrap succeeds without typos.
 - Normalize REST test cases to use core `\WP_UnitTestCase` without redundant imports, preventing syntax lint warnings.

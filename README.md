@@ -27,6 +27,43 @@ ArtPulse Management is a powerful WordPress plugin that enables seamless managem
 🧭 Organization Onboarding — `[ap_register_organization]` shortcode to collect org sign-ups, auto-assign creators, notify admins, and promote follow/favorite actions
 🏗️ Organization Builder — `[ap_org_builder]` shortcode for approved org owners to edit profiles, manage media, preview, publish, and submit events
 
+## Organization upgrade workflow
+
+Members start from the dashboard upgrade card. Requesting an upgrade creates a
+draft organization tied to the requester and records a review entry with a
+`pending` status. While the request is pending, the builder shortcode renders a
+friendly notice and keeps editing locked until approval.
+
+Site administrators review requests at **ArtPulse → Upgrade Reviews**. The list
+table shows the draft organization title, requester details, and the submitted
+time with quick Approve/Deny row actions. Approving a request publishes the
+organization, attaches the owner (post author + `_ap_owner_user`), grants the
+`organization` role if needed, logs the action, and sends a single upgrade email
+thanks to the `_ap_upgrade_notified_{role}` meta guard. Denying a request stores
+the supplied reason, emails the member, and leaves the organization in draft
+for follow-up edits.
+
+Approved owners can access `[ap_org_builder]`, which now walks through Profile,
+Images, Preview, and Publish steps. The Images screen supports logo/cover
+uploads, gallery sorting via order inputs, and a “Use as featured” toggle that
+keeps aspect ratio placeholders in place to avoid layout shifts. A persistent
+Submit Event button links directly to the locked event form.
+
+Submitting events from either the builder button or `[ap_org_submit_event]`
+verifies capabilities, enforces ownership (matching `_ap_owner_user` or
+`post_author`), and validates uploads (JPG/PNG/WebP, max 10 MB, minimum 200×200
+pixels). Spoofed organization IDs are ignored in favor of the owner’s approved
+organization, both in the front-end form and via the REST submissions endpoint.
+
+Email triggers fire at three key moments:
+
+* Upgrade requested — confirmation sent to the member.
+* Upgrade approved — dashboard link + instructions once the admin approves.
+* Upgrade denied — includes the recorded reason for transparency.
+
+These notifications are idempotent to prevent duplicate sends when an approval
+is processed more than once.
+
 🧑‍💻 Installation
 Clone or download this repo into your WordPress plugins directory:
 
