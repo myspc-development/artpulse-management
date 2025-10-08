@@ -124,7 +124,7 @@
                             ]); ?>
                         </div>
                     <?php endif; ?>
-                    <input type="file" name="ap_logo" accept="image/jpeg,image/png,image/webp" />
+                    <input type="file" name="ap_logo" accept="image/jpeg,image/png,image/webp" data-test="org-logo-input" />
                     <p class="description"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
                 </fieldset>
 
@@ -179,7 +179,7 @@
                     <p class="description"><?php esc_html_e('Upload multiple JPG, PNG, or WebP images up to 10MB each. Use the order fields above to sort.', 'artpulse-management'); ?></p>
                 </fieldset>
 
-                <button type="submit" class="ap-org-builder__submit button button-primary"><?php esc_html_e('Save images', 'artpulse-management'); ?></button>
+                <button type="submit" class="ap-org-builder__submit button button-primary" data-test="org-builder-save"><?php esc_html_e('Save images', 'artpulse-management'); ?></button>
             </form>
         <?php elseif ('preview' === $builder_step) : ?>
             <article class="ap-org-builder__preview">
@@ -233,6 +233,6 @@
     </div>
 
     <footer class="ap-org-builder__footer">
-        <a class="button button-secondary" href="<?php echo esc_url($builder_event_url); ?>"><?php esc_html_e('Submit Event', 'artpulse-management'); ?></a>
+        <a class="button button-secondary" href="<?php echo esc_url($builder_event_url); ?>" data-test="org-submit-event"><?php esc_html_e('Submit Event', 'artpulse-management'); ?></a>
     </footer>
 </div>

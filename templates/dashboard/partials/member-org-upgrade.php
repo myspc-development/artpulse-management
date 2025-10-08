@@ -14,18 +14,18 @@ $dashboard_url = wp_get_referer() ?: home_url('/dashboard/');
     <h3><?php esc_html_e('Upgrade to Organization', 'artpulse-management'); ?></h3>
 
     <?php if ('approved' === $status) : ?>
-        <p class="ap-dashboard-widget__status ap-dashboard-widget__status--approved">
+        <p class="ap-dashboard-widget__status ap-dashboard-widget__status--approved" data-test="org-upgrade-status">
             <?php esc_html_e('Your organization tools are now available.', 'artpulse-management'); ?>
         </p>
         <a class="ap-dashboard-button ap-dashboard-button--primary" href="<?php echo esc_url(add_query_arg('role', 'organization', home_url('/dashboard/'))); ?>">
             <?php esc_html_e('Open Organization Tools', 'artpulse-management'); ?>
         </a>
     <?php elseif ('pending' === $status) : ?>
-        <p class="ap-dashboard-widget__status ap-dashboard-widget__status--pending">
+        <p class="ap-dashboard-widget__status ap-dashboard-widget__status--pending" data-test="org-upgrade-status">
             <?php esc_html_e('Upgrade request submitted. Awaiting admin review.', 'artpulse-management'); ?>
         </p>
     <?php elseif ('denied' === $status) : ?>
-        <p class="ap-dashboard-widget__status ap-dashboard-widget__status--denied">
+        <p class="ap-dashboard-widget__status ap-dashboard-widget__status--denied" data-test="org-upgrade-status">
             <?php esc_html_e('Your previous request was denied.', 'artpulse-management'); ?>
         </p>
         <?php if ($reason !== '') : ?>
@@ -37,7 +37,7 @@ $dashboard_url = wp_get_referer() ?: home_url('/dashboard/');
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="ap-dashboard-form">
             <?php wp_nonce_field('ap-member-upgrade-request'); ?>
             <input type="hidden" name="action" value="ap_org_upgrade_resubmit" />
-            <button type="submit" class="ap-dashboard-button ap-dashboard-button--primary">
+            <button type="submit" class="ap-dashboard-button ap-dashboard-button--primary" data-test="org-upgrade-button">
                 <?php esc_html_e('Resubmit Request', 'artpulse-management'); ?>
             </button>
         </form>
@@ -46,7 +46,7 @@ $dashboard_url = wp_get_referer() ?: home_url('/dashboard/');
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="ap-dashboard-form">
             <?php wp_nonce_field('ap-member-upgrade-request'); ?>
             <input type="hidden" name="action" value="ap_org_upgrade_request" />
-            <button type="submit" class="ap-dashboard-button ap-dashboard-button--primary">
+            <button type="submit" class="ap-dashboard-button ap-dashboard-button--primary" data-test="org-upgrade-button">
                 <?php esc_html_e('Upgrade to Organization', 'artpulse-management'); ?>
             </button>
         </form>

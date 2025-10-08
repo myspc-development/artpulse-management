@@ -72,9 +72,9 @@ class UpgradeReviewsTable extends WP_List_Table
             'ap-upgrade-review-' . $item['ID']
         );
 
-        $actions['approve'] = sprintf('<a href="%s">%s</a>', esc_url($approve_url), esc_html__('Approve', 'artpulse-management'));
+        $actions['approve'] = sprintf('<a href="%s" data-test="approve-upgrade">%s</a>', esc_url($approve_url), esc_html__('Approve', 'artpulse-management'));
         $actions['deny']    = sprintf(
-            '<a href="%s">%s</a>',
+            '<a href="%s" data-test="deny-upgrade">%s</a>',
             esc_url(
                 wp_nonce_url(
                     add_query_arg(
