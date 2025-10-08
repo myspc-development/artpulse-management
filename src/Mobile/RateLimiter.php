@@ -115,6 +115,23 @@ class RateLimiter
             self::$pending_headers['remaining'] = 0;
             self::$pending_headers['retry_after'] = $retry_after;
 
+            if (function_exists('wp_json_encode')) {
+                $log = wp_json_encode([
+                    'event'       => 'mobile_rate_limited',
+                    'bucket'      => $bucket,
+                    'user_id'     => $user_id,
+                    'ip'          => $ip,
+                    'limit'       => $limit,
+                    'window'      => $window,
+                    'retry_after' => $retry_after,
+                    'timestamp'   => $now,
+                ]);
+
+                if ($log) {
+                    error_log($log); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                }
+            }
+
             return new WP_Error(
                 'ap_rate_limited',
                 __('Too many requests. Please slow down.', 'artpulse-management'),

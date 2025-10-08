@@ -27,6 +27,8 @@ class RestErrorFormatter
         'ap_invalid_refresh'      => 401,
         'ap_refresh_expired'      => 401,
         'ap_refresh_revoked'      => 401,
+        'refresh_reuse'           => 401,
+        'ap_geo_invalid'          => 400,
         'ap_rate_limited'         => 429,
     ];
 

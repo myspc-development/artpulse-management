@@ -16,6 +16,7 @@ class MobileRestController
     {
         RateLimiter::register();
         RestErrorFormatter::register();
+        RefreshTokens::register_hooks();
 
         register_rest_route('artpulse/v1', '/mobile/login', [
             'methods'             => 'POST',
@@ -36,6 +37,18 @@ class MobileRestController
             'args'                => [
                 'refresh_token' => ['required' => true],
             ],
+        ]);
+
+        register_rest_route('artpulse/v1', '/mobile/auth/sessions', [
+            'methods'             => 'GET',
+            'callback'            => [self::class, 'sessions'],
+            'permission_callback' => [self::class, 'require_auth'],
+        ]);
+
+        register_rest_route('artpulse/v1', '/mobile/auth/sessions/(?P<device_id>[^/]+)', [
+            'methods'             => 'DELETE',
+            'callback'            => [self::class, 'revoke_session'],
+            'permission_callback' => [self::class, 'require_auth'],
         ]);
 
         register_rest_route('artpulse/v1', '/mobile/me', [
@@ -161,6 +174,28 @@ class MobileRestController
         ]);
     }
 
+    public static function sessions(WP_REST_Request $request): WP_REST_Response
+    {
+        $user_id  = (int) $request->get_attribute('ap_user_id');
+        $sessions = RefreshTokens::list_sessions($user_id);
+
+        return rest_ensure_response([
+            'sessions' => $sessions,
+        ]);
+    }
+
+    public static function revoke_session(WP_REST_Request $request): WP_REST_Response
+    {
+        $user_id   = (int) $request->get_attribute('ap_user_id');
+        $device_id = sanitize_text_field((string) $request->get_param('device_id'));
+
+        RefreshTokens::revoke_device($user_id, $device_id);
+
+        return rest_ensure_response([
+            'success' => true,
+        ]);
+    }
+
     public static function me(WP_REST_Request $request): WP_REST_Response
     {
         $user_id = (int) $request->get_attribute('ap_user_id');
@@ -188,13 +223,24 @@ class MobileRestController
         if ($use_bounds) {
             $parts = array_map('trim', explode(',', (string) $bounds));
             if (4 !== count($parts) || !self::all_numeric($parts)) {
-                return new WP_Error('ap_geo_invalid', __('Invalid bounds provided.', 'artpulse-management'), ['status' => 400]);
+                return self::geo_error(
+                    __('Invalid bounds provided.', 'artpulse-management'),
+                    ['bounds' => __('Expected format "southWestLat,southWestLng,northEastLat,northEastLng".', 'artpulse-management')]
+                );
             }
 
             [$sw_lat, $sw_lng, $ne_lat, $ne_lng] = array_map('floatval', $parts);
 
-            if ($sw_lat > $ne_lat) {
-                return new WP_Error('ap_geo_invalid', __('Invalid latitude bounds.', 'artpulse-management'), ['status' => 400]);
+            if ($sw_lat > $ne_lat || abs($sw_lat - $ne_lat) < 0.0001) {
+                return self::geo_error(__('Invalid latitude bounds.', 'artpulse-management'), ['bounds' => $parts]);
+            }
+
+            if (abs($sw_lat) > 90 || abs($ne_lat) > 90) {
+                return self::geo_error(__('Latitude must be between -90 and 90.', 'artpulse-management'), ['bounds' => $parts]);
+            }
+
+            if (abs($sw_lng) > 180 || abs($ne_lng) > 180) {
+                return self::geo_error(__('Longitude must be between -180 and 180.', 'artpulse-management'), ['bounds' => $parts]);
             }
 
             $center_lat = ($sw_lat + $ne_lat) / 2;
@@ -205,6 +251,10 @@ class MobileRestController
             $params[] = $ne_lat;
 
             if ($sw_lng <= $ne_lng) {
+                if (abs($sw_lng - $ne_lng) < 0.0001) {
+                    return self::geo_error(__('Longitude bounds must span an area.', 'artpulse-management'), ['bounds' => $parts]);
+                }
+
                 $filters .= ' AND geo.longitude BETWEEN %f AND %f';
                 $params[] = $sw_lng;
                 $params[] = $ne_lng;
@@ -215,11 +265,19 @@ class MobileRestController
             }
         } else {
             if (!is_numeric($lat) || !is_numeric($lng)) {
-                return new WP_Error('ap_geo_invalid', __('Latitude and longitude are required.', 'artpulse-management'), ['status' => 400]);
+                return self::geo_error(
+                    __('Latitude and longitude are required.', 'artpulse-management'),
+                    ['lat' => $lat, 'lng' => $lng]
+                );
             }
 
-            $lat    = (float) $lat;
-            $lng    = (float) $lng;
+            $lat = (float) $lat;
+            $lng = (float) $lng;
+
+            if (abs($lat) > 90 || abs($lng) > 180) {
+                return self::geo_error(__('Latitude/longitude out of range.', 'artpulse-management'), ['lat' => $lat, 'lng' => $lng]);
+            }
+
             $radius = (float) ($request->get_param('radius') ?? 50);
             $radius = max(1, min(500, $radius));
             $center_lat = $lat;
@@ -240,12 +298,14 @@ class MobileRestController
         );
 
         $query = $wpdb->prepare(
-            "SELECT p.ID as event_id, $distance_sql AS distance_km, geo.latitude, geo.longitude, start_meta.meta_value AS start_time
+            "SELECT p.ID as event_id, $distance_sql AS distance_km, start_meta.meta_value AS start_time, end_meta.meta_value AS end_time
              FROM $geo_table geo
              INNER JOIN $posts_table p ON p.ID = geo.event_id
              LEFT JOIN $meta_table start_meta ON start_meta.post_id = geo.event_id AND start_meta.meta_key = %s
+             LEFT JOIN $meta_table end_meta ON end_meta.post_id = geo.event_id AND end_meta.meta_key = %s
              WHERE p.post_status = 'publish' AND p.post_type = %s",
             '_ap_event_start',
+            '_ap_event_end',
             PostTypeRegistrar::EVENT_POST_TYPE
         );
 
@@ -261,24 +321,65 @@ class MobileRestController
             }
         }
 
-        $query .= ' ORDER BY distance_km ASC, start_time ASC';
         $query .= $wpdb->prepare(' LIMIT %d', $limit);
 
         $rows = $wpdb->get_results($query);
 
+        if (empty($rows)) {
+            return rest_ensure_response(['events' => []]);
+        }
+
         $event_ids = array_map(static fn($row) => (int) $row->event_id, $rows);
         $user_id   = (int) $request->get_attribute('ap_user_id');
         $states    = EventInteractions::get_states($event_ids, $user_id);
+        $now       = current_time('timestamp');
+
+        $context = [];
+        foreach ($rows as $row) {
+            $event_id   = (int) $row->event_id;
+            $start_iso  = is_string($row->start_time) ? (string) $row->start_time : (string) get_post_meta($event_id, '_ap_event_start', true);
+            $end_iso    = is_string($row->end_time) ? (string) $row->end_time : (string) get_post_meta($event_id, '_ap_event_end', true);
+            $start_ts   = self::to_timestamp($start_iso) ?? PHP_INT_MAX;
+            $distance_km = (float) $row->distance_km;
+
+            $context[$event_id] = [
+                'distance'   => $distance_km,
+                'is_ongoing' => self::determine_ongoing($start_iso, $end_iso, $now),
+                'start_ts'   => $start_ts,
+            ];
+        }
+
+        uksort(
+            $context,
+            static function ($a_id, $b_id) use ($context) {
+                $a = $context[$a_id];
+                $b = $context[$b_id];
+
+                if ($a['is_ongoing'] !== $b['is_ongoing']) {
+                    return $a['is_ongoing'] ? -1 : 1;
+                }
+
+                if ($a['start_ts'] !== $b['start_ts']) {
+                    return $a['start_ts'] <=> $b['start_ts'];
+                }
+
+                return $a['distance'] <=> $b['distance'];
+            }
+        );
 
         $events = [];
-        foreach ($rows as $row) {
-            $event_id = (int) $row->event_id;
-            $events[] = self::format_event($event_id, $states[$event_id] ?? [
-                'likes' => 0,
-                'liked' => false,
-                'saves' => 0,
-                'saved' => false,
-            ], (float) $row->distance_km);
+        foreach (array_keys($context) as $event_id) {
+            $events[] = self::format_event(
+                $event_id,
+                $states[$event_id] ?? [
+                    'likes' => 0,
+                    'liked' => false,
+                    'saves' => 0,
+                    'saved' => false,
+                ],
+                $context[$event_id]['distance'],
+                $context[$event_id]['is_ongoing']
+            );
         }
 
         return rest_ensure_response([
@@ -471,7 +572,7 @@ class MobileRestController
         ];
     }
 
-    private static function format_event(int $event_id, array $state, ?float $distance_km = null): array
+    private static function format_event(int $event_id, array $state, ?float $distance_km = null, ?bool $is_ongoing = null): array
     {
         $post = get_post($event_id);
         if (!$post instanceof WP_Post) {
@@ -482,18 +583,22 @@ class MobileRestController
         $image    = $thumb_id ? ImageTools::best_image_src((int) $thumb_id) : null;
 
         $start    = get_post_meta($event_id, '_ap_event_start', true);
+        $end      = get_post_meta($event_id, '_ap_event_end', true);
         $location = get_post_meta($event_id, '_ap_event_location', true);
         $org_id   = (int) get_post_meta($event_id, '_ap_event_organization', true);
         $org      = $org_id ? get_post($org_id) : null;
+        $ongoing  = null !== $is_ongoing ? (bool) $is_ongoing : self::determine_ongoing(is_string($start) ? (string) $start : null, is_string($end) ? (string) $end : null);
 
         return [
             'id'          => $event_id,
             'title'       => get_the_title($event_id),
             'excerpt'     => wp_trim_words($post->post_content, 40),
             'start'       => $start,
+            'end'         => $end,
             'location'    => $location,
             'distanceKm'  => null !== $distance_km ? round($distance_km, 2) : null,
             'distance_m'  => null !== $distance_km ? (int) round($distance_km * 1000) : null,
+            'isOngoing'   => $ongoing,
             'likes'       => (int) ($state['likes'] ?? 0),
             'liked'       => (bool) ($state['liked'] ?? false),
             'saves'       => (int) ($state['saves'] ?? 0),
@@ -504,6 +609,46 @@ class MobileRestController
                 'title' => $org->post_title,
             ] : null,
         ];
+    }
+
+    private static function geo_error(string $message, array $details = []): WP_Error
+    {
+        return new WP_Error(
+            'ap_geo_invalid',
+            $message,
+            [
+                'status'  => 400,
+                'details' => $details,
+            ]
+        );
+    }
+
+    private static function to_timestamp(?string $value): ?int
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        $timestamp = strtotime($value);
+
+        return false === $timestamp ? null : $timestamp;
+    }
+
+    private static function determine_ongoing(?string $start, ?string $end, ?int $now = null): bool
+    {
+        $now = $now ?? current_time('timestamp');
+
+        $start_ts = self::to_timestamp($start);
+        if (null === $start_ts || $start_ts > $now) {
+            return false;
+        }
+
+        $end_ts = self::to_timestamp($end);
+        if (null === $end_ts) {
+            return true;
+        }
+
+        return $end_ts >= $now;
     }
 
     private static function all_numeric(array $values): bool
