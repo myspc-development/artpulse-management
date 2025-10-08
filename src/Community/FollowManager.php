@@ -6,19 +6,8 @@ class FollowManager {
      * Create the follows table if not exists.
      */
     public static function install_follows_table() {
-        global $wpdb;
-        $table = $wpdb->prefix . 'ap_follows';
-        $charset_collate = $wpdb->get_charset_collate();
-        $sql = "CREATE TABLE $table (
-            id BIGINT AUTO_INCREMENT PRIMARY KEY,
-            user_id BIGINT NOT NULL,
-            object_id BIGINT NOT NULL,
-            object_type VARCHAR(32) NOT NULL,
-            followed_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY user_object (user_id, object_id, object_type)
-        ) $charset_collate;";
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        \ArtPulse\Mobile\FollowService::install_table();
     }
 
     /**

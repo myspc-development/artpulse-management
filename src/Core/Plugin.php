@@ -60,6 +60,10 @@ class Plugin
         add_action( 'rest_api_init', [ \ArtPulse\Community\FollowRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
+        add_action( 'rest_api_init', [ \ArtPulse\Mobile\MobileRestController::class, 'register' ] );
+
+        \ArtPulse\Mobile\EventGeo::boot();
+        \ArtPulse\Mobile\NotificationPipeline::boot();
     }
 
     public function activate()
@@ -94,6 +98,8 @@ class Plugin
          // \ArtPulse\Community\ProfileLinkRequestManager::install_link_request_table();
             \ArtPulse\Community\FollowManager::install_follows_table();
             \ArtPulse\Community\NotificationManager::install_notifications_table();
+            \ArtPulse\Mobile\EventInteractions::install_tables();
+            \ArtPulse\Mobile\EventGeo::install_table();
             update_option( $db_version_option, self::VERSION );
         }
 
