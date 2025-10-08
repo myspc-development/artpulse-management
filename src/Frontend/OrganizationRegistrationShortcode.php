@@ -3,6 +3,7 @@
 namespace ArtPulse\Frontend;
 
 use ArtPulse\Community\NotificationManager;
+use ArtPulse\Core\RoleUpgradeManager;
 use ArtPulse\Rest\SubmissionRestController;
 use WP_REST_Request;
 
@@ -118,6 +119,12 @@ class OrganizationRegistrationShortcode
 
         $user_id = get_current_user_id();
         update_user_meta($user_id, 'ap_organization_id', $org_id);
+        RoleUpgradeManager::attach_owner($org_id, $user_id);
+        RoleUpgradeManager::grant_role($user_id, 'organization', [
+            'source'  => 'organization_registration',
+            'org_id'  => $org_id,
+            'user_id' => $user_id,
+        ]);
 
         self::notify_admins_of_submission($org_id, $user_id, $title);
         self::notify_creator_for_follow_prompt($org_id, $user_id);

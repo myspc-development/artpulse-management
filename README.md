@@ -160,6 +160,26 @@ curl -s https://example.test/sitemap-artpulse-directories.xml \
 The curl examples confirm that canonical URLs, active letter states, and the
 directory sitemap respond with server-rendered HTML (no JavaScript required).
 
+## Account upgrades at a glance
+
+ArtPulse supports guided upgrades for members who want to manage an artist profile or operate an organization page. The flows below are ready for end-user documentation or onboarding emails.
+
+### Become an Artist
+
+1. Visit the page that renders `[ap_submission_form type="artist"]`.
+2. Submit your profile details and upload portfolio imagery.
+3. If moderation is enabled, a moderator will approve the submission. Once approved you automatically receive the **Artist** role, access to the Artist dashboard, and a confirmation email.
+
+### Register an Organization
+
+1. Navigate to the `[ap_register_organization]` page while logged in.
+2. Provide the organization name, description, and contact details.
+3. Upon submission the organization is linked to your account, you gain the **Organization** role, and moderators are notified if approval is required.
+
+### Upgrade via purchase (optional)
+
+When WooCommerce products map to ArtPulse membership levels, completing a qualifying order grants the matching role immediately. Refunds or cancellations automatically revoke the upgrade.
+
 📘 Directory Shortcode Examples
 
 ```
