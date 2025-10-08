@@ -32,9 +32,11 @@ class JWT
     /**
      * Issue a signed JWT for the given user ID.
      *
+     * @param array<string, mixed> $claims
+     *
      * @return array{token:string,expires:int}
      */
-    public static function issue(int $user_id, ?int $ttl = null): array
+    public static function issue(int $user_id, ?int $ttl = null, array $claims = []): array
     {
         self::ensure_initialized();
 
@@ -51,6 +53,18 @@ class JWT
             'exp' => $expires,
             'jti' => wp_generate_uuid4(),
         ];
+
+        foreach ($claims as $key => $value) {
+            if (!is_string($key) || '' === trim($key)) {
+                continue;
+            }
+
+            if (null === $value || (is_string($value) && '' === trim($value))) {
+                continue;
+            }
+
+            $payload[$key] = $value;
+        }
 
         return [
             'token'   => self::encode($payload, $key),
@@ -103,11 +117,11 @@ class JWT
             $expected = hash_hmac('sha256', $header64 . '.' . $payload64, $key['secret'], true);
             if (hash_equals($expected, $signature)) {
                 $now = time();
-                if (!empty($payload['nbf']) && $payload['nbf'] > $now + 30) {
+                if (!empty($payload['nbf']) && $payload['nbf'] > $now + 120) {
                     return new WP_Error('ap_invalid_token', __('Token not yet valid.', 'artpulse-management'), ['status' => 401]);
                 }
 
-                if (!empty($payload['exp']) && $payload['exp'] < $now) {
+                if (!empty($payload['exp']) && $payload['exp'] < $now - 120) {
                     return new WP_Error('ap_invalid_token', __('Token expired.', 'artpulse-management'), ['status' => 401]);
                 }
 

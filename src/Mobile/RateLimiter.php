@@ -45,7 +45,8 @@ class RateLimiter
         $limit  = (int) apply_filters('artpulse_mobile_rate_limit', $limit, $request, $is_write);
         $window = (int) apply_filters('artpulse_mobile_rate_window', $window, $request, $is_write);
 
-        $bucket = ($is_write ? 'write' : 'read') . ':' . trim($request->get_route(), '/');
+        $route  = $request->get_route();
+        $bucket = ($is_write ? 'write' : 'read') . ':' . trim($route, '/');
 
         $error = self::enforce($bucket, $limit, $window, $request);
         if ($error instanceof WP_Error) {
@@ -59,6 +60,8 @@ class RateLimiter
     {
         $now     = time();
         $user_id = get_current_user_id();
+        $route   = $request instanceof \WP_REST_Request ? $request->get_route() : '';
+        $method  = $request instanceof \WP_REST_Request ? strtoupper($request->get_method()) : '';
         $ip      = $request instanceof \WP_REST_Request ? $request->get_header('X-Forwarded-For') : '';
         if (!$ip) {
             $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
@@ -118,6 +121,8 @@ class RateLimiter
             if (function_exists('wp_json_encode')) {
                 $log = wp_json_encode([
                     'event'       => 'mobile_rate_limited',
+                    'route'       => $route,
+                    'method'      => $method,
                     'bucket'      => $bucket,
                     'user_id'     => $user_id,
                     'ip'          => $ip,

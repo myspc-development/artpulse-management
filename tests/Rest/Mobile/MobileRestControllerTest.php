@@ -5,6 +5,7 @@ namespace Tests\Rest\Mobile;
 use ArtPulse\Mobile\EventGeo;
 use ArtPulse\Mobile\FollowService;
 use ArtPulse\Mobile\JWT;
+use ArtPulse\Mobile\NotificationPipeline;
 use ArtPulse\Mobile\RefreshTokens;
 use WP_REST_Request;
 use WP_UnitTestCase;
@@ -13,6 +14,7 @@ class MobileRestControllerTest extends WP_UnitTestCase
 {
     private int $user_id;
     private string $password = 'secret123!';
+    private array $notifications = [];
 
     public function set_up(): void
     {
@@ -22,6 +24,9 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_ap_rl_%' OR option_name LIKE '_transient_timeout_ap_rl_%'");
 
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+        delete_option('ap_mobile_metrics_log');
+        delete_option('ap_mobile_metrics_summary');
 
         \ArtPulse\Mobile\EventInteractions::install_tables();
         FollowService::install_table();
@@ -33,19 +38,47 @@ class MobileRestControllerTest extends WP_UnitTestCase
             'user_pass'  => $this->password,
         ]);
 
+        delete_user_meta($this->user_id, 'ap_mobile_muted_topics');
+
         wp_set_password($this->password, $this->user_id);
         rest_get_server();
         do_action('rest_api_init');
+        add_filter('artpulse_mobile_allow_insecure', '__return_true');
+        add_action('artpulse/mobile/notification_logged', [$this, 'capture_notification'], 10, 4);
+    }
+
+    public function tear_down(): void
+    {
+        remove_filter('artpulse_mobile_allow_insecure', '__return_true');
+        remove_action('artpulse/mobile/notification_logged', [$this, 'capture_notification'], 10);
+        $this->notifications = [];
+        parent::tear_down();
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function capture_notification(int $user_id, string $device_id, string $topic, array $payload): void
+    {
+        $this->notifications[] = [
+            'user'    => $user_id,
+            'device'  => $device_id,
+            'topic'   => $topic,
+            'payload' => $payload,
+        ];
     }
 
     public function test_login_returns_token_and_push_token_is_stored(): void
     {
         $request = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
         $request->set_body_params([
-            'username'   => 'mobile-user',
-            'password'   => $this->password,
-            'push_token' => 'device-token-123',
-            'device_id'  => 'ios-device-1',
+            'username'     => 'mobile-user',
+            'password'     => $this->password,
+            'push_token'   => 'device-token-123',
+            'device_id'    => 'ios-device-1',
+            'device_name'  => 'iPhone 15',
+            'platform'     => 'iOS',
+            'app_version'  => '1.2.3',
         ]);
 
         $response = rest_do_request($request);
@@ -57,6 +90,10 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $this->assertArrayHasKey('refreshExpires', $data);
         $this->assertArrayHasKey('user', $data);
         $this->assertSame('device-token-123', get_user_meta($this->user_id, 'ap_mobile_push_token', true));
+        $tokens = get_user_meta($this->user_id, 'ap_mobile_push_tokens', true);
+        $this->assertIsArray($tokens);
+        $this->assertArrayHasKey('ios-device-1', $tokens);
+        $this->assertSame('device-token-123', $tokens['ios-device-1']['token']);
     }
 
     public function test_refresh_rotates_and_invalidates_previous_token(): void
@@ -184,9 +221,12 @@ class MobileRestControllerTest extends WP_UnitTestCase
     {
         $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
         $login->set_body_params([
-            'username'  => 'mobile-user',
-            'password'  => $this->password,
-            'device_id' => 'tablet-01',
+            'username'     => 'mobile-user',
+            'password'     => $this->password,
+            'device_id'    => 'tablet-01',
+            'device_name'  => 'iPad Pro',
+            'platform'     => 'iPadOS',
+            'app_version'  => '5.6.7',
         ]);
 
         $login_response = rest_do_request($login);
@@ -199,7 +239,12 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $this->assertSame(200, $sessions->get_status());
         $session_data = $sessions->get_data();
         $this->assertCount(1, $session_data['sessions']);
-        $this->assertSame('tablet-01', $session_data['sessions'][0]['deviceId']);
+        $session = $session_data['sessions'][0];
+        $this->assertSame('tablet-01', $session['deviceId']);
+        $this->assertSame('iPad Pro', $session['deviceName']);
+        $this->assertSame('iPadOS', $session['platform']);
+        $this->assertSame('5.6.7', $session['appVersion']);
+        $this->assertNotEmpty($session['lastIp']);
 
         $delete = new WP_REST_Request('DELETE', '/artpulse/v1/mobile/auth/sessions/tablet-01');
         $delete->set_header('Authorization', 'Bearer ' . $token);
@@ -467,5 +512,185 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $this->assertSame(['code', 'message', 'details'], array_keys($data));
         $this->assertArrayHasKey('ap_missing_token', $data['details']);
         $this->assertNotEmpty($data['details']['ap_missing_token']['messages']);
+    }
+
+    public function test_session_cap_enforces_oldest_revoked(): void
+    {
+        delete_user_meta($this->user_id, 'ap_mobile_refresh_tokens');
+        $now = time();
+
+        for ($i = 0; $i < 11; $i++) {
+            RefreshTokens::mint($this->user_id, 'device-' . $i, [
+                'device_name' => 'Device #' . $i,
+                'platform'    => 'TestOS',
+                'app_version' => '1.0.' . $i,
+                'last_ip'     => '10.0.0.' . $i,
+                'last_seen_at'=> $now + $i,
+            ]);
+        }
+
+        $sessions = RefreshTokens::list_sessions($this->user_id);
+        $this->assertCount(10, $sessions);
+        $device_ids = wp_list_pluck($sessions, 'deviceId');
+        $this->assertNotContains('device-0', $device_ids);
+    }
+
+    public function test_tls_required_without_override(): void
+    {
+        remove_filter('artpulse_mobile_allow_insecure', '__return_true');
+
+        try {
+            $request = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+            $request->set_body_params([
+                'username' => 'mobile-user',
+                'password' => $this->password,
+            ]);
+
+            $response = rest_do_request($request);
+            $this->assertSame(403, $response->get_status());
+            $this->assertSame('ap_tls_required', $response->get_data()['code']);
+        } finally {
+            add_filter('artpulse_mobile_allow_insecure', '__return_true');
+        }
+    }
+
+    public function test_jwt_clock_skew_tolerance(): void
+    {
+        $token = JWT::issue($this->user_id);
+        [$header, $payload, $signature] = explode('.', $token);
+        $payload_data = json_decode(base64_decode(strtr($payload, '-_', '+/')) ?: '{}', true);
+        $this->assertIsArray($payload_data);
+
+        $payload_data['nbf'] = time() + 100;
+        $payload_data['exp'] = time() - 60;
+        $payload_json        = wp_json_encode($payload_data);
+        $new_payload         = rtrim(strtr(base64_encode($payload_json), '+/', '-_'), '=');
+
+        $state = get_option('ap_mobile_jwt_keys');
+        $kid   = json_decode(base64_decode(strtr($header, '-_', '+/')) ?: '{}', true)['kid'] ?? '';
+        $secret = base64_decode($state['keys'][$kid]['secret'] ?? '', true);
+        $this->assertIsString($secret);
+
+        $new_signature = rtrim(strtr(base64_encode(hash_hmac('sha256', $header . '.' . $new_payload, $secret, true)), '+/', '-_'), '=');
+        $token_skew    = $header . '.' . $new_payload . '.' . $new_signature;
+
+        $validated = JWT::validate($token_skew);
+        $this->assertIsArray($validated);
+
+        $payload_data['nbf'] = time() + 200;
+        $payload_json        = wp_json_encode($payload_data);
+        $new_payload         = rtrim(strtr(base64_encode($payload_json), '+/', '-_'), '=');
+        $new_signature       = rtrim(strtr(base64_encode(hash_hmac('sha256', $header . '.' . $new_payload, $secret, true)), '+/', '-_'), '=');
+        $too_far             = $header . '.' . $new_payload . '.' . $new_signature;
+
+        $invalid = JWT::validate($too_far);
+        $this->assertInstanceOf(\WP_Error::class, $invalid);
+    }
+
+    public function test_cors_headers_respect_allowed_origins(): void
+    {
+        $origin_filter = static fn () => ['https://mobile.example'];
+        add_filter('artpulse_mobile_allowed_origins', $origin_filter);
+        $_SERVER['HTTP_ORIGIN'] = 'https://mobile.example';
+
+        $request = new WP_REST_Request('OPTIONS', '/artpulse/v1/mobile/login');
+        header_remove('Access-Control-Allow-Origin');
+        \ArtPulse\Mobile\Cors::send_headers(null, null, $request);
+        $headers = headers_list();
+        $this->assertContains('Access-Control-Allow-Origin: https://mobile.example', $headers);
+        $this->assertContains('Access-Control-Allow-Credentials: true', $headers);
+
+        $_SERVER['HTTP_ORIGIN'] = 'https://evil.example';
+        header_remove('Access-Control-Allow-Origin');
+        \ArtPulse\Mobile\Cors::send_headers(null, null, $request);
+        $headers = headers_list();
+        $this->assertNotContains('Access-Control-Allow-Origin: https://evil.example', $headers);
+        remove_filter('artpulse_mobile_allowed_origins', $origin_filter);
+    }
+
+    public function test_me_endpoint_updates_push_token_and_mutes(): void
+    {
+        $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+        $login->set_body_params([
+            'username'  => 'mobile-user',
+            'password'  => $this->password,
+            'device_id' => 'watch-01',
+        ]);
+        $login_response = rest_do_request($login);
+        $token          = $login_response->get_data()['token'];
+
+        $update = new WP_REST_Request('POST', '/artpulse/v1/mobile/me');
+        $update->set_header('Authorization', 'Bearer ' . $token);
+        $update->set_body_params([
+            'push_token' => 'watch-token',
+            'mute_topics'=> ['starting_soon'],
+        ]);
+
+        $response = rest_do_request($update);
+        $this->assertSame(200, $response->get_status());
+        $data = $response->get_data();
+        $this->assertSame(['starting_soon'], $data['user']['mutedTopics']);
+
+        $tokens = get_user_meta($this->user_id, 'ap_mobile_push_tokens', true);
+        $this->assertSame('watch-token', $tokens['watch-01']['token']);
+    }
+
+    public function test_notifications_pipeline_batches_events(): void
+    {
+        $org_id = wp_insert_post([
+            'post_type'   => 'artpulse_org',
+            'post_status' => 'publish',
+            'post_title'  => 'Gallery Org',
+        ]);
+
+        FollowService::follow($this->user_id, $org_id, 'org');
+
+        $event_id = wp_insert_post([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Followed Event',
+        ]);
+        update_post_meta($event_id, '_ap_event_organization', $org_id);
+        update_post_meta($event_id, '_ap_event_start', gmdate('c', strtotime('+1 hour')));
+
+        update_user_meta($this->user_id, 'ap_mobile_push_tokens', [
+            'ios-device-1' => ['token' => 'device-token', 'updated_at' => time()],
+        ]);
+
+        NotificationPipeline::run_tick();
+
+        $this->assertNotEmpty($this->notifications);
+        $topics = wp_list_pluck($this->notifications, 'topic');
+        $this->assertContains('new_followed_event', $topics);
+    }
+
+    public function test_write_routes_respect_disable_switch(): void
+    {
+        $event_id = wp_insert_post([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Toggle Event',
+        ]);
+
+        update_option('ap_enable_mobile_write_routes', '0');
+
+        try {
+            $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+            $login->set_body_params([
+                'username'  => 'mobile-user',
+                'password'  => $this->password,
+                'device_id' => 'toggle-device',
+            ]);
+            $token = rest_do_request($login)->get_data()['token'];
+
+            $like = new WP_REST_Request('POST', '/artpulse/v1/mobile/events/' . $event_id . '/like');
+            $like->set_header('Authorization', 'Bearer ' . $token);
+            $response = rest_do_request($like);
+
+            $this->assertSame(503, $response->get_status());
+            $this->assertSame('ap_mobile_read_only', $response->get_data()['code']);
+        } finally {
+            update_option('ap_enable_mobile_write_routes', '1');
+        }
     }
 }
