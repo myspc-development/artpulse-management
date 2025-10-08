@@ -1,0 +1,45 @@
+name: E2E
+on: [push, pull_request]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Start wp-env
+        run: npx wp-env start
+
+      - name: Install Playwright browsers
+        run: npx --yes @playwright/test install --with-deps
+
+      - name: Run Playwright smoke
+        env:
+          WP_BASE_URL: http://localhost:8888
+          E2E_ADMIN_USER: admin
+          E2E_ADMIN_PASS: password
+          E2E_MEMBER_USER: member_e2e@example.com
+          E2E_MEMBER_PASS: memberpass
+        run: npx playwright test tests/e2e/upgrade-org-smoke.spec.ts --reporter=line
+
+      - name: Upload traces and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+            **/trace.zip
+
+      - name: Stop wp-env
+        if: always()
+        run: npx wp-env stop
