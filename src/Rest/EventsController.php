@@ -34,6 +34,7 @@ class EventsController
             'callback'            => [self::class, 'get_events'],
             'permission_callback' => '__return_true',
             'args'                => self::get_collection_args(),
+            'schema'              => [self::class, 'get_events_schema'],
         ]);
 
         register_rest_route('artpulse/v1', '/event/(?P<id>\\d+)', [
@@ -46,6 +47,7 @@ class EventsController
                     'validate_callback' => 'is_numeric',
                 ],
             ],
+            'schema'              => [self::class, 'get_event_schema'],
         ]);
 
         register_rest_route('artpulse/v1', '/events.ics', [
@@ -622,6 +624,85 @@ class EventsController
         return self::normalize_args($params);
     }
 
+    public static function get_events_schema(): array
+    {
+        return [
+            '$schema'    => 'http://json-schema.org/draft-04/schema#',
+            'title'      => 'artpulse_events_collection',
+            'type'       => 'object',
+            'properties' => [
+                'events' => [
+                    'type'  => 'array',
+                    'items' => self::get_event_schema_definition(),
+                ],
+                'pagination' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'total'       => ['type' => 'integer'],
+                        'total_pages' => ['type' => 'integer'],
+                        'page'        => ['type' => 'integer'],
+                        'per_page'    => ['type' => 'integer'],
+                    ],
+                ],
+                'truncated' => [
+                    'type' => 'boolean',
+                ],
+            ],
+        ];
+    }
+
+    public static function get_event_schema(): array
+    {
+        return self::get_event_schema_definition();
+    }
+
+    private static function get_event_schema_definition(): array
+    {
+        return [
+            'type'                 => 'object',
+            'additionalProperties' => true,
+            'properties'           => [
+                'id'               => ['type' => 'integer'],
+                'title'            => ['type' => 'string'],
+                'start'            => ['type' => 'string'],
+                'end'              => ['type' => 'string'],
+                'startUtc'         => ['type' => 'string'],
+                'endUtc'           => ['type' => 'string'],
+                'allDay'           => ['type' => 'boolean'],
+                'timezone'         => ['type' => 'string'],
+                'location'         => ['type' => 'string'],
+                'cost'             => ['type' => ['string', 'null']],
+                'favorite'         => ['type' => 'boolean'],
+                'url'              => ['type' => 'string', 'format' => 'uri'],
+                'categories'       => [
+                    'type'  => 'array',
+                    'items' => ['type' => 'string'],
+                ],
+                'categoryNames' => [
+                    'type'  => 'array',
+                    'items' => ['type' => 'string'],
+                ],
+                'organization'     => ['type' => 'integer'],
+                'organizationName' => ['type' => 'string'],
+                'thumbnail'        => ['type' => 'string'],
+                'image'            => [
+                    'type'       => ['object', 'null'],
+                    'properties' => [
+                        'id'     => ['type' => 'integer'],
+                        'url'    => ['type' => 'string', 'format' => 'uri'],
+                        'alt'    => ['type' => 'string'],
+                        'size'   => ['type' => 'string'],
+                        'width'  => ['type' => 'integer'],
+                        'height' => ['type' => 'integer'],
+                    ],
+                ],
+                'excerpt'    => ['type' => 'string'],
+                'schema'     => ['type' => 'object'],
+                'recurrence' => ['type' => ['array', 'object', 'null']],
+            ],
+        ];
+    }
+
     private static function prepare_event(int $post_id, int $current_user_id = 0): array
     {
         $start = get_post_meta($post_id, '_ap_event_start', true);
@@ -649,6 +730,12 @@ class EventsController
         }
 
         $image = $thumb_id ? array_merge(
+            [
+                'url'    => '',
+                'width'  => 0,
+                'height' => 0,
+                'size'   => '',
+            ],
             ImageTools::best_image_src($thumb_id) ?: [],
             [
                 'id'  => $thumb_id,
@@ -657,6 +744,10 @@ class EventsController
                 ),
             ]
         ) : null;
+        if ($image && '' === $image['url']) {
+            $image = null;
+        }
+
         $thumbnail = $image['url'] ?? '';
         $excerpt   = wp_strip_all_tags(get_the_excerpt($post_id));
 

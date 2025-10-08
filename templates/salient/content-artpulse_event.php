@@ -28,7 +28,7 @@ get_header(); ?>
 
             if ( $attachment_id > 0 ) {
               $best = \ArtPulse\Core\ImageTools::best_image_src( $attachment_id );
-              $size = $best['size'] ?? 'full';
+              $size = $best['size'] ?? 'ap-grid';
               $alt  = (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
               if ( '' === trim( $alt ) ) {
                 $alt = get_the_title();

@@ -48,6 +48,7 @@ class Plugin
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
+        add_action( 'after_setup_theme',  [ $this, 'register_image_sizes' ] );
         add_action( 'after_setup_theme',  [ \ArtPulse\Frontend\Salient\ImageFallback::class, 'register' ] );
 
         // REST API endpoints
@@ -194,6 +195,11 @@ class Plugin
     {
         flush_rewrite_rules();
         wp_clear_scheduled_hook( 'ap_daily_expiry_check' );
+    }
+
+    public function register_image_sizes(): void
+    {
+        add_image_size( 'ap-grid', 800, 600, true );
     }
 
     public function load_textdomain()

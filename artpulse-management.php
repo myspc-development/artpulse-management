@@ -77,6 +77,31 @@ add_action('rest_api_init', function () {
 if (defined('WP_CLI') && WP_CLI) {
     require_once __DIR__ . '/tools/cli/BackfillLetters.php';
     \WP_CLI::add_command('artpulse backfill-letters', [BackfillLetters::class, 'handle']);
+    \WP_CLI::add_command('artpulse backfill-event-thumbnails', static function () {
+        $query = new \WP_Query([
+            'post_type'      => 'artpulse_event',
+            'post_status'    => 'publish',
+            'meta_key'       => '_ap_submission_images',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ]);
+
+        foreach ($query->posts as $event_id) {
+            $event_id = (int) $event_id;
+            if (has_post_thumbnail($event_id)) {
+                continue;
+            }
+
+            $submission_ids = (array) get_post_meta($event_id, '_ap_submission_images', true);
+            $first_id       = (int) ($submission_ids[0] ?? 0);
+
+            if ($first_id > 0) {
+                set_post_thumbnail($event_id, $first_id);
+            }
+        }
+
+        \WP_CLI::success('Backfill complete.');
+    });
 }
 
 function artpulse_create_custom_table() {

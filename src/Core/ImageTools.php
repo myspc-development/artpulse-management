@@ -13,7 +13,7 @@ class ImageTools
      *
      * @return array{url:string,width:int,height:int,size:string}|null
      */
-    public static function best_image_src(int $attachment_id, array $preferred = ['large', 'medium_large', 'medium', 'thumbnail', 'full']): ?array
+    public static function best_image_src(int $attachment_id, array $preferred = ['ap-grid', 'large', 'medium_large', 'medium', 'thumbnail', 'full']): ?array
     {
         foreach ($preferred as $size) {
             $src = wp_get_attachment_image_src($attachment_id, $size);
