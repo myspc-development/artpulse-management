@@ -1,0 +1,204 @@
+<?php
+
+namespace ArtPulse\Admin;
+
+use ArtPulse\Core\AuditLogger;
+use ArtPulse\Core\RoleUpgradeManager;
+use ArtPulse\Core\UpgradeReviewRepository;
+use ArtPulse\Frontend\MemberDashboard;
+use WP_Post;
+use WP_User;
+
+class UpgradeReviewsController
+{
+    public static function register(): void
+    {
+        add_action('admin_menu', [self::class, 'add_menu']);
+        add_action('admin_post_ap_upgrade_review_action', [self::class, 'handle_action']);
+    }
+
+    public static function add_menu(): void
+    {
+        add_submenu_page(
+            'artpulse-settings',
+            __('Upgrade Reviews', 'artpulse-management'),
+            __('Upgrade Reviews', 'artpulse-management'),
+            'manage_options',
+            'artpulse-upgrade-reviews',
+            [self::class, 'render']
+        );
+    }
+
+    public static function render(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to view this page.', 'artpulse-management'));
+        }
+
+        $view = isset($_GET['view']) ? sanitize_key(wp_unslash($_GET['view'])) : '';
+        $review_id = isset($_GET['review']) ? absint($_GET['review']) : 0;
+
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__('Organization Upgrade Reviews', 'artpulse-management') . '</h1>';
+
+        if ('deny' === $view && $review_id) {
+            check_admin_referer('ap-upgrade-review-' . $review_id);
+            $post = get_post($review_id);
+            if (!$post instanceof WP_Post) {
+                echo '<p>' . esc_html__('Review not found.', 'artpulse-management') . '</p>';
+            } else {
+                $user_id = UpgradeReviewRepository::get_user_id($post);
+                $user = $user_id ? get_user_by('id', $user_id) : null;
+
+                echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="ap-upgrade-review-deny">';
+                wp_nonce_field('ap-upgrade-review-' . $review_id);
+                echo '<input type="hidden" name="action" value="ap_upgrade_review_action" />';
+                echo '<input type="hidden" name="review" value="' . esc_attr($review_id) . '" />';
+                echo '<input type="hidden" name="operation" value="deny" />';
+                echo '<p>' . esc_html__('Deny upgrade request for', 'artpulse-management') . ' <strong>' . esc_html($user ? $user->display_name : '#' . $user_id) . '</strong></p>';
+                echo '<p><label for="ap-deny-reason">' . esc_html__('Reason for denial', 'artpulse-management') . '</label></p>';
+                echo '<textarea id="ap-deny-reason" name="reason" rows="4" class="large-text" required></textarea>';
+                submit_button(__('Send denial', 'artpulse-management'));
+                echo '</form>';
+            }
+            echo '</div>';
+            return;
+        }
+
+        $list_table = new UpgradeReviewsTable();
+        $list_table->prepare_items();
+
+        if (!empty($_GET['ap_status'])) {
+            $status = sanitize_text_field(wp_unslash($_GET['ap_status']));
+            $message = '';
+            if ('approved' === $status) {
+                $message = esc_html__('Upgrade request approved.', 'artpulse-management');
+            } elseif ('denied' === $status) {
+                $message = esc_html__('Upgrade request denied.', 'artpulse-management');
+            } elseif ('error' === $status) {
+                $message = esc_html__('Unable to process the action. Please try again.', 'artpulse-management');
+            }
+
+            if ($message !== '') {
+                printf('<div class="notice notice-info"><p>%s</p></div>', esc_html($message));
+            }
+        }
+
+        echo '<form method="post">';
+        $list_table->display();
+        echo '</form>';
+        echo '</div>';
+    }
+
+    public static function handle_action(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Insufficient permissions.', 'artpulse-management'));
+        }
+
+        $review_id = isset($_REQUEST['review']) ? absint($_REQUEST['review']) : 0;
+        $operation = isset($_REQUEST['operation']) ? sanitize_key($_REQUEST['operation']) : '';
+
+        check_admin_referer('ap-upgrade-review-' . $review_id);
+
+        $redirect = add_query_arg('page', 'artpulse-upgrade-reviews', admin_url('admin.php'));
+
+        if (!$review_id || !in_array($operation, ['approve', 'deny'], true)) {
+            wp_safe_redirect(add_query_arg('ap_status', 'error', $redirect));
+            exit;
+        }
+
+        $post = get_post($review_id);
+        if (!$post instanceof WP_Post || $post->post_type !== UpgradeReviewRepository::POST_TYPE) {
+            wp_safe_redirect(add_query_arg('ap_status', 'error', $redirect));
+            exit;
+        }
+
+        if ('approve' === $operation) {
+            $result = self::approve($post);
+            $status = $result ? 'approved' : 'error';
+        } else {
+            $reason = isset($_POST['reason']) ? wp_kses_post(wp_unslash($_POST['reason'])) : '';
+            $result = self::deny($post, $reason);
+            $status = $result ? 'denied' : 'error';
+        }
+
+        wp_safe_redirect(add_query_arg('ap_status', $status, $redirect));
+        exit;
+    }
+
+    private static function approve(WP_Post $review): bool
+    {
+        $user_id = UpgradeReviewRepository::get_user_id($review);
+        $org_id  = UpgradeReviewRepository::get_post_id($review);
+
+        if ($user_id <= 0 || $org_id <= 0) {
+            return false;
+        }
+
+        $org = get_post($org_id);
+        if (!$org instanceof WP_Post) {
+            return false;
+        }
+
+        RoleUpgradeManager::attach_owner($org_id, $user_id);
+
+        wp_update_post([
+            'ID'          => $org_id,
+            'post_status' => 'publish',
+        ]);
+
+        UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_APPROVED);
+
+        RoleUpgradeManager::grant_role_if_missing($user_id, 'organization', [
+            'source'   => 'upgrade_review',
+            'post_id'  => $org_id,
+            'review_id'=> $review->ID,
+        ]);
+
+        $user = get_user_by('id', $user_id);
+        if ($user instanceof WP_User) {
+            MemberDashboard::send_member_email('upgrade_approved', $user, [
+                'dashboard_url' => add_query_arg('role', 'organization', home_url('/dashboard/')),
+                'org_id'        => $org_id,
+            ]);
+        }
+
+        AuditLogger::info('org.upgrade.approved', [
+            'user_id'   => $user_id,
+            'post_id'   => $org_id,
+            'review_id' => $review->ID,
+        ]);
+
+        return true;
+    }
+
+    private static function deny(WP_Post $review, string $reason): bool
+    {
+        if ($reason === '') {
+            return false;
+        }
+
+        $user_id = UpgradeReviewRepository::get_user_id($review);
+        $org_id  = UpgradeReviewRepository::get_post_id($review);
+
+        UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_DENIED, $reason);
+
+        $user = get_user_by('id', $user_id);
+        if ($user instanceof WP_User) {
+            MemberDashboard::send_member_email('upgrade_denied', $user, [
+                'reason' => $reason,
+                'org_id' => $org_id,
+            ]);
+        }
+
+        AuditLogger::info('org.upgrade.denied', [
+            'user_id'   => $user_id,
+            'post_id'   => $org_id,
+            'review_id' => $review->ID,
+            'reason'    => $reason,
+        ]);
+
+        return true;
+    }
+}

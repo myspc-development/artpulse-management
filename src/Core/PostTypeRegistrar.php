@@ -2,6 +2,8 @@
 
 namespace ArtPulse\Core;
 
+use ArtPulse\Core\UpgradeReviewRepository;
+
 class PostTypeRegistrar
 {
     public const EVENT_POST_TYPE = 'artpulse_event';
@@ -52,6 +54,15 @@ class PostTypeRegistrar
                 'rewrite'  => ['slug' => 'link-requests'],
                 'supports' => ['title'],
                 'public'   => false,
+            ],
+            UpgradeReviewRepository::POST_TYPE => [
+                'label'       => __('Upgrade Reviews', 'artpulse'),
+                'rewrite'     => false,
+                'supports'    => ['title'],
+                'public'      => false,
+                'show_ui'     => false,
+                'show_in_menu'=> false,
+                'show_in_rest'=> false,
             ],
         ];
 

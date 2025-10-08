@@ -22,6 +22,22 @@ class OrganizationEventForm {
             return '<p>You must be logged in to submit an event.</p>';
         }
 
+        $org_id = isset($_GET['org_id']) ? absint($_GET['org_id']) : 0;
+
+        if ($org_id) {
+            $owner_id = (int) get_post_meta($org_id, '_ap_owner_user', true);
+            if (!$owner_id) {
+                $org = get_post($org_id);
+                if ($org instanceof \WP_Post) {
+                    $owner_id = (int) $org->post_author;
+                }
+            }
+
+            if ($owner_id !== get_current_user_id()) {
+                return '<p>' . esc_html__('You do not have permission to submit events for this organization.', 'artpulse-management') . '</p>';
+            }
+        }
+
         // Show success message if redirected after submission
         if (!empty($_GET['event_submitted'])) {
             echo '<div class="ap-success-message">✅ Event submitted successfully!</div>';
@@ -36,6 +52,7 @@ class OrganizationEventForm {
         <div class="ap-form-messages" role="status" aria-live="polite"></div>
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
             <?php wp_nonce_field('submit_event', 'ap_event_nonce'); ?>
+            <input type="hidden" name="org_id" value="<?php echo esc_attr($org_id); ?>" />
 
             <label for="ap_org_event_title">Event Title*</label>
             <input id="ap_org_event_title" type="text" name="title" required>
@@ -75,6 +92,7 @@ class OrganizationEventForm {
         $date = sanitize_text_field($_POST['event_date']);
         $location = sanitize_text_field($_POST['event_location']);
         $type = intval($_POST['event_type']);
+        $org_id = isset($_POST['org_id']) ? absint($_POST['org_id']) : 0;
 
         $post_id = wp_insert_post([
             'post_title'   => $title,
@@ -90,6 +108,10 @@ class OrganizationEventForm {
 
         update_post_meta($post_id, '_ap_event_date', $date);
         update_post_meta($post_id, '_ap_event_location', $location);
+
+        if ($org_id) {
+            update_post_meta($post_id, '_ap_event_organization', $org_id);
+        }
 
         if ($type) {
             wp_set_post_terms($post_id, [$type], 'artpulse_event_type');
@@ -131,7 +153,11 @@ class OrganizationEventForm {
         wp_mail($user_email, $user_subject, $user_message);
 
         if ($should_redirect) {
-            wp_redirect(add_query_arg('event_submitted', '1', wp_get_referer()));
+            $redirect = wp_get_referer();
+            if (!$redirect) {
+                $redirect = add_query_arg('event_submitted', '1', home_url());
+            }
+            wp_redirect(add_query_arg('event_submitted', '1', $redirect));
             exit;
         }
 

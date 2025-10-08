@@ -45,9 +45,12 @@ class Plugin
         add_action( 'init',               [ $this, 'load_textdomain' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Core\RoleDashboards::class, 'register' ] );
+        add_action( 'init',               [ \ArtPulse\Frontend\MemberDashboard::class, 'register' ] );
+        add_action( 'init',               [ \ArtPulse\Frontend\OrgBuilderShortcode::class, 'register' ] );
         \ArtPulse\Core\RoleUpgradeManager::register();
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
+        add_action( 'init',               [ \ArtPulse\Admin\UpgradeReviewsController::class, 'register' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
         add_action( 'after_setup_theme',  [ $this, 'register_image_sizes' ] );
         add_action( 'after_setup_theme',  [ \ArtPulse\Frontend\Salient\ImageFallback::class, 'register' ] );
