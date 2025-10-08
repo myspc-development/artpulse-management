@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Rest;
 
+use ArtPulse\Core\RoleUpgradeManager;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -116,6 +117,10 @@ class SubmissionRestController
 
         if ( is_wp_error( $post_id ) ) {
             return $post_id;
+        }
+
+        if ( is_user_logged_in() && in_array( $post_type, [ 'artpulse_org', 'artpulse_artist' ], true ) ) {
+            RoleUpgradeManager::attach_owner( (int) $post_id, get_current_user_id() );
         }
 
         $meta_fields = self::get_meta_fields_for( $post_type );

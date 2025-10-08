@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Community;
 
+use ArtPulse\Core\RoleUpgradeManager;
 use WP_Error;
 
 class ProfileLinkRequestManager
@@ -120,6 +121,32 @@ class ProfileLinkRequestManager
             update_post_meta($request_id, 'approved_on', $now);
             delete_post_meta($request_id, 'denied_by');
             delete_post_meta($request_id, 'denied_on');
+
+            $target_id      = (int) get_post_meta($request_id, 'org_id', true);
+            $artist_user_id = (int) get_post_meta($request_id, 'artist_user_id', true);
+
+            if ($target_id > 0 && $artist_user_id > 0) {
+                $target_post = get_post($target_id);
+
+                if ($target_post) {
+                    RoleUpgradeManager::attach_owner($target_id, $artist_user_id);
+
+                    $role = match ($target_post->post_type) {
+                        'artpulse_artist' => 'artist',
+                        'artpulse_org'    => 'organization',
+                        default           => null,
+                    };
+
+                    if ($role) {
+                        RoleUpgradeManager::grant_role($artist_user_id, $role, [
+                            'source'       => 'profile_link_request',
+                            'request_id'   => $request_id,
+                            'moderator_id' => $moderator_id,
+                            'post_id'      => $target_id,
+                        ]);
+                    }
+                }
+            }
         } elseif ($status === self::STATUS_DENIED) {
             update_post_meta($request_id, 'denied_by', $moderator_id);
             update_post_meta($request_id, 'denied_on', $now);

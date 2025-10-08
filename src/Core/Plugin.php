@@ -45,6 +45,7 @@ class Plugin
         add_action( 'init',               [ $this, 'load_textdomain' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Core\RoleDashboards::class, 'register' ] );
+        \ArtPulse\Core\RoleUpgradeManager::register();
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
