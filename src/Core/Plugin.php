@@ -62,6 +62,8 @@ class Plugin
         add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Mobile\MobileRestController::class, 'register' ] );
 
+        \ArtPulse\Mobile\Cors::register();
+        \ArtPulse\Mobile\RequestMetrics::register();
         \ArtPulse\Mobile\RefreshTokens::register_hooks();
         \ArtPulse\Mobile\JWT::boot();
         \ArtPulse\Mobile\EventGeo::boot();

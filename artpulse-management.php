@@ -78,8 +78,10 @@ add_action('rest_api_init', function () {
 if (defined('WP_CLI') && WP_CLI) {
     require_once __DIR__ . '/tools/cli/BackfillLetters.php';
     require_once __DIR__ . '/tools/cli/BackfillEventGeo.php';
+    require_once __DIR__ . '/tools/cli/MetricsDump.php';
     \WP_CLI::add_command('artpulse backfill-letters', [BackfillLetters::class, 'handle']);
     \WP_CLI::add_command('artpulse backfill-event-geo', [BackfillEventGeo::class, 'handle']);
+    \WP_CLI::add_command('artpulse metrics dump', [\ArtPulse\Tools\CLI\MetricsDump::class, 'handle']);
     \WP_CLI::add_command('artpulse backfill-event-thumbnails', static function () {
         $query = new \WP_Query([
             'post_type'      => 'artpulse_event',

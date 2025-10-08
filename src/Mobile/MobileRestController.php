@@ -23,10 +23,13 @@ class MobileRestController
             'callback'            => [self::class, 'login'],
             'permission_callback' => '__return_true',
             'args'                => [
-                'username'    => ['required' => true],
-                'password'    => ['required' => true],
-                'push_token'  => ['required' => false],
-                'device_id'   => ['required' => false],
+                'username'     => ['required' => true],
+                'password'     => ['required' => true],
+                'push_token'   => ['required' => false],
+                'device_id'    => ['required' => false],
+                'device_name'  => ['required' => false],
+                'platform'     => ['required' => false],
+                'app_version'  => ['required' => false],
             ],
         ]);
 
@@ -55,6 +58,16 @@ class MobileRestController
             'methods'             => 'GET',
             'callback'            => [self::class, 'me'],
             'permission_callback' => [self::class, 'require_auth'],
+        ]);
+
+        register_rest_route('artpulse/v1', '/mobile/me', [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'update_me'],
+            'permission_callback' => [self::class, 'require_auth'],
+            'args'                => [
+                'push_token' => ['required' => false],
+                'mute_topics'=> ['required' => false],
+            ],
         ]);
 
         register_rest_route('artpulse/v1', '/mobile/events', [
@@ -114,6 +127,11 @@ class MobileRestController
 
     public static function login(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        $tls_error = self::enforce_tls($request);
+        if ($tls_error instanceof WP_Error) {
+            return $tls_error;
+        }
+
         $username = sanitize_text_field((string) $request->get_param('username'));
         $password = (string) $request->get_param('password');
         $push     = $request->get_param('push_token');
@@ -125,13 +143,25 @@ class MobileRestController
 
         wp_set_current_user($user->ID);
 
+        $device_id    = sanitize_text_field((string) $request->get_param('device_id'));
+        $device_name  = sanitize_text_field((string) $request->get_param('device_name'));
+        $platform     = sanitize_text_field((string) $request->get_param('platform'));
+        $app_version  = sanitize_text_field((string) $request->get_param('app_version'));
+        $metadata     = [
+            'device_name' => $device_name,
+            'platform'    => $platform,
+            'app_version' => $app_version,
+            'last_ip'     => self::get_request_ip($request),
+        ];
+
         if (!empty($push)) {
-            update_user_meta($user->ID, 'ap_mobile_push_token', sanitize_text_field((string) $push));
+            $push_token          = sanitize_text_field((string) $push);
+            $metadata['push_token'] = $push_token;
+            self::store_push_token($user->ID, $device_id, $push_token);
         }
 
-        $device_id    = sanitize_text_field((string) $request->get_param('device_id'));
-        $access_token = JWT::issue($user->ID);
-        $refresh      = RefreshTokens::mint($user->ID, $device_id);
+        $access_token = JWT::issue($user->ID, null, ['device' => $device_id ?: null]);
+        $refresh      = RefreshTokens::mint($user->ID, $device_id, $metadata);
 
         $data = [
             'token'          => $access_token['token'],
@@ -146,6 +176,11 @@ class MobileRestController
 
     public static function refresh(WP_REST_Request $request)
     {
+        $tls_error = self::enforce_tls($request);
+        if ($tls_error instanceof WP_Error) {
+            return $tls_error;
+        }
+
         $token = (string) $request->get_param('refresh_token');
         $validated = RefreshTokens::validate($token);
         if ($validated instanceof WP_Error) {
@@ -162,8 +197,16 @@ class MobileRestController
 
         wp_set_current_user($user_id);
 
-        $access  = JWT::issue($user_id);
-        $refresh = RefreshTokens::rotate($validated);
+        $metadata = [
+            'last_ip'      => self::get_request_ip($request),
+            'device_name'  => $validated['metadata']['device_name'] ?? null,
+            'platform'     => $validated['metadata']['platform'] ?? null,
+            'app_version'  => $validated['metadata']['app_version'] ?? null,
+            'push_token'   => $validated['metadata']['push_token'] ?? null,
+        ];
+
+        $access  = JWT::issue($user_id, null, ['device' => $validated['device_id']]);
+        $refresh = RefreshTokens::rotate($validated, $metadata);
 
         return rest_ensure_response([
             'token'          => $access['token'],
@@ -199,6 +242,42 @@ class MobileRestController
     public static function me(WP_REST_Request $request): WP_REST_Response
     {
         $user_id = (int) $request->get_attribute('ap_user_id');
+
+        return rest_ensure_response([
+            'user' => self::format_user($user_id),
+        ]);
+    }
+
+    public static function update_me(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        $tls_error = self::enforce_tls($request);
+        if ($tls_error instanceof WP_Error) {
+            return $tls_error;
+        }
+
+        $user_id   = (int) $request->get_attribute('ap_user_id');
+        $device_id = (string) $request->get_attribute('ap_device_id');
+
+        $push = $request->get_param('push_token');
+        if (!empty($push) && is_string($push)) {
+            $push_token = sanitize_text_field($push);
+            self::store_push_token($user_id, $device_id, $push_token);
+            RefreshTokens::update_device_metadata($user_id, $device_id, ['push_token' => $push_token]);
+        }
+
+        $mute_topics = $request->get_param('mute_topics');
+        if (is_array($mute_topics)) {
+            $muted = [];
+            foreach ($mute_topics as $topic) {
+                if (!is_string($topic) || '' === trim($topic)) {
+                    continue;
+                }
+
+                $muted[] = substr(sanitize_key($topic), 0, 60);
+            }
+
+            update_user_meta($user_id, 'ap_mobile_muted_topics', array_values(array_unique($muted)));
+        }
 
         return rest_ensure_response([
             'user' => self::format_user($user_id),
@@ -389,6 +468,11 @@ class MobileRestController
 
     public static function like_event(WP_REST_Request $request)
     {
+        $guard = self::guard_writes();
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
 
@@ -402,6 +486,11 @@ class MobileRestController
 
     public static function unlike_event(WP_REST_Request $request)
     {
+        $guard = self::guard_writes();
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
 
@@ -415,6 +504,11 @@ class MobileRestController
 
     public static function save_event(WP_REST_Request $request)
     {
+        $guard = self::guard_writes();
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
 
@@ -428,6 +522,11 @@ class MobileRestController
 
     public static function unsave_event(WP_REST_Request $request)
     {
+        $guard = self::guard_writes();
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
         $user_id = (int) $request->get_attribute('ap_user_id');
         $event_id = (int) $request->get_param('id');
 
@@ -441,6 +540,11 @@ class MobileRestController
 
     public static function follow_target(WP_REST_Request $request)
     {
+        $guard = self::guard_writes();
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
         $user_id = (int) $request->get_attribute('ap_user_id');
         $type    = (string) $request->get_param('type');
         $object_id = (int) $request->get_param('id');
@@ -455,6 +559,11 @@ class MobileRestController
 
     public static function unfollow_target(WP_REST_Request $request)
     {
+        $guard = self::guard_writes();
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
         $user_id = (int) $request->get_attribute('ap_user_id');
         $type    = (string) $request->get_param('type');
         $object_id = (int) $request->get_param('id');
@@ -550,8 +659,15 @@ class MobileRestController
             return new WP_Error('ap_invalid_token', __('Token user not found.', 'artpulse-management'), ['status' => 401]);
         }
 
+        $tls_error = self::enforce_tls($request);
+        if ($tls_error instanceof WP_Error) {
+            return $tls_error;
+        }
+
         wp_set_current_user($user_id);
         $request->set_attribute('ap_user_id', $user_id);
+        $device_id = isset($payload['device']) ? sanitize_text_field((string) $payload['device']) : '';
+        $request->set_attribute('ap_device_id', $device_id ?: 'unknown');
 
         return true;
     }
@@ -563,13 +679,132 @@ class MobileRestController
             return [];
         }
 
+        $push_tokens = get_user_meta($user_id, 'ap_mobile_push_tokens', true);
+        if (!is_array($push_tokens)) {
+            $push_tokens = [];
+        }
+
+        $formatted_tokens = [];
+        foreach ($push_tokens as $device_id => $details) {
+            if (!is_array($details)) {
+                continue;
+            }
+
+            $token = isset($details['token']) ? (string) $details['token'] : '';
+            if ('' === $token) {
+                continue;
+            }
+
+            $formatted_tokens[] = [
+                'deviceId'  => (string) $device_id,
+                'token'     => $token,
+                'updatedAt' => isset($details['updated_at']) ? (int) $details['updated_at'] : 0,
+            ];
+        }
+
+        $muted_topics = get_user_meta($user_id, 'ap_mobile_muted_topics', true);
+        if (!is_array($muted_topics)) {
+            $muted_topics = [];
+        }
+
         return [
             'id'         => $user_id,
             'displayName'=> $user->display_name,
             'email'      => $user->user_email,
             'roles'      => $user->roles,
-            'pushToken'  => get_user_meta($user_id, 'ap_mobile_push_token', true) ?: null,
+            'pushToken'  => $formatted_tokens[0]['token'] ?? (get_user_meta($user_id, 'ap_mobile_push_token', true) ?: null),
+            'pushTokens' => $formatted_tokens,
+            'mutedTopics'=> array_values(array_unique(array_map('strval', $muted_topics))),
         ];
+    }
+
+    private static function store_push_token(int $user_id, string $device_id, string $token): void
+    {
+        $device_id = sanitize_text_field($device_id ?: 'unknown');
+        $tokens    = get_user_meta($user_id, 'ap_mobile_push_tokens', true);
+        if (!is_array($tokens)) {
+            $tokens = [];
+        }
+
+        $tokens[$device_id] = [
+            'token'      => $token,
+            'updated_at' => time(),
+        ];
+
+        update_user_meta($user_id, 'ap_mobile_push_tokens', $tokens);
+        update_user_meta($user_id, 'ap_mobile_push_token', $token);
+    }
+
+    private static function get_request_ip(WP_REST_Request $request): ?string
+    {
+        $ip = $request->get_header('X-Forwarded-For');
+        if ($ip) {
+            $ip = trim(explode(',', (string) $ip)[0]);
+        }
+
+        if (!$ip && isset($_SERVER['REMOTE_ADDR'])) {
+            $ip = (string) $_SERVER['REMOTE_ADDR'];
+        }
+
+        $ip = sanitize_text_field((string) $ip);
+
+        return '' !== $ip ? $ip : null;
+    }
+
+    private static function enforce_tls(WP_REST_Request $request)
+    {
+        $allow_insecure = (bool) apply_filters('artpulse_mobile_allow_insecure', false, $request);
+        if ($allow_insecure) {
+            return null;
+        }
+
+        $is_secure = is_ssl();
+
+        if (!$is_secure) {
+            $proto = strtolower((string) $request->get_header('X-Forwarded-Proto'));
+            if ('https' === $proto) {
+                $is_secure = true;
+            }
+        }
+
+        if (!$is_secure && isset($_SERVER['HTTPS'])) {
+            $https = strtolower((string) $_SERVER['HTTPS']);
+            $is_secure = in_array($https, ['on', '1'], true);
+        }
+
+        if ($is_secure) {
+            return null;
+        }
+
+        return new WP_Error('ap_tls_required', __('HTTPS is required for the mobile API.', 'artpulse-management'), ['status' => 403]);
+    }
+
+    private static function guard_writes(): ?WP_Error
+    {
+        if (self::write_routes_enabled()) {
+            return null;
+        }
+
+        return new WP_Error(
+            'ap_mobile_read_only',
+            __('Mobile write routes are currently disabled.', 'artpulse-management'),
+            ['status' => 503]
+        );
+    }
+
+    private static function write_routes_enabled(): bool
+    {
+        $enabled = true;
+
+        if (defined('AP_ENABLE_MOBILE_WRITE_ROUTES')) {
+            $enabled = (bool) constant('AP_ENABLE_MOBILE_WRITE_ROUTES');
+        } else {
+            $option  = get_option('ap_enable_mobile_write_routes', '1');
+            $enabled = '0' !== (string) $option;
+        }
+
+        /** @psalm-suppress InvalidScalarArgument */
+        return (bool) apply_filters('artpulse_mobile_write_routes_enabled', $enabled);
     }
 
     private static function format_event(int $event_id, array $state, ?float $distance_km = null, ?bool $is_ongoing = null): array

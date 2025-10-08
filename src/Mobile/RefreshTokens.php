@@ -7,11 +7,11 @@ use WP_User;
 
 class RefreshTokens
 {
-    private const META_KEY        = 'ap_mobile_refresh_tokens';
-    private const DEFAULT_TTL     = 30 * DAY_IN_SECONDS;
-    private const MAX_TOKENS      = 20;
-    private const HISTORY_TTL     = 14 * DAY_IN_SECONDS;
-    private const HISTORY_LIMIT   = 40;
+    private const META_KEY          = 'ap_mobile_refresh_tokens';
+    private const DEFAULT_TTL       = 30 * DAY_IN_SECONDS;
+    private const MAX_ACTIVE_TOKENS = 10;
+    private const HISTORY_TTL       = 14 * DAY_IN_SECONDS;
+    private const HISTORY_LIMIT     = 40;
 
     private static bool $hooks_registered = false;
 
@@ -34,14 +34,19 @@ class RefreshTokens
     /**
      * Mint a refresh token for the provided user and device identifier.
      *
+     * @param array<string, mixed> $metadata
+     *
      * @return array{token:string,kid:string,expires:int}
      */
-    public static function mint(int $user_id, ?string $device_id = null, ?int $ttl = null): array
+    public static function mint(int $user_id, ?string $device_id = null, array $metadata = [], ?int $ttl = null): array
     {
-        $device  = self::normalize_device($device_id);
-        $issued  = time();
-        $ttl     = $ttl ?? self::DEFAULT_TTL;
-        $expires = $issued + max(HOUR_IN_SECONDS, $ttl);
+        $device   = self::normalize_device($device_id);
+        $issued   = time();
+        $ttl      = $ttl ?? self::DEFAULT_TTL;
+        $expires  = $issued + max(HOUR_IN_SECONDS, $ttl);
+        $metadata = self::sanitize_metadata($metadata, [
+            'last_seen_at' => $issued,
+        ]);
 
         $kid    = wp_generate_uuid4();
         $secret = self::generate_secret();
@@ -55,6 +60,8 @@ class RefreshTokens
         }
 
         $changed = false;
+
+        $records = self::enforce_session_cap($records, $issued, $changed);
 
         foreach ($records as &$record) {
             if (!isset($record['device_id']) || (string) $record['device_id'] !== $device) {
@@ -77,6 +84,12 @@ class RefreshTokens
             'last_used_at' => $issued,
             'expires_at'   => $expires,
             'revoked_at'   => null,
+            'device_name'  => $metadata['device_name'] ?? null,
+            'platform'     => $metadata['platform'] ?? null,
+            'app_version'  => $metadata['app_version'] ?? null,
+            'last_ip'      => $metadata['last_ip'] ?? null,
+            'last_seen_at' => $metadata['last_seen_at'] ?? $issued,
+            'push_token'   => $metadata['push_token'] ?? null,
         ];
         $changed = true;
 
@@ -95,7 +108,7 @@ class RefreshTokens
     /**
      * Validate a refresh token and return context for rotation.
      *
-     * @return array{user_id:int,device_id:string,kid:string,expires:int}|WP_Error
+     * @return array{user_id:int,device_id:string,kid:string,expires:int,metadata:array<string, mixed>}|WP_Error
      */
     public static function validate(string $refresh_token)
     {
@@ -119,6 +132,7 @@ class RefreshTokens
         }
         $now     = time();
         $changed = false;
+        $ip      = self::detect_request_ip();
 
         foreach ($records as $index => $record) {
             if (!is_array($record) || (string) ($record['kid'] ?? '') !== $kid) {
@@ -148,7 +162,11 @@ class RefreshTokens
             }
 
             $records[$index]['last_used_at'] = $now;
-            $changed                          = true;
+            $records[$index]['last_seen_at'] = $now;
+            if ($ip) {
+                $records[$index]['last_ip'] = $ip;
+            }
+            $changed = true;
 
             if ($changed) {
                 self::save_records($user_id, $records);
@@ -159,6 +177,14 @@ class RefreshTokens
                 'device_id' => (string) ($record['device_id'] ?? 'unknown'),
                 'kid'       => (string) $kid,
                 'expires'   => (int) ($record['expires_at'] ?? $expires),
+                'metadata'  => [
+                    'device_name' => isset($record['device_name']) ? (string) $record['device_name'] : null,
+                    'platform'    => isset($record['platform']) ? (string) $record['platform'] : null,
+                    'app_version' => isset($record['app_version']) ? (string) $record['app_version'] : null,
+                    'last_ip'     => isset($record['last_ip']) ? (string) $record['last_ip'] : null,
+                    'last_seen_at'=> isset($record['last_seen_at']) ? (int) $record['last_seen_at'] : $now,
+                    'push_token'  => isset($record['push_token']) ? (string) $record['push_token'] : null,
+                ],
             ];
         }
 
@@ -173,15 +199,20 @@ class RefreshTokens
      * Rotate a refresh token after successful validation.
      *
      * @param array{user_id:int,device_id:string,kid:string} $context
+     * @param array<string, mixed> $metadata
      *
      * @return array{token:string,kid:string,expires:int}
      */
-    public static function rotate(array $context): array
+    public static function rotate(array $context, array $metadata = []): array
     {
         $user_id  = (int) ($context['user_id'] ?? 0);
         $device   = self::normalize_device($context['device_id'] ?? '');
         $previous = (string) ($context['kid'] ?? '');
         $now      = time();
+
+        $metadata = self::sanitize_metadata($metadata, [
+            'last_seen_at' => $now,
+        ]);
 
         $records = self::get_records($user_id);
         $records = self::prune_records($records);
@@ -203,7 +234,7 @@ class RefreshTokens
             self::save_records($user_id, $records);
         }
 
-        return self::mint($user_id, $device);
+        return self::mint($user_id, $device, $metadata);
     }
 
     public static function revoke_device(int $user_id, string $device_id): void
@@ -264,6 +295,48 @@ class RefreshTokens
     }
 
     /**
+     * @param array<string, mixed> $metadata
+     */
+    public static function update_device_metadata(int $user_id, string $device_id, array $metadata): void
+    {
+        $device           = self::normalize_device($device_id);
+        $records          = self::get_records($user_id);
+        $original_records = $records;
+        $records          = self::prune_records($records);
+        $changed          = $records !== $original_records;
+
+        $metadata = self::sanitize_metadata($metadata);
+
+        foreach ($records as &$record) {
+            if (!is_array($record) || (string) ($record['device_id'] ?? '') !== $device) {
+                continue;
+            }
+
+            $updates = [];
+            foreach (['device_name', 'platform', 'app_version', 'push_token', 'last_ip'] as $key) {
+                if (array_key_exists($key, $metadata) && null !== $metadata[$key]) {
+                    $updates[$key] = $metadata[$key];
+                }
+            }
+
+            if (isset($metadata['last_seen_at'])) {
+                $updates['last_seen_at'] = (int) $metadata['last_seen_at'];
+            }
+
+            if (!empty($updates)) {
+                $record = array_merge($record, $updates);
+                $changed = true;
+            }
+        }
+        unset($record);
+
+        if ($changed) {
+            $records = self::trim_history($records);
+            self::save_records($user_id, $records);
+        }
+    }
+
+    /**
      * Return the active session list for a user grouped by device.
      *
      * @return array<int, array<string, mixed>>
@@ -296,18 +369,45 @@ class RefreshTokens
 
             if (!isset($devices[$device])) {
                 $devices[$device] = [
-                    'deviceId'   => $device,
-                    'createdAt'  => (int) ($record['created_at'] ?? $now),
-                    'lastUsedAt' => (int) ($record['last_used_at'] ?? $now),
-                    'expiresAt'  => $expires,
-                    'tokenCount' => 0,
+                    'deviceId'    => $device,
+                    'deviceName'  => self::nullable_string($record['device_name'] ?? null),
+                    'platform'    => self::nullable_string($record['platform'] ?? null),
+                    'appVersion'  => self::nullable_string($record['app_version'] ?? null),
+                    'createdAt'   => (int) ($record['created_at'] ?? $now),
+                    'lastUsedAt'  => (int) ($record['last_used_at'] ?? $now),
+                    'lastSeenAt'  => (int) ($record['last_seen_at'] ?? $now),
+                    'expiresAt'   => $expires,
+                    'lastIp'      => self::nullable_string($record['last_ip'] ?? null),
+                    'pushToken'   => self::nullable_string($record['push_token'] ?? null),
+                    'tokenCount'  => 0,
                 ];
             }
 
             $devices[$device]['createdAt']  = min($devices[$device]['createdAt'], (int) ($record['created_at'] ?? $now));
             $devices[$device]['lastUsedAt'] = max($devices[$device]['lastUsedAt'], (int) ($record['last_used_at'] ?? $now));
+            $devices[$device]['lastSeenAt'] = max($devices[$device]['lastSeenAt'], (int) ($record['last_seen_at'] ?? $now));
             $devices[$device]['expiresAt']  = max($devices[$device]['expiresAt'], $expires);
             $devices[$device]['tokenCount']++;
+
+            if (empty($devices[$device]['deviceName']) && !empty($record['device_name'])) {
+                $devices[$device]['deviceName'] = self::nullable_string($record['device_name']);
+            }
+
+            if (empty($devices[$device]['platform']) && !empty($record['platform'])) {
+                $devices[$device]['platform'] = self::nullable_string($record['platform']);
+            }
+
+            if (empty($devices[$device]['appVersion']) && !empty($record['app_version'])) {
+                $devices[$device]['appVersion'] = self::nullable_string($record['app_version']);
+            }
+
+            if (!empty($record['last_ip'])) {
+                $devices[$device]['lastIp'] = self::nullable_string($record['last_ip']);
+            }
+
+            if (!empty($record['push_token'])) {
+                $devices[$device]['pushToken'] = self::nullable_string($record['push_token']);
+            }
         }
 
         usort(
@@ -421,6 +521,133 @@ class RefreshTokens
         return array_slice($records, -1 * self::HISTORY_LIMIT);
     }
 
+    /**
+     * @param array<string, mixed> $metadata
+     * @param array<string, mixed> $defaults
+     * @return array<string, mixed>
+     */
+    private static function sanitize_metadata(array $metadata, array $defaults = []): array
+    {
+        $metadata = array_merge($defaults, $metadata);
+
+        $metadata['device_name'] = self::sanitize_nullable_text($metadata['device_name'] ?? null, 120);
+        $metadata['platform']    = self::sanitize_nullable_text($metadata['platform'] ?? null, 60);
+        $metadata['app_version'] = self::sanitize_nullable_text($metadata['app_version'] ?? null, 60);
+        $metadata['push_token']  = self::sanitize_nullable_text($metadata['push_token'] ?? null, 255);
+        $metadata['last_ip']     = self::sanitize_ip($metadata['last_ip'] ?? null);
+
+        $last_seen = isset($metadata['last_seen_at']) ? (int) $metadata['last_seen_at'] : null;
+        if ($last_seen && $last_seen > 0) {
+            $metadata['last_seen_at'] = $last_seen;
+        } else {
+            unset($metadata['last_seen_at']);
+        }
+
+        return $metadata;
+    }
+
+    private static function sanitize_nullable_text($value, int $length): ?string
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        $clean = sanitize_text_field($value);
+
+        return substr($clean, 0, $length);
+    }
+
+    private static function sanitize_ip($value): ?string
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if (false !== strpos($value, ',')) {
+            $value = trim(explode(',', $value)[0]);
+        }
+
+        $clean = sanitize_text_field($value);
+
+        return substr($clean, 0, 100);
+    }
+
+    private static function detect_request_ip(): ?string
+    {
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+        if ($ip) {
+            $ip = trim(explode(',', (string) $ip)[0]);
+        }
+
+        if (!$ip && isset($_SERVER['REMOTE_ADDR'])) {
+            $ip = (string) $_SERVER['REMOTE_ADDR'];
+        }
+
+        return self::sanitize_ip($ip);
+    }
+
+    private static function nullable_string($value): ?string
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $records
+     * @return array<int, array<string, mixed>>
+     */
+    private static function enforce_session_cap(array $records, int $timestamp, bool &$changed): array
+    {
+        $active = [];
+
+        foreach ($records as $index => $record) {
+            if (!is_array($record)) {
+                continue;
+            }
+
+            $expires = (int) ($record['expires_at'] ?? 0);
+            if (!empty($record['revoked_at']) || $expires < $timestamp) {
+                continue;
+            }
+
+            $last_used = (int) ($record['last_used_at'] ?? ($record['created_at'] ?? $timestamp));
+            $active[]  = [
+                'index' => $index,
+                'last'  => $last_used,
+            ];
+        }
+
+        if (count($active) < self::MAX_ACTIVE_TOKENS) {
+            return $records;
+        }
+
+        usort(
+            $active,
+            static function (array $a, array $b): int {
+                return $a['last'] <=> $b['last'];
+            }
+        );
+
+        $excess = count($active) - self::MAX_ACTIVE_TOKENS + 1;
+        for ($i = 0; $i < $excess; $i++) {
+            $target_index = $active[$i]['index'];
+            if (!isset($records[$target_index]) || !is_array($records[$target_index])) {
+                continue;
+            }
+
+            if (empty($records[$target_index]['revoked_at'])) {
+                $records[$target_index]['revoked_at'] = $timestamp;
+                $changed                               = true;
+            }
+        }
+
+        return $records;
+    }
     private static function normalize_device(?string $device_id): string
     {
         $device_id = $device_id ?? '';
