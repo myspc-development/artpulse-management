@@ -269,6 +269,10 @@ class EventsControllerTest extends WP_UnitTestCase
         $this->assertSame('full', $event_data['image']['size']);
         $this->assertSame($attachment_id, $event_data['image']['id']);
         $this->assertSame('Fallback Thumbnail Event', $event_data['image']['alt']);
+        $this->assertArrayHasKey('width', $event_data['image']);
+        $this->assertIsInt($event_data['image']['width']);
+        $this->assertArrayHasKey('height', $event_data['image']);
+        $this->assertIsInt($event_data['image']['height']);
         $this->assertSame($event_data['image']['url'], $event_data['thumbnail']);
     }
 
@@ -310,6 +314,32 @@ class EventsControllerTest extends WP_UnitTestCase
         $this->assertSame('Gallery Hall', $event_data['location']);
         $this->assertArrayHasKey('schema', $event_data);
         $this->assertIsArray($event_data['schema']);
+    }
+
+    public function test_schema_exposes_image_dimensions(): void
+    {
+        rest_get_server();
+        EventsController::register();
+
+        $request  = new WP_REST_Request('OPTIONS', '/artpulse/v1/events');
+        $response = rest_get_server()->dispatch($request);
+        $data     = $response->get_data();
+
+        $this->assertIsArray($data);
+        $this->assertArrayHasKey('schema', $data);
+        $schema = $data['schema'];
+        $this->assertIsArray($schema);
+        $this->assertArrayHasKey('properties', $schema);
+        $this->assertArrayHasKey('events', $schema['properties']);
+
+        $eventProperties = $schema['properties']['events']['items']['properties'] ?? [];
+        $this->assertIsArray($eventProperties);
+        $this->assertArrayHasKey('image', $eventProperties);
+
+        $imageProps = $eventProperties['image']['properties'] ?? [];
+        $this->assertIsArray($imageProps);
+        $this->assertArrayHasKey('width', $imageProps);
+        $this->assertArrayHasKey('height', $imageProps);
     }
 
     public function test_generate_ics_contains_event_summary(): void
@@ -362,7 +392,7 @@ class EventsControllerTest extends WP_UnitTestCase
 
     public static function filter_remove_large_sizes($sizes)
     {
-        unset($sizes['large'], $sizes['medium_large']);
+        unset($sizes['large'], $sizes['medium_large'], $sizes['ap-grid']);
 
         return $sizes;
     }

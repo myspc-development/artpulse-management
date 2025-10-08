@@ -99,7 +99,13 @@ class OrganizationEventForm {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
             require_once ABSPATH . 'wp-admin/includes/image.php';
-            
+
+            $file = $_FILES['event_flyer'];
+            $check = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
+            if (empty($check['ext']) || strpos((string) ($check['type'] ?? ''), 'image/') !== 0) {
+                wp_die(esc_html__('Please upload a valid image.', 'artpulse-management'));
+            }
+
             $attachment_id = media_handle_upload('event_flyer', $post_id);
             if (!is_wp_error($attachment_id)) {
                 set_post_thumbnail($post_id, $attachment_id);
