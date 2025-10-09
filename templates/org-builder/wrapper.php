@@ -49,7 +49,7 @@
         <?php if ('profile' === $builder_step) : ?>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="ap-org-builder__form">
                 <?php wp_nonce_field('ap-org-builder-' . $org_post->ID, 'ap_org_builder_nonce'); ?>
-                <?php wp_nonce_field('ap_portfolio_update', '_ap_portfolio_nonce'); ?>
+                <?php wp_nonce_field('ap_portfolio_update', '_ap_nonce'); ?>
                 <input type="hidden" name="action" value="ap_org_builder_save" />
                 <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
                 <input type="hidden" name="builder_step" value="profile" />
@@ -110,7 +110,7 @@
         <?php elseif ('images' === $builder_step) : ?>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="ap-org-builder__form">
                 <?php wp_nonce_field('ap-org-builder-' . $org_post->ID, 'ap_org_builder_nonce'); ?>
-                <?php wp_nonce_field('ap_portfolio_update', '_ap_portfolio_nonce'); ?>
+                <?php wp_nonce_field('ap_portfolio_update', '_ap_nonce'); ?>
                 <input type="hidden" name="action" value="ap_org_builder_save" />
                 <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
                 <input type="hidden" name="builder_step" value="images" />
@@ -225,7 +225,7 @@
                 <p><?php esc_html_e('Ready to share your organization with the community? Publish to make your profile publicly visible.', 'artpulse-management'); ?></p>
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                     <?php wp_nonce_field('ap-org-builder-' . $org_post->ID, 'ap_org_builder_nonce'); ?>
-                    <?php wp_nonce_field('ap_portfolio_update', '_ap_portfolio_nonce'); ?>
+                    <?php wp_nonce_field('ap_portfolio_update', '_ap_nonce'); ?>
                     <input type="hidden" name="action" value="ap_org_builder_save" />
                     <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
                     <input type="hidden" name="builder_step" value="publish" />
