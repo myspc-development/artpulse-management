@@ -132,27 +132,21 @@ final class PortfolioController
             return new WP_Error('bad_request', __('No file provided', 'artpulse-management'), ['status' => 400]);
         }
 
-        $tmp_name = $file['tmp_name'] ?? '';
-        $name     = $file['name'] ?? '';
+        $post_id = (int) $request['id'];
 
-        $check = wp_check_filetype_and_ext($tmp_name, $name);
-        if (!in_array($check['type'], ['image/jpeg', 'image/png', 'image/webp'], true)) {
-            return new WP_Error('invalid_mime', __('Only images are allowed', 'artpulse-management'), ['status' => 415]);
+        $validation = self::validate_image_file($file);
+        if ($validation instanceof WP_Error) {
+            return $validation;
         }
 
-        $size = isset($file['size']) ? (int) $file['size'] : 0;
-        if ($size > 10 * MB_IN_BYTES) {
-            return new WP_Error('too_large', __('Images must be smaller than 10MB', 'artpulse-management'), ['status' => 413]);
-        }
-
-        $attachment_id = media_handle_sideload($file, (int) $request['id']);
+        $attachment_id = media_handle_sideload($file, $post_id);
         if (is_wp_error($attachment_id)) {
             return $attachment_id;
         }
 
         wp_update_post([
             'ID'          => $attachment_id,
-            'post_parent' => (int) $request['id'],
+            'post_parent' => $post_id,
         ]);
 
         return [
@@ -165,11 +159,20 @@ final class PortfolioController
         $post_id = (int) $request['id'];
         $body    = $request->get_json_params();
 
-        $order = array_map('intval', (array) ($body['gallery_ids'] ?? []));
+        $order = self::filter_portfolio_attachments((array) ($body['gallery_ids'] ?? []), $post_id);
         update_post_meta($post_id, '_ap_gallery_ids', $order);
 
         if (!empty($body['featured_id'])) {
-            set_post_thumbnail($post_id, (int) $body['featured_id']);
+            $featured = (int) $body['featured_id'];
+            $allowed  = $order;
+            $cover_id = (int) get_post_meta($post_id, '_ap_cover_id', true);
+            if ($cover_id) {
+                $allowed[] = $cover_id;
+            }
+
+            if (in_array($featured, $allowed, true)) {
+                set_post_thumbnail($post_id, $featured);
+            }
         }
 
         AuditLogger::info('portfolio.media.reorder', [
@@ -201,5 +204,83 @@ final class PortfolioController
             'height' => $best['height'],
             'alt'    => sanitize_text_field($alt),
         ];
+    }
+
+    private static function validate_image_file(array $file)
+    {
+        $tmp_name = $file['tmp_name'] ?? '';
+        $name     = $file['name'] ?? '';
+
+        if (!$tmp_name || !file_exists($tmp_name)) {
+            return new WP_Error('invalid_file', __('Uploaded file could not be processed.', 'artpulse-management'), ['status' => 400]);
+        }
+
+        $check = wp_check_filetype_and_ext($tmp_name, $name);
+        $type  = $check['type'] ?? '';
+        if (!in_array($type, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+            return new WP_Error('invalid_mime', __('Only images are allowed', 'artpulse-management'), ['status' => 415]);
+        }
+
+        $size = isset($file['size']) ? (int) $file['size'] : 0;
+        if ($size > 10 * MB_IN_BYTES) {
+            return new WP_Error('too_large', __('Images must be smaller than 10MB', 'artpulse-management'), ['status' => 413]);
+        }
+
+        $dimensions = @getimagesize($tmp_name); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        if (!is_array($dimensions) || count($dimensions) < 2) {
+            return new WP_Error('invalid_image', __('Unable to determine image dimensions.', 'artpulse-management'), ['status' => 415]);
+        }
+
+        if ($dimensions[0] < 200 || $dimensions[1] < 200) {
+            return new WP_Error(
+                'image_too_small',
+                __('Images must be at least 200×200 pixels.', 'artpulse-management'),
+                ['status' => 415]
+            );
+        }
+
+        if ('image/jpeg' === $type) {
+            $channels = isset($dimensions['channels']) ? (int) $dimensions['channels'] : 0;
+            if ($channels >= 4) {
+                return new WP_Error(
+                    'image_cmyk',
+                    __('CMYK JPEGs are not supported. Please upload an RGB image.', 'artpulse-management'),
+                    ['status' => 415]
+                );
+            }
+        }
+
+        return null;
+    }
+
+    private static function filter_portfolio_attachments(array $attachments, int $post_id): array
+    {
+        $filtered = [];
+
+        foreach ($attachments as $attachment_id) {
+            $attachment_id = (int) $attachment_id;
+            if ($attachment_id <= 0) {
+                continue;
+            }
+
+            $attachment = get_post($attachment_id);
+            if (!$attachment || 'attachment' !== $attachment->post_type) {
+                continue;
+            }
+
+            $parent = (int) $attachment->post_parent;
+            if ($parent === $post_id || $parent === 0) {
+                if (0 === $parent) {
+                    wp_update_post([
+                        'ID'          => $attachment_id,
+                        'post_parent' => $post_id,
+                    ]);
+                }
+
+                $filtered[] = $attachment_id;
+            }
+        }
+
+        return array_values(array_unique($filtered));
     }
 }

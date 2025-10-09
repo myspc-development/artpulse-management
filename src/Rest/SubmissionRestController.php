@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Rest;
 
+use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\RoleUpgradeManager;
 use WP_Error;
 use WP_REST_Request;
@@ -122,10 +123,16 @@ class SubmissionRestController
 
         $post_content = isset( $params['content'] ) ? wp_kses_post( $params['content'] ) : '';
 
+        $status = 'pending';
+
+        if ( 'artpulse_event' === $post_type ) {
+            $status = get_option( 'ap_require_event_review', true ) ? 'pending' : 'publish';
+        }
+
         $post_args = [
             'post_type'   => $post_type,
             'post_title'  => sanitize_text_field( $params['title'] ),
-            'post_status' => 'pending',
+            'post_status' => $status,
         ];
 
         if ( ! empty( $post_content ) ) {
@@ -173,7 +180,7 @@ class SubmissionRestController
             $saved_image_ids
         )));
 
-        return rest_ensure_response( [
+        $response = [
             'id'        => $post_id,
             'title'     => $post->post_title,
             'content'   => $post->post_content,
@@ -181,7 +188,17 @@ class SubmissionRestController
             'type'      => $post->post_type,
             'image_ids' => $saved_image_ids,
             'images'    => $image_urls,
-        ] );
+        ];
+
+        if ( 'artpulse_event' === $post_type ) {
+            AuditLogger::info( 'event.submit', [
+                'post_id' => $post_id,
+                'user_id' => $current_user_id,
+                'source'  => 'rest',
+            ] );
+        }
+
+        return rest_ensure_response( $response );
     }
 
     /**

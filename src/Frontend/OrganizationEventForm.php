@@ -2,8 +2,10 @@
 
 namespace ArtPulse\Frontend;
 
+use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\Capabilities;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
+use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_Error;
 use WP_Post;
 use WP_User;
@@ -85,6 +87,7 @@ class OrganizationEventForm {
         <div class="ap-form-messages" role="status" aria-live="polite"></div>
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
             <?php wp_nonce_field('submit_event', 'ap_event_nonce'); ?>
+            <?php wp_nonce_field('ap_portfolio_update', '_ap_portfolio_nonce'); ?>
             <input type="hidden" name="org_id" value="<?php echo esc_attr($org_id); ?>" />
             <input type="hidden" name="artist_id" value="<?php echo esc_attr($artist_id); ?>" />
 
@@ -123,8 +126,11 @@ class OrganizationEventForm {
 
     public static function handle_submission(bool $should_redirect = true) {
         $user_id   = get_current_user_id();
-        $org_id    = isset($_POST['org_id']) ? absint($_POST['org_id']) : 0;
-        $artist_id = isset($_POST['artist_id']) ? absint($_POST['artist_id']) : 0;
+        $context_org_id = isset($_GET['org_id']) ? absint(wp_unslash($_GET['org_id'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $context_artist_id = isset($_GET['artist_id']) ? absint(wp_unslash($_GET['artist_id'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+        $org_id    = 0;
+        $artist_id = 0;
 
         $errors = [];
 
@@ -133,14 +139,28 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
-        if ($org_id && !PortfolioAccess::is_owner($user_id, $org_id)) {
-            $errors[] = __('You do not have permission to submit this event.', 'artpulse-management');
+        if (!check_admin_referer('ap_portfolio_update', '_ap_portfolio_nonce', false)) {
+            $errors[] = __('Security check failed. Please try again.', 'artpulse-management');
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
-        if ($artist_id && !PortfolioAccess::is_owner($user_id, $artist_id)) {
-            $errors[] = __('You do not have permission to submit this event.', 'artpulse-management');
+        $rate_error = FormRateLimiter::enforce('event', $user_id);
+        if ($rate_error instanceof WP_Error) {
+            self::send_rate_limit_headers($rate_error);
+            $errors[] = $rate_error->get_error_message();
             return self::maybe_handle_errors($errors, $should_redirect);
+        }
+
+        if ($context_org_id && PortfolioAccess::is_owner($user_id, $context_org_id)) {
+            $org_id = $context_org_id;
+        } else {
+            $org_id = self::get_user_org_id($user_id);
+        }
+
+        if ($context_artist_id && PortfolioAccess::is_owner($user_id, $context_artist_id)) {
+            $artist_id = $context_artist_id;
+        } else {
+            $artist_id = self::get_user_artist_id($user_id);
         }
 
         if (!$org_id && !$artist_id) {
@@ -263,6 +283,12 @@ class OrganizationEventForm {
             self::remember_errors($user_id, []);
         }
 
+        AuditLogger::info('event.submit', [
+            'post_id' => $post_id,
+            'user_id' => $user_id,
+            'source'  => 'web',
+        ]);
+
         if ($should_redirect) {
             $redirect = get_permalink($post_id);
             if ($redirect) {
@@ -301,6 +327,28 @@ class OrganizationEventForm {
         }
 
         return 0;
+    }
+
+    private static function send_rate_limit_headers(WP_Error $error): void
+    {
+        $data = $error->get_error_data();
+        if (!is_array($data)) {
+            return;
+        }
+
+        if (isset($data['retry_after'])) {
+            header('Retry-After: ' . (int) $data['retry_after']);
+        }
+
+        if (isset($data['limit'])) {
+            header('X-RateLimit-Limit: ' . (int) $data['limit']);
+        }
+
+        header('X-RateLimit-Remaining: 0');
+
+        if (isset($data['reset'])) {
+            header('X-RateLimit-Reset: ' . (int) $data['reset']);
+        }
     }
 
     private static function get_user_org_id(int $user_id): int
