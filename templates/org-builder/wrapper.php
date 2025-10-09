@@ -124,7 +124,8 @@
                             ]); ?>
                         </div>
                     <?php endif; ?>
-                    <input type="file" name="ap_logo" accept="image/jpeg,image/png,image/webp" data-test="org-logo-input" />
+                    <label class="ap-org-builder__upload-label" for="ap_org_logo_input"><?php esc_html_e('Upload new logo image', 'artpulse-management'); ?></label>
+                    <input id="ap_org_logo_input" type="file" name="ap_logo" accept="image/jpeg,image/png,image/webp" data-test="org-logo-input" />
                     <p class="description"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
                 </fieldset>
 
@@ -139,7 +140,8 @@
                             ]); ?>
                         </div>
                     <?php endif; ?>
-                    <input type="file" name="ap_cover" accept="image/jpeg,image/png,image/webp" />
+                    <label class="ap-org-builder__upload-label" for="ap_org_cover_input"><?php esc_html_e('Upload new cover image', 'artpulse-management'); ?></label>
+                    <input id="ap_org_cover_input" type="file" name="ap_cover" accept="image/jpeg,image/png,image/webp" />
                     <p class="description"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
                     <?php if (!empty($builder_meta['cover_id'])) : ?>
                         <label class="ap-org-builder__radio">
@@ -175,7 +177,8 @@
                             </div>
                         <?php endforeach; ?>
                     </div>
-                    <input type="file" name="ap_gallery[]" multiple accept="image/jpeg,image/png,image/webp" />
+                    <label class="ap-org-builder__upload-label" for="ap_org_gallery_input"><?php esc_html_e('Add gallery images', 'artpulse-management'); ?></label>
+                    <input id="ap_org_gallery_input" type="file" name="ap_gallery[]" multiple accept="image/jpeg,image/png,image/webp" />
                     <p class="description"><?php esc_html_e('Upload multiple JPG, PNG, or WebP images up to 10MB each. Use the order fields above to sort.', 'artpulse-management'); ?></p>
                 </fieldset>
 

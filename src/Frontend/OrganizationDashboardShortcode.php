@@ -2,6 +2,8 @@
 
 namespace ArtPulse\Frontend;
 
+use function wp_strip_all_tags;
+
 class OrganizationDashboardShortcode {
     public static function register() {
         add_shortcode('ap_org_dashboard', [self::class, 'render']);
@@ -167,10 +169,31 @@ class OrganizationDashboardShortcode {
             echo '<li class="ap-org-event-empty">' . esc_html__('No events found.', 'artpulse') . '</li>';
         } else {
             foreach ($events as $event) {
+                $moderation_state = get_post_meta($event->ID, '_ap_moderation_state', true);
+                $moderation_reason = get_post_meta($event->ID, '_ap_moderation_reason', true);
+                $status_label = '';
+
+                if ($moderation_state) {
+                    switch ($moderation_state) {
+                        case 'approved':
+                            $status_label = __('Approved', 'artpulse-management');
+                            break;
+                        case 'rejected':
+                            $status_label = __('Rejected', 'artpulse-management');
+                            break;
+                        default:
+                            $status_label = __('Pending review', 'artpulse-management');
+                            break;
+                    }
+                }
+
                 echo sprintf(
-                    '<li class="ap-org-event-item"><span class="ap-org-event-title">%1$s</span> <button type="button" class="ap-delete-event" data-id="%2$d">%3$s</button></li>',
+                    '<li class="ap-org-event-item"><span class="ap-org-event-title">%1$s</span>%2$s%3$s <button type="button" class="ap-delete-event" data-id="%4$d" aria-label="%5$s">%6$s</button></li>',
                     esc_html($event->post_title),
+                    $status_label ? sprintf(' <span class="ap-org-event-status" data-status="%2$s">%1$s</span>', esc_html($status_label), esc_attr($moderation_state)) : '',
+                    $moderation_reason ? sprintf(' <span class="ap-org-event-reason">%1$s</span>', esc_html($moderation_reason)) : '',
                     absint($event->ID),
+                    esc_attr(sprintf(__('Delete %s', 'artpulse-management'), wp_strip_all_tags($event->post_title))),
                     esc_html__('Delete', 'artpulse')
                 );
             }

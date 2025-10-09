@@ -2,11 +2,13 @@
 
 namespace ArtPulse\Admin;
 
+use ArtPulse\Community\NotificationManager;
 use ArtPulse\Core\AuditLogger;
 use WP_List_Table;
 use WP_Post;
 use WP_Query;
 use WP_User;
+use function wp_strip_all_tags;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -250,6 +252,7 @@ class EventApprovals
             }
 
             $processed++;
+            $this->record_moderation_meta( $event_id, 'approved', $reason );
             AuditLogger::info(
                 'event.approve',
                 [
@@ -259,7 +262,8 @@ class EventApprovals
                     'reason'   => $reason,
                 ]
             );
-            $this->send_status_email( get_post( $event_id ), 'approved' );
+            $this->send_status_email( get_post( $event_id ), 'approved', $reason );
+            $this->notify_owner( $event_id, 'approved', $reason );
         }
 
         return $processed;
@@ -288,6 +292,7 @@ class EventApprovals
             }
 
             $processed++;
+            $this->record_moderation_meta( $event_id, 'rejected', $reason );
             AuditLogger::info(
                 'event.deny',
                 [
@@ -297,13 +302,14 @@ class EventApprovals
                     'reason'   => $reason,
                 ]
             );
-            $this->send_status_email( $trashed, 'rejected' );
+            $this->send_status_email( $trashed, 'rejected', $reason );
+            $this->notify_owner( $event_id, 'rejected', $reason );
         }
 
         return $processed;
     }
 
-    private function send_status_email( ?WP_Post $post, string $status ): void
+    private function send_status_email( ?WP_Post $post, string $status, string $reason ): void
     {
         if ( ! $post instanceof WP_Post ) {
             return;
@@ -321,25 +327,64 @@ class EventApprovals
         if ( 'approved' === $status ) {
             $subject = sprintf( __( 'Your event "%s" has been approved', 'artpulse' ), $post->post_title );
             $message = sprintf(
-                __( "Hi %1\$s,\n\nYour event \"%2\$s\" has been approved and is now published on %3\$s.\n\nThanks,\n%4\$s", 'artpulse' ),
+                __( "Hi %1\$s,\n\nYour event \"%2\$s\" has been approved and is now published on %3\$s.%4\$s\n\nThanks,\n%5\$s", 'artpulse' ),
                 $author_name,
                 $post->post_title,
                 esc_url( home_url() ),
+                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse' ), $reason ) : '',
                 $blog_name
             );
             $message = apply_filters( 'artpulse_event_approval_email_body', $message, $post, $author );
         } else {
             $subject = sprintf( __( 'Your event "%s" was not approved', 'artpulse' ), $post->post_title );
             $message = sprintf(
-                __( "Hi %1\$s,\n\nYour event \"%2\$s\" was not approved. You can review the submission and try again.\n\nThanks,\n%3\$s", 'artpulse' ),
+                __( "Hi %1\$s,\n\nYour event \"%2\$s\" was not approved. You can review the submission and try again.%3\$s\n\nThanks,\n%4\$s", 'artpulse' ),
                 $author_name,
                 $post->post_title,
+                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse' ), $reason ) : '',
                 $blog_name
             );
             $message = apply_filters( 'artpulse_event_rejection_email_body', $message, $post, $author );
         }
 
         wp_mail( $author->user_email, $subject, $message );
+    }
+
+    private function record_moderation_meta( int $event_id, string $state, string $reason ): void
+    {
+        update_post_meta( $event_id, '_ap_moderation_state', $state );
+
+        if ( '' === $reason ) {
+            delete_post_meta( $event_id, '_ap_moderation_reason' );
+        } else {
+            update_post_meta( $event_id, '_ap_moderation_reason', $reason );
+        }
+    }
+
+    private function notify_owner( int $event_id, string $state, string $reason ): void
+    {
+        $post = get_post( $event_id );
+
+        if ( ! $post instanceof WP_Post || ! $post->post_author ) {
+            return;
+        }
+
+        $title   = $post->post_title ? wp_strip_all_tags( $post->post_title ) : __( 'Event', 'artpulse' );
+        $message = 'approved' === $state
+            ? sprintf( __( 'Event "%s" was approved.', 'artpulse' ), $title )
+            : sprintf( __( 'Event "%s" was not approved.', 'artpulse' ), $title );
+
+        if ( '' !== $reason ) {
+            $message .= ' ' . sprintf( __( 'Reason: %s', 'artpulse' ), $reason );
+        }
+
+        NotificationManager::add(
+            (int) $post->post_author,
+            'event_moderated',
+            $event_id,
+            0,
+            $message
+        );
     }
 
     private function redirect_with_notice( string $notice, int $count = 0 ): void

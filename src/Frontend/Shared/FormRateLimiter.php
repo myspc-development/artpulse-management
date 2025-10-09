@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Frontend\Shared;
 
+use ArtPulse\Core\RateLimitHeaders;
 use WP_Error;
 use function sanitize_key;
 
@@ -56,7 +57,8 @@ final class FormRateLimiter
         }
 
         if ($bucket['count'] >= $limit) {
-            $retry_after = max(1, (int) ($bucket['reset'] - $now));
+            $retry_after = max(1, (int) ceil($bucket['reset'] - $now));
+            $headers     = RateLimitHeaders::build($limit, 0, (int) $bucket['reset'], $retry_after);
 
             return new WP_Error(
                 'rate_limited',
@@ -67,12 +69,13 @@ final class FormRateLimiter
                     'limit'        => $limit,
                     'window'       => $window,
                     'reset'        => $bucket['reset'],
+                    'headers'      => $headers,
                 ]
             );
         }
 
         $bucket['count']++;
-        $ttl = max(1, (int) ($bucket['reset'] - $now));
+        $ttl = max(1, (int) ceil($bucket['reset'] - $now));
         set_transient($key, $bucket, $ttl);
 
         return null;

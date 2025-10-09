@@ -6,7 +6,7 @@ get_header();
 while (have_posts()) : the_post();
     $post_id   = get_the_ID();
     $post_type = get_post_type($post_id);
-    $widgets   = PortfolioWidgetRegistry::for_post($post_id);
+    $widgets   = PortfolioWidgetRegistry::public_widgets($post_id);
 
     $socials_raw = (string) get_post_meta($post_id, '_ap_socials', true);
     $socials = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $socials_raw)));

@@ -3,6 +3,7 @@
 namespace ArtPulse\Frontend;
 
 use ArtPulse\Core\AuditLogger;
+use ArtPulse\Core\RateLimitHeaders;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Error;
@@ -62,22 +63,23 @@ final class ArtistBuilderShortcode
     private static function enforce_post_security(): void
     {
         if (!is_user_logged_in()) {
-            status_header(401);
-            wp_send_json_error([
-                'code'    => 'auth_required',
-                'message' => __('You must be logged in to update this artist.', 'artpulse-management'),
-            ], 401);
+            self::respond_with_error(
+                'auth_required',
+                __('You must be logged in to update this artist.', 'artpulse-management'),
+                401
+            );
         }
 
         $nonce_valid = isset($_POST['_ap_nonce'])
             && check_admin_referer('ap_portfolio_update', '_ap_nonce', false);
 
         if (!$nonce_valid) {
-            status_header(403);
-            wp_send_json_error([
-                'code'    => 'invalid_nonce',
-                'message' => __('Security check failed.', 'artpulse-management'),
-            ], 403);
+            self::respond_with_error(
+                'invalid_nonce',
+                __('Security check failed.', 'artpulse-management'),
+                403,
+                ['nonce' => wp_create_nonce('ap_portfolio_update')]
+            );
         }
 
         $user_id = get_current_user_id();
@@ -89,31 +91,19 @@ final class ArtistBuilderShortcode
 
     private static function bail_rate_limited(WP_Error $error): void
     {
-        $data   = $error->get_error_data();
-        $status = is_array($data) && isset($data['status']) ? (int) $data['status'] : 429;
+        $data   = (array) $error->get_error_data();
+        $status = isset($data['status']) ? (int) $data['status'] : 429;
 
         if (429 !== $status) {
-            status_header($status);
-            wp_send_json_error([
-                'code'    => $error->get_error_code(),
-                'message' => $error->get_error_message(),
-            ], $status);
+            self::respond_with_error($error->get_error_code(), $error->get_error_message(), $status);
         }
 
-        $retry_after = is_array($data) && isset($data['retry_after'])
-            ? max(1, (int) $data['retry_after'])
-            : 60;
-        $limit = is_array($data) && isset($data['limit'])
-            ? max(1, (int) $data['limit'])
-            : 30;
+        $retry_after = isset($data['retry_after']) ? max(1, (int) $data['retry_after']) : 60;
+        $limit       = isset($data['limit']) ? max(1, (int) $data['limit']) : 30;
+        $reset       = isset($data['reset']) ? (int) $data['reset'] : time() + $retry_after;
 
-        if (is_array($data) && isset($data['reset'])) {
-            header('X-RateLimit-Reset: ' . (int) $data['reset']);
-        }
-
-        header('Retry-After: ' . $retry_after);
-        header('X-RateLimit-Limit: ' . $limit);
-        header('X-RateLimit-Remaining: 0');
+        $headers = $data['headers'] ?? RateLimitHeaders::build($limit, 0, $reset, $retry_after);
+        RateLimitHeaders::emit($headers);
 
         AuditLogger::info('rate_limit.hit', [
             'user_id'     => get_current_user_id(),
@@ -123,10 +113,45 @@ final class ArtistBuilderShortcode
             'limit'       => $limit,
         ]);
 
-        wp_send_json_error([
-            'code'    => $error->get_error_code(),
-            'message' => $error->get_error_message(),
-        ], 429);
+        self::respond_with_error(
+            $error->get_error_code(),
+            $error->get_error_message(),
+            429,
+            [
+                'limit'       => $limit,
+                'retry_after' => $retry_after,
+                'reset'       => $reset,
+            ],
+            $retry_after
+        );
+    }
+
+    private static function respond_with_error(
+        string $code,
+        string $message,
+        int $status,
+        array $details = [],
+        ?int $retry_after = null
+    ): void {
+        $payload = [
+            'code'    => $code,
+            'message' => $message,
+            'details' => $details,
+        ];
+
+        if (null !== $retry_after) {
+            $payload['retry_after'] = max(0, $retry_after);
+        }
+
+        if (isset($details['nonce']) && is_string($details['nonce'])) {
+            header('X-ArtPulse-Nonce: ' . $details['nonce']);
+        }
+
+        if (function_exists('wp_doing_ajax') && wp_doing_ajax()) {
+            wp_send_json($payload, $status);
+        }
+
+        wp_die(esc_html($message), esc_html__('Request blocked', 'artpulse-management'), ['response' => $status]);
     }
 
     private static function owned_artists(int $user_id): array
