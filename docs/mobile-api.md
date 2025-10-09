@@ -26,7 +26,7 @@ Returns an access token (`token`), expiry (`expires`), refresh token (`refreshTo
 
 ### `POST /auth/refresh`
 
-Accepts a `refresh_token`, rotates it and issues a new access token. Refresh validation honours ±120 seconds of client clock skew for `nbf` and `exp` checks. Reuse or expired tokens return `401 ap_refresh_expired`/`refresh_reuse`.
+Accepts a `refresh_token`, rotates it and issues a new access token. Refresh validation honours ±120 seconds of client clock skew for `nbf` and `exp` checks. Reuse or expired tokens return `401` with codes `ap_refresh_expired` (`AUTH_EXPIRED`) or `refresh_reuse` (`REFRESH_REUSE`).
 
 ### `GET /me`
 
@@ -97,7 +97,7 @@ Notifications honour user-configured mutes from `/me` and the `artpulse_mobile_n
 
 Allowed origins are supplied via the `artpulse_mobile_allowed_origins` filter and the `artpulse_mobile_universal_link_domain` filter (automatically converted to `https://<domain>`). Wildcards are ignored; only HTTPS origins are accepted. Requests from disallowed origins receive no `Access-Control-Allow-Origin` header.
 
-All write endpoints are rate-limited per user and IP. If a limit is exceeded the API responds with HTTP `429 ap_rate_limited` and includes `Retry-After`. Structured logs include the route, user ID, IP and retry delay.
+All write endpoints are rate-limited per user and IP. If a limit is exceeded the API responds with HTTP `429 ap_rate_limited` (`RATE_LIMITED`) and includes `Retry-After`. Structured logs include the route, user ID, IP and retry delay.
 
 ## Metrics & CLI
 
@@ -111,7 +111,16 @@ wp artpulse metrics dump --last=15m
 
 - **Write route toggle** – set the `ap_enable_mobile_write_routes` option (or define `AP_ENABLE_MOBILE_WRITE_ROUTES`) to `0` to immediately disable like/follow/save mutations.
 - **JWT key rotation** – use the admin tooling to mark a key as `Retiring` for at least one week before invoking `JWT::retire_key()`. Do not remove the key from storage until the retirement window has elapsed to maintain token validity.
-- **Error codes** – API error identifiers (e.g. `ap_invalid_credentials`, `ap_missing_token`, `ap_tls_required`, `ap_mobile_read_only`) are stable; add new codes rather than mutating existing ones.
+- **Error codes** – API error identifiers (e.g. `ap_invalid_credentials`, `ap_missing_token`, `ap_tls_required`, `ap_mobile_read_only`) are stable; add new codes rather than mutating existing ones. The canonical mobile errors are centralised as constants on `RestErrorFormatter`:
+
+| Constant | Error code | HTTP status | Description |
+| --- | --- | --- | --- |
+| `AUTH_EXPIRED` | `ap_refresh_expired` | 401 | Refresh token expired. |
+| `REFRESH_REUSE` | `refresh_reuse` | 401 | Refresh token reuse detected and the session revoked. |
+| `AUTH_REVOKED` | `ap_refresh_revoked` | 401 | Refresh token was revoked out-of-band. |
+| `RATE_LIMITED` | `ap_rate_limited` | 429 | Rate limit exceeded; includes `Retry-After`. |
+| `GEO_INVALID_BOUNDS` | `ap_geo_invalid` | 400 | Invalid or unsupported geosearch bounds. |
+| `CORS_FORBIDDEN` | `cors_forbidden` | 403 | Request origin is not permitted for the mobile API. |
 
 ## Data backfill
 

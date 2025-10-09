@@ -248,7 +248,7 @@ class RefreshTokens
             if (!empty($record['revoked_at'])) {
                 self::revoke_device($user_id, (string) ($record['device_id'] ?? 'unknown'));
 
-                return new WP_Error('refresh_reuse', __('Refresh token reuse detected.', 'artpulse-management'), ['status' => 401]);
+                return new WP_Error(RestErrorFormatter::REFRESH_REUSE, __('Refresh token reuse detected.', 'artpulse-management'), ['status' => 401]);
             }
 
             $expires = (int) ($record['expires_at'] ?? 0);
@@ -257,14 +257,14 @@ class RefreshTokens
                 $changed                       = true;
                 self::save_records($user_id, $records);
 
-                return new WP_Error('ap_refresh_expired', __('Refresh token expired.', 'artpulse-management'), ['status' => 401]);
+                return new WP_Error(RestErrorFormatter::AUTH_EXPIRED, __('Refresh token expired.', 'artpulse-management'), ['status' => 401]);
             }
 
             $expected = self::hash_token($kid, $secret);
             if (!hash_equals((string) ($record['hash'] ?? ''), $expected)) {
                 self::revoke_device($user_id, (string) ($record['device_id'] ?? 'unknown'));
 
-                return new WP_Error('refresh_reuse', __('Refresh token reuse detected.', 'artpulse-management'), ['status' => 401]);
+                return new WP_Error(RestErrorFormatter::REFRESH_REUSE, __('Refresh token reuse detected.', 'artpulse-management'), ['status' => 401]);
             }
 
             $records[$index]['last_used_at'] = $now;
@@ -298,7 +298,7 @@ class RefreshTokens
             self::save_records($user_id, $records);
         }
 
-        return new WP_Error('ap_refresh_revoked', __('Refresh token revoked.', 'artpulse-management'), ['status' => 401]);
+        return new WP_Error(RestErrorFormatter::AUTH_REVOKED, __('Refresh token revoked.', 'artpulse-management'), ['status' => 401]);
     }
 
     /**

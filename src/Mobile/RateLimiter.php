@@ -138,7 +138,7 @@ class RateLimiter
             }
 
             return new WP_Error(
-                'ap_rate_limited',
+                RestErrorFormatter::RATE_LIMITED,
                 __('Too many requests. Please slow down.', 'artpulse-management'),
                 [
                     'status'      => 429,
