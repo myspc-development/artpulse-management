@@ -2,9 +2,10 @@
 
 namespace ArtPulse\Community;
 
+use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
-use WP_Error;
+use function wp_strip_all_tags;
 
 class NotificationRestController
 {
@@ -72,15 +73,21 @@ class NotificationRestController
 
     private static function prepare_notification_response($notification): array
     {
+        $content = is_object( $notification ) && property_exists( $notification, 'content' )
+            ? (string) $notification->content
+            : '';
+
+        $safe_content = wp_strip_all_tags( $content );
+
         return [
             'id'         => (int) $notification->id,
             'type'       => $notification->type,
             'object_id'  => null !== $notification->object_id ? (int) $notification->object_id : null,
             'related_id' => null !== $notification->related_id ? (int) $notification->related_id : null,
-            'content'    => $notification->content,
+            'content'    => $safe_content,
             'status'     => $notification->status,
             'read'       => 'read' === $notification->status,
-            'message'    => $notification->content ?: $notification->type,
+            'message'    => $safe_content ?: $notification->type,
             'created_at' => $notification->created_at,
         ];
     }

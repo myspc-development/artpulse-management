@@ -111,6 +111,8 @@ class SubmissionRestController
             }
 
             $params['event_organization'] = $owned_org_id;
+            $owned_artist_id              = self::resolve_owned_artist_id( $current_user_id, absint( $params['artist_id'] ?? 0 ) );
+            $params['artist_id']          = $owned_artist_id;
         }
 
         if ( empty( $params['title'] ) ) {
@@ -196,6 +198,11 @@ class SubmissionRestController
                 'user_id' => $current_user_id,
                 'source'  => 'rest',
             ] );
+            update_post_meta( $post_id, '_ap_org_id', (int) $params['event_organization'] );
+            update_post_meta( $post_id, '_ap_artist_id', (int) ( $params['artist_id'] ?? 0 ) );
+            $moderation_state = 'publish' === $status ? 'approved' : $status;
+            update_post_meta( $post_id, '_ap_moderation_state', $moderation_state );
+            delete_post_meta( $post_id, '_ap_moderation_reason' );
         }
 
         return rest_ensure_response( $response );
@@ -297,6 +304,7 @@ class SubmissionRestController
                 'event_date'     => '_ap_event_date',
                 'event_location' => '_ap_event_location',
                 'event_organization' => '_ap_event_organization',
+                'artist_id'      => '_ap_artist_id',
             ],
             'artpulse_artist'  => [
                 'artist_bio' => '_ap_artist_bio',
@@ -322,6 +330,7 @@ class SubmissionRestController
     {
         return match ( $field_key ) {
             'event_organization' => ( $value = absint( $value ) ) ? $value : null,
+            'artist_id'         => absint( $value ),
             'artist_org'        => absint( $value ),
             'org_email'         => sanitize_email( $value ),
             'org_website'       => esc_url_raw( $value ),
@@ -384,6 +393,21 @@ class SubmissionRestController
         return (int) $owned[0];
     }
 
+    private static function resolve_owned_artist_id( int $user_id, int $requested ): int
+    {
+        $owned = self::get_user_owned_artist_ids( $user_id );
+
+        if ( empty( $owned ) ) {
+            return 0;
+        }
+
+        if ( $requested && in_array( $requested, $owned, true ) ) {
+            return $requested;
+        }
+
+        return (int) $owned[0];
+    }
+
     /**
      * Fetch all organisation IDs managed by a user.
      *
@@ -417,6 +441,56 @@ class SubmissionRestController
         ]);
 
         $ids = array_map( 'absint', array_merge( $owned_meta, $owned_author ) );
+
+        return array_values( array_unique( array_filter( $ids ) ) );
+    }
+
+    /**
+     * Fetch artist IDs managed by the current user.
+     *
+     * @return int[]
+     */
+    private static function get_user_owned_artist_ids( int $user_id ): array
+    {
+        if ( $user_id <= 0 ) {
+            return [];
+        }
+
+        $author_owned = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'author'         => $user_id,
+        ]);
+
+        $primary_owned = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'meta_key'       => '_ap_owner_user',
+            'meta_value'     => $user_id,
+        ]);
+
+        $team_owned = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'meta_query'     => [
+                [
+                    'key'     => '_ap_owner_users',
+                    'value'   => sprintf( ':%d;', $user_id ),
+                    'compare' => 'LIKE',
+                ],
+            ],
+        ]);
+
+        $ids = array_map(
+            'absint',
+            array_merge( (array) $author_owned, (array) $primary_owned, (array) $team_owned )
+        );
 
         return array_values( array_unique( array_filter( $ids ) ) );
     }

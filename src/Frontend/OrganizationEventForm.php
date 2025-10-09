@@ -149,10 +149,11 @@ class OrganizationEventForm {
 
         $nonce_valid = isset($_POST['_ap_nonce']) && check_admin_referer('ap_event_submit', '_ap_nonce', false);
         if (!$nonce_valid) {
-            wp_die(
-                esc_html__('Security check failed.', 'artpulse-management'),
-                esc_html__('Request blocked', 'artpulse-management'),
-                ['response' => 403]
+            self::respond_with_error(
+                'invalid_nonce',
+                __('Security check failed.', 'artpulse-management'),
+                403,
+                ['nonce' => wp_create_nonce('ap_event_submit')]
             );
         }
 
@@ -230,6 +231,8 @@ class OrganizationEventForm {
         update_post_meta($post_id, '_ap_event_organization', $org_id);
         update_post_meta($post_id, '_ap_org_id', $org_id);
         update_post_meta($post_id, '_ap_artist_id', $artist_id);
+        update_post_meta($post_id, '_ap_moderation_state', $status === 'publish' ? 'approved' : 'pending');
+        delete_post_meta($post_id, '_ap_moderation_reason');
 
         if ($type) {
             wp_set_post_terms($post_id, [$type], 'artpulse_event_type');
@@ -345,43 +348,72 @@ class OrganizationEventForm {
 
     private static function bail_rate_limited(WP_Error $error): void
     {
-        $data        = $error->get_error_data();
-        $retry_after = 30;
-        $limit       = 10;
+        $data        = (array) $error->get_error_data();
+        $retry_after = isset($data['retry_after']) ? max(1, (int) $data['retry_after']) : 30;
+        $limit       = isset($data['limit']) ? max(1, (int) $data['limit']) : 10;
+        $reset       = isset($data['reset']) ? (int) $data['reset'] : time() + $retry_after;
 
-        if (is_array($data)) {
-            if (isset($data['retry_after'])) {
-                $retry_after = max(1, (int) $data['retry_after']);
-            }
-
-            if (isset($data['limit'])) {
-                $limit = max(1, (int) $data['limit']);
-            }
-
-            if (isset($data['reset'])) {
-                header('X-RateLimit-Reset: ' . (int) $data['reset']);
-            }
-        }
-
-        header('Retry-After: ' . $retry_after);
-        header('X-RateLimit-Limit: ' . $limit);
-        header('X-RateLimit-Remaining: 0');
+        $headers = $data['headers'] ?? RateLimitHeaders::build($limit, 0, $reset, $retry_after);
+        RateLimitHeaders::emit($headers);
 
         AuditLogger::info('rate_limit.hit', [
             'user_id'     => get_current_user_id(),
             'route'       => sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'] ?? '')),
+            'context'     => 'event_form',
             'retry_after' => $retry_after,
+            'limit'       => $limit,
         ]);
 
-        wp_die(
-            sprintf(
-                /* translators: %d: seconds until retry. */
-                esc_html__('Please slow down—try again in %d seconds.', 'artpulse-management'),
-                $retry_after
-            ),
-            esc_html__('Too many updates', 'artpulse-management'),
-            ['response' => 429]
+        self::respond_with_error(
+            $error->get_error_code(),
+            $error->get_error_message(),
+            429,
+            [
+                'limit'       => $limit,
+                'retry_after' => $retry_after,
+                'reset'       => $reset,
+            ],
+            $retry_after
         );
+    }
+
+    private static function respond_with_error(
+        string $code,
+        string $message,
+        int $status,
+        array $details = [],
+        ?int $retry_after = null
+    ): void {
+        $payload = [
+            'code'    => $code,
+            'message' => $message,
+            'details' => $details,
+        ];
+
+        if (null !== $retry_after) {
+            $payload['retry_after'] = max(0, $retry_after);
+        }
+
+        if (isset($details['nonce']) && is_string($details['nonce'])) {
+            header('X-ArtPulse-Nonce: ' . $details['nonce']);
+        }
+
+        if (self::wants_json()) {
+            wp_send_json($payload, $status);
+        }
+
+        wp_die(esc_html($message), esc_html__('Request blocked', 'artpulse-management'), ['response' => $status]);
+    }
+
+    private static function wants_json(): bool
+    {
+        if (function_exists('wp_is_json_request') && wp_is_json_request()) {
+            return true;
+        }
+
+        $accept = isset($_SERVER['HTTP_ACCEPT']) ? strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT']))) : '';
+
+        return str_contains($accept, 'application/json');
     }
 
     private static function get_user_org_id(int $user_id): int

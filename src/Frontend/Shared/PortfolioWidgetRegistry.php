@@ -63,6 +63,39 @@ final class PortfolioWidgetRegistry
         return apply_filters('artpulse/portfolio_widgets', $merged, $post_id);
     }
 
+    /**
+     * Retrieve widgets as configured for public rendering.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function public_widgets(int $post_id): array
+    {
+        $stored   = get_post_meta($post_id, '_ap_widgets', true);
+        $defaults = self::defaults();
+
+        if (!is_array($stored) || empty($stored)) {
+            return $defaults;
+        }
+
+        $ordered = [];
+
+        foreach ($stored as $key => $config) {
+            $normalized = sanitize_key($key);
+            if ($normalized === '' || !array_key_exists($normalized, $defaults)) {
+                continue;
+            }
+
+            $widget_config = $defaults[$normalized];
+            if (is_array($config)) {
+                $widget_config = array_replace_recursive($widget_config, $config);
+            }
+
+            $ordered[$normalized] = $widget_config;
+        }
+
+        return !empty($ordered) ? $ordered : $defaults;
+    }
+
     public static function save(int $post_id, array $widgets): void
     {
         $previous = (array) get_post_meta($post_id, '_ap_widgets', true);

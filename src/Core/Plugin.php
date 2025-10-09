@@ -54,6 +54,7 @@ class Plugin
         if ( get_option( 'ap_enable_artist_builder', true ) ) {
             add_action( 'init', [ \ArtPulse\Frontend\ArtistBuilderShortcode::class, 'register' ] );
         }
+        \ArtPulse\Frontend\Shared\PortfolioMediaGuard::register();
         \ArtPulse\Core\RoleUpgradeManager::register();
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
