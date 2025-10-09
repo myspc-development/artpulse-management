@@ -117,7 +117,7 @@ wp artpulse metrics dump --last=15m
 | --- | --- | --- | --- |
 | `AUTH_EXPIRED` | `ap_refresh_expired` | 401 | Refresh token expired. |
 | `REFRESH_REUSE` | `refresh_reuse` | 401 | Refresh token reuse detected and the session revoked. |
-| `AUTH_REVOKED` | `ap_refresh_revoked` | 401 | Refresh token was revoked out-of-band. |
+| `AUTH_REVOKED` | `auth_revoked` | 401 | Refresh token was revoked out-of-band. |
 | `RATE_LIMITED` | `ap_rate_limited` | 429 | Rate limit exceeded; includes `Retry-After`. |
 | `GEO_INVALID_BOUNDS` | `ap_geo_invalid` | 400 | Invalid or unsupported geosearch bounds. |
 | `CORS_FORBIDDEN` | `cors_forbidden` | 403 | Request origin is not permitted for the mobile API. |

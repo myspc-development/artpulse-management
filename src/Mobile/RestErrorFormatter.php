@@ -14,7 +14,7 @@ class RestErrorFormatter
     public const CORS_FORBIDDEN      = 'cors_forbidden';
     public const GEO_INVALID_BOUNDS  = 'ap_geo_invalid';
     public const RATE_LIMITED        = 'ap_rate_limited';
-    public const AUTH_REVOKED        = 'ap_refresh_revoked';
+    public const AUTH_REVOKED        = 'auth_revoked';
 
     private const STATUS_MAP = [
         'rest_invalid_param'      => 400,
