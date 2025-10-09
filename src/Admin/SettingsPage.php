@@ -408,7 +408,12 @@ class SettingsPage
             'service_worker_enabled' => [
                 'label' => __('Enable Service Worker', 'artpulse'),
                 'desc'  => __('Adds a service worker for basic offline caching.', 'artpulse'),
-            ]
+            ],
+            'approved_mobile_origins' => [
+                'label' => __('Approved Mobile Origins', 'artpulse'),
+                'desc'  => __('Enter one HTTPS origin per line to allow mobile API access.', 'artpulse'),
+                'type'  => 'textarea',
+            ],
         ];
         foreach ($fields as $key => $config) {
             add_settings_field(
@@ -419,7 +424,8 @@ class SettingsPage
                 'ap_general_section',
                 [
                     'label_for'   => $key,
-                    'description' => $config['desc'] ?? ''
+                    'description' => $config['desc'] ?? '',
+                    'type'        => $config['type'] ?? null,
                 ]
             );
         }
@@ -430,6 +436,8 @@ class SettingsPage
         foreach ($input as $key => $value) {
             if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled'])) {
                 $output[$key] = isset($value) ? 1 : 0;
+            } elseif ('approved_mobile_origins' === $key) {
+                $output[$key] = sanitize_textarea_field((string) $value);
             } else {
                 $output[$key] = sanitize_text_field($value);
             }
@@ -442,8 +450,11 @@ class SettingsPage
         $key     = $args['label_for'];
         $value   = $options[$key] ?? '';
         $desc    = $args['description'] ?? '';
-        if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled'])) {
+        $type    = $args['type'] ?? (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled']) ? 'checkbox' : 'text');
+        if ('checkbox' === $type) {
             echo '<input type="checkbox" id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" value="1"' . checked(1, $value, false) . ' />';
+        } elseif ('textarea' === $type) {
+            echo '<textarea id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" rows="5" class="large-text code">' . esc_textarea($value) . '</textarea>';
         } else {
             echo '<input type="text" id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" value="' . esc_attr($value) . '" class="regular-text" />';
         }
