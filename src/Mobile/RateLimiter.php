@@ -61,7 +61,6 @@ class RateLimiter
         $now     = time();
         $user_id = get_current_user_id();
         $route   = $request instanceof \WP_REST_Request ? $request->get_route() : '';
-        $method  = $request instanceof \WP_REST_Request ? strtoupper($request->get_method()) : '';
         $ip      = $request instanceof \WP_REST_Request ? $request->get_header('X-Forwarded-For') : '';
         if (!$ip) {
             $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
@@ -82,8 +81,8 @@ class RateLimiter
             $keys[] = 'ap_rl_global_' . md5($bucket);
         }
 
-        $remaining = $limit;
-        $reset_at  = $now + $window;
+        $remaining   = $limit;
+        $reset_at    = $now + $window;
         $retry_after = 0;
 
         foreach ($keys as $key) {
@@ -117,20 +116,28 @@ class RateLimiter
         if ($retry_after > 0) {
             self::$pending_headers['remaining'] = 0;
             self::$pending_headers['retry_after'] = $retry_after;
+            $log_context = [
+                'event'       => 'mobile_rate_limited',
+                'route'       => $route,
+                'user_id'     => $user_id,
+                'ip'          => $ip,
+                'limit'       => $limit,
+                'remaining'   => (int) self::$pending_headers['remaining'],
+                'retry_after' => $retry_after,
+                'ts'          => $now,
+            ];
+
+            /**
+             * Fires when a mobile rate limit is triggered.
+             *
+             * @param array<string, mixed> $log_context
+             * @param string               $bucket
+             * @param int                  $window
+             */
+            do_action('artpulse/mobile/rate_limited', $log_context, $bucket, $window);
 
             if (function_exists('wp_json_encode')) {
-                $log = wp_json_encode([
-                    'event'       => 'mobile_rate_limited',
-                    'route'       => $route,
-                    'method'      => $method,
-                    'bucket'      => $bucket,
-                    'user_id'     => $user_id,
-                    'ip'          => $ip,
-                    'limit'       => $limit,
-                    'window'      => $window,
-                    'retry_after' => $retry_after,
-                    'timestamp'   => $now,
-                ]);
+                $log = wp_json_encode($log_context);
 
                 if ($log) {
                     error_log($log); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -161,8 +168,15 @@ class RateLimiter
             return $response;
         }
 
+        if ($response instanceof \WP_Error) {
+            $response = $server->error_to_response($response);
+        } elseif (!$response instanceof \WP_HTTP_Response) {
+            $response = rest_ensure_response($response);
+        }
+
+        $headers = self::$pending_headers;
+
         if ($response instanceof \WP_REST_Response) {
-            $headers = self::$pending_headers;
             $response->header('X-RateLimit-Limit', (string) ($headers['limit'] ?? 0));
             $response->header('X-RateLimit-Remaining', (string) ($headers['remaining'] ?? 0));
             $response->header('X-RateLimit-Reset', (string) ($headers['reset'] ?? 0));
@@ -170,6 +184,17 @@ class RateLimiter
             if (isset($headers['retry_after'])) {
                 $response->header('Retry-After', (string) $headers['retry_after']);
             }
+        } elseif ($response instanceof \WP_HTTP_Response) {
+            $existing_headers = $response->get_headers();
+            $existing_headers['X-RateLimit-Limit']     = (string) ($headers['limit'] ?? 0);
+            $existing_headers['X-RateLimit-Remaining'] = (string) ($headers['remaining'] ?? 0);
+            $existing_headers['X-RateLimit-Reset']     = (string) ($headers['reset'] ?? 0);
+
+            if (isset($headers['retry_after'])) {
+                $existing_headers['Retry-After'] = (string) $headers['retry_after'];
+            }
+
+            $response->set_headers($existing_headers);
         }
 
         self::$pending_headers = null;

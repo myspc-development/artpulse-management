@@ -193,6 +193,85 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $this->assertSame([], $sessions_response->get_data()['sessions']);
     }
 
+    public function test_rate_limit_headers_present_on_error_responses(): void
+    {
+        $limit_filter = static function () {
+            return 5;
+        };
+
+        add_filter('artpulse_mobile_rate_limit', $limit_filter, 10, 3);
+
+        try {
+            $request = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+            $request->set_body_params([
+                'username' => 'mobile-user',
+                'password' => 'wrong-password',
+            ]);
+
+            $response = rest_do_request($request);
+
+            $this->assertSame(401, $response->get_status());
+
+            $headers = $response->get_headers();
+            $this->assertSame('5', $headers['X-RateLimit-Limit']);
+            $this->assertArrayHasKey('X-RateLimit-Remaining', $headers);
+            $this->assertArrayHasKey('X-RateLimit-Reset', $headers);
+            $this->assertArrayNotHasKey('Retry-After', $headers);
+        } finally {
+            remove_filter('artpulse_mobile_rate_limit', $limit_filter, 10);
+        }
+    }
+
+    public function test_rate_limit_logs_context_and_sets_retry_headers(): void
+    {
+        $limit_filter = static function () {
+            return 1;
+        };
+
+        add_filter('artpulse_mobile_rate_limit', $limit_filter, 10, 3);
+
+        $captured = [];
+        $log_listener = static function (array $context) use (&$captured): void {
+            $captured[] = $context;
+        };
+
+        add_action('artpulse/mobile/rate_limited', $log_listener, 10, 1);
+
+        try {
+            $request = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+            $request->set_body_params([
+                'username' => 'mobile-user',
+                'password' => 'wrong-password',
+            ]);
+
+            $first = rest_do_request($request);
+            $this->assertSame(401, $first->get_status());
+
+            $second = rest_do_request($request);
+            $this->assertSame(429, $second->get_status());
+
+            $headers = $second->get_headers();
+            $this->assertSame('1', $headers['X-RateLimit-Limit']);
+            $this->assertSame('0', $headers['X-RateLimit-Remaining']);
+            $this->assertArrayHasKey('Retry-After', $headers);
+            $this->assertGreaterThanOrEqual(1, (int) $headers['Retry-After']);
+
+            $this->assertCount(1, $captured);
+            $context = $captured[0];
+            $this->assertSame('/artpulse/v1/mobile/login', $context['route']);
+            $this->assertSame(0, $context['user_id']);
+            $this->assertSame('127.0.0.1', $context['ip']);
+            $this->assertSame(1, $context['limit']);
+            $this->assertSame(0, $context['remaining']);
+            $this->assertArrayHasKey('retry_after', $context);
+            $this->assertGreaterThanOrEqual(1, (int) $context['retry_after']);
+            $this->assertArrayHasKey('ts', $context);
+        } finally {
+            remove_filter('artpulse_mobile_rate_limit', $limit_filter, 10);
+            remove_action('artpulse/mobile/rate_limited', $log_listener, 10);
+        }
+    }
+
     public function test_password_change_revokes_refresh_tokens(): void
     {
         $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
