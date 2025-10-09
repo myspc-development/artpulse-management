@@ -409,6 +409,12 @@ class SettingsPage
                 'label' => __('Enable Service Worker', 'artpulse'),
                 'desc'  => __('Adds a service worker for basic offline caching.', 'artpulse'),
             ],
+            'notification_provider' => [
+                'label'   => __('Mobile Notification Provider', 'artpulse-management'),
+                'desc'    => __('Choose how mobile push notifications are delivered. The null provider disables sending.', 'artpulse-management'),
+                'type'    => 'select',
+                'choices' => self::getNotificationProviderChoices(),
+            ],
             'approved_mobile_origins' => [
                 'label' => __('Approved Mobile Origins', 'artpulse'),
                 'desc'  => __('Enter one HTTPS origin per line to allow mobile API access.', 'artpulse'),
@@ -426,6 +432,7 @@ class SettingsPage
                     'label_for'   => $key,
                     'description' => $config['desc'] ?? '',
                     'type'        => $config['type'] ?? null,
+                    'choices'     => $config['choices'] ?? null,
                 ]
             );
         }
@@ -434,8 +441,12 @@ class SettingsPage
     {
         $output = [];
         foreach ($input as $key => $value) {
-            if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled'])) {
+            if (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled'], true)) {
                 $output[$key] = isset($value) ? 1 : 0;
+            } elseif ('notification_provider' === $key) {
+                $value    = sanitize_key((string) $value);
+                $choices  = array_keys(self::getNotificationProviderChoices());
+                $output[$key] = in_array($value, $choices, true) ? $value : 'null';
             } elseif ('approved_mobile_origins' === $key) {
                 $output[$key] = sanitize_textarea_field((string) $value);
             } else {
@@ -450,11 +461,18 @@ class SettingsPage
         $key     = $args['label_for'];
         $value   = $options[$key] ?? '';
         $desc    = $args['description'] ?? '';
-        $type    = $args['type'] ?? (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled']) ? 'checkbox' : 'text');
+        $type    = $args['type'] ?? (in_array($key, ['stripe_enabled', 'woocommerce_enabled', 'debug_logging', 'service_worker_enabled'], true) ? 'checkbox' : 'text');
         if ('checkbox' === $type) {
             echo '<input type="checkbox" id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" value="1"' . checked(1, $value, false) . ' />';
         } elseif ('textarea' === $type) {
             echo '<textarea id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" rows="5" class="large-text code">' . esc_textarea($value) . '</textarea>';
+        } elseif ('select' === $type) {
+            $choices = $args['choices'] ?? [];
+            echo '<select id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" class="regular-text">';
+            foreach ($choices as $choice_value => $choice_label) {
+                echo '<option value="' . esc_attr($choice_value) . '"' . selected($value, $choice_value, false) . '>' . esc_html($choice_label) . '</option>';
+            }
+            echo '</select>';
         } else {
             echo '<input type="text" id="' . esc_attr($key) . '" name="artpulse_settings[' . esc_attr($key) . ']" value="' . esc_attr($value) . '" class="regular-text" />';
         }
@@ -462,4 +480,18 @@ class SettingsPage
             echo '<p class="description">' . esc_html($desc) . '</p>';
         }
     }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function getNotificationProviderChoices(): array
+    {
+        return apply_filters(
+            'artpulse_mobile_notification_provider_choices',
+            [
+                'null' => __('Null provider (disable notifications)', 'artpulse-management'),
+            ]
+        );
+    }
 }
+
