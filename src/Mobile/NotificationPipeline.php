@@ -2,6 +2,9 @@
 
 namespace ArtPulse\Mobile;
 
+use ArtPulse\Mobile\Notifications\NotificationProviderInterface;
+use ArtPulse\Mobile\Notifications\NullNotificationProvider;
+
 class NotificationPipeline
 {
     private const CRON_HOOK        = 'artpulse/mobile/notifs_tick';
@@ -10,6 +13,9 @@ class NotificationPipeline
     private const TOPIC_STARTING   = 'starting_soon';
     private const FOLLOW_LOOKBACK  = 6 * HOUR_IN_SECONDS;
     private const STARTING_WINDOW  = 2 * HOUR_IN_SECONDS;
+
+    private static ?NotificationProviderInterface $provider = null;
+    private static ?string $provider_slug = null;
 
     public static function boot(): void
     {
@@ -39,6 +45,8 @@ class NotificationPipeline
 
     public static function run_tick(): void
     {
+        self::reset_provider();
+
         $users = self::get_users_with_devices();
         if (empty($users)) {
             return;
@@ -56,20 +64,53 @@ class NotificationPipeline
 
             foreach ($devices as $device_id => $token) {
                 if (!self::is_topic_muted($user_id, $device_id, self::TOPIC_NEW_EVENT) && !empty($followed)) {
-                    self::log_delivery($user_id, $device_id, self::TOPIC_NEW_EVENT, [
+                    self::dispatch_notification($user_id, $device_id, self::TOPIC_NEW_EVENT, [
                         'events' => $followed,
                         'token'  => $token,
                     ]);
                 }
 
                 if (!self::is_topic_muted($user_id, $device_id, self::TOPIC_STARTING) && !empty($starting)) {
-                    self::log_delivery($user_id, $device_id, self::TOPIC_STARTING, [
+                    self::dispatch_notification($user_id, $device_id, self::TOPIC_STARTING, [
                         'events' => $starting,
                         'token'  => $token,
                     ]);
                 }
             }
         }
+    }
+
+    private static function reset_provider(): void
+    {
+        self::$provider      = null;
+        self::$provider_slug = null;
+    }
+
+    private static function get_provider(): NotificationProviderInterface
+    {
+        $settings = get_option('artpulse_settings');
+        $slug     = 'null';
+
+        if (is_array($settings) && !empty($settings['notification_provider'])) {
+            $slug = sanitize_key((string) $settings['notification_provider']);
+        }
+
+        if (self::$provider && self::$provider_slug === $slug) {
+            return self::$provider;
+        }
+
+        $provider = apply_filters('artpulse_mobile_notification_provider', null, $slug);
+        if ($provider instanceof NotificationProviderInterface) {
+            self::$provider      = $provider;
+            self::$provider_slug = $slug;
+
+            return self::$provider;
+        }
+
+        self::$provider      = new NullNotificationProvider();
+        self::$provider_slug = $slug;
+
+        return self::$provider;
     }
 
     /**
@@ -272,6 +313,17 @@ class NotificationPipeline
         $filtered = array_map('strval', (array) $filtered);
 
         return in_array($topic, $filtered, true);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private static function dispatch_notification(int $user_id, string $device_id, string $topic, array $payload): void
+    {
+        $provider = self::get_provider();
+        $provider->send($user_id, $device_id, $topic, $payload);
+
+        self::log_delivery($user_id, $device_id, $topic, $payload);
     }
 
     /**

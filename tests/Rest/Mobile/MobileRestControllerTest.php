@@ -7,6 +7,7 @@ use ArtPulse\Mobile\EventGeo;
 use ArtPulse\Mobile\FollowService;
 use ArtPulse\Mobile\JWT;
 use ArtPulse\Mobile\NotificationPipeline;
+use ArtPulse\Mobile\Notifications\NotificationProviderInterface;
 use ArtPulse\Mobile\RefreshTokens;
 use WP_REST_Request;
 use WP_UnitTestCase;
@@ -15,11 +16,16 @@ class MobileRestControllerTest extends WP_UnitTestCase
 {
     private int $user_id;
     private string $password = 'secret123!';
-    private array $notifications = [];
+    private ?TestNotificationProvider $notificationProvider = null;
+    /** @var array<string, mixed>|false */
+    private $previousSettings;
 
     public function set_up(): void
     {
         parent::set_up();
+
+        $this->previousSettings     = get_option('artpulse_settings');
+        $this->notificationProvider = null;
 
         global $wpdb;
         $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_ap_rl_%' OR option_name LIKE '_transient_timeout_ap_rl_%'");
@@ -45,28 +51,33 @@ class MobileRestControllerTest extends WP_UnitTestCase
         rest_get_server();
         do_action('rest_api_init');
         add_filter('artpulse_mobile_allow_insecure', '__return_true');
-        add_action('artpulse/mobile/notification_logged', [$this, 'capture_notification'], 10, 4);
+        add_filter('artpulse_mobile_notification_provider', [$this, 'registerTestNotificationProvider'], 10, 2);
     }
 
     public function tear_down(): void
     {
         remove_filter('artpulse_mobile_allow_insecure', '__return_true');
-        remove_action('artpulse/mobile/notification_logged', [$this, 'capture_notification'], 10);
-        $this->notifications = [];
+        remove_filter('artpulse_mobile_notification_provider', [$this, 'registerTestNotificationProvider'], 10);
+
+        if (false === $this->previousSettings) {
+            delete_option('artpulse_settings');
+        } else {
+            update_option('artpulse_settings', $this->previousSettings);
+        }
+
+        $this->notificationProvider = null;
         parent::tear_down();
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function capture_notification(int $user_id, string $device_id, string $topic, array $payload): void
+    public function registerTestNotificationProvider($provider, string $slug)
     {
-        $this->notifications[] = [
-            'user'    => $user_id,
-            'device'  => $device_id,
-            'topic'   => $topic,
-            'payload' => $payload,
-        ];
+        if ('test-double' !== $slug) {
+            return $provider;
+        }
+
+        $this->notificationProvider = new TestNotificationProvider();
+
+        return $this->notificationProvider;
     }
 
     public function test_login_returns_token_and_push_token_is_stored(): void
@@ -890,11 +901,55 @@ class MobileRestControllerTest extends WP_UnitTestCase
             'ios-device-1' => ['token' => 'device-token', 'updated_at' => time()],
         ]);
 
+        $settings                              = is_array(get_option('artpulse_settings')) ? get_option('artpulse_settings') : [];
+        $settings['notification_provider']     = 'test-double';
+        update_option('artpulse_settings', $settings);
+
         NotificationPipeline::run_tick();
 
-        $this->assertNotEmpty($this->notifications);
-        $topics = wp_list_pluck($this->notifications, 'topic');
+        $this->assertNotNull($this->notificationProvider);
+        $this->assertNotEmpty($this->notificationProvider->sent);
+        $topics = wp_list_pluck($this->notificationProvider->sent, 'topic');
         $this->assertContains('new_followed_event', $topics);
+
+        $first_payload = $this->notificationProvider->sent[0]['payload'];
+        $this->assertArrayHasKey('events', $first_payload);
+        $this->assertArrayHasKey('token', $first_payload);
+        $this->assertSame('device-token', $first_payload['token']);
+    }
+
+    public function test_notifications_pipeline_respects_muted_topics(): void
+    {
+        $org_id = wp_insert_post([
+            'post_type'   => 'artpulse_org',
+            'post_status' => 'publish',
+            'post_title'  => 'Muted Org',
+        ]);
+
+        FollowService::follow($this->user_id, $org_id, 'org');
+
+        $event_id = wp_insert_post([
+            'post_type'   => 'artpulse_event',
+            'post_status' => 'publish',
+            'post_title'  => 'Muted Event',
+        ]);
+        update_post_meta($event_id, '_ap_event_organization', $org_id);
+        update_post_meta($event_id, '_ap_event_start', gmdate('c', strtotime('+1 hour')));
+
+        update_user_meta($this->user_id, 'ap_mobile_push_tokens', [
+            'ios-device-1' => ['token' => 'muted-token', 'updated_at' => time()],
+        ]);
+
+        update_user_meta($this->user_id, 'ap_mobile_muted_topics', ['new_followed_event']);
+
+        $settings                          = is_array(get_option('artpulse_settings')) ? get_option('artpulse_settings') : [];
+        $settings['notification_provider'] = 'test-double';
+        update_option('artpulse_settings', $settings);
+
+        NotificationPipeline::run_tick();
+
+        $this->assertNotNull($this->notificationProvider);
+        $this->assertEmpty($this->notificationProvider->sent);
     }
 
     public function test_write_routes_respect_disable_switch(): void
@@ -925,5 +980,26 @@ class MobileRestControllerTest extends WP_UnitTestCase
         } finally {
             update_option('ap_enable_mobile_write_routes', '1');
         }
+    }
+}
+
+class TestNotificationProvider implements NotificationProviderInterface
+{
+    /**
+     * @var array<int, array{user:int, device:string, topic:string, payload:array<string, mixed>}> 
+     */
+    public array $sent = [];
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function send(int $user_id, string $device_id, string $topic, array $payload): void
+    {
+        $this->sent[] = [
+            'user'    => $user_id,
+            'device'  => $device_id,
+            'topic'   => $topic,
+            'payload' => $payload,
+        ];
     }
 }
