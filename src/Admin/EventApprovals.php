@@ -224,6 +224,7 @@ class EventApprovals
     private function approve_events( array $event_ids ): int
     {
         $processed = 0;
+        $reason    = $this->get_request_reason();
 
         foreach ( $event_ids as $event_id ) {
             $post = get_post( $event_id );
@@ -255,6 +256,7 @@ class EventApprovals
                     'event_id' => $event_id,
                     'user_id'  => get_current_user_id(),
                     'context'  => 'dashboard',
+                    'reason'   => $reason,
                 ]
             );
             $this->send_status_email( get_post( $event_id ), 'approved' );
@@ -266,6 +268,7 @@ class EventApprovals
     private function reject_events( array $event_ids ): int
     {
         $processed = 0;
+        $reason    = $this->get_request_reason();
 
         foreach ( $event_ids as $event_id ) {
             $post = get_post( $event_id );
@@ -291,6 +294,7 @@ class EventApprovals
                     'event_id' => $event_id,
                     'user_id'  => get_current_user_id(),
                     'context'  => 'dashboard',
+                    'reason'   => $reason,
                 ]
             );
             $this->send_status_email( $trashed, 'rejected' );
@@ -358,6 +362,15 @@ class EventApprovals
     private function current_user_can_manage(): bool
     {
         return current_user_can( 'artpulse_approve_event' ) || current_user_can( 'publish_artpulse_events' );
+    }
+
+    private function get_request_reason(): string
+    {
+        if ( ! isset( $_REQUEST['reason'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            return '';
+        }
+
+        return sanitize_text_field( wp_unslash( (string) $_REQUEST['reason'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
     }
 
     private function get_single_nonce_action( string $action, int $event_id ): string

@@ -138,6 +138,15 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
+        $owner_id     = $user_id;
+        $org_id_param = $context_org_id;
+        $artist_param = $context_artist_id;
+        $owned_org    = $org_id_param && PortfolioAccess::is_owner($owner_id, $org_id_param);
+        $owned_artist = $artist_param && PortfolioAccess::is_owner($owner_id, $artist_param);
+        if (($org_id_param && !$owned_org) || ($artist_param && !$owned_artist)) {
+            wp_die(esc_html__('Forbidden.', 'artpulse-management'), 403);
+        }
+
         $nonce_valid = isset($_POST['_ap_nonce']) && check_admin_referer('ap_event_submit', '_ap_nonce', false);
         if (!$nonce_valid) {
             wp_die(
@@ -289,6 +298,9 @@ class OrganizationEventForm {
             'post_id' => $post_id,
             'user_id' => $user_id,
             'source'  => 'web',
+            'status'  => $status,
+            'org_id'  => $org_id,
+            'artist_id' => $artist_id,
         ]);
 
         if ($should_redirect) {
