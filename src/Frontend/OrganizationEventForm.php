@@ -78,7 +78,7 @@ class OrganizationEventForm {
             echo '</div>';
         }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_ap_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_ap_nonce'])), 'ap_event_submit')) {
+        if ('POST' === ($_SERVER['REQUEST_METHOD'] ?? '')) {
             self::handle_submission();
         }
 
@@ -138,11 +138,16 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
-        if (!isset($_POST['_ap_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_ap_nonce'])), 'ap_event_submit')) {
-            wp_die(esc_html__('Security check failed.', 'artpulse-management'), esc_html__('Request blocked', 'artpulse-management'), ['response' => 403]);
+        $nonce_valid = isset($_POST['_ap_nonce']) && check_admin_referer('ap_event_submit', '_ap_nonce', false);
+        if (!$nonce_valid) {
+            wp_die(
+                esc_html__('Security check failed.', 'artpulse-management'),
+                esc_html__('Request blocked', 'artpulse-management'),
+                ['response' => 403]
+            );
         }
 
-        $rate_error = FormRateLimiter::enforce($user_id, 'builder_write', 30, 60);
+        $rate_error = FormRateLimiter::enforce($user_id, 'event_submit', 10, 60);
         if ($rate_error instanceof WP_Error) {
             self::bail_rate_limited($rate_error);
         }
@@ -195,7 +200,8 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
-        $status = get_option('ap_require_event_review', true) ? 'pending' : 'publish';
+        $require_review = (bool) get_option('ap_require_event_review', true);
+        $status         = $require_review ? 'pending' : 'publish';
 
         $post_id = wp_insert_post([
             'post_title'   => $title,
@@ -329,23 +335,31 @@ class OrganizationEventForm {
     {
         $data        = $error->get_error_data();
         $retry_after = 30;
+        $limit       = 10;
 
         if (is_array($data)) {
             if (isset($data['retry_after'])) {
                 $retry_after = max(1, (int) $data['retry_after']);
-                header('Retry-After: ' . $retry_after);
             }
 
             if (isset($data['limit'])) {
-                header('X-RateLimit-Limit: ' . (int) $data['limit']);
+                $limit = max(1, (int) $data['limit']);
             }
-
-            header('X-RateLimit-Remaining: 0');
 
             if (isset($data['reset'])) {
                 header('X-RateLimit-Reset: ' . (int) $data['reset']);
             }
         }
+
+        header('Retry-After: ' . $retry_after);
+        header('X-RateLimit-Limit: ' . $limit);
+        header('X-RateLimit-Remaining: 0');
+
+        AuditLogger::info('rate_limit.hit', [
+            'user_id'     => get_current_user_id(),
+            'route'       => sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'] ?? '')),
+            'retry_after' => $retry_after,
+        ]);
 
         wp_die(
             sprintf(
