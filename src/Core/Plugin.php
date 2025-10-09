@@ -121,6 +121,14 @@ class Plugin
         if ( ! wp_next_scheduled( 'ap_daily_expiry_check' ) ) {
             wp_schedule_event( time(), 'daily', 'ap_daily_expiry_check' );
         }
+
+        if ( ! wp_next_scheduled( 'ap_mobile_purge_inactive_sessions' ) ) {
+            wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'ap_mobile_purge_inactive_sessions' );
+        }
+
+        if ( ! wp_next_scheduled( 'ap_mobile_purge_metrics' ) ) {
+            wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'ap_mobile_purge_metrics' );
+        }
     }
 
     public function maybe_retry_letter_index()
@@ -209,6 +217,8 @@ class Plugin
     {
         flush_rewrite_rules();
         wp_clear_scheduled_hook( 'ap_daily_expiry_check' );
+        wp_clear_scheduled_hook( 'ap_mobile_purge_inactive_sessions' );
+        wp_clear_scheduled_hook( 'ap_mobile_purge_metrics' );
     }
 
     public function register_image_sizes(): void
