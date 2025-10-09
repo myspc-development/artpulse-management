@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Frontend;
 
+use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\ImageTools;
 use ArtPulse\Core\UpgradeReviewRepository;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
@@ -118,14 +119,13 @@ class OrgBuilderShortcode
             exit;
         }
 
-        if (!isset($_POST['_ap_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_ap_nonce'])), 'ap_portfolio_update')) {
-            wp_die(esc_html__('Security check failed.', 'artpulse-management'), esc_html__('Request blocked', 'artpulse-management'), ['response' => 403]);
-        }
-
-        $nonce = isset($_POST['ap_org_builder_nonce']) ? wp_unslash($_POST['ap_org_builder_nonce']) : '';
-        if (!is_string($nonce) || !wp_verify_nonce($nonce, 'ap-org-builder-' . $org_id)) {
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', wp_get_referer() ?: home_url('/dashboard/')));
-            exit;
+        $nonce_valid = isset($_POST['_ap_nonce']) && check_admin_referer('ap_portfolio_update', '_ap_nonce', false);
+        if (!$nonce_valid) {
+            status_header(403);
+            wp_send_json_error([
+                'code'    => 'invalid_nonce',
+                'message' => __('Security check failed.', 'artpulse-management'),
+            ], 403);
         }
 
         $redirect = add_query_arg([
@@ -191,20 +191,31 @@ class OrgBuilderShortcode
     {
         $data        = $error->get_error_data();
         $retry_after = 30;
+        $limit       = 30;
 
         if (is_array($data)) {
             if (isset($data['retry_after'])) {
                 $retry_after = max(1, (int) $data['retry_after']);
-                header('Retry-After: ' . $retry_after);
             }
+
             if (isset($data['limit'])) {
-                header('X-RateLimit-Limit: ' . (int) $data['limit']);
+                $limit = max(1, (int) $data['limit']);
             }
-            header('X-RateLimit-Remaining: 0');
+
             if (isset($data['reset'])) {
                 header('X-RateLimit-Reset: ' . (int) $data['reset']);
             }
         }
+
+        header('Retry-After: ' . $retry_after);
+        header('X-RateLimit-Limit: ' . $limit);
+        header('X-RateLimit-Remaining: 0');
+
+        AuditLogger::info('rate_limit.hit', [
+            'user_id'     => get_current_user_id(),
+            'route'       => sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'] ?? '')),
+            'retry_after' => $retry_after,
+        ]);
 
         wp_die(
             sprintf(
