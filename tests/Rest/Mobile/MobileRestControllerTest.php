@@ -294,7 +294,41 @@ class MobileRestControllerTest extends WP_UnitTestCase
 
         $response = rest_do_request($refresh);
         $this->assertSame(401, $response->get_status());
-        $this->assertSame('refresh_reuse', $response->get_data()['code']);
+        $this->assertSame('auth_revoked', $response->get_data()['code']);
+
+        $sessions = RefreshTokens::list_sessions($this->user_id);
+        $this->assertSame([], $sessions);
+    }
+
+    public function test_email_change_revokes_refresh_tokens(): void
+    {
+        $login = new WP_REST_Request('POST', '/artpulse/v1/mobile/login');
+        $login->set_body_params([
+            'username'  => 'mobile-user',
+            'password'  => $this->password,
+            'device_id' => 'email-device',
+        ]);
+
+        $login_response = rest_do_request($login);
+        $this->assertSame(200, $login_response->get_status());
+        $refresh_token = $login_response->get_data()['refreshToken'];
+
+        wp_update_user([
+            'ID'         => $this->user_id,
+            'user_email' => 'mobile-user+updated@example.com',
+        ]);
+
+        $refresh = new WP_REST_Request('POST', '/artpulse/v1/mobile/auth/refresh');
+        $refresh->set_body_params([
+            'refresh_token' => $refresh_token,
+        ]);
+
+        $response = rest_do_request($refresh);
+        $this->assertSame(401, $response->get_status());
+        $this->assertSame('auth_revoked', $response->get_data()['code']);
+
+        $sessions = RefreshTokens::list_sessions($this->user_id);
+        $this->assertSame([], $sessions);
     }
 
     public function test_sessions_endpoint_lists_devices_and_allows_revocation(): void

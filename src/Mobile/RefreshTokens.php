@@ -246,6 +246,16 @@ class RefreshTokens
             }
 
             if (!empty($record['revoked_at'])) {
+                $revoked_reason = isset($record['revoked_reason']) ? (string) $record['revoked_reason'] : '';
+
+                if ($revoked_reason && 0 === strpos($revoked_reason, 'global_')) {
+                    return new WP_Error(
+                        RestErrorFormatter::AUTH_REVOKED,
+                        __('Refresh token revoked after account change.', 'artpulse-management'),
+                        ['status' => 401]
+                    );
+                }
+
                 self::revoke_device($user_id, (string) ($record['device_id'] ?? 'unknown'));
 
                 return new WP_Error(RestErrorFormatter::REFRESH_REUSE, __('Refresh token reuse detected.', 'artpulse-management'), ['status' => 401]);
@@ -374,7 +384,7 @@ class RefreshTokens
         }
     }
 
-    public static function revoke_all(int $user_id): void
+    public static function revoke_all(int $user_id, ?string $reason = null): void
     {
         $records          = self::get_records($user_id);
         $original_records = $records;
@@ -389,7 +399,13 @@ class RefreshTokens
 
             if (empty($record['revoked_at'])) {
                 $record['revoked_at'] = $now;
+                if ($reason) {
+                    $record['revoked_reason'] = $reason;
+                }
                 $changed              = true;
+            } elseif ($reason && empty($record['revoked_reason'])) {
+                $record['revoked_reason'] = $reason;
+                $changed                  = true;
             }
         }
         unset($record);
@@ -555,7 +571,10 @@ class RefreshTokens
     public static function handle_password_reset($user, string $new_password = ''): void
     {
         if ($user instanceof WP_User) {
-            self::revoke_all($user->ID);
+            $trigger = function_exists('current_filter') ? (string) current_filter() : 'password_reset';
+
+            self::revoke_all($user->ID, 'global_password_reset');
+            self::log_revocation($user->ID, $trigger ?: 'password_reset');
         }
     }
 
@@ -572,8 +591,28 @@ class RefreshTokens
         $email_changed    = $old_user && strtolower((string) $old_user->user_email) !== strtolower((string) $new_user->user_email);
 
         if ($password_changed || $email_changed) {
-            self::revoke_all($user_id);
+            $reason  = 'global_account_update';
+            $trigger = 'account_update';
+
+            if ($password_changed && !$email_changed) {
+                $reason  = 'global_password_change';
+                $trigger = 'password_change';
+            } elseif ($email_changed && !$password_changed) {
+                $reason  = 'global_email_change';
+                $trigger = 'email_change';
+            }
+
+            self::revoke_all($user_id, $reason);
+            self::log_revocation($user_id, $trigger);
         }
+    }
+
+    private static function log_revocation(int $user_id, string $trigger): void
+    {
+        AuditLogger::info('mobile_sessions_revoked', [
+            'user_id' => $user_id,
+            'trigger' => $trigger,
+        ]);
     }
 
     /**
