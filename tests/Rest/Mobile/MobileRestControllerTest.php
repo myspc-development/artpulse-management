@@ -255,6 +255,35 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $this->assertSame([], $sessions->get_data()['sessions']);
     }
 
+    public function test_sessions_endpoint_accepts_token_within_clock_skew(): void
+    {
+        $token = JWT::issue($this->user_id, null, [
+            'exp' => time() - 60,
+        ])['token'];
+
+        $request = new WP_REST_Request('GET', '/artpulse/v1/mobile/auth/sessions');
+        $request->set_header('Authorization', 'Bearer ' . $token);
+
+        $response = rest_do_request($request);
+
+        $this->assertSame(200, $response->get_status());
+    }
+
+    public function test_sessions_endpoint_rejects_token_beyond_clock_skew(): void
+    {
+        $token = JWT::issue($this->user_id, null, [
+            'exp' => time() - 300,
+        ])['token'];
+
+        $request = new WP_REST_Request('GET', '/artpulse/v1/mobile/auth/sessions');
+        $request->set_header('Authorization', 'Bearer ' . $token);
+
+        $response = rest_do_request($request);
+
+        $this->assertSame(401, $response->get_status());
+        $this->assertSame('auth_expired', $response->get_data()['code']);
+    }
+
     public function test_like_event_is_idempotent_and_counts_update(): void
     {
         $event_id = wp_insert_post([
