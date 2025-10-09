@@ -156,6 +156,8 @@ class RateLimiter
                 [
                     'status'      => 429,
                     'retry_after' => $retry_after,
+                    'limit'       => $limit,
+                    'headers'     => RateLimitHeaders::build($limit, 0, $reset_at, $retry_after),
                 ]
             );
         }

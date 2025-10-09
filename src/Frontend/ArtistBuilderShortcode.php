@@ -78,7 +78,10 @@ final class ArtistBuilderShortcode
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
                 403,
-                ['nonce' => wp_create_nonce('ap_portfolio_update')]
+                [
+                    'nonce' => wp_create_nonce('ap_portfolio_update'),
+                    'hint'  => 'refresh_nonce_and_retry',
+                ]
             );
         }
 
@@ -133,25 +136,25 @@ final class ArtistBuilderShortcode
         array $details = [],
         ?int $retry_after = null
     ): void {
+        if (null !== $retry_after) {
+            $details['retry_after'] = max(0, $retry_after);
+        }
+
+        if ('invalid_nonce' === $code && !isset($details['hint'])) {
+            $details['hint'] = 'refresh_nonce_and_retry';
+        }
+
         $payload = [
             'code'    => $code,
             'message' => $message,
             'details' => $details,
         ];
 
-        if (null !== $retry_after) {
-            $payload['retry_after'] = max(0, $retry_after);
-        }
-
         if (isset($details['nonce']) && is_string($details['nonce'])) {
             header('X-ArtPulse-Nonce: ' . $details['nonce']);
         }
 
-        if (function_exists('wp_doing_ajax') && wp_doing_ajax()) {
-            wp_send_json($payload, $status);
-        }
-
-        wp_die(esc_html($message), esc_html__('Request blocked', 'artpulse-management'), ['response' => $status]);
+        wp_send_json($payload, $status);
     }
 
     private static function owned_artists(int $user_id): array

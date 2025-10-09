@@ -4,11 +4,12 @@ namespace ArtPulse\Frontend;
 
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\Capabilities;
+use ArtPulse\Core\EventDuplicateGuard;
+use ArtPulse\Core\RateLimitHeaders;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_Error;
 use WP_Post;
-use WP_User;
 
 class OrganizationEventForm {
 
@@ -153,7 +154,10 @@ class OrganizationEventForm {
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
                 403,
-                ['nonce' => wp_create_nonce('ap_event_submit')]
+                [
+                    'nonce' => wp_create_nonce('ap_event_submit'),
+                    'hint'  => 'refresh_nonce_and_retry',
+                ]
             );
         }
 
@@ -161,6 +165,8 @@ class OrganizationEventForm {
         if ($rate_error instanceof WP_Error) {
             self::bail_rate_limited($rate_error);
         }
+
+        $dedupe_key = null;
 
         if ($context_org_id && PortfolioAccess::is_owner($user_id, $context_org_id)) {
             $org_id = $context_org_id;
@@ -210,6 +216,20 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
+        $dedupe_key = EventDuplicateGuard::generate_key($user_id, $title, $date);
+        if (EventDuplicateGuard::is_duplicate($dedupe_key)) {
+            self::respond_with_error(
+                'duplicate_event',
+                __('A similar event was just submitted. Please wait a moment before trying again.', 'artpulse-management'),
+                409,
+                [
+                    'retry_after' => MINUTE_IN_SECONDS,
+                ]
+            );
+        }
+
+        EventDuplicateGuard::lock($dedupe_key);
+
         $require_review = (bool) get_option('ap_require_event_review', true);
         $status         = $require_review ? 'pending' : 'publish';
 
@@ -222,6 +242,7 @@ class OrganizationEventForm {
         ], true);
 
         if (is_wp_error($post_id)) {
+            EventDuplicateGuard::clear($dedupe_key);
             $errors[] = $post_id->get_error_message();
             return self::maybe_handle_errors($errors, $should_redirect);
         }
@@ -231,8 +252,11 @@ class OrganizationEventForm {
         update_post_meta($post_id, '_ap_event_organization', $org_id);
         update_post_meta($post_id, '_ap_org_id', $org_id);
         update_post_meta($post_id, '_ap_artist_id', $artist_id);
-        update_post_meta($post_id, '_ap_moderation_state', $status === 'publish' ? 'approved' : 'pending');
-        delete_post_meta($post_id, '_ap_moderation_reason');
+        $moderation_state = $status === 'publish' ? 'approved' : 'pending';
+        $moderation_changed_at = current_time('timestamp', true);
+        update_post_meta($post_id, '_ap_moderation_state', $moderation_state);
+        update_post_meta($post_id, '_ap_moderation_reason', '');
+        update_post_meta($post_id, '_ap_moderation_changed_at', $moderation_changed_at);
 
         if ($type) {
             wp_set_post_terms($post_id, [$type], 'artpulse_event_type');
@@ -298,12 +322,16 @@ class OrganizationEventForm {
         }
 
         AuditLogger::info('event.submit', [
-            'post_id' => $post_id,
-            'user_id' => $user_id,
-            'source'  => 'web',
-            'status'  => $status,
-            'org_id'  => $org_id,
+            'event_id' => $post_id,
+            'user_id'  => $user_id,
+            'owner_id' => $user_id,
+            'source'   => 'web',
+            'status'   => $status,
+            'state'    => $moderation_state,
+            'org_id'   => $org_id,
             'artist_id' => $artist_id,
+            'reason'   => '',
+            'changed_at' => $moderation_changed_at,
         ]);
 
         if ($should_redirect) {
@@ -384,36 +412,25 @@ class OrganizationEventForm {
         array $details = [],
         ?int $retry_after = null
     ): void {
+        if (null !== $retry_after) {
+            $details['retry_after'] = max(0, $retry_after);
+        }
+
+        if ('invalid_nonce' === $code && !isset($details['hint'])) {
+            $details['hint'] = 'refresh_nonce_and_retry';
+        }
+
         $payload = [
             'code'    => $code,
             'message' => $message,
             'details' => $details,
         ];
 
-        if (null !== $retry_after) {
-            $payload['retry_after'] = max(0, $retry_after);
-        }
-
         if (isset($details['nonce']) && is_string($details['nonce'])) {
             header('X-ArtPulse-Nonce: ' . $details['nonce']);
         }
 
-        if (self::wants_json()) {
-            wp_send_json($payload, $status);
-        }
-
-        wp_die(esc_html($message), esc_html__('Request blocked', 'artpulse-management'), ['response' => $status]);
-    }
-
-    private static function wants_json(): bool
-    {
-        if (function_exists('wp_is_json_request') && wp_is_json_request()) {
-            return true;
-        }
-
-        $accept = isset($_SERVER['HTTP_ACCEPT']) ? strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT']))) : '';
-
-        return str_contains($accept, 'application/json');
+        wp_send_json($payload, $status);
     }
 
     private static function get_user_org_id(int $user_id): int
