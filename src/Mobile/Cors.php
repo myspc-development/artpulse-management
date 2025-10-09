@@ -77,7 +77,7 @@ class Cors
             return $result;
         }
 
-        return new WP_Error('cors_forbidden', __('Origin is not allowed for this resource.', 'artpulse-management'), ['status' => 403]);
+        return new WP_Error(RestErrorFormatter::CORS_FORBIDDEN, __('Origin is not allowed for this resource.', 'artpulse-management'), ['status' => 403]);
     }
 
     /**

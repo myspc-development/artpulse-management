@@ -1053,7 +1053,7 @@ class MobileRestController
     private static function geo_error(string $message, array $details = []): WP_Error
     {
         return new WP_Error(
-            'ap_geo_invalid',
+            RestErrorFormatter::GEO_INVALID_BOUNDS,
             $message,
             [
                 'status'  => 400,

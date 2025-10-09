@@ -9,6 +9,13 @@ use WP_REST_Server;
 
 class RestErrorFormatter
 {
+    public const AUTH_EXPIRED        = 'ap_refresh_expired';
+    public const REFRESH_REUSE       = 'refresh_reuse';
+    public const CORS_FORBIDDEN      = 'cors_forbidden';
+    public const GEO_INVALID_BOUNDS  = 'ap_geo_invalid';
+    public const RATE_LIMITED        = 'ap_rate_limited';
+    public const AUTH_REVOKED        = 'ap_refresh_revoked';
+
     private const STATUS_MAP = [
         'rest_invalid_param'      => 400,
         'rest_invalid_route'      => 404,
@@ -19,18 +26,18 @@ class RestErrorFormatter
         'rest_forbidden'          => 403,
         'rest_cannot_edit'        => 403,
         'rest_cookie_invalid_nonce' => 403,
-        'cors_forbidden'          => 403,
+        self::CORS_FORBIDDEN      => 403,
         'rest_not_logged_in'      => 401,
         'rest_invalid_token'      => 401,
         'ap_invalid_credentials'  => 401,
         'ap_invalid_token'        => 401,
         'ap_missing_token'        => 401,
         'ap_invalid_refresh'      => 401,
-        'ap_refresh_expired'      => 401,
-        'ap_refresh_revoked'      => 401,
-        'refresh_reuse'           => 401,
-        'ap_geo_invalid'          => 400,
-        'ap_rate_limited'         => 429,
+        self::AUTH_EXPIRED        => 401,
+        self::AUTH_REVOKED        => 401,
+        self::REFRESH_REUSE       => 401,
+        self::GEO_INVALID_BOUNDS  => 400,
+        self::RATE_LIMITED        => 429,
     ];
 
     private static bool $registered = false;
