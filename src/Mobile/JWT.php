@@ -11,6 +11,8 @@ class JWT
     private const OPTION_KEYS       = 'ap_mobile_jwt_keys';
     private const KEY_BYTES         = 32;
     private const RETIREMENT_GRACE  = 14 * DAY_IN_SECONDS;
+    private const CLOCK_SKEW_FUTURE = 120;
+    private const CLOCK_SKEW_PAST   = 120;
 
     private static ?array $state = null;
     private static bool $booted  = false;
@@ -117,12 +119,12 @@ class JWT
             $expected = hash_hmac('sha256', $header64 . '.' . $payload64, $key['secret'], true);
             if (hash_equals($expected, $signature)) {
                 $now = time();
-                if (!empty($payload['nbf']) && $payload['nbf'] > $now + 120) {
+                if (!empty($payload['nbf']) && $payload['nbf'] > $now + self::CLOCK_SKEW_FUTURE) {
                     return new WP_Error('ap_invalid_token', __('Token not yet valid.', 'artpulse-management'), ['status' => 401]);
                 }
 
-                if (!empty($payload['exp']) && $payload['exp'] < $now - 120) {
-                    return new WP_Error('ap_invalid_token', __('Token expired.', 'artpulse-management'), ['status' => 401]);
+                if (!empty($payload['exp']) && $payload['exp'] < $now - self::CLOCK_SKEW_PAST) {
+                    return new WP_Error('auth_expired', __('Token expired.', 'artpulse-management'), ['status' => 401]);
                 }
 
                 return $payload;
