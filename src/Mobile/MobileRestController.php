@@ -171,6 +171,24 @@ class MobileRestController
             'user'           => self::format_user($user->ID),
         ];
 
+        $session = $refresh['session'] ?? [
+            'device_id'    => $refresh['device_id'] ?? $device_id,
+            'device_name'  => $metadata['device_name'] ?? null,
+            'platform'     => $metadata['platform'] ?? null,
+            'app_version'  => $metadata['app_version'] ?? null,
+            'last_ip'      => $metadata['last_ip'] ?? null,
+            'last_seen_at' => $metadata['last_seen_at'] ?? time(),
+        ];
+
+        $data['session']         = $session;
+        $data['device_id']       = $session['device_id'] ?? null;
+        $data['device_name']     = $session['device_name'] ?? null;
+        $data['platform']        = $session['platform'] ?? null;
+        $data['app_version']     = $session['app_version'] ?? null;
+        $data['last_ip']         = $session['last_ip'] ?? null;
+        $data['last_seen_at']    = $session['last_seen_at'] ?? null;
+        $data['evicted_device_id'] = $refresh['evicted_device_id'] ?? null;
+
         return rest_ensure_response($data);
     }
 
@@ -208,12 +226,29 @@ class MobileRestController
         $access  = JWT::issue($user_id, null, ['device' => $validated['device_id']]);
         $refresh = RefreshTokens::rotate($validated, $metadata);
 
+        $session = $refresh['session'] ?? [
+            'device_id'    => $refresh['device_id'] ?? $validated['device_id'],
+            'device_name'  => $metadata['device_name'] ?? null,
+            'platform'     => $metadata['platform'] ?? null,
+            'app_version'  => $metadata['app_version'] ?? null,
+            'last_ip'      => $metadata['last_ip'] ?? null,
+            'last_seen_at' => $metadata['last_seen_at'] ?? time(),
+        ];
+
         return rest_ensure_response([
-            'token'          => $access['token'],
-            'expires'        => $access['expires'],
-            'refreshToken'   => $refresh['token'],
-            'refreshExpires' => $refresh['expires'],
-            'user'           => self::format_user($user_id),
+            'token'             => $access['token'],
+            'expires'           => $access['expires'],
+            'refreshToken'      => $refresh['token'],
+            'refreshExpires'    => $refresh['expires'],
+            'user'              => self::format_user($user_id),
+            'session'           => $session,
+            'device_id'         => $session['device_id'] ?? null,
+            'device_name'       => $session['device_name'] ?? null,
+            'platform'          => $session['platform'] ?? null,
+            'app_version'       => $session['app_version'] ?? null,
+            'last_ip'           => $session['last_ip'] ?? null,
+            'last_seen_at'      => $session['last_seen_at'] ?? null,
+            'evicted_device_id' => $refresh['evicted_device_id'] ?? null,
         ]);
     }
 
