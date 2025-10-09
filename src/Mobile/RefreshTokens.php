@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Mobile;
 
+use ArtPulse\Core\AuditLogger;
 use WP_Error;
 use WP_User;
 
@@ -36,7 +37,15 @@ class RefreshTokens
      *
      * @param array<string, mixed> $metadata
      *
-     * @return array{token:string,kid:string,expires:int}
+     * @return array{
+     *     token:string,
+     *     kid:string,
+     *     expires:int,
+     *     device_id:string,
+     *     session:array<string, mixed>,
+     *     evicted_device_id?:string|null,
+     *     evicted_device_ids?:array<int, string>
+     * }
      */
     public static function mint(int $user_id, ?string $device_id = null, array $metadata = [], ?int $ttl = null): array
     {
@@ -59,9 +68,10 @@ class RefreshTokens
             self::save_records($user_id, $records);
         }
 
-        $changed = false;
+        $changed         = false;
+        $evicted_devices = [];
 
-        $records = self::enforce_session_cap($records, $issued, $changed);
+        $records = self::enforce_session_cap($records, $issued, $changed, $evicted_devices);
 
         foreach ($records as &$record) {
             if (!isset($record['device_id']) || (string) $record['device_id'] !== $device) {
@@ -98,10 +108,28 @@ class RefreshTokens
             self::save_records($user_id, $records);
         }
 
+        $session_payload = self::build_session_payload($device, $metadata, $issued);
+
+        $evicted_devices = array_values(array_unique(array_filter($evicted_devices)));
+
+        if (!empty($evicted_devices)) {
+            foreach ($evicted_devices as $evicted_device) {
+                AuditLogger::info('mobile_session_evicted', [
+                    'user_id'   => $user_id,
+                    'device_id' => $evicted_device,
+                    'reason'    => 'session_cap',
+                ]);
+            }
+        }
+
         return [
-            'token'   => self::encode_token($kid, $user_id, $secret),
-            'kid'     => $kid,
-            'expires' => $expires,
+            'token'              => self::encode_token($kid, $user_id, $secret),
+            'kid'                => $kid,
+            'expires'            => $expires,
+            'device_id'          => $device,
+            'session'            => $session_payload,
+            'evicted_device_id'  => $evicted_devices[0] ?? null,
+            'evicted_device_ids' => $evicted_devices,
         ];
     }
 
@@ -368,41 +396,67 @@ class RefreshTokens
             $device = (string) ($record['device_id'] ?? 'unknown');
 
             if (!isset($devices[$device])) {
+                $device_name = self::nullable_string($record['device_name'] ?? null);
+                $platform    = self::nullable_string($record['platform'] ?? null);
+                $app_version = self::nullable_string($record['app_version'] ?? null);
+                $last_ip     = self::nullable_string($record['last_ip'] ?? null);
+                $last_seen   = (int) ($record['last_seen_at'] ?? $now);
+
                 $devices[$device] = [
                     'deviceId'    => $device,
-                    'deviceName'  => self::nullable_string($record['device_name'] ?? null),
-                    'platform'    => self::nullable_string($record['platform'] ?? null),
-                    'appVersion'  => self::nullable_string($record['app_version'] ?? null),
+                    'deviceName'  => $device_name,
+                    'platform'    => $platform,
+                    'appVersion'  => $app_version,
                     'createdAt'   => (int) ($record['created_at'] ?? $now),
                     'lastUsedAt'  => (int) ($record['last_used_at'] ?? $now),
-                    'lastSeenAt'  => (int) ($record['last_seen_at'] ?? $now),
+                    'lastSeenAt'  => $last_seen,
                     'expiresAt'   => $expires,
-                    'lastIp'      => self::nullable_string($record['last_ip'] ?? null),
+                    'lastIp'      => $last_ip,
                     'pushToken'   => self::nullable_string($record['push_token'] ?? null),
                     'tokenCount'  => 0,
+                    'device_id'   => $device,
+                    'device_name' => $device_name,
+                    'platform'    => $platform,
+                    'app_version' => $app_version,
+                    'last_ip'     => $last_ip,
+                    'last_seen_at'=> $last_seen,
                 ];
             }
 
             $devices[$device]['createdAt']  = min($devices[$device]['createdAt'], (int) ($record['created_at'] ?? $now));
             $devices[$device]['lastUsedAt'] = max($devices[$device]['lastUsedAt'], (int) ($record['last_used_at'] ?? $now));
             $devices[$device]['lastSeenAt'] = max($devices[$device]['lastSeenAt'], (int) ($record['last_seen_at'] ?? $now));
+            $devices[$device]['last_seen_at'] = $devices[$device]['lastSeenAt'];
             $devices[$device]['expiresAt']  = max($devices[$device]['expiresAt'], $expires);
             $devices[$device]['tokenCount']++;
 
-            if (empty($devices[$device]['deviceName']) && !empty($record['device_name'])) {
-                $devices[$device]['deviceName'] = self::nullable_string($record['device_name']);
+            if (!empty($record['device_name'])) {
+                $name = self::nullable_string($record['device_name']);
+                if (null !== $name) {
+                    $devices[$device]['deviceName'] = $name;
+                    $devices[$device]['device_name'] = $name;
+                }
             }
 
-            if (empty($devices[$device]['platform']) && !empty($record['platform'])) {
-                $devices[$device]['platform'] = self::nullable_string($record['platform']);
+            if (!empty($record['platform'])) {
+                $platform_value = self::nullable_string($record['platform']);
+                if (null !== $platform_value) {
+                    $devices[$device]['platform'] = $platform_value;
+                }
             }
 
-            if (empty($devices[$device]['appVersion']) && !empty($record['app_version'])) {
-                $devices[$device]['appVersion'] = self::nullable_string($record['app_version']);
+            if (!empty($record['app_version'])) {
+                $app_value = self::nullable_string($record['app_version']);
+                if (null !== $app_value) {
+                    $devices[$device]['appVersion'] = $app_value;
+                    $devices[$device]['app_version'] = $app_value;
+                }
             }
 
             if (!empty($record['last_ip'])) {
-                $devices[$device]['lastIp'] = self::nullable_string($record['last_ip']);
+                $ip = self::nullable_string($record['last_ip']);
+                $devices[$device]['lastIp'] = $ip;
+                $devices[$device]['last_ip'] = $ip;
             }
 
             if (!empty($record['push_token'])) {
@@ -601,7 +655,7 @@ class RefreshTokens
      * @param array<int, array<string, mixed>> $records
      * @return array<int, array<string, mixed>>
      */
-    private static function enforce_session_cap(array $records, int $timestamp, bool &$changed): array
+    private static function enforce_session_cap(array $records, int $timestamp, bool &$changed, array &$evicted_devices): array
     {
         $active = [];
 
@@ -643,11 +697,31 @@ class RefreshTokens
             if (empty($records[$target_index]['revoked_at'])) {
                 $records[$target_index]['revoked_at'] = $timestamp;
                 $changed                               = true;
+                $evicted_devices[]                     = (string) ($records[$target_index]['device_id'] ?? 'unknown');
             }
         }
 
         return $records;
     }
+
+    /**
+     * @param array<string, mixed> $metadata
+     * @return array<string, mixed>
+     */
+    private static function build_session_payload(string $device_id, array $metadata, int $timestamp): array
+    {
+        $last_seen = isset($metadata['last_seen_at']) ? (int) $metadata['last_seen_at'] : $timestamp;
+
+        return [
+            'device_id'    => $device_id,
+            'device_name'  => isset($metadata['device_name']) ? self::nullable_string($metadata['device_name']) : null,
+            'platform'     => isset($metadata['platform']) ? self::nullable_string($metadata['platform']) : null,
+            'app_version'  => isset($metadata['app_version']) ? self::nullable_string($metadata['app_version']) : null,
+            'last_ip'      => isset($metadata['last_ip']) ? self::nullable_string($metadata['last_ip']) : null,
+            'last_seen_at' => $last_seen,
+        ];
+    }
+
     private static function normalize_device(?string $device_id): string
     {
         $device_id = $device_id ?? '';
