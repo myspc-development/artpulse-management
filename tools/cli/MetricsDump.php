@@ -19,7 +19,33 @@ class MetricsDump
             WP_CLI::error('Invalid --last interval. Use formats like 15m, 1h, or 900s.');
         }
 
+        $route_filter  = isset($assoc_args['route']) ? (string) $assoc_args['route'] : null;
+        $method_filter = isset($assoc_args['method']) ? strtoupper((string) $assoc_args['method']) : null;
+
         $entries = RequestMetrics::get_recent_entries($window);
+        if (empty($entries)) {
+            WP_CLI::line('No metrics recorded in the requested window.');
+            return;
+        }
+
+        $entries = array_filter(
+            $entries,
+            static function (array $entry) use ($route_filter, $method_filter): bool {
+                $route  = isset($entry['route']) ? (string) $entry['route'] : '';
+                $method = isset($entry['method']) ? strtoupper((string) $entry['method']) : '';
+
+                if (null !== $route_filter && $route !== $route_filter) {
+                    return false;
+                }
+
+                if (null !== $method_filter && $method !== $method_filter) {
+                    return false;
+                }
+
+                return true;
+            }
+        );
+
         if (empty($entries)) {
             WP_CLI::line('No metrics recorded in the requested window.');
             return;
@@ -28,42 +54,54 @@ class MetricsDump
         $grouped = [];
         foreach ($entries as $entry) {
             $route = (string) ($entry['route'] ?? '');
-            if (!isset($grouped[$route])) {
-                $grouped[$route] = [];
+            $method = strtoupper((string) ($entry['method'] ?? ''));
+            if ('' === $method) {
+                $method = 'UNKNOWN';
             }
-            $grouped[$route][] = $entry;
+            $key = $method . '|' . $route;
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'route'     => $route,
+                    'method'    => $method,
+                    'durations' => [],
+                    'statuses'  => [],
+                ];
+            }
+
+            $grouped[$key]['durations'][] = isset($entry['duration_ms']) ? (float) $entry['duration_ms'] : 0.0;
+
+            $bucket = self::status_bucket((int) ($entry['status'] ?? 0));
+            if (!isset($grouped[$key]['statuses'][$bucket])) {
+                $grouped[$key]['statuses'][$bucket] = 0;
+            }
+            $grouped[$key]['statuses'][$bucket]++;
         }
 
         $rows = [];
-        foreach ($grouped as $route => $items) {
-            $durations = array_map(static function (array $item): float {
-                return isset($item['duration_ms']) ? (float) $item['duration_ms'] : 0.0;
-            }, $items);
+        foreach ($grouped as $item) {
+            $durations = $item['durations'];
             sort($durations);
 
-            $statuses = [];
-            foreach ($items as $item) {
-                $bucket = self::status_bucket((int) ($item['status'] ?? 0));
-                if (!isset($statuses[$bucket])) {
-                    $statuses[$bucket] = 0;
-                }
-                $statuses[$bucket]++;
-            }
-
             $rows[] = [
-                'route' => $route,
-                'count' => count($items),
-                'p50'   => self::percentile($durations, 0.50),
-                'p95'   => self::percentile($durations, 0.95),
-                'statuses' => self::format_statuses($statuses),
+                'method'   => $item['method'],
+                'route'    => $item['route'],
+                'count'    => count($durations),
+                'p50'      => self::percentile($durations, 0.50),
+                'p95'      => self::percentile($durations, 0.95),
+                'statuses' => self::format_statuses($item['statuses']),
             ];
         }
 
         usort($rows, static function (array $a, array $b): int {
-            return $a['route'] <=> $b['route'];
+            $route_compare = $a['route'] <=> $b['route'];
+            if (0 !== $route_compare) {
+                return $route_compare;
+            }
+
+            return $a['method'] <=> $b['method'];
         });
 
-        \WP_CLI\Utils\format_items('table', $rows, ['route', 'count', 'p50', 'p95', 'statuses']);
+        \WP_CLI\Utils\format_items('table', $rows, ['method', 'route', 'count', 'p50', 'p95', 'statuses']);
     }
 
     private static function parse_interval(string $value): int
