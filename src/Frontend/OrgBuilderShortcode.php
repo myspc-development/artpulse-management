@@ -104,6 +104,11 @@ class OrgBuilderShortcode
             exit;
         }
 
+        if (!get_option('ap_enable_org_builder', true)) {
+            status_header(404);
+            wp_die('', '', ['response' => 404]);
+        }
+
         $user_id = get_current_user_id();
         $org_id  = isset($_POST['org_id']) ? absint($_POST['org_id']) : 0;
         $step    = isset($_POST['builder_step']) ? sanitize_key(wp_unslash($_POST['builder_step'])) : 'profile';
@@ -113,10 +118,8 @@ class OrgBuilderShortcode
             exit;
         }
 
-        if (!check_admin_referer('ap_portfolio_update', '_ap_portfolio_nonce', false)) {
-            self::remember_errors($user_id, [__('Security check failed. Please try again.', 'artpulse-management')]);
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', wp_get_referer() ?: home_url('/dashboard/')));
-            exit;
+        if (!isset($_POST['_ap_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_ap_nonce'])), 'ap_portfolio_update')) {
+            wp_die(esc_html__('Security check failed.', 'artpulse-management'), esc_html__('Request blocked', 'artpulse-management'), ['response' => 403]);
         }
 
         $nonce = isset($_POST['ap_org_builder_nonce']) ? wp_unslash($_POST['ap_org_builder_nonce']) : '';
@@ -129,24 +132,9 @@ class OrgBuilderShortcode
             'step' => $step,
         ], wp_get_referer() ?: add_query_arg(['step' => $step], home_url('/dashboard/')));
 
-        $rate_error = FormRateLimiter::enforce('portfolio', $user_id);
+        $rate_error = FormRateLimiter::enforce($user_id, 'builder_write', 30, 60);
         if ($rate_error instanceof WP_Error) {
-            $data = $rate_error->get_error_data();
-            if (is_array($data)) {
-                if (isset($data['retry_after'])) {
-                    header('Retry-After: ' . (int) $data['retry_after']);
-                }
-                if (isset($data['limit'])) {
-                    header('X-RateLimit-Limit: ' . (int) $data['limit']);
-                }
-                header('X-RateLimit-Remaining: 0');
-                if (isset($data['reset'])) {
-                    header('X-RateLimit-Reset: ' . (int) $data['reset']);
-                }
-            }
-            self::remember_errors($user_id, [$rate_error->get_error_message()]);
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
-            exit;
+            self::bail_rate_limited($rate_error);
         }
 
         $org = get_post($org_id);
@@ -197,6 +185,36 @@ class OrgBuilderShortcode
 
         wp_safe_redirect(add_query_arg('ap_builder', $status, $redirect));
         exit;
+    }
+
+    private static function bail_rate_limited(WP_Error $error): void
+    {
+        $data        = $error->get_error_data();
+        $retry_after = 30;
+
+        if (is_array($data)) {
+            if (isset($data['retry_after'])) {
+                $retry_after = max(1, (int) $data['retry_after']);
+                header('Retry-After: ' . $retry_after);
+            }
+            if (isset($data['limit'])) {
+                header('X-RateLimit-Limit: ' . (int) $data['limit']);
+            }
+            header('X-RateLimit-Remaining: 0');
+            if (isset($data['reset'])) {
+                header('X-RateLimit-Reset: ' . (int) $data['reset']);
+            }
+        }
+
+        wp_die(
+            sprintf(
+                /* translators: %d: seconds until retry. */
+                esc_html__('Please slow down—try again in %d seconds.', 'artpulse-management'),
+                $retry_after
+            ),
+            esc_html__('Too many updates', 'artpulse-management'),
+            ['response' => 429]
+        );
     }
 
     private static function save_profile(int $org_id): void

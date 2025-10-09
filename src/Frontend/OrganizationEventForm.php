@@ -78,7 +78,7 @@ class OrganizationEventForm {
             echo '</div>';
         }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ap_event_nonce']) && wp_verify_nonce($_POST['ap_event_nonce'], 'submit_event')) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_ap_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_ap_nonce'])), 'ap_event_submit')) {
             self::handle_submission();
         }
 
@@ -86,8 +86,7 @@ class OrganizationEventForm {
         ?>
         <div class="ap-form-messages" role="status" aria-live="polite"></div>
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
-            <?php wp_nonce_field('submit_event', 'ap_event_nonce'); ?>
-            <?php wp_nonce_field('ap_portfolio_update', '_ap_portfolio_nonce'); ?>
+            <?php wp_nonce_field('ap_event_submit', '_ap_nonce'); ?>
             <input type="hidden" name="org_id" value="<?php echo esc_attr($org_id); ?>" />
             <input type="hidden" name="artist_id" value="<?php echo esc_attr($artist_id); ?>" />
 
@@ -139,16 +138,13 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
-        if (!check_admin_referer('ap_portfolio_update', '_ap_portfolio_nonce', false)) {
-            $errors[] = __('Security check failed. Please try again.', 'artpulse-management');
-            return self::maybe_handle_errors($errors, $should_redirect);
+        if (!isset($_POST['_ap_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_ap_nonce'])), 'ap_event_submit')) {
+            wp_die(esc_html__('Security check failed.', 'artpulse-management'), esc_html__('Request blocked', 'artpulse-management'), ['response' => 403]);
         }
 
-        $rate_error = FormRateLimiter::enforce('event', $user_id);
+        $rate_error = FormRateLimiter::enforce($user_id, 'builder_write', 30, 60);
         if ($rate_error instanceof WP_Error) {
-            self::send_rate_limit_headers($rate_error);
-            $errors[] = $rate_error->get_error_message();
-            return self::maybe_handle_errors($errors, $should_redirect);
+            self::bail_rate_limited($rate_error);
         }
 
         if ($context_org_id && PortfolioAccess::is_owner($user_id, $context_org_id)) {
@@ -329,26 +325,37 @@ class OrganizationEventForm {
         return 0;
     }
 
-    private static function send_rate_limit_headers(WP_Error $error): void
+    private static function bail_rate_limited(WP_Error $error): void
     {
-        $data = $error->get_error_data();
-        if (!is_array($data)) {
-            return;
+        $data        = $error->get_error_data();
+        $retry_after = 30;
+
+        if (is_array($data)) {
+            if (isset($data['retry_after'])) {
+                $retry_after = max(1, (int) $data['retry_after']);
+                header('Retry-After: ' . $retry_after);
+            }
+
+            if (isset($data['limit'])) {
+                header('X-RateLimit-Limit: ' . (int) $data['limit']);
+            }
+
+            header('X-RateLimit-Remaining: 0');
+
+            if (isset($data['reset'])) {
+                header('X-RateLimit-Reset: ' . (int) $data['reset']);
+            }
         }
 
-        if (isset($data['retry_after'])) {
-            header('Retry-After: ' . (int) $data['retry_after']);
-        }
-
-        if (isset($data['limit'])) {
-            header('X-RateLimit-Limit: ' . (int) $data['limit']);
-        }
-
-        header('X-RateLimit-Remaining: 0');
-
-        if (isset($data['reset'])) {
-            header('X-RateLimit-Reset: ' . (int) $data['reset']);
-        }
+        wp_die(
+            sprintf(
+                /* translators: %d: seconds until retry. */
+                esc_html__('Please slow down—try again in %d seconds.', 'artpulse-management'),
+                $retry_after
+            ),
+            esc_html__('Too many updates', 'artpulse-management'),
+            ['response' => 429]
+        );
     }
 
     private static function get_user_org_id(int $user_id): int

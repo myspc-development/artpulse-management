@@ -16,16 +16,16 @@ final class FormRateLimiter
     /**
      * Enforce a per-user, per-context rate limit.
      *
-     * @param string $context   Context key (e.g. "portfolio", "event").
-     * @param int    $user_id   Current user identifier.
-     * @param int    $limit     Maximum number of actions per window.
-     * @param int    $window    Window size in seconds.
+     * @param int    $user_id Current user identifier.
+     * @param string $context Context key (e.g. "portfolio", "event").
+     * @param int    $limit   Maximum number of actions per window.
+     * @param int    $window  Window size in seconds.
      *
-     * @return WP_Error|null    A WP_Error when limited, otherwise null.
+     * @return WP_Error|null A WP_Error when limited, otherwise null.
      */
     public static function enforce(
-        string $context,
         int $user_id,
+        string $context,
         int $limit = self::DEFAULT_LIMIT,
         int $window = self::DEFAULT_WINDOW
     ): ?WP_Error {
