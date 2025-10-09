@@ -19,6 +19,7 @@ class RestErrorFormatter
         'rest_forbidden'          => 403,
         'rest_cannot_edit'        => 403,
         'rest_cookie_invalid_nonce' => 403,
+        'cors_forbidden'          => 403,
         'rest_not_logged_in'      => 401,
         'rest_invalid_token'      => 401,
         'ap_invalid_credentials'  => 401,

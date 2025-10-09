@@ -2,6 +2,7 @@
 
 namespace Tests\Rest\Mobile;
 
+use ArtPulse\Mobile\Cors;
 use ArtPulse\Mobile\EventGeo;
 use ArtPulse\Mobile\FollowService;
 use ArtPulse\Mobile\JWT;
@@ -618,23 +619,61 @@ class MobileRestControllerTest extends WP_UnitTestCase
 
     public function test_cors_headers_respect_allowed_origins(): void
     {
-        $origin_filter = static fn () => ['https://mobile.example'];
-        add_filter('artpulse_mobile_allowed_origins', $origin_filter);
-        $_SERVER['HTTP_ORIGIN'] = 'https://mobile.example';
+        rest_get_server();
+        register_rest_route('artpulse/v1', '/mobile/cors-check', [
+            'methods'             => 'GET',
+            'permission_callback' => '__return_true',
+            'callback'            => static fn () => ['ok' => true],
+        ]);
 
-        $request = new WP_REST_Request('OPTIONS', '/artpulse/v1/mobile/login');
-        header_remove('Access-Control-Allow-Origin');
-        \ArtPulse\Mobile\Cors::send_headers(null, null, $request);
-        $headers = headers_list();
-        $this->assertContains('Access-Control-Allow-Origin: https://mobile.example', $headers);
-        $this->assertContains('Access-Control-Allow-Credentials: true', $headers);
+        $previous_settings = get_option('artpulse_settings');
+        $settings           = is_array($previous_settings) ? $previous_settings : [];
+        $settings['approved_mobile_origins'] = "https://mobile.example\nhttps://mobile.example:8443";
+        update_option('artpulse_settings', $settings);
 
-        $_SERVER['HTTP_ORIGIN'] = 'https://evil.example';
         header_remove('Access-Control-Allow-Origin');
-        \ArtPulse\Mobile\Cors::send_headers(null, null, $request);
-        $headers = headers_list();
-        $this->assertNotContains('Access-Control-Allow-Origin: https://evil.example', $headers);
-        remove_filter('artpulse_mobile_allowed_origins', $origin_filter);
+        header_remove('Access-Control-Allow-Credentials');
+        header_remove('Vary');
+
+        try {
+            $request = new WP_REST_Request('GET', '/artpulse/v1/mobile/cors-check');
+            $request->set_header('Origin', 'https://Mobile.Example');
+
+            $response = rest_do_request($request);
+            $this->assertSame(200, $response->get_status());
+
+            Cors::send_headers(null, null, $request);
+            $headers = headers_list();
+            $this->assertContains('Access-Control-Allow-Origin: https://Mobile.Example', $headers);
+            $this->assertContains('Access-Control-Allow-Credentials: true', $headers);
+            $this->assertContains('Vary: Origin', $headers);
+
+            header_remove('Access-Control-Allow-Origin');
+            header_remove('Access-Control-Allow-Credentials');
+            header_remove('Vary');
+
+            $blocked = new WP_REST_Request('GET', '/artpulse/v1/mobile/cors-check');
+            $blocked->set_header('Origin', 'https://evil.example');
+
+            $denied = rest_do_request($blocked);
+            $this->assertSame(403, $denied->get_status());
+            $this->assertSame('cors_forbidden', $denied->get_data()['code']);
+
+            Cors::send_headers(null, null, $blocked);
+            $headers = headers_list();
+            $this->assertNotContains('Access-Control-Allow-Origin: https://evil.example', $headers);
+            $this->assertContains('Vary: Origin', $headers);
+        } finally {
+            header_remove('Access-Control-Allow-Origin');
+            header_remove('Access-Control-Allow-Credentials');
+            header_remove('Vary');
+
+            if (false === $previous_settings) {
+                delete_option('artpulse_settings');
+            } else {
+                update_option('artpulse_settings', $previous_settings);
+            }
+        }
     }
 
     public function test_me_endpoint_updates_push_token_and_mutes(): void
