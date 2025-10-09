@@ -4,6 +4,7 @@ namespace ArtPulse\Frontend\Shared;
 
 use ArtPulse\Core\AuditLogger;
 use function get_current_user_id;
+use function sanitize_key;
 
 /**
  * Registry for portfolio widgets used in builders and public rendering.
@@ -29,7 +30,35 @@ final class PortfolioWidgetRegistry
         $stored   = (array) get_post_meta($post_id, '_ap_widgets', true);
         $defaults = self::defaults();
 
-        $merged = array_replace_recursive($defaults, $stored);
+        $order = [];
+
+        foreach ($stored as $key => $config) {
+            $normalized = sanitize_key($key);
+            if ($normalized === '' || !array_key_exists($normalized, $defaults)) {
+                continue;
+            }
+
+            if (!in_array($normalized, $order, true)) {
+                $order[] = $normalized;
+            }
+        }
+
+        foreach (array_keys($defaults) as $key) {
+            if (!in_array($key, $order, true)) {
+                $order[] = $key;
+            }
+        }
+
+        $merged = [];
+
+        foreach ($order as $key) {
+            $stored_config = [];
+            if (isset($stored[$key]) && is_array($stored[$key])) {
+                $stored_config = $stored[$key];
+            }
+
+            $merged[$key] = array_replace_recursive($defaults[$key], $stored_config);
+        }
 
         return apply_filters('artpulse/portfolio_widgets', $merged, $post_id);
     }
