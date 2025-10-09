@@ -13,6 +13,7 @@ class RefreshTokens
     private const MAX_ACTIVE_TOKENS = 10;
     private const HISTORY_TTL       = 14 * DAY_IN_SECONDS;
     private const HISTORY_LIMIT     = 40;
+    private const INACTIVITY_TTL    = 90 * DAY_IN_SECONDS;
 
     private static bool $hooks_registered = false;
 
@@ -28,8 +29,85 @@ class RefreshTokens
         add_action('password_reset', [self::class, 'handle_password_reset'], 10, 2);
         add_action('after_password_reset', [self::class, 'handle_password_reset'], 10, 2);
         add_action('profile_update', [self::class, 'handle_profile_update'], 10, 2);
+        add_action('ap_mobile_purge_inactive_sessions', [self::class, 'purge_inactive_sessions']);
 
         self::$hooks_registered = true;
+    }
+
+    /**
+     * Purge sessions that have not been active within the inactivity window.
+     */
+    public static function purge_inactive_sessions(?int $inactivity_ttl = null): int
+    {
+        global $wpdb;
+
+        $ttl = $inactivity_ttl ?? self::INACTIVITY_TTL;
+        if ($ttl <= 0) {
+            return 0;
+        }
+
+        $cutoff   = time() - $ttl;
+        $meta_key = self::META_KEY;
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s",
+                $meta_key
+            ),
+            ARRAY_A
+        );
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $removed = 0;
+
+        foreach ($rows as $row) {
+            $user_id = isset($row['user_id']) ? (int) $row['user_id'] : 0;
+            if ($user_id <= 0) {
+                continue;
+            }
+
+            $records = maybe_unserialize($row['meta_value']);
+            if (!is_array($records) || empty($records)) {
+                continue;
+            }
+
+            $updated_records = [];
+
+            foreach ($records as $record) {
+                if (!is_array($record)) {
+                    $removed++;
+                    continue;
+                }
+
+                $last_seen  = isset($record['last_seen_at']) ? (int) $record['last_seen_at'] : 0;
+                $last_used  = isset($record['last_used_at']) ? (int) $record['last_used_at'] : 0;
+                $created_at = isset($record['created_at']) ? (int) $record['created_at'] : 0;
+                $activity   = max($last_seen, $last_used, $created_at);
+
+                if ($activity && $activity >= $cutoff) {
+                    $updated_records[] = $record;
+                    continue;
+                }
+
+                $removed++;
+            }
+
+            if (count($updated_records) === count($records)) {
+                continue;
+            }
+
+            if (empty($updated_records)) {
+                delete_user_meta($user_id, $meta_key);
+                continue;
+            }
+
+            update_user_meta($user_id, $meta_key, array_values($updated_records));
+        }
+
+        return $removed;
     }
 
     /**
