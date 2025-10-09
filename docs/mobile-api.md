@@ -61,7 +61,7 @@ Query params:
 - `radius` (optional, default 50 km) – search radius in kilometres.
 - `limit` (optional, default 25, max 100) – number of events to return.
 
-Results are ordered by distance (ascending) and then by start time. Each event includes the best available image URL, like/save counts, and the caller's interaction state.
+Results are ordered by distance (ascending) and then by start time. Each event includes the best available image URL, like/save counts, and the caller's interaction state. Event `start`/`end` values are returned as ISO 8601 timestamps with offsets. The response also includes `server_tz` (IANA identifier) and `server_tz_offset_minutes` (current offset in minutes) so clients can reconcile local conversions.
 
 ### `POST /events/{id}/like`
 ### `DELETE /events/{id}/like`
@@ -82,7 +82,7 @@ Persist or remove a save for the event. Responses mirror the like endpoints and 
 
 ### `GET /feed`
 
-Returns upcoming events connected to the organisations and artists the user follows. When no matches are found the feed falls back to upcoming public events.
+Returns upcoming events connected to the organisations and artists the user follows. When no matches are found the feed falls back to upcoming public events. Feed responses include the same `server_tz` context and ISO 8601 event timestamps as `/events`.
 
 ## Notifications
 

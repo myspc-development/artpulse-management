@@ -307,6 +307,8 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $response = rest_do_request($request);
         $this->assertSame(200, $response->get_status());
         $data = $response->get_data();
+        $this->assertArrayHasKey('server_tz', $data);
+        $this->assertArrayHasKey('server_tz_offset_minutes', $data);
         $this->assertTrue($data['liked']);
         $this->assertSame(1, $data['likes']);
 
@@ -371,6 +373,20 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $response = rest_do_request($request);
         $this->assertSame(200, $response->get_status());
         $data = $response->get_data();
+        $this->assertArrayHasKey('server_tz', $data);
+        $this->assertArrayHasKey('server_tz_offset_minutes', $data);
+        $this->assertSame(wp_timezone()->getName(), $data['server_tz']);
+        $this->assertIsInt($data['server_tz_offset_minutes']);
+        $first_start = $data['items'][0]['start'];
+        $this->assertNotNull($first_start);
+        $this->assertMatchesRegularExpression('/[+-]\d{2}:\d{2}$/', $first_start);
+        $first_start_dt = new \DateTimeImmutable($first_start);
+        $this->assertInstanceOf(\DateTimeImmutable::class, $first_start_dt);
+        $first_end = $data['items'][0]['end'];
+        $this->assertNotNull($first_end);
+        $this->assertMatchesRegularExpression('/[+-]\d{2}:\d{2}$/', $first_end);
+        $first_end_dt = new \DateTimeImmutable($first_end);
+        $this->assertInstanceOf(\DateTimeImmutable::class, $first_end_dt);
         $this->assertCount(3, $data['items']);
         $this->assertSame($ongoing_event, $data['items'][0]['id']);
         $this->assertTrue($data['items'][0]['isOngoing']);
@@ -428,6 +444,8 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $data = $response->get_data();
 
         $this->assertCount(2, $data['items']);
+        $this->assertSame(wp_timezone()->getName(), $data['server_tz']);
+        $this->assertIsInt($data['server_tz_offset_minutes']);
         $ids = wp_list_pluck($data['items'], 'id');
         $this->assertContains($inside_one, $ids);
         $this->assertContains($inside_two, $ids);
@@ -480,6 +498,8 @@ class MobileRestControllerTest extends WP_UnitTestCase
 
             $data = $response->get_data();
             $this->assertArrayHasKey('items', $data);
+            $this->assertArrayHasKey('server_tz', $data);
+            $this->assertArrayHasKey('server_tz_offset_minutes', $data);
             $this->assertLessThanOrEqual(2, count($data['items']));
 
             foreach ($data['items'] as $item) {
@@ -552,6 +572,16 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $data = $response->get_data();
         $ids  = wp_list_pluck($data['items'], 'id');
 
+        $this->assertArrayHasKey('server_tz', $data);
+        $this->assertArrayHasKey('server_tz_offset_minutes', $data);
+        $this->assertSame(wp_timezone()->getName(), $data['server_tz']);
+        $this->assertIsInt($data['server_tz_offset_minutes']);
+        $first = $data['items'][0]['start'];
+        $this->assertNotNull($first);
+        $this->assertMatchesRegularExpression('/[+-]\d{2}:\d{2}$/', $first);
+        $first_dt = new \DateTimeImmutable($first);
+        $this->assertInstanceOf(\DateTimeImmutable::class, $first_dt);
+
         $this->assertContains($event_id, $ids);
     }
 
@@ -599,6 +629,8 @@ class MobileRestControllerTest extends WP_UnitTestCase
 
             $data = $response->get_data();
             $this->assertArrayHasKey('items', $data);
+            $this->assertArrayHasKey('server_tz', $data);
+            $this->assertArrayHasKey('server_tz_offset_minutes', $data);
             $this->assertLessThanOrEqual(2, count($data['items']));
 
             foreach ($data['items'] as $item) {
