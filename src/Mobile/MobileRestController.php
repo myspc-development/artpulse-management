@@ -4,6 +4,7 @@ namespace ArtPulse\Mobile;
 
 use ArtPulse\Core\ImageTools;
 use ArtPulse\Core\PostTypeRegistrar;
+use DateTimeImmutable;
 use WP_Error;
 use WP_Post;
 use WP_Query;
@@ -444,11 +445,11 @@ class MobileRestController
         $rows = $wpdb->get_results($query);
 
         if (empty($rows)) {
-            return rest_ensure_response([
-                'items'      => [],
-                'next_cursor'=> null,
-                'has_more'   => false,
-            ]);
+            return rest_ensure_response(array_merge([
+                'items'       => [],
+                'next_cursor' => null,
+                'has_more'    => false,
+            ], self::get_server_timezone_context()));
         }
 
         $event_ids = array_map(static fn($row) => (int) $row->event_id, $rows);
@@ -523,11 +524,11 @@ class MobileRestController
             );
         }
 
-        return rest_ensure_response([
+        return rest_ensure_response(array_merge([
             'items'       => $events,
             'next_cursor' => $next,
             'has_more'    => $has_more,
-        ]);
+        ], self::get_server_timezone_context()));
     }
 
     public static function like_event(WP_REST_Request $request)
@@ -752,11 +753,11 @@ class MobileRestController
             );
         }
 
-        return rest_ensure_response([
+        return rest_ensure_response(array_merge([
             'items'       => $events,
             'next_cursor' => $next_cursor,
             'has_more'    => $has_more,
-        ]);
+        ], self::get_server_timezone_context()));
     }
 
     public static function require_auth(WP_REST_Request $request)
@@ -939,19 +940,22 @@ class MobileRestController
         $thumb_id = get_post_thumbnail_id($event_id);
         $image    = $thumb_id ? ImageTools::best_image_src((int) $thumb_id) : null;
 
-        $start    = get_post_meta($event_id, '_ap_event_start', true);
-        $end      = get_post_meta($event_id, '_ap_event_end', true);
+        $start_raw = get_post_meta($event_id, '_ap_event_start', true);
+        $end_raw   = get_post_meta($event_id, '_ap_event_end', true);
         $location = get_post_meta($event_id, '_ap_event_location', true);
         $org_id   = (int) get_post_meta($event_id, '_ap_event_organization', true);
         $org      = $org_id ? get_post($org_id) : null;
-        $ongoing  = null !== $is_ongoing ? (bool) $is_ongoing : self::determine_ongoing(is_string($start) ? (string) $start : null, is_string($end) ? (string) $end : null);
+        $start    = is_string($start_raw) ? (string) $start_raw : null;
+        $end      = is_string($end_raw) ? (string) $end_raw : null;
+        $ongoing  = null !== $is_ongoing ? (bool) $is_ongoing : self::determine_ongoing($start, $end);
+        $timezone = self::get_server_timezone_context();
 
         return [
             'id'          => $event_id,
             'title'       => get_the_title($event_id),
             'excerpt'     => wp_trim_words($post->post_content, 40),
-            'start'       => $start,
-            'end'         => $end,
+            'start'       => self::format_datetime_for_response($start),
+            'end'         => self::format_datetime_for_response($end),
             'location'    => $location,
             'distanceKm'  => null !== $distance_km ? round($distance_km, 2) : null,
             'distance_m'  => null !== $distance_km ? (int) round($distance_km * 1000) : null,
@@ -965,7 +969,7 @@ class MobileRestController
                 'id'    => $org_id,
                 'title' => $org->post_title,
             ] : null,
-        ];
+        ] + $timezone;
     }
 
     /**
@@ -978,6 +982,41 @@ class MobileRestController
             $start_ts,
             round($distance, 6),
             $event_id,
+        ];
+    }
+
+    private static function format_datetime_for_response(?string $value): ?string
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        $timestamp = self::to_timestamp($value);
+        if (null === $timestamp) {
+            return $value;
+        }
+
+        $formatted = wp_date('c', $timestamp);
+
+        return is_string($formatted) && '' !== $formatted ? $formatted : $value;
+    }
+
+    /**
+     * @return array{server_tz: string, server_tz_offset_minutes: int}
+     */
+    private static function get_server_timezone_context(): array
+    {
+        $timezone = wp_timezone();
+        if (!$timezone instanceof \DateTimeZone) {
+            $timezone = new \DateTimeZone('UTC');
+        }
+
+        $now            = new DateTimeImmutable('now', $timezone);
+        $offset_minutes = (int) round($timezone->getOffset($now) / 60);
+
+        return [
+            'server_tz'                => $timezone->getName(),
+            'server_tz_offset_minutes' => $offset_minutes,
         ];
     }
 
