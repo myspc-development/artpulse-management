@@ -18,6 +18,7 @@ if (!class_exists('\\WP_CLI')) {
         public static array $commands = [];
 
         public static string $last_message = '';
+        public static string $last_line    = '';
 
         public static function add_command(string $name, callable $callable): void
         {
@@ -45,6 +46,12 @@ if (!class_exists('\\WP_CLI')) {
         {
             self::$last_message = $message;
         }
+
+        public static function line(string $message): void
+        {
+            self::$last_line    = $message;
+            self::$last_message = $message;
+        }
     }
 }
 
@@ -66,6 +73,7 @@ class MobileDataPurgeTest extends WP_UnitTestCase
 
         \WP_CLI::$commands     = [];
         \WP_CLI::$last_message = '';
+        \WP_CLI::$last_line    = '';
         \WP_CLI::add_command('artpulse mobile purge', [Purge::class, 'handle']);
     }
 
@@ -125,14 +133,18 @@ class MobileDataPurgeTest extends WP_UnitTestCase
 
         update_option('ap_mobile_metrics_summary', [
             '/artpulse/v1/mobile/old' => [
-                'latencies'  => [10.0],
-                'statuses'   => ['2xx' => 1],
-                'updated_at' => $now - (20 * DAY_IN_SECONDS),
+                'GET' => [
+                    'latencies'  => [10.0],
+                    'statuses'   => ['2xx' => 1],
+                    'updated_at' => $now - (20 * DAY_IN_SECONDS),
+                ],
             ],
             '/artpulse/v1/mobile/new' => [
-                'latencies'  => [12.0],
-                'statuses'   => ['2xx' => 1],
-                'updated_at' => $now - (2 * DAY_IN_SECONDS),
+                'POST' => [
+                    'latencies'  => [12.0],
+                    'statuses'   => ['2xx' => 1],
+                    'updated_at' => $now - (2 * DAY_IN_SECONDS),
+                ],
             ],
         ]);
 
@@ -190,14 +202,18 @@ class MobileDataPurgeTest extends WP_UnitTestCase
 
         update_option('ap_mobile_metrics_summary', [
             '/artpulse/v1/mobile/legacy' => [
-                'latencies'  => [8.2],
-                'statuses'   => ['2xx' => 1],
-                'updated_at' => $now - (16 * DAY_IN_SECONDS),
+                'GET' => [
+                    'latencies'  => [8.2],
+                    'statuses'   => ['2xx' => 1],
+                    'updated_at' => $now - (16 * DAY_IN_SECONDS),
+                ],
             ],
             '/artpulse/v1/mobile/current' => [
-                'latencies'  => [6.1],
-                'statuses'   => ['2xx' => 1],
-                'updated_at' => $now - DAY_IN_SECONDS,
+                'GET' => [
+                    'latencies'  => [6.1],
+                    'statuses'   => ['2xx' => 1],
+                    'updated_at' => $now - DAY_IN_SECONDS,
+                ],
             ],
         ]);
 

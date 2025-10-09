@@ -8,11 +8,12 @@ use WP_REST_Response;
 
 class RequestMetrics
 {
-    private const OPTION_LOG     = 'ap_mobile_metrics_log';
-    private const OPTION_SUMMARY = 'ap_mobile_metrics_summary';
-    private const MAX_LOG_ENTRIES = 500;
-    private const MAX_LATENCIES   = 200;
-    private const LOG_TTL         = 14 * DAY_IN_SECONDS;
+    private const OPTION_LOG       = 'ap_mobile_metrics_log';
+    private const OPTION_SUMMARY   = 'ap_mobile_metrics_summary';
+    private const MAX_LOG_ENTRIES  = 500;
+    private const MAX_LATENCIES    = 200;
+    private const LOG_TTL          = 14 * DAY_IN_SECONDS;
+    private const METHOD_UNKNOWN   = 'UNKNOWN';
 
     private static bool $registered = false;
 
@@ -95,22 +96,25 @@ class RequestMetrics
         if (is_array($summary) && !empty($summary)) {
             $updated_summary = [];
             foreach ($summary as $route => $data) {
-                $updated_at = 0;
-                if (is_array($data) && isset($data['updated_at'])) {
-                    $updated_at = (int) $data['updated_at'];
+                $methods     = self::normalize_route_summary($data);
+                $kept        = [];
+                foreach ($methods as $method => $method_data) {
+                    $updated_at = isset($method_data['updated_at']) ? (int) $method_data['updated_at'] : 0;
+                    if ($updated_at && $updated_at >= $cutoff) {
+                        $kept[$method] = $method_data;
+                        continue;
+                    }
+
+                    $summary_removed++;
                 }
 
-                if ($updated_at && $updated_at >= $cutoff) {
-                    $updated_summary[$route] = $data;
-                    continue;
+                if (!empty($kept)) {
+                    $updated_summary[$route] = $kept;
+                    $summary_remaining      += count($kept);
                 }
-
-                $summary_removed++;
             }
 
-            $summary_remaining = count($updated_summary);
-
-            if (empty($updated_summary)) {
+            if (0 === $summary_remaining) {
                 delete_option(self::OPTION_SUMMARY);
             } elseif ($updated_summary !== $summary) {
                 update_option(self::OPTION_SUMMARY, $updated_summary, false);
@@ -188,24 +192,32 @@ class RequestMetrics
 
         $formatted = [];
         foreach ($summary as $route => $data) {
-            if (!is_array($data)) {
+            $methods = self::normalize_route_summary($data);
+            if (empty($methods)) {
                 continue;
             }
 
-            $latencies = isset($data['latencies']) && is_array($data['latencies']) ? array_map('floatval', $data['latencies']) : [];
-            if (empty($latencies)) {
-                continue;
+            foreach ($methods as $method => $method_data) {
+                $latencies = isset($method_data['latencies']) ? array_map('floatval', $method_data['latencies']) : [];
+                if (empty($latencies)) {
+                    continue;
+                }
+
+                sort($latencies);
+
+                if (!isset($formatted[$route])) {
+                    $formatted[$route] = [];
+                }
+
+                $formatted[$route][$method] = [
+                    'method'     => $method,
+                    'updated_at' => isset($method_data['updated_at']) ? (int) $method_data['updated_at'] : time(),
+                    'count'      => count($latencies),
+                    'p50'        => self::percentile($latencies, 0.50),
+                    'p95'        => self::percentile($latencies, 0.95),
+                    'statuses'   => isset($method_data['statuses']) && is_array($method_data['statuses']) ? $method_data['statuses'] : [],
+                ];
             }
-
-            sort($latencies);
-
-            $formatted[$route] = [
-                'updated_at' => isset($data['updated_at']) ? (int) $data['updated_at'] : time(),
-                'count'      => count($latencies),
-                'p50'        => self::percentile($latencies, 0.50),
-                'p95'        => self::percentile($latencies, 0.95),
-                'statuses'   => isset($data['statuses']) && is_array($data['statuses']) ? $data['statuses'] : [],
-            ];
         }
 
         return $formatted;
@@ -236,40 +248,113 @@ class RequestMetrics
     private static function update_summary(array $entry): void
     {
         $route   = (string) ($entry['route'] ?? '');
+        $method  = strtoupper((string) ($entry['method'] ?? ''));
+        if ('' === $method) {
+            $method = self::METHOD_UNKNOWN;
+        }
         $status  = (int) ($entry['status'] ?? 0);
         $summary = get_option(self::OPTION_SUMMARY, []);
         if (!is_array($summary)) {
             $summary = [];
         }
 
-        if (!isset($summary[$route])) {
-            $summary[$route] = [
+        $route_summary = $summary[$route] ?? [];
+        $route_summary = self::normalize_route_summary($route_summary);
+
+        if (!isset($route_summary[$method])) {
+            $route_summary[$method] = [
                 'latencies' => [],
                 'statuses'  => [],
                 'updated_at'=> 0,
             ];
         }
 
-        $latencies = isset($summary[$route]['latencies']) && is_array($summary[$route]['latencies'])
-            ? $summary[$route]['latencies']
+        $latencies = isset($route_summary[$method]['latencies']) && is_array($route_summary[$method]['latencies'])
+            ? $route_summary[$method]['latencies']
             : [];
         $latencies[] = (float) ($entry['duration_ms'] ?? 0.0);
         if (count($latencies) > self::MAX_LATENCIES) {
             $latencies = array_slice($latencies, -1 * self::MAX_LATENCIES);
         }
-        $summary[$route]['latencies'] = $latencies;
+        $route_summary[$method]['latencies'] = $latencies;
 
         $bucket = self::status_bucket($status);
-        if (!isset($summary[$route]['statuses']) || !is_array($summary[$route]['statuses'])) {
-            $summary[$route]['statuses'] = [];
+        if (!isset($route_summary[$method]['statuses']) || !is_array($route_summary[$method]['statuses'])) {
+            $route_summary[$method]['statuses'] = [];
         }
-        if (!isset($summary[$route]['statuses'][$bucket])) {
-            $summary[$route]['statuses'][$bucket] = 0;
+        if (!isset($route_summary[$method]['statuses'][$bucket])) {
+            $route_summary[$method]['statuses'][$bucket] = 0;
         }
-        $summary[$route]['statuses'][$bucket]++;
-        $summary[$route]['updated_at'] = (int) ($entry['timestamp'] ?? time());
+        $route_summary[$method]['statuses'][$bucket]++;
+        $route_summary[$method]['updated_at'] = (int) ($entry['timestamp'] ?? time());
+
+        $summary[$route] = $route_summary;
 
         update_option(self::OPTION_SUMMARY, $summary, false);
+    }
+
+    /**
+     * @param mixed $data
+     * @return array<string, array<string, mixed>>
+     */
+    private static function normalize_route_summary($data): array
+    {
+        if (!is_array($data)) {
+            return [];
+        }
+
+        $looks_like_legacy = isset($data['latencies']) || isset($data['statuses']) || isset($data['updated_at']);
+        if ($looks_like_legacy) {
+            return [
+                self::METHOD_UNKNOWN => self::sanitize_method_summary($data),
+            ];
+        }
+
+        $normalized = [];
+        foreach ($data as $method => $method_data) {
+            if (!is_string($method)) {
+                continue;
+            }
+
+            if (!is_array($method_data)) {
+                continue;
+            }
+
+            $normalized[strtoupper($method)] = self::sanitize_method_summary($method_data);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private static function sanitize_method_summary(array $data): array
+    {
+        $latencies = [];
+        if (isset($data['latencies']) && is_array($data['latencies'])) {
+            foreach ($data['latencies'] as $latency) {
+                $latencies[] = (float) $latency;
+            }
+        }
+
+        $statuses = [];
+        if (isset($data['statuses']) && is_array($data['statuses'])) {
+            foreach ($data['statuses'] as $bucket => $count) {
+                if (!is_string($bucket)) {
+                    continue;
+                }
+
+                $statuses[$bucket] = (int) $count;
+            }
+        }
+
+        return [
+            'latencies'  => $latencies,
+            'statuses'   => $statuses,
+            'updated_at' => isset($data['updated_at']) ? (int) $data['updated_at'] : 0,
+        ];
     }
 
     private static function resolve_status_code($response): int
