@@ -4,6 +4,8 @@ namespace ArtPulse\Frontend;
 
 use ArtPulse\Core\ImageTools;
 use ArtPulse\Core\UpgradeReviewRepository;
+use ArtPulse\Frontend\Shared\FormRateLimiter;
+use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Error;
 use WP_Post;
 use WP_User;
@@ -28,8 +30,14 @@ class OrgBuilderShortcode
 
     public static function render($atts = []): string
     {
+        if (!get_option('ap_enable_org_builder', true)) {
+            status_header(404);
+
+            return '';
+        }
+
         if (!is_user_logged_in()) {
-            return '<p>' . esc_html__('Please log in to manage your organization.', 'artpulse-management') . '</p>';
+            return wp_login_form(['echo' => false]);
         }
 
         $user_id = get_current_user_id();
@@ -42,6 +50,10 @@ class OrgBuilderShortcode
             }
 
             return '<div class="ap-org-builder__notice ap-org-builder__notice--missing">' . esc_html__('No approved organization profile found for your account.', 'artpulse-management') . '</div>';
+        }
+
+        if (!PortfolioAccess::can_manage_portfolio($user_id, (int) $org->ID)) {
+            return '<p>' . esc_html__('You do not have permission to edit this organization.', 'artpulse-management') . '</p>';
         }
 
         if (!current_user_can('edit_post', $org->ID)) {
@@ -101,6 +113,12 @@ class OrgBuilderShortcode
             exit;
         }
 
+        if (!check_admin_referer('ap_portfolio_update', '_ap_portfolio_nonce', false)) {
+            self::remember_errors($user_id, [__('Security check failed. Please try again.', 'artpulse-management')]);
+            wp_safe_redirect(add_query_arg('ap_builder', 'error', wp_get_referer() ?: home_url('/dashboard/')));
+            exit;
+        }
+
         $nonce = isset($_POST['ap_org_builder_nonce']) ? wp_unslash($_POST['ap_org_builder_nonce']) : '';
         if (!is_string($nonce) || !wp_verify_nonce($nonce, 'ap-org-builder-' . $org_id)) {
             wp_safe_redirect(add_query_arg('ap_builder', 'error', wp_get_referer() ?: home_url('/dashboard/')));
@@ -111,8 +129,34 @@ class OrgBuilderShortcode
             'step' => $step,
         ], wp_get_referer() ?: add_query_arg(['step' => $step], home_url('/dashboard/')));
 
+        $rate_error = FormRateLimiter::enforce('portfolio', $user_id);
+        if ($rate_error instanceof WP_Error) {
+            $data = $rate_error->get_error_data();
+            if (is_array($data)) {
+                if (isset($data['retry_after'])) {
+                    header('Retry-After: ' . (int) $data['retry_after']);
+                }
+                if (isset($data['limit'])) {
+                    header('X-RateLimit-Limit: ' . (int) $data['limit']);
+                }
+                header('X-RateLimit-Remaining: 0');
+                if (isset($data['reset'])) {
+                    header('X-RateLimit-Reset: ' . (int) $data['reset']);
+                }
+            }
+            self::remember_errors($user_id, [$rate_error->get_error_message()]);
+            wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
+            exit;
+        }
+
         $org = get_post($org_id);
         if (!$org instanceof WP_Post) {
+            wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
+            exit;
+        }
+
+        if (!PortfolioAccess::can_manage_portfolio($user_id, $org_id)) {
+            self::remember_errors($user_id, [__('You do not have permission to update this organization.', 'artpulse-management')]);
             wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
             exit;
         }
@@ -184,6 +228,14 @@ class OrgBuilderShortcode
         $logo_id  = (int) get_post_meta($org_id, '_ap_logo_id', true);
         $cover_id = (int) get_post_meta($org_id, '_ap_cover_id', true);
 
+        if ($logo_id) {
+            self::assign_attachment_to_portfolio($logo_id, $org_id);
+        }
+
+        if ($cover_id) {
+            self::assign_attachment_to_portfolio($cover_id, $org_id);
+        }
+
         if (!empty($_FILES['ap_logo']['name'])) {
             $logo_file = self::prepare_file_array($_FILES['ap_logo']);
             $validation = self::validate_image_upload($logo_file, __('Logo', 'artpulse-management'));
@@ -195,7 +247,9 @@ class OrgBuilderShortcode
                     $errors[] = $upload->get_error_message();
                 } else {
                     $logo_id = (int) $upload;
-                    update_post_meta($org_id, '_ap_logo_id', $logo_id);
+                    if (self::assign_attachment_to_portfolio($logo_id, $org_id)) {
+                        update_post_meta($org_id, '_ap_logo_id', $logo_id);
+                    }
                 }
             }
         }
@@ -211,13 +265,15 @@ class OrgBuilderShortcode
                     $errors[] = $upload->get_error_message();
                 } else {
                     $cover_id = (int) $upload;
-                    update_post_meta($org_id, '_ap_cover_id', $cover_id);
+                    if (self::assign_attachment_to_portfolio($cover_id, $org_id)) {
+                        update_post_meta($org_id, '_ap_cover_id', $cover_id);
+                    }
                 }
             }
         }
 
         $gallery_ids = isset($_POST['existing_gallery_ids'])
-            ? array_map('absint', (array) wp_unslash($_POST['existing_gallery_ids']))
+            ? self::filter_owned_attachments((array) wp_unslash($_POST['existing_gallery_ids']), $org_id)
             : [];
 
         if (!empty($_FILES['ap_gallery']['name'][0])) {
@@ -237,13 +293,15 @@ class OrgBuilderShortcode
                     continue;
                 }
 
-                $gallery_ids[] = (int) $upload;
+                if (self::assign_attachment_to_portfolio((int) $upload, $org_id)) {
+                    $gallery_ids[] = (int) $upload;
+                }
             }
 
             unset($_FILES['ap_single_gallery']);
         }
 
-        $gallery_ids = array_values(array_filter(array_unique($gallery_ids)));
+        $gallery_ids = array_values(array_filter(array_unique(self::filter_owned_attachments($gallery_ids, $org_id))));
 
         $order_input = isset($_POST['gallery_order']) ? (array) wp_unslash($_POST['gallery_order']) : [];
         $order = [];
@@ -366,6 +424,24 @@ class OrgBuilderShortcode
         return $normalized;
     }
 
+    private static function filter_owned_attachments(array $attachments, int $post_id): array
+    {
+        $filtered = [];
+
+        foreach ($attachments as $attachment_id) {
+            $attachment_id = (int) $attachment_id;
+            if ($attachment_id <= 0) {
+                continue;
+            }
+
+            if (self::assign_attachment_to_portfolio($attachment_id, $post_id)) {
+                $filtered[] = $attachment_id;
+            }
+        }
+
+        return array_values(array_unique($filtered));
+    }
+
     private static function get_template_path(string $view): string
     {
         $base = trailingslashit(ARTPULSE_PLUGIN_DIR) . 'templates/org-builder/' . $view . '.php';
@@ -410,7 +486,37 @@ class OrgBuilderShortcode
             return new WP_Error($result->get_error_code(), $result->get_error_message());
         }
 
-        return (int) $result;
+        $attachment_id = (int) $result;
+        self::assign_attachment_to_portfolio($attachment_id, $post_id);
+
+        return $attachment_id;
+    }
+
+    private static function assign_attachment_to_portfolio(int $attachment_id, int $post_id): bool
+    {
+        if ($attachment_id <= 0 || $post_id <= 0) {
+            return false;
+        }
+
+        $attachment = get_post($attachment_id);
+        if (!$attachment instanceof WP_Post || 'attachment' !== $attachment->post_type) {
+            return false;
+        }
+
+        if ((int) $attachment->post_parent === $post_id) {
+            return true;
+        }
+
+        if ((int) $attachment->post_parent !== 0) {
+            return false;
+        }
+
+        wp_update_post([
+            'ID'          => $attachment_id,
+            'post_parent' => $post_id,
+        ]);
+
+        return true;
     }
 
     private static function validate_image_upload(array $file, string $context_label): ?string
@@ -462,6 +568,17 @@ class OrgBuilderShortcode
                 $context_label,
                 self::MIN_IMAGE_DIMENSION
             );
+        }
+
+        if ('image/jpeg' === $type) {
+            $channels = isset($dimensions['channels']) ? (int) $dimensions['channels'] : 0;
+            if ($channels >= 4) {
+                return sprintf(
+                    /* translators: %s field label. */
+                    __('%s must use an RGB color profile. Please upload a non-CMYK JPG.', 'artpulse-management'),
+                    $context_label
+                );
+            }
         }
 
         return null;

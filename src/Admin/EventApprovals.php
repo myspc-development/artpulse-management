@@ -2,10 +2,11 @@
 
 namespace ArtPulse\Admin;
 
+use ArtPulse\Core\AuditLogger;
+use WP_List_Table;
 use WP_Post;
 use WP_Query;
 use WP_User;
-use WP_List_Table;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -248,6 +249,14 @@ class EventApprovals
             }
 
             $processed++;
+            AuditLogger::info(
+                'event.approve',
+                [
+                    'event_id' => $event_id,
+                    'user_id'  => get_current_user_id(),
+                    'context'  => 'dashboard',
+                ]
+            );
             $this->send_status_email( get_post( $event_id ), 'approved' );
         }
 
@@ -276,6 +285,14 @@ class EventApprovals
             }
 
             $processed++;
+            AuditLogger::info(
+                'event.deny',
+                [
+                    'event_id' => $event_id,
+                    'user_id'  => get_current_user_id(),
+                    'context'  => 'dashboard',
+                ]
+            );
             $this->send_status_email( $trashed, 'rejected' );
         }
 

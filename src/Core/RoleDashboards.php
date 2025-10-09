@@ -24,6 +24,7 @@ class RoleDashboards
             'post_types'  => ['artpulse_artist', 'artpulse_artwork'],
             'profile_post_type' => 'artpulse_artist',
             'title'       => 'Artist Dashboard',
+            'feature_flag' => 'ap_enable_artist_builder',
         ],
         'organization' => [
             'shortcode'   => 'ap_organization_dashboard',
@@ -31,6 +32,7 @@ class RoleDashboards
             'post_types'  => ['artpulse_org', 'artpulse_event'],
             'profile_post_type' => 'artpulse_org',
             'title'       => 'Organization Dashboard',
+            'feature_flag' => 'ap_enable_org_builder',
         ],
     ];
 
@@ -169,6 +171,9 @@ class RoleDashboards
         }
 
         foreach (self::ROLE_CONFIG as $role => $config) {
+            if (!self::isRoleEnabled($role)) {
+                continue;
+            }
             $can_manage = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
 
             if (!$can_manage && !self::userCanViewRole($user, $role)) {
@@ -432,7 +437,7 @@ class RoleDashboards
                     'role' => [
                         'type'     => 'string',
                         'required' => true,
-                        'enum'     => array_keys(self::ROLE_CONFIG),
+                        'enum'     => self::enabledRoleSlugs(),
                     ],
                 ],
             ]
@@ -543,6 +548,10 @@ class RoleDashboards
             return false;
         }
 
+        if (!self::isRoleEnabled($role)) {
+            return false;
+        }
+
         if ($user_id === null) {
             $user_id = get_current_user_id();
         }
@@ -605,6 +614,10 @@ class RoleDashboards
 
     private static function renderDashboard(string $role): string
     {
+        if (!self::isRoleEnabled($role)) {
+            return '';
+        }
+
         if (!is_user_logged_in()) {
             return '<div class="ap-dashboard-message">' . esc_html__('Please log in to view this dashboard.', 'artpulse') . '</div>';
         }
@@ -627,6 +640,9 @@ class RoleDashboards
         $can_override = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
 
         foreach (self::ROLE_CONFIG as $role => $config) {
+            if (!self::isRoleEnabled($role)) {
+                continue;
+            }
             $post_type = $config['profile_post_type'] ?? '';
 
             if ($post_type === '') {
@@ -957,11 +973,40 @@ class RoleDashboards
             return false;
         }
 
+        if (!self::isRoleEnabled($role)) {
+            return false;
+        }
+
         if (in_array($role, (array) $user->roles, true)) {
             return user_can($user, $config['capability']);
         }
 
         return false;
+    }
+
+    private static function isRoleEnabled(string $role): bool
+    {
+        $config = self::ROLE_CONFIG[$role] ?? [];
+        $flag   = $config['feature_flag'] ?? '';
+
+        if ($flag === '') {
+            return true;
+        }
+
+        return (bool) get_option($flag, true);
+    }
+
+    private static function enabledRoleSlugs(): array
+    {
+        $slugs = [];
+
+        foreach (array_keys(self::ROLE_CONFIG) as $role) {
+            if (self::isRoleEnabled($role)) {
+                $slugs[] = $role;
+            }
+        }
+
+        return $slugs;
     }
 
     private static function getFavorites(int $user_id): array

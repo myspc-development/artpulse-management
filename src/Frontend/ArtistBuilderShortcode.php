@@ -16,6 +16,12 @@ final class ArtistBuilderShortcode
 
     public static function render(): string
     {
+        if (!get_option('ap_enable_artist_builder', true)) {
+            status_header(404);
+
+            return '';
+        }
+
         if (!is_user_logged_in()) {
             return wp_login_form(['echo' => false]);
         }

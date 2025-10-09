@@ -1,68 +1,71 @@
 <?php
-get_header(); 
-while ( have_posts() ) : the_post(); ?>
-  <div class="nectar-portfolio-single-media">
-    <?php the_post_thumbnail('full',['class'=>'img-responsive']); ?>
-  </div>
-  <h1 class="entry-title"><?php the_title(); ?></h1>
-  <?php
-    $object_id    = get_the_ID();
-    $object_type  = get_post_type($object_id);
-    $user_id      = get_current_user_id();
-    $is_favorited = $user_id && class_exists('\\ArtPulse\\Community\\FavoritesManager')
-      ? \ArtPulse\Community\FavoritesManager::is_favorited($user_id, $object_id, $object_type)
-      : false;
-    $is_following = $user_id && class_exists('\\ArtPulse\\Community\\FollowManager')
-      ? \ArtPulse\Community\FollowManager::is_following($user_id, $object_id, $object_type)
-      : false;
-    $favorite_label_on  = esc_html__('Unfavorite', 'artpulse');
-    $favorite_label_off = esc_html__('Favorite', 'artpulse');
-    $follow_label_on    = esc_html__('Unfollow', 'artpulse');
-    $follow_label_off   = esc_html__('Follow', 'artpulse');
-  ?>
-  <div class="ap-social-actions">
-    <button
-      type="button"
-      class="ap-favorite-btn<?php echo $is_favorited ? ' is-active' : ''; ?>"
-      data-ap-fav="1"
-      data-ap-object-id="<?php echo esc_attr($object_id); ?>"
-      data-ap-object-type="<?php echo esc_attr($object_type); ?>"
-      data-ap-active="<?php echo $is_favorited ? '1' : '0'; ?>"
-      data-label-on="<?php echo esc_attr($favorite_label_on); ?>"
-      data-label-off="<?php echo esc_attr($favorite_label_off); ?>"
-      aria-pressed="<?php echo $is_favorited ? 'true' : 'false'; ?>"
-    >
-      <?php echo $is_favorited ? $favorite_label_on : $favorite_label_off; ?>
-    </button>
-    <button
-      type="button"
-      class="ap-follow-btn<?php echo $is_following ? ' is-following' : ''; ?>"
-      data-ap-follow="1"
-      data-ap-object-id="<?php echo esc_attr($object_id); ?>"
-      data-ap-object-type="<?php echo esc_attr($object_type); ?>"
-      data-ap-active="<?php echo $is_following ? '1' : '0'; ?>"
-      data-label-on="<?php echo esc_attr($follow_label_on); ?>"
-      data-label-off="<?php echo esc_attr($follow_label_off); ?>"
-      aria-pressed="<?php echo $is_following ? 'true' : 'false'; ?>"
-    >
-      <?php echo $is_following ? $follow_label_on : $follow_label_off; ?>
-    </button>
-  </div>
-  <div class="entry-content"><?php the_content(); ?></div>
-  <?php
-    $address = get_post_meta(get_the_ID(),'_ap_org_address',true);
-    $website = get_post_meta(get_the_ID(),'_ap_org_website',true);
-    if($address||$website): ?>
-    <ul class="portfolio-meta">
-      <?php if($address): ?>
-        <li><strong><?php esc_html_e('Address:','artpulse'); ?></strong> <?php echo esc_html($address); ?></li>
-      <?php endif; ?>
-      <?php if($website): ?>
-        <li><strong><?php esc_html_e('Website:','artpulse'); ?></strong> 
-          <a href="<?php echo esc_url($website); ?>" target="_blank"><?php echo esc_html($website); ?></a>
-        </li>
-      <?php endif; ?>
-    </ul>
-  <?php endif;
+use ArtPulse\Frontend\Shared\PortfolioWidgetRegistry;
+
+get_header();
+
+while (have_posts()) : the_post();
+    $post_id   = get_the_ID();
+    $post_type = get_post_type($post_id);
+    $widgets   = PortfolioWidgetRegistry::for_post($post_id);
+
+    $socials_raw = (string) get_post_meta($post_id, '_ap_socials', true);
+    $socials = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $socials_raw)));
+
+    $location_meta = get_post_meta($post_id, '_ap_location', true);
+    $location = [
+        'lat'     => 0.0,
+        'lng'     => 0.0,
+        'address' => (string) get_post_meta($post_id, '_ap_address', true),
+    ];
+    if (is_array($location_meta)) {
+        $location['lat']     = isset($location_meta['lat']) ? (float) $location_meta['lat'] : 0.0;
+        $location['lng']     = isset($location_meta['lng']) ? (float) $location_meta['lng'] : 0.0;
+        $location['address'] = $location_meta['address'] ?? $location['address'];
+    }
+
+    $media = [
+        'logo_id'     => (int) get_post_meta($post_id, '_ap_logo_id', true),
+        'cover_id'    => (int) get_post_meta($post_id, '_ap_cover_id', true),
+        'gallery_ids' => array_values(array_filter(array_map('intval', (array) get_post_meta($post_id, '_ap_gallery_ids', true)))),
+    ];
+
+    if (!$media['cover_id']) {
+        $media['cover_id'] = (int) get_post_thumbnail_id($post_id);
+    }
+
+    $meta = [
+        'tagline' => (string) get_post_meta($post_id, '_ap_tagline', true),
+        'about'   => wp_kses_post(get_post_meta($post_id, '_ap_about', true)),
+        'website' => esc_url(get_post_meta($post_id, '_ap_website', true)),
+        'phone'   => sanitize_text_field(get_post_meta($post_id, '_ap_phone', true)),
+        'email'   => sanitize_email(get_post_meta($post_id, '_ap_email', true)),
+        'socials' => array_map('esc_url', $socials),
+    ];
+
+    $portfolio_context = [
+        'post_id'   => $post_id,
+        'post_type' => $post_type,
+        'meta'      => $meta,
+        'media'     => $media,
+        'location'  => $location,
+    ];
+
+    foreach ($widgets as $key => $config) {
+        if (empty($config['enabled'])) {
+            continue;
+        }
+
+        $template = trailingslashit(ARTPULSE_PLUGIN_DIR) . 'templates/portfolio/widgets/' . sanitize_key($key) . '.php';
+        if (!file_exists($template)) {
+            continue;
+        }
+
+        $portfolio_widget       = $config;
+        $portfolio_widget_key   = sanitize_key($key);
+        $portfolio_widget_scope = $portfolio_context;
+
+        include $template;
+    }
 endwhile;
+
 get_footer();
