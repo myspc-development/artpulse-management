@@ -2,6 +2,8 @@
 
 namespace ArtPulse\Frontend;
 
+use ArtPulse\Core\Capabilities;
+use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Error;
 use WP_Post;
 use WP_User;
@@ -30,14 +32,31 @@ class OrganizationEventForm {
             return '<p>You must be logged in to submit an event.</p>';
         }
 
-        $user_id = get_current_user_id();
-        $org_id = self::get_user_org_id($user_id);
+        $user_id   = get_current_user_id();
+        $org_id    = isset($_GET['org_id']) ? absint($_GET['org_id']) : 0;
+        $artist_id = isset($_GET['artist_id']) ? absint($_GET['artist_id']) : 0;
 
-        if (!$org_id) {
-            return '<p>' . esc_html__('You need an approved organization before submitting events.', 'artpulse-management') . '</p>';
+        if ($org_id && !PortfolioAccess::is_owner($user_id, $org_id)) {
+            wp_die(__('Forbidden', 'artpulse-management'));
         }
 
-        if (!current_user_can('create_artpulse_events')) {
+        if ($artist_id && !PortfolioAccess::is_owner($user_id, $artist_id)) {
+            wp_die(__('Forbidden', 'artpulse-management'));
+        }
+
+        if (!$org_id) {
+            $org_id = self::get_user_org_id($user_id);
+        }
+
+        if (!$artist_id) {
+            $artist_id = self::get_user_artist_id($user_id);
+        }
+
+        if (!$org_id && !$artist_id) {
+            return '<p>' . esc_html__('You need an approved portfolio before submitting events.', 'artpulse-management') . '</p>';
+        }
+
+        if (!user_can($user_id, Capabilities::CAP_SUBMIT_EVENTS)) {
             return '<p>' . esc_html__('Your account is not allowed to submit events.', 'artpulse-management') . '</p>';
         }
 
@@ -67,6 +86,7 @@ class OrganizationEventForm {
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
             <?php wp_nonce_field('submit_event', 'ap_event_nonce'); ?>
             <input type="hidden" name="org_id" value="<?php echo esc_attr($org_id); ?>" />
+            <input type="hidden" name="artist_id" value="<?php echo esc_attr($artist_id); ?>" />
 
             <label for="ap_org_event_title">Event Title*</label>
             <input id="ap_org_event_title" type="text" name="title" required data-test="event-title">
@@ -102,13 +122,34 @@ class OrganizationEventForm {
     }
 
     public static function handle_submission(bool $should_redirect = true) {
-        $user_id = get_current_user_id();
-        $org_id = self::get_user_org_id($user_id);
+        $user_id   = get_current_user_id();
+        $org_id    = isset($_POST['org_id']) ? absint($_POST['org_id']) : 0;
+        $artist_id = isset($_POST['artist_id']) ? absint($_POST['artist_id']) : 0;
 
         $errors = [];
 
-        if ($user_id <= 0 || !$org_id) {
+        if ($user_id <= 0) {
             $errors[] = __('You do not have permission to submit this event.', 'artpulse-management');
+            return self::maybe_handle_errors($errors, $should_redirect);
+        }
+
+        if ($org_id && !PortfolioAccess::is_owner($user_id, $org_id)) {
+            $errors[] = __('You do not have permission to submit this event.', 'artpulse-management');
+            return self::maybe_handle_errors($errors, $should_redirect);
+        }
+
+        if ($artist_id && !PortfolioAccess::is_owner($user_id, $artist_id)) {
+            $errors[] = __('You do not have permission to submit this event.', 'artpulse-management');
+            return self::maybe_handle_errors($errors, $should_redirect);
+        }
+
+        if (!$org_id && !$artist_id) {
+            $errors[] = __('You must choose an organization or artist for this event.', 'artpulse-management');
+            return self::maybe_handle_errors($errors, $should_redirect);
+        }
+
+        if (!user_can($user_id, Capabilities::CAP_SUBMIT_EVENTS)) {
+            $errors[] = __('Your account is not allowed to submit events.', 'artpulse-management');
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
@@ -138,11 +179,13 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
+        $status = get_option('ap_require_event_review', true) ? 'pending' : 'publish';
+
         $post_id = wp_insert_post([
             'post_title'   => $title,
             'post_content' => $description,
             'post_type'    => 'artpulse_event',
-            'post_status'  => 'publish',
+            'post_status'  => $status,
             'post_author'  => $user_id,
         ], true);
 
@@ -154,6 +197,8 @@ class OrganizationEventForm {
         update_post_meta($post_id, '_ap_event_date', $date);
         update_post_meta($post_id, '_ap_event_location', $location);
         update_post_meta($post_id, '_ap_event_organization', $org_id);
+        update_post_meta($post_id, '_ap_org_id', $org_id);
+        update_post_meta($post_id, '_ap_artist_id', $artist_id);
 
         if ($type) {
             wp_set_post_terms($post_id, [$type], 'artpulse_event_type');
@@ -196,10 +241,17 @@ class OrganizationEventForm {
                 __('Hi %1$s,%2$s%3$s', 'artpulse-management'),
                 $current_user->display_name ?: $current_user->user_login,
                 "\n\n",
-                sprintf(
-                    /* translators: %s event title. */
-                    __('Thanks for submitting your event "%s". It is now live on ArtPulse.', 'artpulse-management'),
-                    $title
+                ('pending' === $status
+                    ? sprintf(
+                        /* translators: %s event title. */
+                        __('Thanks for submitting your event "%s". Our team will review it shortly.', 'artpulse-management'),
+                        $title
+                    )
+                    : sprintf(
+                        /* translators: %s event title. */
+                        __('Thanks for submitting your event "%s". It is now live on ArtPulse.', 'artpulse-management'),
+                        $title
+                    )
                 )
             );
             wp_mail($user_email, $user_subject, $user_message);
@@ -275,6 +327,42 @@ class OrganizationEventForm {
 
         $authored = get_posts([
             'post_type'      => 'artpulse_org',
+            'post_status'    => ['publish', 'draft', 'pending'],
+            'posts_per_page' => 1,
+            'author'         => $user_id,
+        ]);
+
+        if (!empty($authored) && $authored[0] instanceof WP_Post) {
+            return (int) $authored[0]->ID;
+        }
+
+        return 0;
+    }
+
+    private static function get_user_artist_id(int $user_id): int
+    {
+        if ($user_id <= 0) {
+            return 0;
+        }
+
+        $owned = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => ['publish', 'draft', 'pending'],
+            'posts_per_page' => 1,
+            'meta_query'     => [
+                [
+                    'key'   => '_ap_owner_user',
+                    'value' => $user_id,
+                ],
+            ],
+        ]);
+
+        if (!empty($owned) && $owned[0] instanceof WP_Post) {
+            return (int) $owned[0]->ID;
+        }
+
+        $authored = get_posts([
+            'post_type'      => 'artpulse_artist',
             'post_status'    => ['publish', 'draft', 'pending'],
             'posts_per_page' => 1,
             'author'         => $user_id,

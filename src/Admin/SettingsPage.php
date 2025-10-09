@@ -363,6 +363,46 @@ class SettingsPage
     {
         register_setting(
             'artpulse_settings_group',
+            'ap_enable_org_builder',
+            [
+                'type'              => 'boolean',
+                'default'           => true,
+                'sanitize_callback' => [self::class, 'sanitize_boolean'],
+            ]
+        );
+
+        register_setting(
+            'artpulse_settings_group',
+            'ap_enable_artist_builder',
+            [
+                'type'              => 'boolean',
+                'default'           => true,
+                'sanitize_callback' => [self::class, 'sanitize_boolean'],
+            ]
+        );
+
+        register_setting(
+            'artpulse_settings_group',
+            'ap_require_event_review',
+            [
+                'type'              => 'boolean',
+                'default'           => true,
+                'sanitize_callback' => [self::class, 'sanitize_boolean'],
+            ]
+        );
+
+        register_setting(
+            'artpulse_settings_group',
+            'ap_widget_whitelist',
+            [
+                'type'              => 'array',
+                'default'           => [],
+                'sanitize_callback' => [self::class, 'sanitize_widget_whitelist'],
+            ]
+        );
+
+        register_setting(
+            'artpulse_settings_group',
             'artpulse_settings',
             ['sanitize_callback' => [self::class, 'sanitizeSettings']]
         );
@@ -492,6 +532,41 @@ class SettingsPage
                 'null' => __('Null provider (disable notifications)', 'artpulse-management'),
             ]
         );
+    }
+
+    public static function sanitize_boolean($value): bool
+    {
+        if (is_string($value)) {
+            $value = trim($value);
+        }
+
+        $filtered = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        return null === $filtered ? false : (bool) $filtered;
+    }
+
+    public static function sanitize_widget_whitelist($value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $sanitized = [];
+
+        foreach ($value as $role => $widgets) {
+            $role_key = sanitize_key((string) $role);
+            if ('' === $role_key) {
+                continue;
+            }
+
+            $sanitized[$role_key] = array_values(
+                array_filter(
+                    array_map('sanitize_key', (array) $widgets)
+                )
+            );
+        }
+
+        return $sanitized;
     }
 }
 

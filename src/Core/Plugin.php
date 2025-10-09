@@ -33,6 +33,7 @@ class Plugin
         register_activation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'activate' ] );
         register_deactivation_hook( ARTPULSE_PLUGIN_FILE, [ $this, 'deactivate' ] );
 
+        \ArtPulse\Core\Capabilities::register();
         \ArtPulse\Core\LoginRedirector::register();
         \ArtPulse\Core\TitleTools::register();
         \ArtPulse\Core\Rewrites::register();
@@ -46,7 +47,13 @@ class Plugin
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Core\RoleDashboards::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\MemberDashboard::class, 'register' ] );
-        add_action( 'init',               [ \ArtPulse\Frontend\OrgBuilderShortcode::class, 'register' ] );
+        if ( get_option( 'ap_enable_org_builder', true ) ) {
+            add_action( 'init', [ \ArtPulse\Frontend\OrgBuilderShortcode::class, 'register' ] );
+        }
+
+        if ( get_option( 'ap_enable_artist_builder', true ) ) {
+            add_action( 'init', [ \ArtPulse\Frontend\ArtistBuilderShortcode::class, 'register' ] );
+        }
         \ArtPulse\Core\RoleUpgradeManager::register();
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
@@ -60,6 +67,7 @@ class Plugin
         add_action( 'rest_api_init', [ \ArtPulse\Community\FollowRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
+        add_action( 'rest_api_init', [ \ArtPulse\Rest\PortfolioController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Mobile\MobileRestController::class, 'register' ] );
 
         \ArtPulse\Mobile\Cors::register();
