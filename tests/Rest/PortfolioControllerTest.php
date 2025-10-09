@@ -101,4 +101,94 @@ class PortfolioControllerTest extends WP_UnitTestCase
 
         wp_delete_attachment($attachment_id, true);
     }
+
+    public function test_replace_logo_updates_parent_and_meta(): void
+    {
+        $old_logo = $this->create_attachment('old-logo.jpg');
+        update_post_meta($this->post_id, '_ap_logo_id', $old_logo);
+        wp_update_post([
+            'ID'          => $old_logo,
+            'post_parent' => 0,
+        ]);
+
+        $new_logo = $this->create_attachment('new-logo.jpg');
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/portfolio/org/' . $this->post_id);
+        $request->set_param('id', $this->post_id);
+        $request->set_param('type', 'org');
+        $request->set_body_params([
+            'logo_id' => $new_logo,
+        ]);
+
+        $response = rest_do_request($request);
+        $this->assertSame(200, $response->get_status());
+
+        $this->assertSame($new_logo, (int) get_post_meta($this->post_id, '_ap_logo_id', true));
+        $this->assertSame([
+            $new_logo,
+        ], array_map('intval', get_post_meta($this->post_id, '_ap_logo_id')));
+
+        $logo_post = get_post($new_logo);
+        $this->assertSame($this->post_id, (int) $logo_post->post_parent);
+
+        wp_delete_attachment($old_logo, true);
+        wp_delete_attachment($new_logo, true);
+    }
+
+    public function test_replace_cover_updates_parent_and_meta(): void
+    {
+        $old_cover = $this->create_attachment('old-cover.jpg');
+        update_post_meta($this->post_id, '_ap_cover_id', $old_cover);
+        wp_update_post([
+            'ID'          => $old_cover,
+            'post_parent' => 0,
+        ]);
+
+        $new_cover = $this->create_attachment('new-cover.jpg');
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/portfolio/org/' . $this->post_id);
+        $request->set_param('id', $this->post_id);
+        $request->set_param('type', 'org');
+        $request->set_body_params([
+            'cover_id' => $new_cover,
+        ]);
+
+        $response = rest_do_request($request);
+        $this->assertSame(200, $response->get_status());
+
+        $this->assertSame($new_cover, (int) get_post_meta($this->post_id, '_ap_cover_id', true));
+        $cover_post = get_post($new_cover);
+        $this->assertSame($this->post_id, (int) $cover_post->post_parent);
+
+        wp_delete_attachment($old_cover, true);
+        wp_delete_attachment($new_cover, true);
+    }
+
+    private function create_attachment(string $filename): int
+    {
+        $upload_dir = wp_upload_dir();
+        $path       = trailingslashit($upload_dir['path']) . $filename;
+
+        $image   = imagecreatetruecolor(400, 400);
+        $color   = imagecolorallocate($image, 0, 255, 0);
+        imagefilledrectangle($image, 0, 0, 399, 399, $color);
+        imagejpeg($image, $path);
+        imagedestroy($image);
+
+        $filetype = wp_check_filetype($filename, null);
+        $attachment = [
+            'post_mime_type' => $filetype['type'],
+            'post_title'     => sanitize_file_name($filename),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ];
+
+        $attachment_id = wp_insert_attachment($attachment, $path);
+
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $metadata = wp_generate_attachment_metadata($attachment_id, $path);
+        wp_update_attachment_metadata($attachment_id, $metadata);
+
+        return (int) $attachment_id;
+    }
 }
