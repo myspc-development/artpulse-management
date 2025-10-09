@@ -319,6 +319,9 @@ class MobileRestController
         ]);
     }
 
+    private const GEO_MAX_CANDIDATES = 500;
+    private const FEED_MAX_EVENTS    = 50;
+
     public static function geosearch_events(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
         $lat    = $request->get_param('lat');
@@ -326,6 +329,7 @@ class MobileRestController
         $bounds = $request->get_param('bounds');
         $limit  = (int) ($request->get_param('limit') ?? 25);
         $limit  = max(1, min(100, $limit));
+        $cursor = $request->get_param('cursor');
 
         $use_bounds = is_string($bounds) && '' !== trim($bounds);
 
@@ -435,12 +439,16 @@ class MobileRestController
             }
         }
 
-        $query .= $wpdb->prepare(' LIMIT %d', $limit);
+        $query .= $wpdb->prepare(' LIMIT %d', self::GEO_MAX_CANDIDATES);
 
         $rows = $wpdb->get_results($query);
 
         if (empty($rows)) {
-            return rest_ensure_response(['events' => []]);
+            return rest_ensure_response([
+                'items'      => [],
+                'next_cursor'=> null,
+                'has_more'   => false,
+            ]);
         }
 
         $event_ids = array_map(static fn($row) => (int) $row->event_id, $rows);
@@ -448,7 +456,12 @@ class MobileRestController
         $states    = EventInteractions::get_states($event_ids, $user_id);
         $now       = current_time('timestamp');
 
-        $context = [];
+        $cursor_key = self::decode_cursor($cursor);
+        if ($cursor_key instanceof WP_Error) {
+            return $cursor_key;
+        }
+
+        $candidates = [];
         foreach ($rows as $row) {
             $event_id   = (int) $row->event_id;
             $start_iso  = is_string($row->start_time) ? (string) $row->start_time : (string) get_post_meta($event_id, '_ap_event_start', true);
@@ -456,48 +469,64 @@ class MobileRestController
             $start_ts   = self::to_timestamp($start_iso) ?? PHP_INT_MAX;
             $distance_km = (float) $row->distance_km;
 
-            $context[$event_id] = [
-                'distance'   => $distance_km,
-                'is_ongoing' => self::determine_ongoing($start_iso, $end_iso, $now),
-                'start_ts'   => $start_ts,
-            ];
-        }
+            $is_ongoing = self::determine_ongoing($start_iso, $end_iso, $now);
 
-        uksort(
-            $context,
-            static function ($a_id, $b_id) use ($context) {
-                $a = $context[$a_id];
-                $b = $context[$b_id];
+            $order_key = self::build_order_key($is_ongoing, $start_ts, $distance_km, $event_id);
 
-                if ($a['is_ongoing'] !== $b['is_ongoing']) {
-                    return $a['is_ongoing'] ? -1 : 1;
-                }
-
-                if ($a['start_ts'] !== $b['start_ts']) {
-                    return $a['start_ts'] <=> $b['start_ts'];
-                }
-
-                return $a['distance'] <=> $b['distance'];
-            }
-        );
-
-        $events = [];
-        foreach (array_keys($context) as $event_id) {
-            $events[] = self::format_event(
-                $event_id,
-                $states[$event_id] ?? [
+            $candidates[] = [
+                'event_id'   => $event_id,
+                'state'      => $states[$event_id] ?? [
                     'likes' => 0,
                     'liked' => false,
                     'saves' => 0,
                     'saved' => false,
                 ],
-                $context[$event_id]['distance'],
-                $context[$event_id]['is_ongoing']
+                'distance'   => $distance_km,
+                'is_ongoing' => $is_ongoing,
+                'order_key'  => $order_key,
+            ];
+        }
+
+        usort(
+            $candidates,
+            static function (array $a, array $b): int {
+                return self::compare_order_keys($a['order_key'], $b['order_key']);
+            }
+        );
+
+        if (is_array($cursor_key)) {
+            $candidates = array_values(array_filter(
+                $candidates,
+                static function (array $candidate) use ($cursor_key): bool {
+                    return self::compare_order_keys($candidate['order_key'], $cursor_key) > 0;
+                }
+            ));
+        }
+
+        $page      = array_slice($candidates, 0, $limit + 1);
+        $has_more  = count($page) > $limit;
+        $page      = array_slice($page, 0, $limit);
+        $next      = null;
+
+        if ($has_more && !empty($page)) {
+            $last     = $page[count($page) - 1]['order_key'];
+            $next     = self::encode_cursor($last);
+        }
+
+        $events = [];
+        foreach ($page as $candidate) {
+            $events[] = self::format_event(
+                $candidate['event_id'],
+                $candidate['state'],
+                $candidate['distance'],
+                $candidate['is_ongoing']
             );
         }
 
         return rest_ensure_response([
-            'events' => $events,
+            'items'       => $events,
+            'next_cursor' => $next,
+            'has_more'    => $has_more,
         ]);
     }
 
@@ -619,10 +648,14 @@ class MobileRestController
         $org_ids    = array_map('intval', $followed['artpulse_org'] ?? []);
         $artist_ids = array_map('intval', $followed['artpulse_artist'] ?? []);
 
+        $limit  = (int) ($request->get_param('limit') ?? 20);
+        $limit  = max(1, min(self::FEED_MAX_EVENTS, $limit));
+        $cursor = $request->get_param('cursor');
+
         $args = [
             'post_type'      => PostTypeRegistrar::EVENT_POST_TYPE,
             'post_status'    => 'publish',
-            'posts_per_page' => 50,
+            'posts_per_page' => self::FEED_MAX_EVENTS,
             'meta_key'       => '_ap_event_start',
             'orderby'        => 'meta_value',
             'order'          => 'ASC',
@@ -652,23 +685,77 @@ class MobileRestController
         }
 
         if (empty($event_ids)) {
-            $event_ids = array_map('intval', array_slice((array) $query->posts, 0, 10));
+            $event_ids = array_map('intval', array_slice((array) $query->posts, 0, self::FEED_MAX_EVENTS));
+        }
+
+        $cursor_key = self::decode_cursor($cursor);
+        if ($cursor_key instanceof WP_Error) {
+            return $cursor_key;
         }
 
         $states = EventInteractions::get_states($event_ids, $user_id);
+        $now    = current_time('timestamp');
+
+        $candidates = [];
+        foreach ($event_ids as $event_id) {
+            $start = (string) get_post_meta($event_id, '_ap_event_start', true);
+            $end   = (string) get_post_meta($event_id, '_ap_event_end', true);
+            $start_ts = self::to_timestamp($start) ?? PHP_INT_MAX;
+            $is_ongoing = self::determine_ongoing($start, $end, $now);
+
+            $order_key = self::build_order_key($is_ongoing, $start_ts, 0.0, $event_id);
+
+            $candidates[] = [
+                'event_id'   => $event_id,
+                'state'      => $states[$event_id] ?? [
+                    'likes' => 0,
+                    'liked' => false,
+                    'saves' => 0,
+                    'saved' => false,
+                ],
+                'is_ongoing' => $is_ongoing,
+                'order_key'  => $order_key,
+            ];
+        }
+
+        usort(
+            $candidates,
+            static function (array $a, array $b): int {
+                return self::compare_order_keys($a['order_key'], $b['order_key']);
+            }
+        );
+
+        if (is_array($cursor_key)) {
+            $candidates = array_values(array_filter(
+                $candidates,
+                static function (array $candidate) use ($cursor_key): bool {
+                    return self::compare_order_keys($candidate['order_key'], $cursor_key) > 0;
+                }
+            ));
+        }
+
+        $page     = array_slice($candidates, 0, $limit + 1);
+        $has_more = count($page) > $limit;
+        $page     = array_slice($page, 0, $limit);
+
+        $next_cursor = null;
+        if ($has_more && !empty($page)) {
+            $last        = $page[count($page) - 1]['order_key'];
+            $next_cursor = self::encode_cursor($last);
+        }
 
         $events = [];
-        foreach ($event_ids as $event_id) {
-            $events[] = self::format_event($event_id, $states[$event_id] ?? [
-                'likes' => 0,
-                'liked' => false,
-                'saves' => 0,
-                'saved' => false,
-            ]);
+        foreach ($page as $candidate) {
+            $events[] = self::format_event(
+                $candidate['event_id'],
+                $candidate['state'],
+            );
         }
 
         return rest_ensure_response([
-            'events' => $events,
+            'items'       => $events,
+            'next_cursor' => $next_cursor,
+            'has_more'    => $has_more,
         ]);
     }
 
@@ -878,6 +965,88 @@ class MobileRestController
                 'id'    => $org_id,
                 'title' => $org->post_title,
             ] : null,
+        ];
+    }
+
+    /**
+     * @return array{int,int,float,int}
+     */
+    private static function build_order_key(bool $is_ongoing, int $start_ts, float $distance, int $event_id): array
+    {
+        return [
+            $is_ongoing ? 0 : 1,
+            $start_ts,
+            round($distance, 6),
+            $event_id,
+        ];
+    }
+
+    /**
+     * @param array{int,int,float,int} $a
+     * @param array{int,int,float,int} $b
+     */
+    private static function compare_order_keys(array $a, array $b): int
+    {
+        for ($i = 0; $i < 4; $i++) {
+            if ($a[$i] === $b[$i]) {
+                continue;
+            }
+
+            return $a[$i] <=> $b[$i];
+        }
+
+        return 0;
+    }
+
+    /**
+     * @param array{int,int,float,int} $key
+     */
+    private static function encode_cursor(array $key): string
+    {
+        $json = wp_json_encode($key);
+        if (!is_string($json)) {
+            return '';
+        }
+
+        $encoded = base64_encode($json);
+
+        return rtrim(strtr($encoded, '+/', '-_'), '=');
+    }
+
+    /**
+     * @return array{int,int,float,int}|null|WP_Error
+     */
+    private static function decode_cursor($cursor)
+    {
+        if (null === $cursor || '' === $cursor) {
+            return null;
+        }
+
+        if (!is_string($cursor)) {
+            return new WP_Error('ap_invalid_cursor', __('Invalid cursor parameter.', 'artpulse-management'), ['status' => 400]);
+        }
+
+        $padded = strtr($cursor, '-_', '+/');
+        $padding = strlen($padded) % 4;
+        if (0 !== $padding) {
+            $padded .= str_repeat('=', 4 - $padding);
+        }
+
+        $decoded = base64_decode($padded, true);
+        if (false === $decoded) {
+            return new WP_Error('ap_invalid_cursor', __('Invalid cursor parameter.', 'artpulse-management'), ['status' => 400]);
+        }
+
+        $data = json_decode($decoded, true);
+        if (!is_array($data) || 4 !== count($data)) {
+            return new WP_Error('ap_invalid_cursor', __('Invalid cursor parameter.', 'artpulse-management'), ['status' => 400]);
+        }
+
+        return [
+            (int) ($data[0] ?? 0),
+            (int) ($data[1] ?? 0),
+            isset($data[2]) ? (float) $data[2] : 0.0,
+            (int) ($data[3] ?? 0),
         ];
     }
 

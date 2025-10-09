@@ -371,14 +371,14 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $response = rest_do_request($request);
         $this->assertSame(200, $response->get_status());
         $data = $response->get_data();
-        $this->assertCount(3, $data['events']);
-        $this->assertSame($ongoing_event, $data['events'][0]['id']);
-        $this->assertTrue($data['events'][0]['isOngoing']);
-        $this->assertSame($near_event, $data['events'][1]['id']);
-        $this->assertFalse($data['events'][1]['isOngoing']);
-        $this->assertSame($far_event, $data['events'][2]['id']);
-        $this->assertNotNull($data['events'][0]['distance_m']);
-        $this->assertGreaterThan(0, $data['events'][2]['distance_m']);
+        $this->assertCount(3, $data['items']);
+        $this->assertSame($ongoing_event, $data['items'][0]['id']);
+        $this->assertTrue($data['items'][0]['isOngoing']);
+        $this->assertSame($near_event, $data['items'][1]['id']);
+        $this->assertFalse($data['items'][1]['isOngoing']);
+        $this->assertSame($far_event, $data['items'][2]['id']);
+        $this->assertNotNull($data['items'][0]['distance_m']);
+        $this->assertGreaterThan(0, $data['items'][2]['distance_m']);
     }
 
     public function test_geosearch_with_bounds_filters_results(): void
@@ -427,17 +427,82 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $this->assertSame(200, $response->get_status());
         $data = $response->get_data();
 
-        $this->assertCount(2, $data['events']);
-        $ids = wp_list_pluck($data['events'], 'id');
+        $this->assertCount(2, $data['items']);
+        $ids = wp_list_pluck($data['items'], 'id');
         $this->assertContains($inside_one, $ids);
         $this->assertContains($inside_two, $ids);
         $this->assertNotContains($outside, $ids);
-        foreach ($data['events'] as $event) {
+        foreach ($data['items'] as $event) {
             $this->assertArrayHasKey('distance_m', $event);
             $this->assertIsInt($event['distance_m']);
             $this->assertArrayHasKey('isOngoing', $event);
             $this->assertIsBool($event['isOngoing']);
         }
+    }
+
+    public function test_geosearch_cursor_pagination_returns_unique_events(): void
+    {
+        $event_ids = [];
+        for ($i = 0; $i < 5; $i++) {
+            $event_id = wp_insert_post([
+                'post_type'   => 'artpulse_event',
+                'post_status' => 'publish',
+                'post_title'  => 'Paged Event ' . $i,
+            ]);
+
+            update_post_meta($event_id, '_ap_event_start', gmdate('c', strtotime('+' . ($i + 1) . ' day')));
+            update_post_meta($event_id, '_ap_event_end', gmdate('c', strtotime('+' . ($i + 1) . ' day +2 hours')));
+            update_post_meta($event_id, '_ap_event_location', 'Paged Hall ' . $i);
+            update_post_meta($event_id, '_ap_event_latitude', (string) (10.0 + $i * 0.1));
+            update_post_meta($event_id, '_ap_event_longitude', (string) (-10.0 + $i * 0.1));
+            EventGeo::sync($event_id);
+
+            $event_ids[] = $event_id;
+        }
+
+        $token = JWT::issue($this->user_id)['token'];
+
+        $cursor = null;
+        $seen   = [];
+        $loops  = 0;
+
+        do {
+            $request = new WP_REST_Request('GET', '/artpulse/v1/mobile/events');
+            $request->set_param('bounds', '9.0,-11.0,11.0,-9.0');
+            $request->set_param('limit', 2);
+            if (null !== $cursor) {
+                $request->set_param('cursor', $cursor);
+            }
+            $request->set_header('Authorization', 'Bearer ' . $token);
+
+            $response = rest_do_request($request);
+            $this->assertSame(200, $response->get_status());
+
+            $data = $response->get_data();
+            $this->assertArrayHasKey('items', $data);
+            $this->assertLessThanOrEqual(2, count($data['items']));
+
+            foreach ($data['items'] as $item) {
+                $seen[] = $item['id'];
+            }
+
+            if ($data['has_more']) {
+                $this->assertIsString($data['next_cursor']);
+                $this->assertNotSame('', $data['next_cursor']);
+            } else {
+                $this->assertNull($data['next_cursor']);
+            }
+
+            $cursor = $data['next_cursor'];
+            $loops++;
+            $this->assertLessThan(10, $loops, 'Cursor pagination did not terminate');
+        } while ($data['has_more']);
+
+        $this->assertCount(count($seen), array_unique($seen));
+        $this->assertSame(count($event_ids), count($seen));
+        sort($event_ids);
+        sort($seen);
+        $this->assertSame($event_ids, $seen);
     }
 
     public function test_geosearch_invalid_bounds_returns_error(): void
@@ -485,9 +550,77 @@ class MobileRestControllerTest extends WP_UnitTestCase
         $response = rest_do_request($request);
         $this->assertSame(200, $response->get_status());
         $data = $response->get_data();
-        $ids  = wp_list_pluck($data['events'], 'id');
+        $ids  = wp_list_pluck($data['items'], 'id');
 
         $this->assertContains($event_id, $ids);
+    }
+
+    public function test_feed_cursor_pagination_prevents_duplicates(): void
+    {
+        $org_id = wp_insert_post([
+            'post_type'   => 'artpulse_org',
+            'post_status' => 'publish',
+            'post_title'  => 'Cursor Org',
+        ]);
+
+        FollowService::follow($this->user_id, $org_id, 'org');
+
+        $event_ids = [];
+        for ($i = 0; $i < 5; $i++) {
+            $event_id = wp_insert_post([
+                'post_type'   => 'artpulse_event',
+                'post_status' => 'publish',
+                'post_title'  => 'Cursor Event ' . $i,
+            ]);
+
+            update_post_meta($event_id, '_ap_event_start', gmdate('c', strtotime('+' . ($i + 1) . ' day')));
+            update_post_meta($event_id, '_ap_event_end', gmdate('c', strtotime('+' . ($i + 1) . ' day +1 hour')));
+            update_post_meta($event_id, '_ap_event_location', 'Cursor Hall ' . $i);
+            update_post_meta($event_id, '_ap_event_organization', $org_id);
+            $event_ids[] = $event_id;
+        }
+
+        $token = JWT::issue($this->user_id)['token'];
+
+        $cursor = null;
+        $seen   = [];
+        $loops  = 0;
+
+        do {
+            $request = new WP_REST_Request('GET', '/artpulse/v1/mobile/feed');
+            $request->set_param('limit', 2);
+            if (null !== $cursor) {
+                $request->set_param('cursor', $cursor);
+            }
+            $request->set_header('Authorization', 'Bearer ' . $token);
+
+            $response = rest_do_request($request);
+            $this->assertSame(200, $response->get_status());
+
+            $data = $response->get_data();
+            $this->assertArrayHasKey('items', $data);
+            $this->assertLessThanOrEqual(2, count($data['items']));
+
+            foreach ($data['items'] as $item) {
+                $seen[] = $item['id'];
+            }
+
+            if ($data['has_more']) {
+                $this->assertIsString($data['next_cursor']);
+                $this->assertNotSame('', $data['next_cursor']);
+            } else {
+                $this->assertNull($data['next_cursor']);
+            }
+
+            $cursor = $data['next_cursor'];
+            $loops++;
+            $this->assertLessThan(10, $loops, 'Feed cursor pagination did not terminate');
+        } while ($data['has_more']);
+
+        $this->assertCount(count($seen), array_unique($seen));
+        sort($event_ids);
+        sort($seen);
+        $this->assertSame($event_ids, $seen);
     }
 
     public function test_rate_limiter_returns_headers_and_429(): void
