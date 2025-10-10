@@ -15,6 +15,7 @@ class MemberDashboard
     {
         add_action('init', [self::class, 'register_actions']);
         add_filter('artpulse/dashboard/data', [self::class, 'inject_dashboard_card'], 10, 3);
+        add_filter('artpulse/dashboard/member_upgrade_widget_data', [self::class, 'remove_org_upgrade_option'], 10, 2);
     }
 
     public static function register_actions(): void
@@ -30,6 +31,36 @@ class MemberDashboard
         }
 
         $data['org_upgrade'] = self::get_upgrade_state($user_id);
+
+        return $data;
+    }
+
+    /**
+     * Remove the organization upgrade option from the shared upgrade widget.
+     *
+     * The member dashboard renders a dedicated organization upgrade card, so this
+     * prevents duplicate CTAs from appearing in the membership upgrade list.
+     */
+    public static function remove_org_upgrade_option(array $data, int $user_id): array
+    {
+        if (empty($data['upgrades']) || !is_array($data['upgrades'])) {
+            return $data;
+        }
+
+        $upgrades = array_filter(
+            $data['upgrades'],
+            static fn(array $upgrade): bool => ($upgrade['slug'] ?? '') !== 'organization'
+        );
+
+        if (count($upgrades) === count($data['upgrades'])) {
+            return $data;
+        }
+
+        $data['upgrades'] = array_values($upgrades);
+
+        if (empty($data['upgrades'])) {
+            $data['intro'] = '';
+        }
 
         return $data;
     }
