@@ -126,7 +126,7 @@ class OrgBuilderShortcode
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
                 403,
-                ['nonce' => wp_create_nonce('ap_portfolio_update')]
+
             );
         }
 
@@ -206,19 +206,12 @@ class OrgBuilderShortcode
             'limit'       => $limit,
         ]);
 
-        $details = [
-            'limit'       => $limit,
-            'retry_after' => $retry_after,
-            'reset'       => $reset,
-        ];
 
         self::respond_with_error(
             $error->get_error_code(),
             $error->get_error_message(),
             429,
-            $details,
-            $retry_after
-        );
+
     }
 
     private static function respond_with_error(
@@ -228,57 +221,25 @@ class OrgBuilderShortcode
         array $details = [],
         ?int $retry_after = null
     ): void {
+        if (null !== $retry_after) {
+            $details['retry_after'] = max(0, $retry_after);
+        }
+
+        if ('invalid_nonce' === $code && !isset($details['hint'])) {
+            $details['hint'] = 'refresh_nonce_and_retry';
+        }
+
         $payload = [
             'code'    => $code,
             'message' => $message,
             'details' => $details,
         ];
 
-        if (null !== $retry_after) {
-            $payload['retry_after'] = max(0, $retry_after);
-        }
-
         if (isset($details['nonce']) && is_string($details['nonce'])) {
             header('X-ArtPulse-Nonce: ' . $details['nonce']);
         }
 
-        if (self::request_wants_json()) {
-            wp_send_json($payload, $status);
-        }
-
-        $body = esc_html($message);
-        if (!empty($details['retry_after'])) {
-            $body = sprintf(
-                /* translators: %d: seconds until retry. */
-                esc_html__('Please slow down—try again in %d seconds.', 'artpulse-management'),
-                (int) $details['retry_after']
-            );
-        }
-
-        wp_die($body, esc_html__('Request blocked', 'artpulse-management'), ['response' => $status]);
-    }
-
-    private static function request_wants_json(): bool
-    {
-        if (function_exists('wp_doing_ajax') && wp_doing_ajax()) {
-            return true;
-        }
-
-        if (function_exists('wp_is_json_request') && wp_is_json_request()) {
-            return true;
-        }
-
-        $requested_with = isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-            ? strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_X_REQUESTED_WITH'])))
-            : '';
-
-        if ('xmlhttprequest' === $requested_with) {
-            return true;
-        }
-
-        $accept = isset($_SERVER['HTTP_ACCEPT']) ? strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT']))) : '';
-
-        return str_contains($accept, 'application/json');
+        wp_send_json($payload, $status);
     }
 
     private static function save_profile(int $org_id): void

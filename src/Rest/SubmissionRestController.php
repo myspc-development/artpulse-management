@@ -3,6 +3,7 @@
 namespace ArtPulse\Rest;
 
 use ArtPulse\Core\AuditLogger;
+use ArtPulse\Core\EventDuplicateGuard;
 use ArtPulse\Core\RoleUpgradeManager;
 use WP_Error;
 use WP_REST_Request;
@@ -72,8 +73,9 @@ class SubmissionRestController
             $params = array_merge( $body_params, $json_params );
         }
 
-        $post_type = sanitize_key( $params['post_type'] ?? '' );
-        $current_user_id = get_current_user_id();
+        $post_type        = sanitize_key( $params['post_type'] ?? '' );
+        $current_user_id  = get_current_user_id();
+        $dedupe_transient = null;
 
         if ( empty( $post_type ) ) {
             return new WP_Error(
@@ -145,9 +147,31 @@ class SubmissionRestController
             $post_args['post_author'] = get_current_user_id();
         }
 
+        if ( 'artpulse_event' === $post_type ) {
+            $dedupe_transient = EventDuplicateGuard::generate_key(
+                $current_user_id,
+                (string) ( $post_args['post_title'] ?? '' ),
+                (string) ( $params['event_date'] ?? '' )
+            );
+
+            if ( EventDuplicateGuard::is_duplicate( $dedupe_transient ) ) {
+                return new WP_Error(
+                    'duplicate_event',
+                    __( 'A similar event was just submitted. Please wait a moment before trying again.', 'artpulse-management' ),
+                    [
+                        'status'  => 409,
+                        'details' => [ 'retry_after' => MINUTE_IN_SECONDS ],
+                    ]
+                );
+            }
+
+            EventDuplicateGuard::lock( $dedupe_transient );
+        }
+
         $post_id = wp_insert_post( $post_args, true );
 
         if ( is_wp_error( $post_id ) ) {
+            EventDuplicateGuard::clear( $dedupe_transient );
             return $post_id;
         }
 
@@ -193,16 +217,24 @@ class SubmissionRestController
         ];
 
         if ( 'artpulse_event' === $post_type ) {
+            $moderation_state      = 'publish' === $status ? 'approved' : 'pending';
+            $moderation_changed_at = current_time( 'timestamp', true );
+
             AuditLogger::info( 'event.submit', [
-                'post_id' => $post_id,
-                'user_id' => $current_user_id,
-                'source'  => 'rest',
+                'event_id'   => $post_id,
+                'user_id'    => $current_user_id,
+                'owner_id'   => $current_user_id,
+                'source'     => 'rest',
+                'status'     => $status,
+                'state'      => $moderation_state,
+                'reason'     => '',
+                'changed_at' => $moderation_changed_at,
+                'org_id'     => (int) $params['event_organization'],
+                'artist_id'  => (int) ( $params['artist_id'] ?? 0 ),
             ] );
             update_post_meta( $post_id, '_ap_org_id', (int) $params['event_organization'] );
             update_post_meta( $post_id, '_ap_artist_id', (int) ( $params['artist_id'] ?? 0 ) );
-            $moderation_state = 'publish' === $status ? 'approved' : $status;
-            update_post_meta( $post_id, '_ap_moderation_state', $moderation_state );
-            delete_post_meta( $post_id, '_ap_moderation_reason' );
+
         }
 
         return rest_ensure_response( $response );

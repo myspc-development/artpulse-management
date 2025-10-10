@@ -2,6 +2,8 @@
 
 namespace Tests\Rest;
 
+use ArtPulse\Admin\EventApprovals;
+use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
@@ -62,6 +64,7 @@ class SubmissionRestControllerTest extends \WP_UnitTestCase
         $this->assertEquals($org_id, (int) get_post_meta($data['id'], '_ap_org_id', true));
         $this->assertEquals($artist_id, (int) get_post_meta($data['id'], '_ap_artist_id', true));
         $this->assertEquals('pending', get_post_meta($data['id'], '_ap_moderation_state', true));
+
     }
 
     public function test_artwork_submission_saves_meta()

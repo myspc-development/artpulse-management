@@ -252,14 +252,17 @@ class EventApprovals
             }
 
             $processed++;
-            $this->record_moderation_meta( $event_id, 'approved', $reason );
+
             AuditLogger::info(
                 'event.approve',
                 [
-                    'event_id' => $event_id,
-                    'user_id'  => get_current_user_id(),
-                    'context'  => 'dashboard',
-                    'reason'   => $reason,
+                    'event_id'   => $event_id,
+                    'user_id'    => get_current_user_id(),
+                    'owner_id'   => $owner_id,
+                    'context'    => 'dashboard',
+                    'reason'     => $reason,
+                    'state'      => 'approved',
+                    'changed_at' => $changed_at,
                 ]
             );
             $this->send_status_email( get_post( $event_id ), 'approved', $reason );
@@ -292,18 +295,20 @@ class EventApprovals
             }
 
             $processed++;
-            $this->record_moderation_meta( $event_id, 'rejected', $reason );
+
             AuditLogger::info(
                 'event.deny',
                 [
-                    'event_id' => $event_id,
-                    'user_id'  => get_current_user_id(),
-                    'context'  => 'dashboard',
-                    'reason'   => $reason,
+                    'event_id'   => $event_id,
+                    'user_id'    => get_current_user_id(),
+                    'owner_id'   => $owner_id,
+                    'context'    => 'dashboard',
+                    'reason'     => $reason,
+                    'state'      => 'denied',
+                    'changed_at' => $changed_at,
                 ]
             );
-            $this->send_status_email( $trashed, 'rejected', $reason );
-            $this->notify_owner( $event_id, 'rejected', $reason );
+
         }
 
         return $processed;
@@ -335,6 +340,16 @@ class EventApprovals
                 $blog_name
             );
             $message = apply_filters( 'artpulse_event_approval_email_body', $message, $post, $author );
+        } elseif ( 'changes_requested' === $status ) {
+            $subject = sprintf( __( 'Updates requested for "%s"', 'artpulse' ), $post->post_title );
+            $message = sprintf(
+                __( "Hi %1\$s,\n\nWe need a few updates to your event \"%2\$s\" before it can be approved.%3\$s\n\nThanks,\n%4\$s", 'artpulse' ),
+                $author_name,
+                $post->post_title,
+                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse' ), $reason ) : '',
+                $blog_name
+            );
+            $message = apply_filters( 'artpulse_event_changes_requested_email_body', $message, $post, $author );
         } else {
             $subject = sprintf( __( 'Your event "%s" was not approved', 'artpulse' ), $post->post_title );
             $message = sprintf(
@@ -350,15 +365,7 @@ class EventApprovals
         wp_mail( $author->user_email, $subject, $message );
     }
 
-    private function record_moderation_meta( int $event_id, string $state, string $reason ): void
-    {
-        update_post_meta( $event_id, '_ap_moderation_state', $state );
 
-        if ( '' === $reason ) {
-            delete_post_meta( $event_id, '_ap_moderation_reason' );
-        } else {
-            update_post_meta( $event_id, '_ap_moderation_reason', $reason );
-        }
     }
 
     private function notify_owner( int $event_id, string $state, string $reason ): void
@@ -370,9 +377,7 @@ class EventApprovals
         }
 
         $title   = $post->post_title ? wp_strip_all_tags( $post->post_title ) : __( 'Event', 'artpulse' );
-        $message = 'approved' === $state
-            ? sprintf( __( 'Event "%s" was approved.', 'artpulse' ), $title )
-            : sprintf( __( 'Event "%s" was not approved.', 'artpulse' ), $title );
+
 
         if ( '' !== $reason ) {
             $message .= ' ' . sprintf( __( 'Reason: %s', 'artpulse' ), $reason );
@@ -415,7 +420,7 @@ class EventApprovals
             return '';
         }
 
-        return sanitize_text_field( wp_unslash( (string) $_REQUEST['reason'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        return sanitize_textarea_field( wp_unslash( (string) $_REQUEST['reason'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
     }
 
     private function get_single_nonce_action( string $action, int $event_id ): string

@@ -78,7 +78,7 @@ final class ArtistBuilderShortcode
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
                 403,
-                ['nonce' => wp_create_nonce('ap_portfolio_update')]
+
             );
         }
 
@@ -133,25 +133,19 @@ final class ArtistBuilderShortcode
         array $details = [],
         ?int $retry_after = null
     ): void {
+
         $payload = [
             'code'    => $code,
             'message' => $message,
             'details' => $details,
         ];
 
-        if (null !== $retry_after) {
-            $payload['retry_after'] = max(0, $retry_after);
-        }
 
         if (isset($details['nonce']) && is_string($details['nonce'])) {
             header('X-ArtPulse-Nonce: ' . $details['nonce']);
         }
 
-        if (function_exists('wp_doing_ajax') && wp_doing_ajax()) {
-            wp_send_json($payload, $status);
-        }
 
-        wp_die(esc_html($message), esc_html__('Request blocked', 'artpulse-management'), ['response' => $status]);
     }
 
     private static function owned_artists(int $user_id): array

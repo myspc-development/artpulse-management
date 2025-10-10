@@ -111,6 +111,15 @@ final class PortfolioController
             ]
         );
 
+        foreach ([
+            'logo_id'  => '_ap_logo_id',
+            'cover_id' => '_ap_cover_id',
+        ] as $field => $meta_key) {
+            if (array_key_exists($field, $body)) {
+                self::replace_feature_media($post_id, (int) $body[$field], $meta_key);
+            }
+        }
+
         AuditLogger::info('portfolio.update', [
             'post_id' => $post_id,
             'user_id' => get_current_user_id(),
@@ -282,5 +291,33 @@ final class PortfolioController
         }
 
         return array_values(array_unique($filtered));
+    }
+
+    private static function replace_feature_media(int $post_id, int $attachment_id, string $meta_key): void
+    {
+        $old_id = (int) get_post_meta($post_id, $meta_key, true);
+
+        if ($attachment_id <= 0) {
+            delete_post_meta($post_id, $meta_key);
+            return;
+        }
+
+        $attachment = get_post($attachment_id);
+        if (!$attachment instanceof \WP_Post || 'attachment' !== $attachment->post_type) {
+            return;
+        }
+
+        if ((int) $attachment->post_parent !== $post_id) {
+            wp_update_post([
+                'ID'          => $attachment_id,
+                'post_parent' => $post_id,
+            ]);
+        }
+
+        if ($old_id && $old_id !== $attachment_id) {
+            delete_post_meta($post_id, $meta_key);
+        }
+
+        update_post_meta($post_id, $meta_key, $attachment_id);
     }
 }
