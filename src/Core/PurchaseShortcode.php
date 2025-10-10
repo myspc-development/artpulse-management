@@ -13,12 +13,10 @@ class PurchaseShortcode {
         ], $atts, 'ap_membership_purchase');
 
         $level = sanitize_text_field($atts['level']);
-        $url   = home_url('/purchase-membership');
+        $url   = MembershipUrls::getPurchaseUrl($level);
 
-        if (function_exists('wc_get_checkout_url')) {
-            $url = add_query_arg('level', strtolower($level), wc_get_checkout_url());
-        } else {
-            $url = add_query_arg('level', strtolower($level), $url);
+        if ($url === '') {
+            return '';
         }
 
         $label = sprintf(__('Purchase %s membership', 'artpulse'), $level);

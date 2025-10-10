@@ -1219,7 +1219,7 @@ class RoleDashboards
                 continue;
             }
 
-            $url = self::getMembershipPurchaseUrl($level);
+            $url = MembershipUrls::getPurchaseUrl($level);
 
             if ($url === '') {
                 continue;
@@ -1285,22 +1285,6 @@ class RoleDashboards
         unset($upgrades[$organizationIndex]);
 
         return array_values($upgrades);
-    }
-
-    private static function getMembershipPurchaseUrl(string $level): string
-    {
-        if ($level === '') {
-            return '';
-        }
-
-        $level_slug = strtolower($level);
-        $base_url   = home_url('/purchase-membership');
-
-        if (function_exists('wc_get_checkout_url')) {
-            $base_url = wc_get_checkout_url();
-        }
-
-        return add_query_arg('level', $level_slug, $base_url);
     }
 
     private static function formatPostForResponse($post): array
