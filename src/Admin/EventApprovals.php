@@ -239,6 +239,9 @@ class EventApprovals
                 continue;
             }
 
+            $owner_id   = (int) $post->post_author;
+            $changed_at = current_time( 'mysql' );
+
             $updated = wp_update_post(
                 [
                     'ID'          => $event_id,
@@ -287,6 +290,9 @@ class EventApprovals
             if ( ! in_array( $post->post_status, [ 'pending', 'draft' ], true ) ) {
                 continue;
             }
+
+            $owner_id   = (int) $post->post_author;
+            $changed_at = current_time( 'mysql' );
 
             $trashed = wp_trash_post( $event_id );
 
@@ -365,9 +371,6 @@ class EventApprovals
         wp_mail( $author->user_email, $subject, $message );
     }
 
-
-    }
-
     private function notify_owner( int $event_id, string $state, string $reason ): void
     {
         $post = get_post( $event_id );
@@ -378,6 +381,21 @@ class EventApprovals
 
         $title   = $post->post_title ? wp_strip_all_tags( $post->post_title ) : __( 'Event', 'artpulse' );
 
+        switch ( $state ) {
+            case 'approved':
+                $message = sprintf( __( 'Your event "%s" has been approved.', 'artpulse' ), $title );
+                break;
+            case 'changes_requested':
+                $message = sprintf( __( 'Updates were requested for your event "%s".', 'artpulse' ), $title );
+                break;
+            case 'denied':
+            case 'rejected':
+                $message = sprintf( __( 'Your event "%s" was not approved.', 'artpulse' ), $title );
+                break;
+            default:
+                $message = sprintf( __( 'The status of your event "%s" has changed.', 'artpulse' ), $title );
+                break;
+        }
 
         if ( '' !== $reason ) {
             $message .= ' ' . sprintf( __( 'Reason: %s', 'artpulse' ), $reason );
