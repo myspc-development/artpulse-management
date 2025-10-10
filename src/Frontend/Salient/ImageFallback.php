@@ -53,14 +53,20 @@ class ImageFallback
 
     /**
      * @param array<int, int|string|bool>|false $image
-     * @param int                               $attachment_id
+     * @param int|string                        $attachment_id
      * @param string|int[]                      $size
      * @param bool                              $icon
      *
      * @return array<int, int|string|bool>|false
      */
-    public static function maybe_adjust_image_src($image, int $attachment_id, $size, bool $icon)
+    public static function maybe_adjust_image_src($image, int|string $attachment_id, $size, bool $icon)
     {
+        if (!is_numeric($attachment_id)) {
+            return $image;
+        }
+
+        $attachment_id = (int) $attachment_id;
+
         if (!isset(self::$trackedAttachments[$attachment_id]) && $image && !empty($image[0])) {
             return $image;
         }
