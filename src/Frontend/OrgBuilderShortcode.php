@@ -126,10 +126,7 @@ class OrgBuilderShortcode
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
                 403,
-                [
-                    'nonce' => wp_create_nonce('ap_portfolio_update'),
-                    'hint'  => 'refresh_nonce_and_retry',
-                ]
+
             );
         }
 
@@ -209,17 +206,12 @@ class OrgBuilderShortcode
             'limit'       => $limit,
         ]);
 
+
         self::respond_with_error(
             $error->get_error_code(),
             $error->get_error_message(),
             429,
-            [
-                'limit'       => $limit,
-                'retry_after' => $retry_after,
-                'reset'       => $reset,
-            ],
-            $retry_after
-        );
+
     }
 
     private static function respond_with_error(

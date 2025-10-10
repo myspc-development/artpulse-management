@@ -252,8 +252,7 @@ class EventApprovals
             }
 
             $processed++;
-            $changed_at = $this->record_moderation_meta( $event_id, 'approved', $reason );
-            $owner_id   = (int) $post->post_author;
+
             AuditLogger::info(
                 'event.approve',
                 [
@@ -296,8 +295,7 @@ class EventApprovals
             }
 
             $processed++;
-            $changed_at = $this->record_moderation_meta( $event_id, 'denied', $reason );
-            $owner_id   = (int) $post->post_author;
+
             AuditLogger::info(
                 'event.deny',
                 [
@@ -310,8 +308,7 @@ class EventApprovals
                     'changed_at' => $changed_at,
                 ]
             );
-            $this->send_status_email( $trashed, 'denied', $reason );
-            $this->notify_owner( $event_id, 'denied', $reason );
+
         }
 
         return $processed;
@@ -368,26 +365,7 @@ class EventApprovals
         wp_mail( $author->user_email, $subject, $message );
     }
 
-    private function record_moderation_meta( int $event_id, string $state, string $reason ): int
-    {
-        $normalized_state = sanitize_key( $state );
-        $allowed_states   = [ 'pending', 'approved', 'denied', 'changes_requested' ];
-        if ( ! in_array( $normalized_state, $allowed_states, true ) ) {
-            $normalized_state = 'pending';
-        }
 
-        $sanitized_reason = sanitize_textarea_field( $reason );
-        if ( 'approved' === $normalized_state ) {
-            $sanitized_reason = '';
-        }
-
-        $changed_at = current_time( 'timestamp', true );
-
-        update_post_meta( $event_id, '_ap_moderation_state', $normalized_state );
-        update_post_meta( $event_id, '_ap_moderation_reason', $sanitized_reason );
-        update_post_meta( $event_id, '_ap_moderation_changed_at', $changed_at );
-
-        return $changed_at;
     }
 
     private function notify_owner( int $event_id, string $state, string $reason ): void
@@ -400,13 +378,6 @@ class EventApprovals
 
         $title   = $post->post_title ? wp_strip_all_tags( $post->post_title ) : __( 'Event', 'artpulse' );
 
-        if ( 'approved' === $state ) {
-            $message = sprintf( __( 'Event "%s" was approved.', 'artpulse' ), $title );
-        } elseif ( 'changes_requested' === $state ) {
-            $message = sprintf( __( 'Updates requested for event "%s".', 'artpulse' ), $title );
-        } else {
-            $message = sprintf( __( 'Event "%s" was not approved.', 'artpulse' ), $title );
-        }
 
         if ( '' !== $reason ) {
             $message .= ' ' . sprintf( __( 'Reason: %s', 'artpulse' ), $reason );

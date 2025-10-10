@@ -154,10 +154,7 @@ class OrganizationEventForm {
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
                 403,
-                [
-                    'nonce' => wp_create_nonce('ap_event_submit'),
-                    'hint'  => 'refresh_nonce_and_retry',
-                ]
+
             );
         }
 
@@ -252,11 +249,7 @@ class OrganizationEventForm {
         update_post_meta($post_id, '_ap_event_organization', $org_id);
         update_post_meta($post_id, '_ap_org_id', $org_id);
         update_post_meta($post_id, '_ap_artist_id', $artist_id);
-        $moderation_state = $status === 'publish' ? 'approved' : 'pending';
-        $moderation_changed_at = current_time('timestamp', true);
-        update_post_meta($post_id, '_ap_moderation_state', $moderation_state);
-        update_post_meta($post_id, '_ap_moderation_reason', '');
-        update_post_meta($post_id, '_ap_moderation_changed_at', $moderation_changed_at);
+
 
         if ($type) {
             wp_set_post_terms($post_id, [$type], 'artpulse_event_type');
@@ -412,13 +405,6 @@ class OrganizationEventForm {
         array $details = [],
         ?int $retry_after = null
     ): void {
-        if (null !== $retry_after) {
-            $details['retry_after'] = max(0, $retry_after);
-        }
-
-        if ('invalid_nonce' === $code && !isset($details['hint'])) {
-            $details['hint'] = 'refresh_nonce_and_retry';
-        }
 
         $payload = [
             'code'    => $code,
@@ -426,11 +412,12 @@ class OrganizationEventForm {
             'details' => $details,
         ];
 
+
         if (isset($details['nonce']) && is_string($details['nonce'])) {
             header('X-ArtPulse-Nonce: ' . $details['nonce']);
         }
 
-        wp_send_json($payload, $status);
+
     }
 
     private static function get_user_org_id(int $user_id): int

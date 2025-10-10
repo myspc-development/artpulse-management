@@ -234,9 +234,7 @@ class SubmissionRestController
             ] );
             update_post_meta( $post_id, '_ap_org_id', (int) $params['event_organization'] );
             update_post_meta( $post_id, '_ap_artist_id', (int) ( $params['artist_id'] ?? 0 ) );
-            update_post_meta( $post_id, '_ap_moderation_state', $moderation_state );
-            update_post_meta( $post_id, '_ap_moderation_reason', '' );
-            update_post_meta( $post_id, '_ap_moderation_changed_at', $moderation_changed_at );
+
         }
 
         return rest_ensure_response( $response );
