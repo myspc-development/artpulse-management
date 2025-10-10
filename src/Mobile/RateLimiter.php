@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Mobile;
 
+use ArtPulse\Core\RateLimitHeaders;
 use WP_Error;
 
 class RateLimiter
@@ -107,15 +108,20 @@ class RateLimiter
             set_transient($key, $state, $window);
         }
 
+        $remaining = max(0, $remaining);
+        $headers   = RateLimitHeaders::build($limit, $remaining, $reset_at, $retry_after > 0 ? $retry_after : null);
+
         self::$pending_headers = [
-            'limit'     => $limit,
-            'remaining' => max(0, $remaining),
-            'reset'     => $reset_at,
+            'limit'      => $limit,
+            'remaining'  => $remaining,
+            'reset'      => $reset_at,
+            'headers'    => $headers,
         ];
 
         if ($retry_after > 0) {
-            self::$pending_headers['remaining'] = 0;
+            self::$pending_headers['remaining']   = 0;
             self::$pending_headers['retry_after'] = $retry_after;
+            self::$pending_headers['headers']     = RateLimitHeaders::build($limit, 0, $reset_at, $retry_after);
             $log_context = [
                 'event'       => 'mobile_rate_limited',
                 'route'       => $route,
@@ -176,22 +182,16 @@ class RateLimiter
 
         $headers = self::$pending_headers;
 
-        if ($response instanceof \WP_REST_Response) {
-            $response->header('X-RateLimit-Limit', (string) ($headers['limit'] ?? 0));
-            $response->header('X-RateLimit-Remaining', (string) ($headers['remaining'] ?? 0));
-            $response->header('X-RateLimit-Reset', (string) ($headers['reset'] ?? 0));
+        $header_map = $headers['headers'] ?? [];
 
-            if (isset($headers['retry_after'])) {
-                $response->header('Retry-After', (string) $headers['retry_after']);
+        if ($response instanceof \WP_REST_Response) {
+            foreach ($header_map as $name => $value) {
+                $response->header($name, (string) $value);
             }
         } elseif ($response instanceof \WP_HTTP_Response) {
             $existing_headers = $response->get_headers();
-            $existing_headers['X-RateLimit-Limit']     = (string) ($headers['limit'] ?? 0);
-            $existing_headers['X-RateLimit-Remaining'] = (string) ($headers['remaining'] ?? 0);
-            $existing_headers['X-RateLimit-Reset']     = (string) ($headers['reset'] ?? 0);
-
-            if (isset($headers['retry_after'])) {
-                $existing_headers['Retry-After'] = (string) $headers['retry_after'];
+            foreach ($header_map as $name => $value) {
+                $existing_headers[$name] = (string) $value;
             }
 
             $response->set_headers($existing_headers);

@@ -18,6 +18,20 @@ class SubmissionRestControllerTest extends \WP_UnitTestCase
 
     public function test_can_submit_event()
     {
+        $org_id = $this->factory->post->create([
+            'post_type'   => 'artpulse_org',
+            'post_status' => 'publish',
+            'post_author' => $this->user_id,
+        ]);
+        update_post_meta($org_id, '_ap_owner_user', $this->user_id);
+
+        $artist_id = $this->factory->post->create([
+            'post_type'   => 'artpulse_artist',
+            'post_status' => 'publish',
+            'post_author' => $this->user_id,
+        ]);
+        update_post_meta($artist_id, '_ap_owner_user', $this->user_id);
+
         $request = new WP_REST_Request('POST', '/artpulse/v1/submissions');
         $request->set_body_params([
             'post_type'          => 'artpulse_event',
@@ -25,7 +39,8 @@ class SubmissionRestControllerTest extends \WP_UnitTestCase
             'content'            => 'Event description',
             'event_date'         => '2025-06-30',
             'event_location'     => 'Virtual',
-            'event_organization' => 42,
+            'event_organization' => 999,
+            'artist_id'          => 123,
         ]);
 
         $response = rest_do_request($request);
@@ -42,7 +57,11 @@ class SubmissionRestControllerTest extends \WP_UnitTestCase
         $this->assertEquals('2025-06-30', $meta_date);
 
         $meta_org = (int) get_post_meta($data['id'], '_ap_event_organization', true);
-        $this->assertEquals(42, $meta_org);
+        $this->assertEquals($org_id, $meta_org);
+
+        $this->assertEquals($org_id, (int) get_post_meta($data['id'], '_ap_org_id', true));
+        $this->assertEquals($artist_id, (int) get_post_meta($data['id'], '_ap_artist_id', true));
+        $this->assertEquals('pending', get_post_meta($data['id'], '_ap_moderation_state', true));
     }
 
     public function test_artwork_submission_saves_meta()

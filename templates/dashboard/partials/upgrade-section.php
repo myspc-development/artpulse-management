@@ -21,6 +21,8 @@
             if ($url === '') {
                 continue;
             }
+
+            $cta = $upgrade['cta'] ?? __('Upgrade now', 'artpulse');
             ?>
             <article class="ap-dashboard-card ap-upgrade-widget__card">
                 <div class="ap-dashboard-card__body ap-upgrade-widget__card-body">
@@ -35,8 +37,34 @@
 
                 <div class="ap-dashboard-card__actions ap-upgrade-widget__card-actions">
                     <a class="ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta" href="<?php echo esc_url($url); ?>">
-                        <?php echo esc_html($upgrade['cta'] ?? __('Upgrade now', 'artpulse')); ?>
+                        <?php echo esc_html($cta); ?>
                     </a>
+
+                    <?php if (!empty($upgrade['secondary_actions']) && is_array($upgrade['secondary_actions'])) : ?>
+                        <?php foreach ($upgrade['secondary_actions'] as $secondary) :
+                            $secondary_url = $secondary['url'] ?? '';
+
+                            if ($secondary_url === '') {
+                                continue;
+                            }
+
+                            $secondary_label = $secondary['label'] ?? __('Learn more', 'artpulse');
+                            ?>
+                            <div class="ap-upgrade-widget__secondary-action">
+                                <?php if (!empty($secondary['title'])) : ?>
+                                    <h5 class="ap-upgrade-widget__secondary-title"><?php echo esc_html($secondary['title']); ?></h5>
+                                <?php endif; ?>
+
+                                <?php if (!empty($secondary['description'])) : ?>
+                                    <p class="ap-upgrade-widget__secondary-description"><?php echo esc_html($secondary['description']); ?></p>
+                                <?php endif; ?>
+
+                                <a class="ap-dashboard-button ap-dashboard-button--secondary ap-upgrade-widget__cta ap-upgrade-widget__cta--secondary" href="<?php echo esc_url($secondary_url); ?>">
+                                    <?php echo esc_html($secondary_label); ?>
+                                </a>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </article>
         <?php endforeach; ?>

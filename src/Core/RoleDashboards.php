@@ -811,12 +811,49 @@ class RoleDashboards
                     $description_markup = sprintf('<p class="ap-upgrade-widget__card-description">%s</p>', esc_html($upgrade['description']));
                 }
 
-                $output .= sprintf(
-                    '<article class="ap-dashboard-card ap-upgrade-widget__card"><div class="ap-dashboard-card__body ap-upgrade-widget__card-body">%1$s%2$s</div><div class="ap-dashboard-card__actions ap-upgrade-widget__card-actions"><a class="ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta" href="%3$s">%4$s</a></div></article>',
-                    $title_markup,
-                    $description_markup,
+                $actions_markup = sprintf(
+                    '<a class="ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta" href="%1$s">%2$s</a>',
                     esc_url($url),
                     esc_html($upgrade['cta'] ?? __('Upgrade now', 'artpulse'))
+                );
+
+                if (!empty($upgrade['secondary_actions']) && is_array($upgrade['secondary_actions'])) {
+                    foreach ($upgrade['secondary_actions'] as $secondary_action) {
+                        $secondary_url = $secondary_action['url'] ?? '';
+
+                        if ($secondary_url === '') {
+                            continue;
+                        }
+
+                        $secondary_label = $secondary_action['label'] ?? __('Learn more', 'artpulse');
+
+                        $secondary_markup  = '<div class="ap-upgrade-widget__secondary-action">';
+
+                        if (!empty($secondary_action['title'])) {
+                            $secondary_markup .= sprintf('<h5 class="ap-upgrade-widget__secondary-title">%s</h5>', esc_html($secondary_action['title']));
+                        }
+
+                        if (!empty($secondary_action['description'])) {
+                            $secondary_markup .= sprintf('<p class="ap-upgrade-widget__secondary-description">%s</p>', esc_html($secondary_action['description']));
+                        }
+
+                        $secondary_markup .= sprintf(
+                            '<a class="ap-dashboard-button ap-dashboard-button--secondary ap-upgrade-widget__cta ap-upgrade-widget__cta--secondary" href="%1$s">%2$s</a>',
+                            esc_url($secondary_url),
+                            esc_html($secondary_label)
+                        );
+
+                        $secondary_markup .= '</div>';
+
+                        $actions_markup .= $secondary_markup;
+                    }
+                }
+
+                $output .= sprintf(
+                    '<article class="ap-dashboard-card ap-upgrade-widget__card"><div class="ap-dashboard-card__body ap-upgrade-widget__card-body">%1$s%2$s</div><div class="ap-dashboard-card__actions ap-upgrade-widget__card-actions">%3$s</div></article>',
+                    $title_markup,
+                    $description_markup,
+                    $actions_markup
                 );
             }
 
@@ -1197,7 +1234,57 @@ class RoleDashboards
             ];
         }
 
-        return $upgrades;
+        return self::mergeOrganizationUpgradeIntoArtistCard($upgrades);
+    }
+
+    private static function mergeOrganizationUpgradeIntoArtistCard(array $upgrades): array
+    {
+        $organizationIndex = null;
+        $artistIndex       = null;
+
+        foreach ($upgrades as $index => $upgrade) {
+            $slug = $upgrade['slug'] ?? '';
+
+            if ($slug === 'organization') {
+                $organizationIndex = $index;
+            }
+
+            if ($slug === 'artist') {
+                $artistIndex = $index;
+            }
+        }
+
+        if ($organizationIndex === null || $artistIndex === null) {
+            return array_values($upgrades);
+        }
+
+        $organizationUpgrade = $upgrades[$organizationIndex] ?? [];
+        $organizationUrl     = $organizationUpgrade['url'] ?? '';
+
+        if ($organizationUrl === '') {
+            return array_values($upgrades);
+        }
+
+        $secondaryAction = [
+            'label' => $organizationUpgrade['cta'] ?? __('Upgrade to Organization', 'artpulse'),
+            'url'   => $organizationUrl,
+        ];
+
+        if (!empty($organizationUpgrade['title'])) {
+            $secondaryAction['title'] = $organizationUpgrade['title'];
+        }
+
+        if (!empty($organizationUpgrade['description'])) {
+            $secondaryAction['description'] = $organizationUpgrade['description'];
+        }
+
+        $existingSecondary = $upgrades[$artistIndex]['secondary_actions'] ?? [];
+        $existingSecondary[] = $secondaryAction;
+        $upgrades[$artistIndex]['secondary_actions'] = $existingSecondary;
+
+        unset($upgrades[$organizationIndex]);
+
+        return array_values($upgrades);
     }
 
     private static function getMembershipPurchaseUrl(string $level): string
