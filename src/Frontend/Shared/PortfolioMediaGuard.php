@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Frontend\Shared;
 
+use WP_Post;
 use WP_User;
 
 /**
@@ -22,8 +23,18 @@ final class PortfolioMediaGuard
      */
     public static function filter_media_delete_cap(array $allcaps, array $caps, array $args, ?WP_User $user = null): array
     {
-        $cap     = $args[0] ?? '';
-        $post_id = isset($args[2]) ? (int) $args[2] : 0;
+        $cap = $args[0] ?? '';
+        $post_id = 0;
+
+        if (isset($args[2])) {
+            $context = $args[2];
+
+            if (is_numeric($context)) {
+                $post_id = (int) $context;
+            } elseif (is_object($context) && property_exists($context, 'post') && $context->post instanceof WP_Post) {
+                $post_id = (int) $context->post->ID;
+            }
+        }
 
         if ('delete_post' !== $cap || $post_id <= 0) {
             return $allcaps;
