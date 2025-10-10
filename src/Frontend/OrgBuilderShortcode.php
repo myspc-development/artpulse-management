@@ -206,12 +206,15 @@ class OrgBuilderShortcode
             'limit'       => $limit,
         ]);
 
-
         self::respond_with_error(
             $error->get_error_code(),
             $error->get_error_message(),
             429,
-
+            [
+                'limit' => $limit,
+            ],
+            $retry_after
+        );
     }
 
     private static function respond_with_error(
