@@ -137,7 +137,7 @@ class UpgradeReviewsTable extends WP_List_Table
             return '—';
         }
 
-        return wp_kses_post($reason);
+        return nl2br(esc_html($reason));
     }
 
     protected function column_default($item, $column_name)

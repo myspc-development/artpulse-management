@@ -17,6 +17,7 @@ class UpgradeReviewRepository
     public const META_POST = '_ap_review_post_id';
     public const META_REASON = '_ap_review_reason';
     public const TYPE_ORG_UPGRADE = 'org_upgrade';
+    public const TYPE_ARTIST_UPGRADE = 'artist_upgrade';
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_APPROVED = 'approved';
@@ -57,6 +58,16 @@ class UpgradeReviewRepository
         delete_post_meta($request_id, self::META_REASON);
 
         return (int) $request_id;
+    }
+
+    /**
+     * Retrieve the request type for a review post.
+     */
+    public static function get_type(WP_Post $post): string
+    {
+        $type = get_post_meta($post->ID, self::META_TYPE, true);
+
+        return is_string($type) && $type !== '' ? $type : self::TYPE_ORG_UPGRADE;
     }
 
     /**
@@ -132,10 +143,16 @@ class UpgradeReviewRepository
         update_post_meta($request_id, self::META_STATUS, $status);
 
         if ($reason !== '') {
-            update_post_meta($request_id, self::META_REASON, wp_kses_post($reason));
-        } else {
-            delete_post_meta($request_id, self::META_REASON);
+            $sanitised_reason = sanitize_textarea_field($reason);
+
+            if ('' !== $sanitised_reason) {
+                update_post_meta($request_id, self::META_REASON, $sanitised_reason);
+
+                return;
+            }
         }
+
+        delete_post_meta($request_id, self::META_REASON);
     }
 
     public static function get_reason(WP_Post $post): string
