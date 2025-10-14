@@ -1,6 +1,8 @@
 <?php
 namespace ArtPulse\Core;
 
+use function sanitize_title_with_dashes;
+
 /**
  * Handles custom rewrite rules and sitemap integrations for ArtPulse directories.
  */
@@ -193,10 +195,31 @@ class Rewrites
      */
     public static function get_directory_base_slug(string $type): string
     {
-        $default = $type === 'artists' ? 'artists' : 'organizations';
-        $slug    = apply_filters('ap_' . $type . '_directory_base', $default);
+        $default   = $type === 'artists' ? 'artists' : 'organizations';
+        $filtered  = apply_filters('ap_' . $type . '_directory_base', $default);
+        $sanitized = self::sanitize_directory_base((string) $filtered);
 
-        return trim((string) $slug, '/');
+        if ($sanitized !== '') {
+            return $sanitized;
+        }
+
+        return self::sanitize_directory_base($default);
+    }
+
+    /**
+     * Sanitize a directory base slug before it is used in rewrite rules.
+     */
+    private static function sanitize_directory_base(string $slug): string
+    {
+        $segments = preg_split('~/+~', trim($slug), -1, PREG_SPLIT_NO_EMPTY);
+        if ($segments === false) {
+            return '';
+        }
+
+        $sanitized = array_map(static fn (string $segment): string => sanitize_title_with_dashes($segment), $segments);
+        $sanitized = array_filter($sanitized, static fn (string $segment): bool => $segment !== '');
+
+        return implode('/', $sanitized);
     }
 
     /**

@@ -164,6 +164,29 @@ class DirectoryQueryTest extends WP_UnitTestCase
         remove_filter('ap_galleries_directory_base', $callback);
     }
 
+    public function test_rewrite_sanitizes_filtered_base_slug(): void
+    {
+        $page_id = self::factory()->post->create([
+            'post_type'  => 'page',
+            'post_title' => 'Partners',
+            'post_name'  => 'partner-spaces',
+            'post_status'=> 'publish',
+        ]);
+
+        $callback = static fn () => 'partner|spaces';
+        add_filter('ap_galleries_directory_base', $callback);
+
+        do_action('init');
+        flush_rewrite_rules(false);
+
+        $this->go_to(home_url('/partner-spaces/letter/c/'));
+
+        $this->assertSame('C', get_query_var('ap_letter'));
+        $this->assertEquals($page_id, get_queried_object_id());
+
+        remove_filter('ap_galleries_directory_base', $callback);
+    }
+
     public function test_organization_directory_outputs_results()
     {
         $gallery = self::factory()->post->create([
