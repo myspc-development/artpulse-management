@@ -153,15 +153,92 @@ class DirectoryQueryTest extends WP_UnitTestCase
         $callback = static fn () => 'organisations';
         add_filter('ap_galleries_directory_base', $callback);
 
-        do_action('init');
-        flush_rewrite_rules(false);
+        try {
+            do_action('init');
+            flush_rewrite_rules(false);
 
-        $this->go_to(home_url('/organisations/letter/b/'));
+            $this->go_to(home_url('/organisations/letter/b/'));
 
-        $this->assertSame('B', get_query_var('ap_letter'));
-        $this->assertEquals($page_id, get_queried_object_id());
+            $this->assertSame('B', get_query_var('ap_letter'));
+            $this->assertEquals($page_id, get_queried_object_id());
+        } finally {
+            remove_filter('ap_galleries_directory_base', $callback);
+        }
+    }
 
-        remove_filter('ap_galleries_directory_base', $callback);
+    public function test_rewrite_sanitizes_filtered_base_slug(): void
+    {
+        $page_id = self::factory()->post->create([
+            'post_type'  => 'page',
+            'post_title' => 'Partners',
+            'post_name'  => 'partner-spaces',
+            'post_status'=> 'publish',
+        ]);
+
+        $callback = static fn () => 'partner|spaces';
+        add_filter('ap_galleries_directory_base', $callback);
+
+        try {
+            do_action('init');
+            flush_rewrite_rules(false);
+
+            $this->go_to(home_url('/partner-spaces/letter/c/'));
+
+            $this->assertSame('C', get_query_var('ap_letter'));
+            $this->assertEquals($page_id, get_queried_object_id());
+        } finally {
+            remove_filter('ap_galleries_directory_base', $callback);
+        }
+    }
+
+    public function test_rewrite_sanitizes_artists_filtered_base_slug(): void
+    {
+        $page_id = self::factory()->post->create([
+            'post_type'  => 'page',
+            'post_title' => 'Artist Spaces',
+            'post_name'  => 'artist-spaces',
+            'post_status'=> 'publish',
+        ]);
+
+        $callback = static fn () => 'artist spaces';
+        add_filter('ap_artists_directory_base', $callback);
+
+        try {
+            do_action('init');
+            flush_rewrite_rules(false);
+
+            $this->go_to(home_url('/artist-spaces/letter/d/'));
+
+            $this->assertSame('D', get_query_var('ap_letter'));
+            $this->assertEquals($page_id, get_queried_object_id());
+        } finally {
+            remove_filter('ap_artists_directory_base', $callback);
+        }
+    }
+
+    public function test_rewrite_falls_back_to_default_base_when_filter_invalid(): void
+    {
+        $page_id = self::factory()->post->create([
+            'post_type'  => 'page',
+            'post_title' => 'Organizations',
+            'post_name'  => 'organizations',
+            'post_status'=> 'publish',
+        ]);
+
+        $callback = static fn () => '!!!';
+        add_filter('ap_galleries_directory_base', $callback);
+
+        try {
+            do_action('init');
+            flush_rewrite_rules(false);
+
+            $this->go_to(home_url('/organizations/letter/f/'));
+
+            $this->assertSame('F', get_query_var('ap_letter'));
+            $this->assertEquals($page_id, get_queried_object_id());
+        } finally {
+            remove_filter('ap_galleries_directory_base', $callback);
+        }
     }
 
     public function test_organization_directory_outputs_results()
