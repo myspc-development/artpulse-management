@@ -24,6 +24,10 @@ final class PortfolioMediaGuard
     public static function filter_media_delete_cap(array $allcaps, array $caps, array $args, ?WP_User $user = null): array
     {
         $cap = $args[0] ?? '';
+        if (!in_array($cap, ['delete_post', 'delete_attachment'], true)) {
+            return $allcaps;
+        }
+
         $post_id = 0;
 
         if (isset($args[2])) {
@@ -36,7 +40,7 @@ final class PortfolioMediaGuard
             }
         }
 
-        if ('delete_post' !== $cap || $post_id <= 0) {
+        if ($post_id <= 0) {
             return $allcaps;
         }
 
@@ -64,7 +68,8 @@ final class PortfolioMediaGuard
             return $allcaps;
         }
 
-        $allcaps['delete_post'] = false;
+        $allcaps['delete_post']        = false;
+        $allcaps['delete_attachment'] = false;
 
         return $allcaps;
     }
