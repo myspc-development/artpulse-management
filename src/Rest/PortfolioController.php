@@ -223,6 +223,39 @@ final class PortfolioController
 
     private static function validate_image_file(array $file)
     {
+        if (!is_array($file) || empty($file)) {
+            return new WP_Error(
+                'invalid_file',
+                __('Uploaded file could not be processed.', 'artpulse-management'),
+                ['status' => 400]
+            );
+        }
+
+        $error = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_OK;
+        if (UPLOAD_ERR_OK !== $error) {
+            switch ($error) {
+                case UPLOAD_ERR_NO_FILE:
+                    return new WP_Error(
+                        'bad_request',
+                        __('No file provided', 'artpulse-management'),
+                        ['status' => 400]
+                    );
+                case UPLOAD_ERR_INI_SIZE:
+                case UPLOAD_ERR_FORM_SIZE:
+                    return new WP_Error(
+                        'too_large',
+                        __('Images must be smaller than 10MB', 'artpulse-management'),
+                        ['status' => 413]
+                    );
+                default:
+                    return new WP_Error(
+                        'upload_error',
+                        __('The upload could not be completed. Please try again.', 'artpulse-management'),
+                        ['status' => 500]
+                    );
+            }
+        }
+
         $tmp_name = $file['tmp_name'] ?? '';
         $name     = $file['name'] ?? '';
 
