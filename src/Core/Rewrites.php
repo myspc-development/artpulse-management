@@ -27,7 +27,7 @@ class Rewrites
      */
     public static function add_rewrite_tags(): void
     {
-        add_rewrite_tag('%ap_letter%', '([A-Za-z]|%23|\#|all)');
+        add_rewrite_tag('%ap_letter%', '([A-Za-z]|%23|all)');
     }
 
     /**
@@ -37,7 +37,7 @@ class Rewrites
     {
         $artists_base = self::get_directory_base_slug('artists');
         $orgs_base    = self::get_directory_base_slug('galleries');
-        $pattern      = 'letter/([A-Za-z]|%23|\#|all)';
+        $pattern      = 'letter/([A-Za-z]|%23|all)';
 
         if ($artists_base !== '') {
             add_rewrite_rule(
