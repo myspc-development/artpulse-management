@@ -24,9 +24,8 @@ final class ArtistBuilderShortcode
             status_header(404);
 
             if ('POST' === ($_SERVER['REQUEST_METHOD'] ?? '')) {
-                wp_send_json_error([
-                    'code'    => 'artist_builder_disabled',
-                    'message' => __('Artist builder is currently disabled.', 'artpulse-management'),
+                wp_send_json([
+                    'code' => 'builder_disabled',
                 ], 404);
             }
 

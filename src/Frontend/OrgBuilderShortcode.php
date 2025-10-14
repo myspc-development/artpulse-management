@@ -35,6 +35,12 @@ class OrgBuilderShortcode
         if (!get_option('ap_enable_org_builder', true)) {
             status_header(404);
 
+            if ('POST' === ($_SERVER['REQUEST_METHOD'] ?? '')) {
+                wp_send_json([
+                    'code' => 'builder_disabled',
+                ], 404);
+            }
+
             return '';
         }
 
