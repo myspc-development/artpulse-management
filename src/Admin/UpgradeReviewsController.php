@@ -118,8 +118,8 @@ class UpgradeReviewsController
             $result = self::approve($post);
             $status = $result ? 'approved' : 'error';
         } else {
-            $reason = isset($_POST['reason']) ? wp_kses_post(wp_unslash($_POST['reason'])) : '';
-            $result = self::deny($post, $reason);
+            $reason_raw = isset($_POST['reason']) ? wp_unslash($_POST['reason']) : '';
+            $result = self::deny($post, $reason_raw);
             $status = $result ? 'denied' : 'error';
         }
 
@@ -131,43 +131,65 @@ class UpgradeReviewsController
     {
         $user_id = UpgradeReviewRepository::get_user_id($review);
         $org_id  = UpgradeReviewRepository::get_post_id($review);
+        $type    = UpgradeReviewRepository::get_type($review);
 
-        if ($user_id <= 0 || $org_id <= 0) {
+        if ($user_id <= 0) {
             return false;
         }
 
-        $org = get_post($org_id);
-        if (!$org instanceof WP_Post) {
-            return false;
+        $email_context = [
+            'dashboard_url' => add_query_arg('role', 'organization', home_url('/dashboard/')),
+            'org_id'        => $org_id,
+        ];
+        $audit_action  = 'org.upgrade.approved';
+
+        if (UpgradeReviewRepository::TYPE_ORG_UPGRADE === $type) {
+            if ($org_id <= 0) {
+                return false;
+            }
+
+            $org = get_post($org_id);
+            if (!$org instanceof WP_Post) {
+                return false;
+            }
+
+            RoleUpgradeManager::attach_owner($org_id, $user_id);
+
+            wp_update_post([
+                'ID'          => $org_id,
+                'post_status' => 'publish',
+            ]);
+
+            RoleUpgradeManager::grant_role_if_missing($user_id, 'organization', [
+                'source'    => 'upgrade_review',
+                'post_id'   => $org_id,
+                'review_id' => $review->ID,
+            ]);
+        } else {
+            RoleUpgradeManager::grant_role_if_missing($user_id, 'artist', [
+                'source'    => 'upgrade_review',
+                'review_id' => $review->ID,
+            ]);
+
+            $email_context = [
+                'dashboard_url' => add_query_arg('role', 'artist', home_url('/dashboard/')),
+            ];
+            $audit_action = 'artist.upgrade.approved';
         }
-
-        RoleUpgradeManager::attach_owner($org_id, $user_id);
-
-        wp_update_post([
-            'ID'          => $org_id,
-            'post_status' => 'publish',
-        ]);
 
         UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_APPROVED);
 
-        RoleUpgradeManager::grant_role_if_missing($user_id, 'organization', [
-            'source'   => 'upgrade_review',
-            'post_id'  => $org_id,
-            'review_id'=> $review->ID,
-        ]);
-
         $user = get_user_by('id', $user_id);
         if ($user instanceof WP_User) {
-            MemberDashboard::send_member_email('upgrade_approved', $user, [
-                'dashboard_url' => add_query_arg('role', 'organization', home_url('/dashboard/')),
-                'org_id'        => $org_id,
-            ]);
+            MemberDashboard::send_member_email('upgrade_approved', $user, $email_context);
         }
 
-        AuditLogger::info('org.upgrade.approved', [
+        AuditLogger::info($audit_action, [
             'user_id'   => $user_id,
             'post_id'   => $org_id,
             'review_id' => $review->ID,
+            'type'      => $type,
+            'action'    => 'approved',
         ]);
 
         return true;
@@ -175,28 +197,37 @@ class UpgradeReviewsController
 
     private static function deny(WP_Post $review, string $reason): bool
     {
-        if ($reason === '') {
+        $sanitized_reason = trim(sanitize_textarea_field($reason));
+
+        if ($sanitized_reason === '') {
             return false;
         }
 
         $user_id = UpgradeReviewRepository::get_user_id($review);
         $org_id  = UpgradeReviewRepository::get_post_id($review);
+        $type    = UpgradeReviewRepository::get_type($review);
 
-        UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_DENIED, $reason);
+        UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_DENIED, $sanitized_reason);
 
         $user = get_user_by('id', $user_id);
         if ($user instanceof WP_User) {
             MemberDashboard::send_member_email('upgrade_denied', $user, [
-                'reason' => $reason,
+                'reason' => $sanitized_reason,
                 'org_id' => $org_id,
             ]);
         }
 
-        AuditLogger::info('org.upgrade.denied', [
+        $audit_action = UpgradeReviewRepository::TYPE_ORG_UPGRADE === $type
+            ? 'org.upgrade.denied'
+            : 'artist.upgrade.denied';
+
+        AuditLogger::info($audit_action, [
             'user_id'   => $user_id,
             'post_id'   => $org_id,
             'review_id' => $review->ID,
-            'reason'    => $reason,
+            'reason'    => $sanitized_reason,
+            'action'    => 'denied',
+            'type'      => $type,
         ]);
 
         return true;

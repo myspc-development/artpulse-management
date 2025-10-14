@@ -81,6 +81,40 @@ class OrganizationUpgradeFlowTest extends WP_UnitTestCase
         $this->assertNotEmpty(get_user_meta($user_id, '_ap_upgrade_notified_organization', true));
     }
 
+    public function test_admin_denial_sanitizes_reason_and_notifies_member(): void
+    {
+        $user_id = self::factory()->user->create(['role' => 'subscriber']);
+        $org_id  = $this->create_org_for_user($user_id, 'draft');
+
+        $review_id = UpgradeReviewRepository::create_org_upgrade($user_id, $org_id);
+        $review    = get_post($review_id);
+        $this->assertInstanceOf(WP_Post::class, $review);
+
+        $mailer = tests_retrieve_phpmailer_instance();
+        $mailer->mock_sent = [];
+
+        $reflector = new \ReflectionClass(UpgradeReviewsController::class);
+        $deny       = $reflector->getMethod('deny');
+        $deny->setAccessible(true);
+
+        $result = $deny->invoke(null, $review, " <strong>Insufficient</strong> details ");
+        $this->assertTrue($result);
+
+        $updated_review = get_post($review_id);
+        $this->assertSame(UpgradeReviewRepository::STATUS_DENIED, UpgradeReviewRepository::get_status($updated_review));
+        $this->assertSame('Insufficient details', UpgradeReviewRepository::get_reason($updated_review));
+
+        $emails = array_filter(
+            $mailer->mock_sent,
+            static fn($mail) => false !== strpos($mail['subject'], 'upgrade request')
+        );
+
+        $this->assertCount(1, $emails);
+
+        $email = array_shift($emails);
+        $this->assertNotFalse(strpos($email['body'], 'Insufficient details'));
+    }
+
     public function test_save_images_updates_gallery_order_and_featured_image(): void
     {
         if (!extension_loaded('gd') && !extension_loaded('imagick')) {
