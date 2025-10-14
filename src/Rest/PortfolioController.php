@@ -4,6 +4,7 @@ namespace ArtPulse\Rest;
 
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\ImageTools;
+use ArtPulse\Frontend\Shared\PortfolioWidgetRegistry;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Server;
@@ -83,6 +84,7 @@ final class PortfolioController
             'title' => get_the_title($post_id),
             'meta'  => $meta,
             'media' => $media,
+            'widgets' => PortfolioWidgetRegistry::for_post($post_id),
         ];
     }
 
@@ -118,6 +120,10 @@ final class PortfolioController
             if (array_key_exists($field, $body)) {
                 self::replace_feature_media($post_id, (int) $body[$field], $meta_key);
             }
+        }
+
+        if (array_key_exists('widgets', $body) && is_array($body['widgets'])) {
+            PortfolioWidgetRegistry::save($post_id, $body['widgets']);
         }
 
         AuditLogger::info('portfolio.update', [

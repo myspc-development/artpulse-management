@@ -57,7 +57,8 @@ final class PortfolioWidgetRegistry
                 $stored_config = $stored[$key];
             }
 
-            $merged[$key] = array_replace_recursive($defaults[$key], $stored_config);
+            $merged[$key]               = array_replace_recursive($defaults[$key], $stored_config);
+            $merged[$key]['enabled']    = (bool) ($merged[$key]['enabled'] ?? false);
         }
 
         return apply_filters('artpulse/portfolio_widgets', $merged, $post_id);
@@ -80,7 +81,12 @@ final class PortfolioWidgetRegistry
         $ordered = [];
 
         foreach ($stored as $key => $config) {
-            $normalized = sanitize_key($key);
+            $candidate = $key;
+            if (is_int($key) && is_array($config)) {
+                $candidate = $config['key'] ?? $config['id'] ?? $config['slug'] ?? '';
+            }
+
+            $normalized = sanitize_key((string) $candidate);
             if ($normalized === '' || !array_key_exists($normalized, $defaults)) {
                 continue;
             }
@@ -90,6 +96,8 @@ final class PortfolioWidgetRegistry
                 $widget_config = array_replace_recursive($widget_config, $config);
             }
 
+            $widget_config['enabled'] = (bool) ($widget_config['enabled'] ?? false);
+
             $ordered[$normalized] = $widget_config;
         }
 
@@ -98,11 +106,12 @@ final class PortfolioWidgetRegistry
 
     public static function save(int $post_id, array $widgets): void
     {
-        $previous = (array) get_post_meta($post_id, '_ap_widgets', true);
+        $previous   = (array) get_post_meta($post_id, '_ap_widgets', true);
+        $normalized = self::normalizeForStorage($widgets);
 
-        update_post_meta($post_id, '_ap_widgets', $widgets);
+        update_post_meta($post_id, '_ap_widgets', $normalized);
 
-        $diff = self::diffWidgets($previous, $widgets);
+        $diff = self::diffWidgets($previous, $normalized);
         if (!empty($diff)) {
             AuditLogger::info('portfolio.widgets.update', [
                 'post_id' => $post_id,
@@ -168,5 +177,36 @@ final class PortfolioWidgetRegistry
         }
 
         return $order;
+    }
+
+    private static function normalizeForStorage(array $widgets): array
+    {
+        $normalized = [];
+        $defaults   = self::defaults();
+
+        foreach ($widgets as $key => $config) {
+            $candidate = $key;
+            if (!is_string($candidate) || $candidate === '') {
+                if (is_array($config)) {
+                    $candidate = $config['key'] ?? $config['id'] ?? $config['slug'] ?? '';
+                } else {
+                    $candidate = '';
+                }
+            }
+
+            $slug = sanitize_key((string) $candidate);
+            if ($slug === '' || !array_key_exists($slug, $defaults)) {
+                continue;
+            }
+
+            $config_array = is_array($config) ? $config : [];
+            $config_array['enabled'] = isset($config_array['enabled'])
+                ? (bool) $config_array['enabled']
+                : (bool) ($defaults[$slug]['enabled'] ?? false);
+
+            $normalized[$slug] = $config_array;
+        }
+
+        return $normalized;
     }
 }
