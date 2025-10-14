@@ -4,7 +4,6 @@ namespace ArtPulse\Frontend;
 
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\Capabilities;
-use ArtPulse\Core\EventDuplicateGuard;
 use ArtPulse\Core\RateLimitHeaders;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
@@ -224,8 +223,28 @@ class OrganizationEventForm {
             return self::maybe_handle_errors($errors, $should_redirect);
         }
 
-        $dedupe_key = EventDuplicateGuard::generate_key($user_id, $title, $date);
-        if (EventDuplicateGuard::is_duplicate($dedupe_key)) {
+        $raw_start_ts = isset($_POST['start_ts']) ? wp_unslash($_POST['start_ts']) : '';
+        $start_ts     = 0;
+
+        if (is_numeric($raw_start_ts)) {
+            $start_ts = (int) $raw_start_ts;
+        } elseif (is_string($raw_start_ts) && '' !== $raw_start_ts) {
+            $parsed = strtotime($raw_start_ts);
+            if (false !== $parsed) {
+                $start_ts = (int) $parsed;
+            }
+        }
+
+        if (0 === $start_ts) {
+            $parsed = strtotime($date);
+            if (false !== $parsed) {
+                $start_ts = (int) $parsed;
+            }
+        }
+
+        $dedupe_key = 'ap_event_submit_' . md5(sanitize_title($title) . '|' . $start_ts . '|' . $owner_id);
+
+        if (false !== get_transient($dedupe_key)) {
             self::respond_with_error(
                 'duplicate_event',
                 __('A similar event was just submitted. Please wait a moment before trying again.', 'artpulse-management'),
@@ -236,10 +255,12 @@ class OrganizationEventForm {
             );
         }
 
-        EventDuplicateGuard::lock($dedupe_key);
+        set_transient($dedupe_key, time(), MINUTE_IN_SECONDS);
 
         $require_review = (bool) get_option('ap_require_event_review', true);
         $status         = $require_review ? 'pending' : 'publish';
+        $moderation_state      = 'publish' === $status ? 'approved' : 'pending';
+        $moderation_changed_at = current_time('timestamp', true);
 
         $post_id = wp_insert_post([
             'post_title'   => $title,
@@ -250,7 +271,9 @@ class OrganizationEventForm {
         ], true);
 
         if (is_wp_error($post_id)) {
-            EventDuplicateGuard::clear($dedupe_key);
+            if ($dedupe_key) {
+                delete_transient($dedupe_key);
+            }
             $errors[] = $post_id->get_error_message();
             return self::maybe_handle_errors($errors, $should_redirect);
         }
@@ -260,6 +283,8 @@ class OrganizationEventForm {
         update_post_meta($post_id, '_ap_event_organization', $org_id);
         update_post_meta($post_id, '_ap_org_id', $org_id);
         update_post_meta($post_id, '_ap_artist_id', $artist_id);
+        update_post_meta($post_id, '_ap_moderation_state', $moderation_state);
+        update_post_meta($post_id, '_ap_moderation_changed_at', $moderation_changed_at);
 
 
         if ($type) {
@@ -478,7 +503,11 @@ class OrganizationEventForm {
             header('X-ArtPulse-Nonce: ' . $details['nonce']);
         }
 
+        if (null !== $retry_after) {
+            header('Retry-After: ' . max(1, (int) $retry_after));
+        }
 
+        wp_send_json($payload, $status);
     }
 
     private static function get_user_org_id(int $user_id): int
