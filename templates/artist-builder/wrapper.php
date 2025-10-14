@@ -12,9 +12,10 @@ if (!defined('ABSPATH')) {
 
 $container_class = $is_mobile_view ? 'ap-artist-builder ap-artist-builder--mobile' : 'ap-artist-builder';
 $nonce           = wp_create_nonce('ap_portfolio_update');
+$nonce_field     = wp_nonce_field('ap_portfolio_update', '_ap_nonce', false, false);
 ?>
 <div class="<?php echo esc_attr($container_class); ?>" data-ap-nonce="<?php echo esc_attr($nonce); ?>">
-    <input type="hidden" name="_ap_nonce" value="<?php echo esc_attr($nonce); ?>" />
+    <?php echo $nonce_field; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
     <header class="ap-artist-builder__header">
         <h1><?php esc_html_e('Manage Artist Profile', 'artpulse-management'); ?></h1>
         <p><?php esc_html_e('Update profile details, media, and preview your public page before publishing.', 'artpulse-management'); ?></p>

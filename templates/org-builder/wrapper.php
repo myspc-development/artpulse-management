@@ -5,8 +5,12 @@
 /** @var string $builder_step */
 /** @var string $builder_message */
 /** @var string $builder_event_url */
+
+$builder_nonce      = wp_create_nonce('ap_portfolio_update');
+$builder_nonce_html = wp_nonce_field('ap_portfolio_update', '_ap_nonce', false, false);
 ?>
-<div class="ap-org-builder" data-org-id="<?php echo esc_attr($org_post->ID); ?>">
+<div class="ap-org-builder" data-org-id="<?php echo esc_attr($org_post->ID); ?>" data-ap-nonce="<?php echo esc_attr($builder_nonce); ?>">
+    <?php echo $builder_nonce_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
     <header class="ap-org-builder__header">
         <h2><?php echo esc_html(get_the_title($org_post)); ?></h2>
         <nav class="ap-org-builder__nav" aria-label="<?php esc_attr_e('Organization builder steps', 'artpulse-management'); ?>">
