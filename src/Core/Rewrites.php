@@ -27,7 +27,7 @@ class Rewrites
      */
     public static function add_rewrite_tags(): void
     {
-        add_rewrite_tag('%ap_letter%', '([A-Za-z]|\\#|all)');
+        add_rewrite_tag('%ap_letter%', '([A-Za-z#]{1,3})');
     }
 
     /**
@@ -36,26 +36,42 @@ class Rewrites
     public static function add_rewrite_rules(): void
     {
         $artists_base = self::get_directory_base_slug('artists');
-        $orgs_base    = self::get_directory_base_slug('galleries');
-        $pattern      = 'letter/([A-Za-z]|\\#|all)';
-
         if ($artists_base !== '') {
-            $artists_pattern = '^' . self::escape_rewrite_base($artists_base) . $pattern . '/?$';
-            add_rewrite_rule(
-                $artists_pattern,
-                'index.php?pagename=' . $artists_base . '&ap_letter=$matches[1]&ap_directory=artists',
-                'top'
-            );
+            self::add_directory_letter_rules($artists_base, 'artists');
         }
 
+        $orgs_base = self::get_directory_base_slug('galleries');
         if ($orgs_base !== '') {
-            $orgs_pattern = '^' . self::escape_rewrite_base($orgs_base) . $pattern . '/?$';
-            add_rewrite_rule(
-                $orgs_pattern,
-                'index.php?pagename=' . $orgs_base . '&ap_letter=$matches[1]&ap_directory=galleries',
-                'top'
-            );
+            self::add_directory_letter_rules($orgs_base, 'galleries');
         }
+    }
+
+    /**
+     * Register rewrite rules for the various letter filters on a directory page.
+     */
+    private static function add_directory_letter_rules(string $base, string $directory): void
+    {
+        $base_pattern = '^' . self::escape_rewrite_base($base) . 'letter/';
+        $query_base   = 'index.php?pagename=' . $base . '&ap_directory=' . $directory;
+        $hash_letter  = rawurlencode('#');
+
+        add_rewrite_rule(
+            $base_pattern . '([A-Za-z])/?$',
+            $query_base . '&ap_letter=$matches[1]',
+            'top'
+        );
+
+        add_rewrite_rule(
+            $base_pattern . 'all/?$',
+            $query_base . '&ap_letter=all',
+            'top'
+        );
+
+        add_rewrite_rule(
+            $base_pattern . '\\#/?$',
+            $query_base . '&ap_letter=' . $hash_letter,
+            'top'
+        );
     }
 
     /**
