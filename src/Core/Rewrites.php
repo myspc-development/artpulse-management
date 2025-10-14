@@ -40,20 +40,35 @@ class Rewrites
         $pattern      = 'letter/([A-Za-z]|\\#|all)';
 
         if ($artists_base !== '') {
+            $artists_pattern = '^' . self::escape_rewrite_base($artists_base) . $pattern . '/?$';
             add_rewrite_rule(
-                '^' . $artists_base . '/' . $pattern . '/?$',
+                $artists_pattern,
                 'index.php?pagename=' . $artists_base . '&ap_letter=$matches[1]&ap_directory=artists',
                 'top'
             );
         }
 
         if ($orgs_base !== '') {
+            $orgs_pattern = '^' . self::escape_rewrite_base($orgs_base) . $pattern . '/?$';
             add_rewrite_rule(
-                '^' . $orgs_base . '/' . $pattern . '/?$',
+                $orgs_pattern,
                 'index.php?pagename=' . $orgs_base . '&ap_letter=$matches[1]&ap_directory=galleries',
                 'top'
             );
         }
+    }
+
+    /**
+     * Prepare a base slug for safe inclusion in a rewrite regex.
+     */
+    private static function escape_rewrite_base(string $base): string
+    {
+        $trimmed = trim($base, '/');
+        if ($trimmed === '') {
+            return '';
+        }
+
+        return preg_quote($trimmed, '#') . '/';
     }
 
     /**
