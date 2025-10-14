@@ -29,8 +29,27 @@ final class RateLimitHeaders
 
     /**
      * Emit headers for traditional (non-REST) responses.
+     *
+     * Returns the normalized header map so callers can also attach the same
+     * values to structured responses (e.g. WP_Error data or REST responses).
+     *
+     * @return array<string, string>
      */
-    public static function emit(array $headers): void
+    public static function emit(int $limit, int $remaining, ?int $retryAfter, int $resetEpoch): array
+    {
+        $headers = self::build($limit, $remaining, $resetEpoch, $retryAfter);
+
+        self::output($headers);
+
+        return $headers;
+    }
+
+    /**
+     * Emit a prepared map of headers.
+     *
+     * @param array<string, string> $headers
+     */
+    private static function output(array $headers): void
     {
         foreach ($headers as $name => $value) {
             if ('' === $name) {
