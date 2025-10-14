@@ -76,13 +76,12 @@ final class ArtistBuilderShortcode
             self::respond_with_error(
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
-                403,
-
+                403
             );
         }
 
         $user_id = get_current_user_id();
-        $rate_error = FormRateLimiter::enforce($user_id, 'artist_builder_write', 30, 60);
+        $rate_error = FormRateLimiter::enforce($user_id, 'builder_write', 30, 60);
         if ($rate_error instanceof WP_Error) {
             self::bail_rate_limited($rate_error);
         }
@@ -132,6 +131,13 @@ final class ArtistBuilderShortcode
         array $details = [],
         ?int $retry_after = null
     ): void {
+        if (null !== $retry_after) {
+            $details['retry_after'] = max(0, $retry_after);
+        }
+
+        if ('invalid_nonce' === $code && !isset($details['hint'])) {
+            $details['hint'] = 'refresh_nonce_and_retry';
+        }
 
         $payload = [
             'code'    => $code,
@@ -139,12 +145,11 @@ final class ArtistBuilderShortcode
             'details' => $details,
         ];
 
-
         if (isset($details['nonce']) && is_string($details['nonce'])) {
             header('X-ArtPulse-Nonce: ' . $details['nonce']);
         }
 
-
+        wp_send_json($payload, $status);
     }
 
     private static function owned_artists(int $user_id): array
