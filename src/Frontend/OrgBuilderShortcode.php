@@ -132,7 +132,14 @@ class OrgBuilderShortcode
                 'invalid_nonce',
                 __('Security check failed.', 'artpulse-management'),
                 403,
+            );
+        }
 
+        if (!PortfolioAccess::is_owner($user_id, $org_id)) {
+            self::respond_with_error(
+                'forbidden',
+                __('You do not have permission to update this organization.', 'artpulse-management'),
+                403
             );
         }
 
