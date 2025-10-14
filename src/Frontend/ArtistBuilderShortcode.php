@@ -81,6 +81,20 @@ final class ArtistBuilderShortcode
         }
 
         $user_id = get_current_user_id();
+
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        if (!$post_id && isset($_POST['artist_id'])) {
+            $post_id = absint($_POST['artist_id']);
+        }
+
+        if (!$post_id || !PortfolioAccess::is_owner($user_id, $post_id)) {
+            self::respond_with_error(
+                'forbidden',
+                __('You do not have permission to update this artist.', 'artpulse-management'),
+                403
+            );
+        }
+
         $rate_error = FormRateLimiter::enforce($user_id, 'builder_write', 30, 60);
         if ($rate_error instanceof WP_Error) {
             self::bail_rate_limited($rate_error);
