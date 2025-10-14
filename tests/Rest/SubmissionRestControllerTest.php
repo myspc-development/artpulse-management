@@ -122,4 +122,32 @@ class SubmissionRestControllerTest extends \WP_UnitTestCase
         $response = rest_do_request($request);
         $this->assertSame(400, $response->get_status());
     }
+
+    public function test_duplicate_event_submission_returns_conflict(): void
+    {
+        $payload = [
+            'post_type'          => 'artpulse_event',
+            'title'              => 'Duplicate Aware Event',
+            'content'            => 'First run',
+            'event_date'         => '2025-09-01',
+            'event_location'     => 'Downtown',
+        ];
+
+        $first = new WP_REST_Request('POST', '/artpulse/v1/submissions');
+        $first->set_body_params($payload);
+        $first_response = rest_do_request($first);
+
+        $this->assertSame(200, $first_response->get_status());
+
+        $second = new WP_REST_Request('POST', '/artpulse/v1/submissions');
+        $second->set_body_params($payload);
+        $second_response = rest_do_request($second);
+
+        $this->assertSame(409, $second_response->get_status());
+
+        $error = $second_response->get_data();
+        $this->assertSame('duplicate_event', $error['code']);
+        $this->assertSame(409, $error['data']['status']);
+        $this->assertSame(MINUTE_IN_SECONDS, $error['data']['details']['retry_after']);
+    }
 }
