@@ -69,6 +69,7 @@ final class FormRateLimiter
                     'limit'        => $limit,
                     'window'       => $window,
                     'reset'        => $bucket['reset'],
+                    'remaining'    => 0,
                     'headers'      => $headers,
                 ]
             );

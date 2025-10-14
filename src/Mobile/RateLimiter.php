@@ -121,7 +121,8 @@ class RateLimiter
         if ($retry_after > 0) {
             self::$pending_headers['remaining']   = 0;
             self::$pending_headers['retry_after'] = $retry_after;
-            self::$pending_headers['headers']     = RateLimitHeaders::build($limit, 0, $reset_at, $retry_after);
+            $limited_headers                      = RateLimitHeaders::emit($limit, 0, $retry_after, $reset_at);
+            self::$pending_headers['headers']     = $limited_headers;
             $log_context = [
                 'event'       => 'mobile_rate_limited',
                 'route'       => $route,
@@ -157,7 +158,8 @@ class RateLimiter
                     'status'      => 429,
                     'retry_after' => $retry_after,
                     'limit'       => $limit,
-                    'headers'     => RateLimitHeaders::build($limit, 0, $reset_at, $retry_after),
+                    'remaining'   => 0,
+                    'headers'     => $limited_headers,
                 ]
             );
         }

@@ -4,7 +4,9 @@ namespace ArtPulse\Rest;
 
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\EventDuplicateGuard;
+use ArtPulse\Core\RateLimitHeaders;
 use ArtPulse\Core\RoleUpgradeManager;
+use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -115,6 +117,11 @@ class SubmissionRestController
             $params['event_organization'] = $owned_org_id;
             $owned_artist_id              = self::resolve_owned_artist_id( $current_user_id, absint( $params['artist_id'] ?? 0 ) );
             $params['artist_id']          = $owned_artist_id;
+
+            $rate_error = FormRateLimiter::enforce( $current_user_id, 'event_submit', 10, 60 );
+            if ( $rate_error instanceof WP_Error ) {
+                return self::prepare_rate_limit_response( $rate_error );
+            }
         }
 
         if ( empty( $params['title'] ) ) {
@@ -525,5 +532,42 @@ class SubmissionRestController
         );
 
         return array_values( array_unique( array_filter( $ids ) ) );
+    }
+
+    /**
+     * Build a REST response for rate limited requests.
+     */
+    private static function prepare_rate_limit_response( WP_Error $error ): WP_REST_Response
+    {
+        $data        = (array) $error->get_error_data();
+        $retry_after = max( 1, (int) ( $data['retry_after'] ?? ( $data['window'] ?? 60 ) ) );
+        $limit       = max( 1, (int) ( $data['limit'] ?? 10 ) );
+        $reset       = isset( $data['reset'] ) ? (int) $data['reset'] : ( time() + $retry_after );
+        $remaining   = isset( $data['remaining'] ) ? max( 0, (int) $data['remaining'] ) : 0;
+
+        $headers = RateLimitHeaders::emit( $limit, $remaining, $retry_after, $reset );
+
+        $payload = [
+            'code'    => $error->get_error_code(),
+            'message' => $error->get_error_message(),
+            'data'    => array_merge(
+                $data,
+                [
+                    'status'      => 429,
+                    'retry_after' => $retry_after,
+                    'limit'       => $limit,
+                    'reset'       => $reset,
+                    'remaining'   => $remaining,
+                    'headers'     => $headers,
+                ]
+            ),
+        ];
+
+        $response = new WP_REST_Response( $payload, 429 );
+        foreach ( $headers as $name => $value ) {
+            $response->header( $name, (string) $value );
+        }
+
+        return $response;
     }
 }

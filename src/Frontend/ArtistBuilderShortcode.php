@@ -114,8 +114,7 @@ final class ArtistBuilderShortcode
         $limit       = isset($data['limit']) ? max(1, (int) $data['limit']) : 30;
         $reset       = isset($data['reset']) ? (int) $data['reset'] : time() + $retry_after;
 
-        $headers = $data['headers'] ?? RateLimitHeaders::build($limit, 0, $reset, $retry_after);
-        RateLimitHeaders::emit($headers);
+        $headers = RateLimitHeaders::emit($limit, 0, $retry_after, $reset);
 
         AuditLogger::info('rate_limit.hit', [
             'user_id'     => get_current_user_id(),
