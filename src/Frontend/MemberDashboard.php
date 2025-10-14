@@ -5,6 +5,7 @@ namespace ArtPulse\Frontend;
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\RoleUpgradeManager;
 use ArtPulse\Core\UpgradeReviewRepository;
+use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_Error;
 use WP_Post;
 use WP_User;
@@ -20,8 +21,7 @@ class MemberDashboard
 
     public static function register_actions(): void
     {
-        add_action('admin_post_ap_org_upgrade_request', [self::class, 'handle_upgrade_request']);
-        add_action('admin_post_ap_org_upgrade_resubmit', [self::class, 'handle_upgrade_request']);
+        add_action('admin_post_ap_dashboard_upgrade', [self::class, 'handle_dashboard_upgrade_request']);
     }
 
     public static function inject_dashboard_card(array $data, string $role, int $user_id): array
@@ -68,18 +68,36 @@ class MemberDashboard
     private static function get_upgrade_state(int $user_id): array
     {
         $state = [
-            'status' => '',
-            'org_id' => 0,
+            'artist'       => [
+                'status' => 'not_started',
+                'reason' => '',
+            ],
+            'organization' => [
+                'status'  => 'not_started',
+                'reason'  => '',
+                'org_id'  => 0,
+                'org_url' => '',
+            ],
         ];
 
-        if (!is_user_logged_in()) {
+        if (!is_user_logged_in() || $user_id <= 0) {
             return $state;
         }
 
         $user = get_user_by('id', $user_id);
-        if ($user instanceof WP_User && in_array('organization', (array) $user->roles, true)) {
-            $state['status'] = 'approved';
-            $state['org_url'] = esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/')));
+        if (!$user instanceof WP_User) {
+            return $state;
+        }
+
+        if (in_array('artist', (array) $user->roles, true)) {
+            $state['artist']['status'] = 'approved';
+            $state['artist']['profile_url'] = esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/')));
+        }
+
+        if (in_array('organization', (array) $user->roles, true)) {
+            $state['organization']['status'] = 'approved';
+            $state['organization']['org_url'] = esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/')));
+
             return $state;
         }
 
@@ -91,19 +109,29 @@ class MemberDashboard
         $status = UpgradeReviewRepository::get_status($request);
         $org_id = UpgradeReviewRepository::get_post_id($request);
 
-        $state['status'] = $status;
-        $state['org_id'] = $org_id;
-        $state['request_id'] = (int) $request->ID;
-        $state['reason'] = UpgradeReviewRepository::get_reason($request);
+        $state['organization']['org_id'] = $org_id;
+        $state['organization']['request_id'] = (int) $request->ID;
+        $state['organization']['reason'] = UpgradeReviewRepository::get_reason($request);
 
         if ($org_id > 0) {
-            $state['org_url'] = get_permalink($org_id);
+            $state['organization']['org_url'] = get_permalink($org_id);
+        }
+
+        switch ($status) {
+            case UpgradeReviewRepository::STATUS_APPROVED:
+                $state['organization']['status'] = 'approved';
+                break;
+            case UpgradeReviewRepository::STATUS_DENIED:
+                $state['organization']['status'] = 'denied';
+                break;
+            default:
+                $state['organization']['status'] = 'requested';
         }
 
         return $state;
     }
 
-    public static function handle_upgrade_request(): void
+    public static function handle_dashboard_upgrade_request(): void
     {
         if (!is_user_logged_in()) {
             wp_safe_redirect(home_url('/login/'));
@@ -117,7 +145,37 @@ class MemberDashboard
             exit;
         }
 
-        check_admin_referer('ap-member-upgrade-request');
+        $nonce_valid = isset($_POST['_ap_nonce'])
+            && check_admin_referer('ap-member-upgrade-request', '_ap_nonce', false);
+
+        if (!$nonce_valid) {
+            status_header(400);
+            wp_die(esc_html__('Invalid request. Please refresh and try again.', 'artpulse-management'));
+        }
+
+        $rate_error = FormRateLimiter::enforce($user_id, 'dashboard_upgrade', 30, 60);
+        if ($rate_error instanceof WP_Error) {
+            $data   = (array) $rate_error->get_error_data();
+            $status = (int) ($data['status'] ?? 429);
+
+            if ($status > 0) {
+                status_header($status);
+            }
+
+            $headers = $data['headers'] ?? [];
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if ('' === $name) {
+                        continue;
+                    }
+
+                    header(trim((string) $name) . ': ' . trim((string) $value));
+                }
+            }
+
+            echo esc_html($rate_error->get_error_message());
+            exit;
+        }
 
         $user    = get_user_by('id', $user_id);
 
@@ -126,9 +184,43 @@ class MemberDashboard
             exit;
         }
 
-        $result = self::process_upgrade_request_for_user($user);
+        $requested_upgrade = isset($_POST['upgrade_type']) ? sanitize_key((string) $_POST['upgrade_type']) : '';
+        $redirect_base     = wp_get_referer() ?: home_url('/dashboard/');
 
-        $redirect_base = wp_get_referer() ?: home_url('/dashboard/');
+        if ('' === $requested_upgrade) {
+            wp_safe_redirect($redirect_base);
+            exit;
+        }
+
+        if ('artist' === $requested_upgrade) {
+            $result = self::process_artist_upgrade_request($user);
+
+            if (is_wp_error($result)) {
+                $code = $result->get_error_code();
+                $target = match ($code) {
+                    'ap_artist_upgrade_exists'  => 'exists',
+                    'ap_artist_upgrade_invalid' => 'failed',
+                    default                     => 'failed',
+                };
+
+                wp_safe_redirect(add_query_arg('ap_artist_upgrade', $target, $redirect_base));
+                exit;
+            }
+
+            AuditLogger::info('artist.upgrade.requested', [
+                'user_id' => $user_id,
+            ]);
+
+            wp_safe_redirect(add_query_arg('ap_artist_upgrade', 'approved', $redirect_base));
+            exit;
+        }
+
+        if ('organization' !== $requested_upgrade) {
+            wp_safe_redirect($redirect_base);
+            exit;
+        }
+
+        $result = self::process_upgrade_request_for_user($user);
 
         if (is_wp_error($result)) {
             $code = $result->get_error_code();
@@ -154,6 +246,28 @@ class MemberDashboard
 
         wp_safe_redirect(add_query_arg('ap_org_upgrade', 'pending', $redirect_base));
         exit;
+    }
+
+    /**
+     * Grant artist capabilities when requested by a member.
+     */
+    private static function process_artist_upgrade_request(WP_User $user)
+    {
+        $user_id = (int) $user->ID;
+
+        if ($user_id <= 0) {
+            return new WP_Error('ap_artist_upgrade_invalid', __('Invalid user.', 'artpulse-management'));
+        }
+
+        if (in_array('artist', (array) $user->roles, true)) {
+            return new WP_Error('ap_artist_upgrade_exists', __('You already have access to the artist tools.', 'artpulse-management'));
+        }
+
+        RoleUpgradeManager::grant_role($user_id, 'artist', [
+            'source' => 'dashboard_request',
+        ]);
+
+        return ['role' => 'artist'];
     }
 
     /**
