@@ -45,7 +45,7 @@ $nonce_field     = wp_nonce_field('ap_portfolio_update', '_ap_nonce', false, fal
     </section>
 
     <footer class="ap-artist-builder__actions">
-        <a class="button button-primary" data-test="org-submit-event" href="<?php echo esc_url(home_url('/submit-event/?artist_id=' . (int) ($builder_artist_ids[0] ?? 0))); ?>">
+        <a class="button button-primary" data-test="artist-submit-event" href="<?php echo esc_url(home_url('/submit-event/?artist_id=' . (int) ($builder_artist_ids[0] ?? 0))); ?>">
             <?php esc_html_e('Submit Event', 'artpulse-management'); ?>
         </a>
     </footer>

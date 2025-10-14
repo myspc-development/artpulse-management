@@ -83,11 +83,14 @@ class OrganizationEventForm {
             self::handle_submission();
         }
 
+        $nonce_value = wp_create_nonce('ap_event_submit');
+        self::bind_context_to_nonce($user_id, $nonce_value, $org_id, $artist_id);
+
         ob_start();
         ?>
         <div class="ap-form-messages" role="status" aria-live="polite"></div>
         <form method="post" enctype="multipart/form-data" class="ap-event-form">
-            <?php wp_nonce_field('ap_event_submit', '_ap_nonce'); ?>
+            <input type="hidden" name="_ap_nonce" value="<?php echo esc_attr($nonce_value); ?>" />
             <input type="hidden" name="org_id" value="<?php echo esc_attr($org_id); ?>" />
             <input type="hidden" name="artist_id" value="<?php echo esc_attr($artist_id); ?>" />
 
@@ -148,7 +151,8 @@ class OrganizationEventForm {
             wp_die(esc_html__('Forbidden.', 'artpulse-management'), 403);
         }
 
-        $nonce_valid = isset($_POST['_ap_nonce']) && check_admin_referer('ap_event_submit', '_ap_nonce', false);
+        $nonce_value = isset($_POST['_ap_nonce']) ? sanitize_text_field(wp_unslash($_POST['_ap_nonce'])) : '';
+        $nonce_valid = $nonce_value !== '' && check_admin_referer('ap_event_submit', '_ap_nonce', false);
         if (!$nonce_valid) {
             self::respond_with_error(
                 'invalid_nonce',
@@ -165,16 +169,23 @@ class OrganizationEventForm {
 
         $dedupe_key = null;
 
-        if ($context_org_id && PortfolioAccess::is_owner($user_id, $context_org_id)) {
-            $org_id = $context_org_id;
-        } else {
-            $org_id = self::get_user_org_id($user_id);
-        }
+        $bound_context = self::get_bound_context($user_id, $nonce_value);
 
-        if ($context_artist_id && PortfolioAccess::is_owner($user_id, $context_artist_id)) {
-            $artist_id = $context_artist_id;
+        if (null !== $bound_context) {
+            $org_id    = (int) $bound_context['org_id'];
+            $artist_id = (int) $bound_context['artist_id'];
         } else {
-            $artist_id = self::get_user_artist_id($user_id);
+            if ($context_org_id && PortfolioAccess::is_owner($user_id, $context_org_id)) {
+                $org_id = $context_org_id;
+            } else {
+                $org_id = self::get_user_org_id($user_id);
+            }
+
+            if ($context_artist_id && PortfolioAccess::is_owner($user_id, $context_artist_id)) {
+                $artist_id = $context_artist_id;
+            } else {
+                $artist_id = self::get_user_artist_id($user_id);
+            }
         }
 
         if (!$org_id && !$artist_id) {
@@ -344,6 +355,56 @@ class OrganizationEventForm {
         }
 
         return $post_id;
+    }
+
+    private static function bind_context_to_nonce(int $user_id, string $nonce, int $org_id, int $artist_id): void
+    {
+        if ($user_id <= 0 || '' === $nonce) {
+            return;
+        }
+
+        $context = [
+            'org_id'    => max(0, $org_id),
+            'artist_id' => max(0, $artist_id),
+            'bound_at'  => time(),
+        ];
+
+        set_transient(self::get_nonce_context_key($user_id, $nonce), $context, HOUR_IN_SECONDS);
+    }
+
+    private static function get_bound_context(int $user_id, string $nonce): ?array
+    {
+        if ($user_id <= 0 || '' === $nonce) {
+            return null;
+        }
+
+        $key = self::get_nonce_context_key($user_id, $nonce);
+        $context = get_transient($key);
+
+        if (!is_array($context)) {
+            return null;
+        }
+
+        $org_id = isset($context['org_id']) ? (int) $context['org_id'] : 0;
+        $artist_id = isset($context['artist_id']) ? (int) $context['artist_id'] : 0;
+
+        if ($org_id && !PortfolioAccess::is_owner($user_id, $org_id)) {
+            $org_id = 0;
+        }
+
+        if ($artist_id && !PortfolioAccess::is_owner($user_id, $artist_id)) {
+            $artist_id = 0;
+        }
+
+        return [
+            'org_id'    => $org_id,
+            'artist_id' => $artist_id,
+        ];
+    }
+
+    private static function get_nonce_context_key(int $user_id, string $nonce): string
+    {
+        return 'ap_event_form_ctx_' . md5($user_id . '|' . $nonce);
     }
 
     private static function maybe_handle_errors(array $errors, bool $should_redirect)
