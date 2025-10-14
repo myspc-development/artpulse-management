@@ -102,6 +102,39 @@ class PortfolioControllerTest extends WP_UnitTestCase
         wp_delete_attachment($attachment_id, true);
     }
 
+    public function test_non_owner_cannot_delete_media(): void
+    {
+        $attachment_id = $this->create_attachment('gallery-item.jpg');
+        wp_update_post([
+            'ID'          => $attachment_id,
+            'post_parent' => $this->post_id,
+        ]);
+        update_post_meta($this->post_id, '_ap_gallery_ids', [$attachment_id]);
+
+        $intruder_id = self::factory()->user->create([
+            'role' => 'organization',
+        ]);
+        wp_set_current_user($intruder_id);
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/portfolio/org/' . $this->post_id . '/media');
+        $request->set_param('id', $this->post_id);
+        $request->set_param('type', 'org');
+        $request->set_header('content-type', 'application/json');
+        $request->set_body(wp_json_encode([
+            'gallery_ids' => [],
+        ]));
+
+        $response = rest_do_request($request);
+
+        $this->assertSame(403, $response->get_status());
+
+        $data = $response->get_data();
+        $this->assertSame('forbidden', $data['code']);
+
+        wp_set_current_user($this->user_id);
+        wp_delete_attachment($attachment_id, true);
+    }
+
     public function test_replace_logo_updates_parent_and_meta(): void
     {
         $old_logo = $this->create_attachment('old-logo.jpg');
