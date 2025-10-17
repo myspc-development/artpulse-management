@@ -109,19 +109,21 @@ if (defined('WP_CLI') && WP_CLI) {
     });
 }
 
-function artpulse_create_custom_table() {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'artpulse_data';
-    $charset_collate = $wpdb->get_charset_collate();
+if ( ! function_exists( 'artpulse_create_custom_table' ) ) {
+    function artpulse_create_custom_table() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'artpulse_data';
+        $charset_collate = $wpdb->get_charset_collate();
 
-    $sql = "CREATE TABLE $table_name (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
-        title text NOT NULL,
-        artist_name varchar(255) NOT NULL,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
-        PRIMARY KEY  (id)
-    ) $charset_collate;";
+        $sql = "CREATE TABLE $table_name (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            title text NOT NULL,
+            artist_name varchar(255) NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            PRIMARY KEY  (id)
+        ) $charset_collate;";
 
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
+    }
 }
