@@ -9,7 +9,6 @@
  */
 
 use ArtPulse\Core\Plugin;
-use ArtPulse\Core\WooCommerceIntegration;
 use ArtPulse\Admin\EnqueueAssets;
 use ArtPulse\Tools\CLI\BackfillLetters;
 use ArtPulse\Tools\CLI\BackfillEventGeo;
@@ -64,8 +63,7 @@ if (!class_exists(Plugin::class)) {
 // 🔧 Boot the main plugin class (responsible for registering menus, settings, CPTs, etc.)
 $main = new Plugin();
 
-// Instantiate WooCommerce integration (if needed for runtime)
-$plugin = new WooCommerceIntegration();
+// WooCommerce hooks are registered from Plugin::register_core_modules() when enabled via settings.
 
 // ✅ Hook for deactivation
 //register_deactivation_hook(__FILE__, [$plugin, 'deactivate']);

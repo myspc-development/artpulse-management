@@ -216,7 +216,7 @@ ArtPulse supports guided upgrades for members who want to manage an artist profi
 
 ### Upgrade via purchase (optional)
 
-When WooCommerce products map to ArtPulse membership levels, completing a qualifying order grants the matching role immediately. Refunds or cancellations automatically revoke the upgrade.
+When WooCommerce products map to ArtPulse membership levels, completing a qualifying order grants the matching role immediately. Refunds or cancellations automatically revoke the upgrade. Once the WooCommerce toggle is enabled in ArtPulse settings the integration boots automatically—no manual instantiation is required.
 
 📘 Directory Shortcode Examples
 
