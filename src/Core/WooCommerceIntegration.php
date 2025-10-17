@@ -65,6 +65,11 @@ class WooCommerceIntegration
 
         // Downgrade to Free
         $user = get_userdata( $user_id );
+        if ( ! $user instanceof \WP_User ) {
+            error_log( sprintf('ArtPulse: Unable to load user for ID %s in handleRefundOrCancel.', (string) $user_id ) );
+            return;
+        }
+
         $user->set_role('subscriber');
         update_user_meta( $user_id, 'ap_membership_level', 'Free' );
         update_user_meta( $user_id, 'ap_membership_expires', current_time('timestamp') );
@@ -82,6 +87,11 @@ class WooCommerceIntegration
     protected static function assignMembership( $user_id, $level )
     {
         $user = get_userdata( $user_id );
+        if ( ! $user instanceof \WP_User ) {
+            error_log( sprintf('ArtPulse: Unable to load user for ID %s in assignMembership.', (string) $user_id ) );
+            return;
+        }
+
         $user->set_role('subscriber');
         update_user_meta( $user_id, 'ap_membership_level', $level );
 
