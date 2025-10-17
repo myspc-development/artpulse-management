@@ -20,6 +20,10 @@ class WooCommerceIntegration
         }
 
         $order   = wc_get_order( $order_id );
+        if ( ! $order instanceof \WC_Order ) {
+            error_log( sprintf('ArtPulse: Unable to load WooCommerce order for ID %s in handleCompletedOrder.', (string) $order_id ) );
+            return;
+        }
         $user_id = $order->get_user_id();
         if ( ! $user_id ) {
             return;
@@ -50,6 +54,10 @@ class WooCommerceIntegration
         }
 
         $order   = wc_get_order( $order_id );
+        if ( ! $order instanceof \WC_Order ) {
+            error_log( sprintf('ArtPulse: Unable to load WooCommerce order for ID %s in handleRefundOrCancel.', (string) $order_id ) );
+            return;
+        }
         $user_id = $order->get_user_id();
         if ( ! $user_id ) {
             return;
