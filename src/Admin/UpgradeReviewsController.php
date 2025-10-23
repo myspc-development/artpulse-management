@@ -137,6 +137,35 @@ class UpgradeReviewsController
             return false;
         }
 
+        $target_role    = UpgradeReviewRepository::TYPE_ORG_UPGRADE === $type ? 'organization' : 'artist';
+        $current_status = UpgradeReviewRepository::get_status($review);
+        $user           = get_user_by('id', $user_id);
+
+        $already_upgraded = false;
+
+        if ($user instanceof WP_User) {
+            $already_upgraded = in_array($target_role, (array) $user->roles, true);
+        }
+
+        if (UpgradeReviewRepository::TYPE_ORG_UPGRADE === $type && $org_id > 0) {
+            $current_owner = (int) get_post_meta($org_id, '_ap_owner_user', true);
+            if ($current_owner === $user_id) {
+                $already_upgraded = true;
+            }
+        }
+
+        $already_resolved = UpgradeReviewRepository::STATUS_PENDING !== $current_status;
+
+        if ($already_upgraded || $already_resolved) {
+            AuditLogger::info('upgrade.approve.noop', [
+                'review_id' => (int) $review->ID,
+                'user_id'   => (int) $user_id,
+                'role'      => $target_role,
+            ]);
+
+            return true;
+        }
+
         $email_context = [
             'dashboard_url' => add_query_arg('role', 'organization', home_url('/dashboard/')),
             'org_id'        => $org_id,
@@ -179,7 +208,6 @@ class UpgradeReviewsController
 
         UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_APPROVED);
 
-        $user = get_user_by('id', $user_id);
         if ($user instanceof WP_User) {
             MemberDashboard::send_member_email('upgrade_approved', $user, $email_context);
         }
@@ -208,6 +236,21 @@ class UpgradeReviewsController
         $type    = UpgradeReviewRepository::get_type($review);
 
         UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_DENIED, $sanitized_reason);
+
+        if (UpgradeReviewRepository::TYPE_ORG_UPGRADE === $type) {
+            $org_draft_id = (int) get_post_meta($review->ID, '_ap_placeholder_org_id', true);
+            if ($org_draft_id > 0) {
+                wp_trash_post($org_draft_id);
+                delete_post_meta($org_draft_id, '_ap_owner_user');
+                delete_post_meta($review->ID, '_ap_placeholder_org_id');
+
+                AuditLogger::info('upgrade.deny.cleanup', [
+                    'review_id'    => (int) $review->ID,
+                    'org_draft_id' => $org_draft_id,
+                    'user_id'      => (int) $user_id,
+                ]);
+            }
+        }
 
         $user = get_user_by('id', $user_id);
         if ($user instanceof WP_User) {
