@@ -49,10 +49,74 @@ final class ArtistBuilderShortcode
 
         $mobile = isset($_GET['view']) && 'mobile' === sanitize_text_field(wp_unslash($_GET['view']));
 
+        $profiles = [];
+        foreach ($artist_ids as $artist_id) {
+            $post = get_post($artist_id);
+            if (!$post instanceof \WP_Post) {
+                continue;
+            }
+
+            $status       = $post->post_status;
+            $status_label = __('Draft', 'artpulse-management');
+            $badge_variant = 'info';
+            $progress     = 45;
+
+            if ('publish' === $status) {
+                $status_label = __('Published', 'artpulse-management');
+                $badge_variant = 'success';
+                $progress = 100;
+            } elseif ('pending' === $status) {
+                $status_label = __('Pending review', 'artpulse-management');
+                $badge_variant = 'warning';
+                $progress = 80;
+            } elseif ('future' === $status) {
+                $status_label = __('Scheduled', 'artpulse-management');
+                $badge_variant = 'info';
+                $progress = 95;
+            }
+
+            $builder_url = add_query_arg(['artist_id' => $artist_id], home_url('/artist-builder/'));
+            $dashboard_url = add_query_arg('role', 'artist', home_url('/dashboard/'));
+            $public_url   = get_permalink($artist_id) ?: '';
+            $submit_event_url = '';
+
+            if (in_array($status, ['publish', 'future'], true)) {
+                $submit_event_url = add_query_arg('artist_id', $artist_id, home_url('/submit-event/'));
+            }
+
+            $profiles[] = [
+                'id'               => $artist_id,
+                'title'            => get_the_title($artist_id),
+                'status'           => $status,
+                'status_label'     => $status_label,
+                'badge_variant'    => $badge_variant,
+                'progress_percent' => $progress,
+                'thumbnail'        => get_the_post_thumbnail_url($artist_id, 'medium') ?: '',
+                'excerpt'          => wp_trim_words($post->post_content, 35),
+                'actions'          => [
+                    'builder'      => $builder_url,
+                    'dashboard'    => $dashboard_url,
+                    'public'       => $public_url,
+                    'submit_event' => $submit_event_url,
+                ],
+            ];
+        }
+
+        if (empty($profiles)) {
+            return '<p>' . esc_html__('No artist profile to manage.', 'artpulse-management') . '</p>';
+        }
+
         ob_start();
 
+        wp_enqueue_style('ap-artist-builder', plugins_url('assets/css/ap-artist-builder.css', ARTPULSE_PLUGIN_FILE), [], ARTPULSE_VERSION);
+
         $builder_artist_ids = $artist_ids;
+        $builder_profiles   = $profiles;
         $is_mobile_view     = $mobile;
+        $builder_summary    = [
+            'total'     => count($profiles),
+            'published' => count(array_filter($profiles, static fn(array $profile): bool => in_array($profile['status'], ['publish', 'future'], true))),
+        ];
 
         include ARTPULSE_PLUGIN_DIR . 'templates/artist-builder/wrapper.php';
 
@@ -167,46 +231,6 @@ final class ArtistBuilderShortcode
 
     private static function owned_artists(int $user_id): array
     {
-        $authors = get_posts([
-            'post_type'      => 'artpulse_artist',
-            'post_status'    => ['publish', 'draft', 'pending'],
-            'fields'         => 'ids',
-            'posts_per_page' => -1,
-            'author'         => $user_id,
-        ]);
-
-        $meta_owned = get_posts([
-            'post_type'      => 'artpulse_artist',
-            'post_status'    => ['publish', 'draft', 'pending'],
-            'fields'         => 'ids',
-            'posts_per_page' => -1,
-            'meta_key'       => '_ap_owner_user',
-            'meta_value'     => $user_id,
-        ]);
-
-        $team_owned = get_posts([
-            'post_type'      => 'artpulse_artist',
-            'post_status'    => ['publish', 'draft', 'pending'],
-            'fields'         => 'ids',
-            'posts_per_page' => -1,
-            'meta_query'     => [
-                [
-                    'key'     => '_ap_owner_users',
-                    'value'   => sprintf(':%d;', $user_id),
-                    'compare' => 'LIKE',
-                ],
-            ],
-        ]);
-
-        $ids = array_merge($authors, $meta_owned, $team_owned);
-        $ids = array_map('intval', $ids);
-        $ids = array_values(array_unique(array_filter($ids)));
-
-        return array_values(
-            array_filter(
-                $ids,
-                static fn(int $post_id) => PortfolioAccess::is_owner($user_id, $post_id)
-            )
-        );
+        return PortfolioAccess::get_owned_portfolio_ids($user_id, 'artpulse_artist');
     }
 }

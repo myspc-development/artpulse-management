@@ -1,0 +1,169 @@
+.ap-artist-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1.5rem 0;
+}
+
+.ap-artist-builder__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.75rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+  color: #f8fafc;
+}
+
+.ap-artist-builder__header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.ap-artist-builder__header p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.ap-artist-builder__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, auto));
+  gap: 1.25rem;
+  margin: 0;
+}
+
+.ap-artist-builder__summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ap-artist-builder__summary dt {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.ap-artist-builder__summary dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.ap-artist-builder__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.ap-artist-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.ap-artist-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ap-artist-card__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.ap-artist-card__media {
+  position: relative;
+  padding-top: 56.25%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.ap-artist-card__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ap-artist-card__excerpt {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.ap-artist-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ap-dashboard-button--outline {
+  background: transparent;
+  color: #1f2937;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+}
+
+.ap-dashboard-button--outline:hover,
+.ap-dashboard-button--outline:focus {
+  color: #0f172a;
+  border-color: #0f172a;
+}
+
+.ap-artist-card__link {
+  font-size: 0.9rem;
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.ap-artist-card__link:hover,
+.ap-artist-card__link:focus {
+  text-decoration: underline;
+}
+
+.ap-artist-builder__guidance {
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  color: #312e81;
+}
+
+.ap-artist-builder__guidance h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.ap-artist-builder__guidance p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 782px) {
+  .ap-artist-builder__header {
+    text-align: center;
+  }
+
+  .ap-artist-builder__summary {
+    justify-items: center;
+  }
+}
