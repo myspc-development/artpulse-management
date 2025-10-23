@@ -36,10 +36,11 @@ class MemberDashboard
     }
 
     /**
-     * Remove the organization upgrade option from the shared upgrade widget.
+     * Remove the artist/organisation upgrade options from the shared upgrade widget.
      *
-     * The member dashboard renders a dedicated organization upgrade card, so this
-     * prevents duplicate CTAs from appearing in the membership upgrade list.
+     * The member dashboard renders a dedicated upgrade card that handles both
+     * artist and organisation flows, so we avoid duplicating the same journeys in
+     * the generic membership widget output.
      */
     public static function remove_org_upgrade_option(array $data, int $user_id): array
     {
@@ -49,7 +50,7 @@ class MemberDashboard
 
         $upgrades = array_filter(
             $data['upgrades'],
-            static fn(array $upgrade): bool => ($upgrade['slug'] ?? '') !== 'organization'
+            static fn(array $upgrade): bool => !in_array($upgrade['slug'] ?? '', ['organization', 'artist'], true)
         );
 
         if (count($upgrades) === count($data['upgrades'])) {
