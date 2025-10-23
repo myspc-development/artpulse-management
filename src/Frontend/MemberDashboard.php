@@ -293,24 +293,41 @@ class MemberDashboard
             return new WP_Error('ap_org_upgrade_pending', __('Your previous request is still pending.', 'artpulse-management'));
         }
 
-        $org_id = self::create_placeholder_org($user_id, $user);
+        $lock_key = 'ap_upgrade_lock_user_' . $user_id;
 
-        if (!$org_id) {
-            return new WP_Error('ap_org_upgrade_org_failed', __('Unable to create the organisation draft.', 'artpulse-management'));
+        if (get_transient($lock_key)) {
+            return new WP_Error(
+                'ap_upgrade_request_in_flight',
+                __('Your upgrade request is already being processed. Please wait a moment and refresh.', 'artpulse-management')
+            );
         }
 
-        $request_id = UpgradeReviewRepository::create_org_upgrade($user_id, $org_id);
+        set_transient($lock_key, 1, 15);
 
-        if (!$request_id) {
-            wp_delete_post($org_id, true);
+        try {
+            $org_id = self::create_placeholder_org($user_id, $user);
 
-            return new WP_Error('ap_org_upgrade_request_failed', __('Unable to create the review request.', 'artpulse-management'));
+            if (!$org_id) {
+                return new WP_Error('ap_org_upgrade_org_failed', __('Unable to create the organisation draft.', 'artpulse-management'));
+            }
+
+            $request_id = UpgradeReviewRepository::create_org_upgrade($user_id, $org_id);
+
+            if (!$request_id) {
+                wp_delete_post($org_id, true);
+
+                return new WP_Error('ap_org_upgrade_request_failed', __('Unable to create the review request.', 'artpulse-management'));
+            }
+
+            update_post_meta($request_id, '_ap_placeholder_org_id', $org_id);
+
+            return [
+                'org_id'     => $org_id,
+                'request_id' => $request_id,
+            ];
+        } finally {
+            delete_transient($lock_key);
         }
-
-        return [
-            'org_id'    => $org_id,
-            'request_id'=> $request_id,
-        ];
     }
 
     private static function create_placeholder_org(int $user_id, WP_User $user): ?int
