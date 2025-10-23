@@ -30,7 +30,17 @@ class MemberDashboard
             return $data;
         }
 
-        $data['org_upgrade'] = self::get_upgrade_state($user_id);
+        $journeys = $data['journeys'] ?? [];
+
+        $data['org_upgrade'] = self::get_upgrade_state($user_id, $journeys);
+
+        if (!isset($data['journeys']['artist']) && isset($journeys['artist'])) {
+            $data['journeys']['artist'] = $journeys['artist'];
+        }
+
+        if (!isset($data['journeys']['organization']) && isset($journeys['organization'])) {
+            $data['journeys']['organization'] = $journeys['organization'];
+        }
 
         return $data;
     }
@@ -66,19 +76,30 @@ class MemberDashboard
         return $data;
     }
 
-    private static function get_upgrade_state(int $user_id): array
+    private static function get_upgrade_state(int $user_id, array $journeys = []): array
+    {
+        $artist_journey = $journeys['artist'] ?? [];
+        $org_journey    = $journeys['organization'] ?? [];
+
+        return [
+            'artist'       => self::build_artist_state($user_id, $artist_journey),
+            'organization' => self::build_org_state($user_id, $org_journey),
+        ];
+    }
+
+    private static function build_artist_state(int $user_id, array $journey): array
     {
         $state = [
-            'artist'       => [
-                'status' => 'not_started',
-                'reason' => '',
+            'status'      => 'not_started',
+            'reason'      => '',
+            'profile_url' => '',
+            'cta'         => [
+                'label'    => __('Request artist access', 'artpulse-management'),
+                'url'      => $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'artist'),
+                'variant'  => 'secondary',
+                'disabled' => empty($journey['links']['upgrade']),
             ],
-            'organization' => [
-                'status'  => 'not_started',
-                'reason'  => '',
-                'org_id'  => 0,
-                'org_url' => '',
-            ],
+            'journey'     => $journey,
         ];
 
         if (!is_user_logged_in() || $user_id <= 0) {
@@ -90,43 +111,144 @@ class MemberDashboard
             return $state;
         }
 
+        $dashboard_url = esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/')));
+        $builder_url   = isset($journey['links']['builder']) ? (string) $journey['links']['builder'] : home_url('/artist-builder/');
+
         if (in_array('artist', (array) $user->roles, true)) {
-            $state['artist']['status'] = 'approved';
-            $state['artist']['profile_url'] = esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/')));
+            $state['status']      = 'approved';
+            $state['profile_url'] = $dashboard_url;
+            $state['cta']         = [
+                'label'    => __('Open artist tools', 'artpulse-management'),
+                'url'      => $dashboard_url,
+                'variant'  => 'primary',
+                'disabled' => false,
+            ];
+
+            return $state;
         }
 
+        $portfolio_status = $journey['portfolio']['status'] ?? '';
+
+        if ('draft' === $portfolio_status || 'pending' === $portfolio_status) {
+            $state['status'] = 'in_progress';
+            $state['cta']    = [
+                'label'    => __('Continue artist builder', 'artpulse-management'),
+                'url'      => esc_url_raw($builder_url),
+                'variant'  => 'primary',
+                'disabled' => false,
+            ];
+        } elseif ('published' === $portfolio_status || 'scheduled' === $portfolio_status) {
+            $state['status']      = 'approved';
+            $state['profile_url'] = $dashboard_url;
+            $state['cta']         = [
+                'label'    => __('Open artist tools', 'artpulse-management'),
+                'url'      => $dashboard_url,
+                'variant'  => 'primary',
+                'disabled' => false,
+            ];
+        }
+
+        return $state;
+    }
+
+    private static function build_org_state(int $user_id, array $journey): array
+    {
+        $state = [
+            'status'   => 'not_started',
+            'reason'   => '',
+            'org_id'   => 0,
+            'org_url'  => '',
+            'cta'      => [
+                'label'    => __('Request organization access', 'artpulse-management'),
+                'url'      => $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
+                'variant'  => 'secondary',
+                'disabled' => empty($journey['links']['upgrade']),
+            ],
+            'journey'  => $journey,
+        ];
+
+        if (!is_user_logged_in() || $user_id <= 0) {
+            return $state;
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (!$user instanceof WP_User) {
+            return $state;
+        }
+
+        $dashboard_url = esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/')));
+        $builder_url   = isset($journey['links']['builder']) ? (string) $journey['links']['builder'] : home_url('/org-builder/');
+
         if (in_array('organization', (array) $user->roles, true)) {
-            $state['organization']['status'] = 'approved';
-            $state['organization']['org_url'] = esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/')));
+            $state['status']  = 'approved';
+            $state['org_url'] = $dashboard_url;
+            $state['cta']     = [
+                'label'    => __('Open organization tools', 'artpulse-management'),
+                'url'      => $dashboard_url,
+                'variant'  => 'primary',
+                'disabled' => false,
+            ];
 
             return $state;
         }
 
         $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
-        if (!$request instanceof WP_Post) {
-            return $state;
+        if ($request instanceof WP_Post) {
+            $state['org_id']     = UpgradeReviewRepository::get_post_id($request);
+            $state['request_id'] = (int) $request->ID;
+            $state['reason']     = UpgradeReviewRepository::get_reason($request);
+
+            if ($state['org_id'] > 0) {
+                $permalink = get_permalink($state['org_id']);
+                if ($permalink) {
+                    $state['org_url'] = esc_url_raw($permalink);
+                }
+            }
+
+            $status = UpgradeReviewRepository::get_status($request);
+
+            if ($status === UpgradeReviewRepository::STATUS_APPROVED) {
+                $state['status'] = 'approved';
+                $state['cta']    = [
+                    'label'    => __('Open organization tools', 'artpulse-management'),
+                    'url'      => $dashboard_url,
+                    'variant'  => 'primary',
+                    'disabled' => false,
+                ];
+            } elseif ($status === UpgradeReviewRepository::STATUS_DENIED) {
+                $state['status'] = 'denied';
+                $state['cta']    = [
+                    'label'    => __('Review feedback', 'artpulse-management'),
+                    'url'      => sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
+                    'variant'  => 'secondary',
+                    'disabled' => false,
+                ];
+            } else {
+                $state['status'] = 'requested';
+                $state['cta']    = [
+                    'label'    => __('Check request status', 'artpulse-management'),
+                    'url'      => sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
+                    'variant'  => 'secondary',
+                    'disabled' => false,
+                ];
+            }
         }
 
-        $status = UpgradeReviewRepository::get_status($request);
-        $org_id = UpgradeReviewRepository::get_post_id($request);
-
-        $state['organization']['org_id'] = $org_id;
-        $state['organization']['request_id'] = (int) $request->ID;
-        $state['organization']['reason'] = UpgradeReviewRepository::get_reason($request);
-
-        if ($org_id > 0) {
-            $state['organization']['org_url'] = get_permalink($org_id);
-        }
-
-        switch ($status) {
-            case UpgradeReviewRepository::STATUS_APPROVED:
-                $state['organization']['status'] = 'approved';
-                break;
-            case UpgradeReviewRepository::STATUS_DENIED:
-                $state['organization']['status'] = 'denied';
-                break;
-            default:
-                $state['organization']['status'] = 'requested';
+        $portfolio_status = $journey['portfolio']['status'] ?? '';
+        if (in_array($portfolio_status, ['draft', 'pending'], true)) {
+            $state['cta'] = [
+                'label'    => __('Continue organization builder', 'artpulse-management'),
+                'url'      => esc_url_raw(add_query_arg('step', 'profile', $builder_url)),
+                'variant'  => 'primary',
+                'disabled' => false,
+            ];
+        } elseif (in_array($portfolio_status, ['published', 'scheduled'], true)) {
+            $state['cta'] = [
+                'label'    => __('Open organization tools', 'artpulse-management'),
+                'url'      => $dashboard_url,
+                'variant'  => 'primary',
+                'disabled' => false,
+            ];
         }
 
         return $state;

@@ -87,6 +87,8 @@ class OrgBuilderShortcode
         $meta = self::get_org_meta($org->ID);
         $preview = self::build_preview_data($org, $meta);
         $event_url = apply_filters('artpulse/org_builder/event_url', add_query_arg('org_id', $org->ID, home_url('/submit-event/')), $org->ID, $org);
+        $progress = self::build_step_progress($org, $meta);
+        $checklist = self::build_publish_checklist($org, $meta, $preview, $progress);
 
         ob_start();
 
@@ -99,6 +101,8 @@ class OrgBuilderShortcode
         $builder_step = $step;
         $builder_event_url = $event_url;
         $builder_errors = $errors;
+        $builder_progress = $progress;
+        $builder_checklist = $checklist;
 
         include self::get_template_path('wrapper');
 
@@ -411,6 +415,136 @@ class OrgBuilderShortcode
         }
     }
 
+    private static function build_step_progress(WP_Post $org, array $meta): array
+    {
+        $profile_fields = [
+            $meta['tagline'] ?? '',
+            wp_strip_all_tags($meta['about'] ?? ''),
+            $meta['website'] ?? '',
+            $meta['email'] ?? '',
+            $meta['phone'] ?? '',
+            $meta['address'] ?? '',
+        ];
+
+        $profile_total    = count($profile_fields);
+        $profile_complete = count(array_filter($profile_fields, static fn($value): bool => '' !== trim((string) $value)));
+        $profile_percent  = $profile_total > 0 ? (int) round(($profile_complete / $profile_total) * 100) : 0;
+        $profile_done     = $profile_percent >= 80;
+
+        $media_flags = [
+            !empty($meta['logo_id']),
+            !empty($meta['cover_id']),
+            !empty($meta['gallery_ids']),
+        ];
+
+        $media_total    = count($media_flags);
+        $media_complete = count(array_filter($media_flags));
+        $media_percent  = $media_total > 0 ? (int) round(($media_complete / $media_total) * 100) : 0;
+        $media_done     = $media_complete >= 2;
+
+        $preview_ready = $profile_done && $media_done;
+        $is_published  = 'publish' === $org->post_status;
+
+        $steps = [];
+
+        $steps[] = [
+            'slug'     => 'profile',
+            'label'    => __('Profile', 'artpulse-management'),
+            'summary'  => sprintf(__('Completed %1$d of %2$d details', 'artpulse-management'), $profile_complete, $profile_total),
+            'percent'  => $profile_percent,
+            'complete' => $profile_done,
+            'status'   => $profile_done ? 'complete' : ($profile_percent > 0 ? 'in_progress' : 'not_started'),
+            'locked'   => false,
+        ];
+
+        $steps[] = [
+            'slug'     => 'images',
+            'label'    => __('Images', 'artpulse-management'),
+            'summary'  => sprintf(__('Uploaded %1$d of %2$d media slots', 'artpulse-management'), $media_complete, $media_total),
+            'percent'  => $media_percent,
+            'complete' => $media_done,
+            'status'   => $media_done ? 'complete' : ($media_percent > 0 ? 'in_progress' : 'not_started'),
+            'locked'   => !$profile_done,
+        ];
+
+        $steps[] = [
+            'slug'     => 'preview',
+            'label'    => __('Preview', 'artpulse-management'),
+            'summary'  => $preview_ready
+                ? __('Ready to review your public page', 'artpulse-management')
+                : __('Finish earlier steps to unlock guided preview.', 'artpulse-management'),
+            'percent'  => $preview_ready ? 100 : ($profile_percent > 0 ? 45 : 20),
+            'complete' => $preview_ready,
+            'status'   => $preview_ready ? 'ready' : 'locked',
+            'locked'   => !$preview_ready,
+        ];
+
+        $publish_ready = $preview_ready;
+
+        $steps[] = [
+            'slug'     => 'publish',
+            'label'    => __('Publish', 'artpulse-management'),
+            'summary'  => $is_published
+                ? __('Published and live', 'artpulse-management')
+                : ($publish_ready ? __('Review checklist then publish', 'artpulse-management') : __('Complete previous steps to unlock publishing.', 'artpulse-management')),
+            'percent'  => $is_published ? 100 : ($publish_ready ? 75 : 25),
+            'complete' => $is_published,
+            'status'   => $is_published ? 'complete' : ($publish_ready ? 'ready' : 'locked'),
+            'locked'   => !$publish_ready,
+        ];
+
+        $overall_percent = (int) round(array_sum(array_column($steps, 'percent')) / max(1, count($steps)));
+
+        return [
+            'steps' => $steps,
+            'overall' => [
+                'percent' => $overall_percent,
+                'status'  => $is_published ? 'published' : ($publish_ready ? 'ready' : 'in_progress'),
+            ],
+            'profile' => [
+                'complete' => $profile_complete,
+                'total'    => $profile_total,
+            ],
+            'media' => [
+                'complete' => $media_complete,
+                'total'    => $media_total,
+            ],
+        ];
+    }
+
+    private static function build_publish_checklist(WP_Post $org, array $meta, array $preview, array $progress): array
+    {
+        $steps = $progress['steps'] ?? [];
+        $profile_step = $steps[0] ?? [];
+        $media_step   = $steps[1] ?? [];
+        $publish_step = $steps[3] ?? [];
+
+        $items = [
+            [
+                'label'    => __('Profile basics complete', 'artpulse-management'),
+                'complete' => (bool) ($profile_step['complete'] ?? false),
+            ],
+            [
+                'label'    => __('Media uploaded', 'artpulse-management'),
+                'complete' => (bool) ($media_step['complete'] ?? false),
+            ],
+            [
+                'label'    => __('Cover or logo selected', 'artpulse-management'),
+                'complete' => !empty($meta['cover_id']) || !empty($meta['logo_id']),
+            ],
+            [
+                'label'    => __('Content published', 'artpulse-management'),
+                'complete' => (bool) ($publish_step['complete'] ?? false),
+            ],
+        ];
+
+        return [
+            'items'        => $items,
+            'ready'        => ((bool) ($profile_step['complete'] ?? false)) && ((bool) ($media_step['complete'] ?? false)),
+            'is_published' => (bool) ($publish_step['complete'] ?? false),
+        ];
+    }
+
     private static function get_org_meta(int $org_id): array
     {
         return [
@@ -430,34 +564,15 @@ class OrgBuilderShortcode
 
     private static function get_owned_org(int $user_id): ?WP_Post
     {
-        $posts = get_posts([
-            'post_type'      => 'artpulse_org',
-            'post_status'    => ['publish', 'draft', 'pending'],
-            'posts_per_page' => 1,
-            'meta_query'     => [
-                [
-                    'key'   => '_ap_owner_user',
-                    'value' => $user_id,
-                ],
-            ],
-        ]);
+        $org_ids = PortfolioAccess::get_owned_portfolio_ids($user_id, 'artpulse_org');
 
-        if (!empty($posts) && $posts[0] instanceof WP_Post) {
-            return $posts[0];
+        if (empty($org_ids)) {
+            return null;
         }
 
-        $posts = get_posts([
-            'post_type'      => 'artpulse_org',
-            'post_status'    => ['publish', 'draft', 'pending'],
-            'posts_per_page' => 1,
-            'author'         => $user_id,
-        ]);
+        $org = get_post($org_ids[0]);
 
-        if (!empty($posts) && $posts[0] instanceof WP_Post) {
-            return $posts[0];
-        }
-
-        return null;
+        return $org instanceof WP_Post ? $org : null;
     }
 
     private static function normalize_files_array(array $files): array

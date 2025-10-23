@@ -4,6 +4,7 @@ namespace ArtPulse\Core;
 
 use ArtPulse\Community\FavoritesManager;
 use ArtPulse\Community\FollowManager;
+use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -17,6 +18,10 @@ class RoleDashboards
             'capability'  => 'read',
             'post_types'  => ['artpulse_event', 'artpulse_artwork'],
             'title'       => 'Member Dashboard',
+            'layout'      => [
+                'default_tab'   => 'overview',
+                'quick_actions' => ['artist_profile', 'organization_profile', 'submit_event'],
+            ],
         ],
         'artist' => [
             'shortcode'   => 'ap_artist_dashboard',
@@ -25,6 +30,10 @@ class RoleDashboards
             'profile_post_type' => 'artpulse_artist',
             'title'       => 'Artist Dashboard',
             'feature_flag' => 'ap_enable_artist_builder',
+            'layout'      => [
+                'default_tab'   => 'overview',
+                'quick_actions' => ['artist_profile', 'submit_event', 'view_profile'],
+            ],
         ],
         'organization' => [
             'shortcode'   => 'ap_organization_dashboard',
@@ -33,6 +42,10 @@ class RoleDashboards
             'profile_post_type' => 'artpulse_org',
             'title'       => 'Organization Dashboard',
             'feature_flag' => 'ap_enable_org_builder',
+            'layout'      => [
+                'default_tab'   => 'overview',
+                'quick_actions' => ['organization_profile', 'submit_event', 'view_profile'],
+            ],
         ],
     ];
 
@@ -470,29 +483,43 @@ class RoleDashboards
         }
 
         $role_config = self::ROLE_CONFIG[$role] ?? [];
+        $layout      = $role_config['layout'] ?? [];
 
         $favorites   = self::getFavorites($user_id);
         $follows     = self::getFollows($user_id);
         $post_types  = $role_config['post_types'] ?? [];
         $submissions = self::getSubmissions($user_id, $post_types, $role_config);
 
-        $upgrades      = [];
-        $upgrade_intro = '';
+        $raw_upgrades   = [];
+        $upgrades       = [];
+        $upgrade_intro  = '';
 
         if ($role === 'member') {
-            $upgrade_data = self::getUpgradeWidgetData($user_id);
-            $upgrades     = $upgrade_data['upgrades'] ?? [];
+            $raw_upgrades = self::getUpgradeOptions($user_id);
+
+            $upgrade_data  = self::getUpgradeWidgetData($user_id);
+            $upgrades      = $upgrade_data['upgrades'] ?? [];
             $upgrade_intro = $upgrade_data['intro'] ?? '';
         }
 
+        $upgrade_links = self::mapUpgradeLinks($raw_upgrades);
+        $profile       = self::getProfileSummary($user_id, $role);
+        $journeys      = self::collectJourneys($role, $user_id, $upgrade_links);
+        $quick_actions = self::buildQuickActions($role, $user_id, $role_config, $journeys);
+        $notifications = self::buildNotifications($role, $journeys);
+
         $data = [
-            'role'        => $role,
-            'favorites'   => $favorites,
-            'follows'     => $follows,
-            'submissions' => $submissions,
-            'metrics'     => self::buildMetrics($favorites, $follows, $submissions),
-            'profile'     => self::getProfileSummary($user_id, $role),
-            'upgrades'    => $upgrades,
+            'role'          => $role,
+            'layout'        => $layout,
+            'favorites'     => $favorites,
+            'follows'       => $follows,
+            'submissions'   => $submissions,
+            'metrics'       => self::buildMetrics($favorites, $follows, $submissions),
+            'profile'       => $profile,
+            'journeys'      => $journeys,
+            'quick_actions' => $quick_actions,
+            'notifications' => $notifications,
+            'upgrades'      => $upgrades,
             'upgrade_intro' => $upgrade_intro,
         ];
 
@@ -1166,6 +1193,564 @@ class RoleDashboards
             'submissions'          => $total_submissions,
             'pending_submissions'  => $pending_submissions,
             'published_submissions'=> $published,
+        ];
+    }
+
+    private static function mapUpgradeLinks(array $raw_upgrades): array
+    {
+        $links = [];
+
+        foreach ($raw_upgrades as $upgrade) {
+            $slug = isset($upgrade['slug']) ? (string) $upgrade['slug'] : '';
+
+            if ($slug === '') {
+                continue;
+            }
+
+            $url = isset($upgrade['url']) ? (string) $upgrade['url'] : '';
+
+            if ($url === '') {
+                continue;
+            }
+
+            $links[$slug] = $url;
+        }
+
+        return $links;
+    }
+
+    private static function collectJourneys(string $role, int $user_id, array $upgrade_links): array
+    {
+        $journeys = [];
+
+        if (in_array($role, ['member', 'artist'], true)) {
+            $journeys['artist'] = self::buildJourneyState(
+                'artist',
+                $user_id,
+                'artpulse_artist',
+                [
+                    'builder'   => home_url('/artist-builder/'),
+                    'dashboard' => add_query_arg('role', 'artist', home_url('/dashboard/')),
+                    'public'    => '',
+                    'upgrade'   => $upgrade_links['artist'] ?? '',
+                ]
+            );
+        }
+
+        if (in_array($role, ['member', 'organization'], true)) {
+            $journeys['organization'] = self::buildJourneyState(
+                'organization',
+                $user_id,
+                'artpulse_org',
+                [
+                    'builder'   => home_url('/org-builder/'),
+                    'dashboard' => add_query_arg('role', 'organization', home_url('/dashboard/')),
+                    'public'    => '',
+                    'upgrade'   => $upgrade_links['organization'] ?? '',
+                ]
+            );
+        }
+
+        return $journeys;
+    }
+
+    private static function buildQuickActions(string $role, int $user_id, array $role_config, array $journeys): array
+    {
+        $actions     = [];
+        $action_keys = $role_config['layout']['quick_actions'] ?? [];
+
+        foreach ($action_keys as $key) {
+            switch ($key) {
+                case 'artist_profile':
+                    if (isset($journeys['artist'])) {
+                        $actions[] = self::formatJourneyQuickAction($journeys['artist'], $role);
+                    }
+                    break;
+                case 'organization_profile':
+                    if (isset($journeys['organization'])) {
+                        $actions[] = self::formatJourneyQuickAction($journeys['organization'], $role);
+                    }
+                    break;
+                case 'submit_event':
+                    $submit_event = self::buildSubmitEventAction($role, $user_id, $journeys);
+                    if ($submit_event !== null) {
+                        $actions[] = $submit_event;
+                    }
+                    break;
+                case 'view_profile':
+                    $view_profile = self::buildViewProfileAction($role, $journeys);
+                    if ($view_profile !== null) {
+                        $actions[] = $view_profile;
+                    }
+                    break;
+            }
+        }
+
+        return array_values(array_filter($actions));
+    }
+
+    private static function buildNotifications(string $role, array $journeys): array
+    {
+        $notifications = [];
+
+        if (isset($journeys['organization']['review'])) {
+            $review = $journeys['organization']['review'];
+            $anchor = $journeys['organization']['anchor'] ?? '';
+
+            if (($review['status'] ?? '') === 'pending') {
+                $notifications[] = [
+                    'type'    => 'info',
+                    'message' => __('Your organization upgrade request is pending review.', 'artpulse-management'),
+                    'anchor'  => $anchor,
+                ];
+            } elseif (($review['status'] ?? '') === 'denied') {
+                $message = __('Your organization upgrade request was denied.', 'artpulse-management');
+
+                if (!empty($review['reason'])) {
+                    $message .= ' ' . sprintf(__('Reason: %s', 'artpulse-management'), $review['reason']);
+                }
+
+                $notifications[] = [
+                    'type'    => 'warning',
+                    'message' => $message,
+                    'anchor'  => $anchor,
+                ];
+            }
+        }
+
+        return $notifications;
+    }
+
+    private static function summarizePortfolio(int $user_id, string $post_type): array
+    {
+        $snapshot = [
+            'post_type'        => $post_type,
+            'status'           => 'missing',
+            'status_label'     => __('Not started', 'artpulse-management'),
+            'progress_percent' => 0,
+            'badge_variant'    => 'muted',
+            'post_id'          => null,
+            'post_ids'         => [],
+            'post_status'      => '',
+            'title'            => '',
+            'permalink'        => '',
+            'total'            => 0,
+            'has_published'    => false,
+            'has_unpublished'  => false,
+        ];
+
+        $ids = PortfolioAccess::get_owned_portfolio_ids($user_id, $post_type);
+        $snapshot['post_ids'] = $ids;
+        $snapshot['total']    = count($ids);
+
+        if (empty($ids)) {
+            return $snapshot;
+        }
+
+        $posts = array_filter(
+            array_map('get_post', $ids),
+            static fn($post) => $post instanceof WP_Post
+        );
+
+        if (empty($posts)) {
+            return $snapshot;
+        }
+
+        $status_priority = ['publish', 'future', 'pending', 'draft'];
+        $selected        = null;
+
+        foreach ($status_priority as $status) {
+            foreach ($posts as $post) {
+                if ($post->post_status === $status) {
+                    $selected = $post;
+                    break 2;
+                }
+            }
+        }
+
+        if (!$selected) {
+            $selected = $posts[0];
+        }
+
+        $status_meta = [
+            'publish' => [
+                'status'        => 'published',
+                'label'         => __('Published', 'artpulse-management'),
+                'progress'      => 100,
+                'badge_variant' => 'success',
+            ],
+            'future' => [
+                'status'        => 'scheduled',
+                'label'         => __('Scheduled', 'artpulse-management'),
+                'progress'      => 95,
+                'badge_variant' => 'info',
+            ],
+            'pending' => [
+                'status'        => 'pending',
+                'label'         => __('Pending review', 'artpulse-management'),
+                'progress'      => 80,
+                'badge_variant' => 'warning',
+            ],
+            'draft' => [
+                'status'        => 'draft',
+                'label'         => __('Draft', 'artpulse-management'),
+                'progress'      => 45,
+                'badge_variant' => 'info',
+            ],
+        ];
+
+        $selected_status = $selected->post_status;
+        $meta            = $status_meta[$selected_status] ?? [
+            'status'        => 'draft',
+            'label'         => __('In progress', 'artpulse-management'),
+            'progress'      => 45,
+            'badge_variant' => 'info',
+        ];
+
+        $snapshot['status']           = $meta['status'];
+        $snapshot['status_label']     = $meta['label'];
+        $snapshot['progress_percent'] = (int) $meta['progress'];
+        $snapshot['badge_variant']    = $meta['badge_variant'];
+        $snapshot['post_id']          = (int) $selected->ID;
+        $snapshot['post_status']      = $selected_status;
+        $snapshot['title']            = get_the_title($selected);
+
+        $permalink = get_permalink($selected);
+        if (is_string($permalink)) {
+            $snapshot['permalink'] = $permalink;
+        }
+
+        $statuses = array_map(
+            static fn(WP_Post $post): string => $post->post_status,
+            $posts
+        );
+
+        $snapshot['has_published']   = in_array('publish', $statuses, true);
+        $snapshot['has_unpublished'] = !empty(array_intersect($statuses, ['draft', 'pending']));
+
+        return $snapshot;
+    }
+
+    private static function buildJourneyState(string $journey, int $user_id, string $post_type, array $links): array
+    {
+        $snapshot = self::summarizePortfolio($user_id, $post_type);
+
+        if (!empty($snapshot['permalink'])) {
+            $links['public'] = $snapshot['permalink'];
+        }
+
+        $has_access = 'artist' === $journey
+            ? user_can($user_id, 'edit_artpulse_artist')
+            : user_can($user_id, 'edit_artpulse_org');
+
+        $status       = 'locked';
+        $status_label = __('Access required', 'artpulse-management');
+        $badge        = [
+            'label'   => __('Locked', 'artpulse-management'),
+            'variant' => 'muted',
+        ];
+        $description  = 'artist' === $journey
+            ? __('Request artist access to create and publish your portfolio.', 'artpulse-management')
+            : __('Request organization access to manage collective profiles and events.', 'artpulse-management');
+        $cta = [
+            'label'    => __('Request access', 'artpulse-management'),
+            'url'      => $links['upgrade'] ?? '',
+            'variant'  => 'secondary',
+            'disabled' => empty($links['upgrade']),
+        ];
+        $anchor = sprintf('#ap-journey-%s', $journey);
+        $review = [];
+
+        if ('organization' === $journey) {
+            $review = self::getOrgUpgradeReviewState($user_id);
+        }
+
+        if ($has_access) {
+            $status       = $snapshot['status'];
+            $status_label = $snapshot['status_label'];
+            $badge        = [
+                'label'   => $snapshot['status_label'],
+                'variant' => $snapshot['badge_variant'],
+            ];
+            $description = 'artist' === $journey
+                ? __('Use the builder to fine-tune your story, media, and links.', 'artpulse-management')
+                : __('Complete your organization profile and collaborate on upcoming events.', 'artpulse-management');
+            $cta = [
+                'label'    => __('Open builder', 'artpulse-management'),
+                'url'      => $links['builder'] ?? '',
+                'variant'  => 'primary',
+                'disabled' => empty($links['builder']),
+            ];
+
+            if (in_array($snapshot['status'], ['published', 'scheduled'], true)) {
+                $status       = 'published';
+                $status_label = __('Published', 'artpulse-management');
+                $badge        = [
+                    'label'   => __('Published', 'artpulse-management'),
+                    'variant' => 'success',
+                ];
+                $cta = [
+                    'label'    => __('Open dashboard', 'artpulse-management'),
+                    'url'      => $links['dashboard'] ?? '',
+                    'variant'  => 'primary',
+                    'disabled' => empty($links['dashboard']),
+                ];
+            } elseif ('pending' === $snapshot['status']) {
+                $status       = 'pending_review';
+                $status_label = __('Pending review', 'artpulse-management');
+                $badge        = [
+                    'label'   => __('Pending', 'artpulse-management'),
+                    'variant' => 'warning',
+                ];
+                $cta['label'] = __('Review details', 'artpulse-management');
+            } elseif ('draft' === $snapshot['status']) {
+                $status       = 'in_progress';
+                $status_label = __('Draft in progress', 'artpulse-management');
+                $badge        = [
+                    'label'   => __('Draft', 'artpulse-management'),
+                    'variant' => 'info',
+                ];
+                $cta['label'] = __('Continue in builder', 'artpulse-management');
+            }
+        } else {
+            if ('organization' === $journey) {
+                if (($review['status'] ?? '') === 'pending') {
+                    $status       = 'pending_request';
+                    $status_label = __('Upgrade request pending', 'artpulse-management');
+                    $badge        = [
+                        'label'   => __('Pending review', 'artpulse-management'),
+                        'variant' => 'warning',
+                    ];
+                    $description = __('We are reviewing your organization request. We will email you once it is approved.', 'artpulse-management');
+                    $cta = [
+                        'label'    => __('Check request status', 'artpulse-management'),
+                        'url'      => $anchor,
+                        'variant'  => 'secondary',
+                        'disabled' => false,
+                    ];
+                } elseif (($review['status'] ?? '') === 'denied') {
+                    $status       = 'denied';
+                    $status_label = __('Request denied', 'artpulse-management');
+                    $badge        = [
+                        'label'   => __('Action required', 'artpulse-management'),
+                        'variant' => 'danger',
+                    ];
+                    $description = __('Your last organization request was denied. Review the feedback and resubmit when you are ready.', 'artpulse-management');
+                    $cta = [
+                        'label'    => __('Review feedback', 'artpulse-management'),
+                        'url'      => $anchor,
+                        'variant'  => 'secondary',
+                        'disabled' => false,
+                    ];
+                }
+            }
+        }
+
+        return [
+            'slug'             => $journey,
+            'label'            => 'artist' === $journey
+                ? __('Artist profile', 'artpulse-management')
+                : __('Organization profile', 'artpulse-management'),
+            'status'           => $status,
+            'status_label'     => $status_label,
+            'badge'            => $badge,
+            'progress_percent' => (int) ($snapshot['progress_percent'] ?? 0),
+            'portfolio'        => $snapshot,
+            'links'            => $links,
+            'description'      => $description,
+            'cta'              => $cta,
+            'anchor'           => $anchor,
+            'review'           => $review,
+        ];
+    }
+
+    private static function getOrgUpgradeReviewState(int $user_id): array
+    {
+        $state = [
+            'status'     => 'none',
+            'reason'     => '',
+            'request_id' => 0,
+            'org_id'     => 0,
+            'updated_at' => null,
+        ];
+
+        $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+
+        if (!$request instanceof WP_Post) {
+            return $state;
+        }
+
+        $state['request_id'] = (int) $request->ID;
+        $state['org_id']     = UpgradeReviewRepository::get_post_id($request);
+        $state['reason']     = UpgradeReviewRepository::get_reason($request);
+        $state['updated_at'] = get_post_modified_time('U', true, $request);
+
+        $status = UpgradeReviewRepository::get_status($request);
+
+        if ($status === UpgradeReviewRepository::STATUS_APPROVED) {
+            $state['status'] = 'approved';
+        } elseif ($status === UpgradeReviewRepository::STATUS_DENIED) {
+            $state['status'] = 'denied';
+        } else {
+            $state['status'] = 'pending';
+        }
+
+        return $state;
+    }
+
+    private static function formatJourneyQuickAction(array $journey, string $role): array
+    {
+        $progress = max(0, min(100, (int) ($journey['progress_percent'] ?? 0)));
+        $cta       = $journey['cta'] ?? [];
+        $badge     = $journey['badge'] ?? [];
+
+        $cta += [
+            'label'    => '',
+            'url'      => '',
+            'variant'  => 'secondary',
+            'disabled' => false,
+        ];
+
+        $badge += [
+            'label'   => '',
+            'variant' => 'muted',
+        ];
+
+        return [
+            'slug'             => sprintf('journey_%s', $journey['slug'] ?? 'profile'),
+            'title'            => $journey['label'] ?? '',
+            'description'      => $journey['description'] ?? '',
+            'status'           => $journey['status'] ?? 'locked',
+            'status_label'     => $journey['status_label'] ?? '',
+            'badge'            => $badge,
+            'progress_percent' => $progress,
+            'cta'              => $cta,
+            'anchor'           => $journey['anchor'] ?? '',
+            'links'            => $journey['links'] ?? [],
+            'meta'             => [
+                'role'    => $role,
+                'journey' => $journey['slug'] ?? '',
+            ],
+        ];
+    }
+
+    private static function buildSubmitEventAction(string $role, int $user_id, array $journeys): ?array
+    {
+        $base_url        = home_url('/submit-event/');
+        $description     = __('Share upcoming events with the ArtPulse community.', 'artpulse-management');
+        $enabled         = false;
+        $status_label    = __('Locked', 'artpulse-management');
+        $badge           = [
+            'label'   => __('Locked', 'artpulse-management'),
+            'variant' => 'muted',
+        ];
+        $disabled_reason = __('Publish a profile to unlock event submissions.', 'artpulse-management');
+        $target_journey  = null;
+
+        if ('organization' === $role) {
+            $target_journey = $journeys['organization'] ?? null;
+        } elseif ('artist' === $role) {
+            $target_journey = $journeys['artist'] ?? null;
+        } else {
+            $organization = $journeys['organization'] ?? null;
+            $artist       = $journeys['artist'] ?? null;
+
+            if ($organization && in_array($organization['portfolio']['status'] ?? '', ['published', 'scheduled'], true)) {
+                $target_journey = $organization;
+            } elseif ($artist && in_array($artist['portfolio']['status'] ?? '', ['published', 'scheduled'], true)) {
+                $target_journey = $artist;
+            }
+        }
+
+        $cta_url = $base_url;
+
+        if ($target_journey) {
+            $status = $target_journey['portfolio']['status'] ?? 'missing';
+
+            if (in_array($status, ['published', 'scheduled'], true)) {
+                $enabled      = true;
+                $status_label = __('Ready', 'artpulse-management');
+                $badge        = [
+                    'label'   => __('Ready', 'artpulse-management'),
+                    'variant' => 'success',
+                ];
+                $portfolio = $target_journey['portfolio'] ?? [];
+                $post_id   = $portfolio['post_id'] ?? 0;
+
+                if ($post_id) {
+                    $cta_url = add_query_arg(
+                        'organization' === ($target_journey['slug'] ?? '') ? 'org_id' : 'artist_id',
+                        (int) $post_id,
+                        $base_url
+                    );
+                }
+
+                $disabled_reason = '';
+            } else {
+                $disabled_reason = __('Publish your profile to unlock event submissions.', 'artpulse-management');
+            }
+        }
+
+        return [
+            'slug'             => 'submit_event',
+            'title'            => __('Submit an event', 'artpulse-management'),
+            'description'      => $description,
+            'badge'            => $badge,
+            'status'           => $enabled ? 'ready' : 'locked',
+            'status_label'     => $status_label,
+            'progress_percent' => $enabled ? 100 : 0,
+            'cta'              => [
+                'label'    => __('Submit an event', 'artpulse-management'),
+                'url'      => $cta_url,
+                'variant'  => $enabled ? 'primary' : 'secondary',
+                'disabled' => !$enabled,
+            ],
+            'disabled_reason'  => $disabled_reason,
+        ];
+    }
+
+    private static function buildViewProfileAction(string $role, array $journeys): ?array
+    {
+        $target = null;
+
+        if ('organization' === $role) {
+            $target = $journeys['organization'] ?? null;
+        } elseif ('artist' === $role) {
+            $target = $journeys['artist'] ?? null;
+        } else {
+            return null;
+        }
+
+        if (!$target) {
+            return null;
+        }
+
+        $portfolio = $target['portfolio'] ?? [];
+        $status    = $portfolio['status'] ?? 'missing';
+        $permalink = $portfolio['permalink'] ?? '';
+
+        $enabled = $permalink !== '' && in_array($status, ['published', 'scheduled'], true);
+
+        $badge = [
+            'label'   => $enabled ? __('Live', 'artpulse-management') : __('Preview only', 'artpulse-management'),
+            'variant' => $enabled ? 'success' : 'muted',
+        ];
+
+        return [
+            'slug'             => 'view_profile',
+            'title'            => __('View public profile', 'artpulse-management'),
+            'description'      => __('Open your public page to confirm how the community sees your profile.', 'artpulse-management'),
+            'badge'            => $badge,
+            'status'           => $enabled ? 'ready' : 'locked',
+            'status_label'     => $enabled ? __('Live', 'artpulse-management') : __('Not yet published', 'artpulse-management'),
+            'progress_percent' => $enabled ? 100 : 0,
+            'cta'              => [
+                'label'    => __('View profile', 'artpulse-management'),
+                'url'      => $enabled ? $permalink : ($target['links']['builder'] ?? ''),
+                'variant'  => 'secondary',
+                'disabled' => !$enabled,
+            ],
+            'disabled_reason'  => $enabled ? '' : __('Publish your profile to share it publicly.', 'artpulse-management'),
         ];
     }
 
