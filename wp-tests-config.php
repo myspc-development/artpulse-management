@@ -3,10 +3,10 @@
  * WordPress test suite configuration file.
  */
 
-define( 'DB_NAME', 'wp_phpunit_tests' );
-define( 'DB_USER', 'root' );
-define( 'DB_PASSWORD', '' );
-define( 'DB_HOST', '127.0.0.1' );
+define( 'DB_NAME', getenv( 'DB_NAME' ) ?: 'wp_phpunit_tests' );
+define( 'DB_USER', getenv( 'DB_USER' ) ?: 'root' );
+define( 'DB_PASSWORD', getenv( 'DB_PASSWORD' ) ?: '' );
+define( 'DB_HOST', getenv( 'DB_HOST' ) ?: '127.0.0.1' );
 define( 'DB_CHARSET', 'utf8' );
 define( 'DB_COLLATE', '' );
 

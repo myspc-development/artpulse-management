@@ -55,12 +55,6 @@
         <!-- Path to Composer-installed WP PHPUnit test suite -->
         <env name="WP_PHPUNIT__DIR" value="vendor/wp-phpunit/wp-phpunit"/>
 
-        <!-- Database credentials for test environment -->
-        <env name="DB_NAME" value="wp_phpunit_tests"/>
-        <env name="DB_USER" value="root"/>
-        <env name="DB_PASSWORD" value=""/>
-        <env name="DB_HOST" value="localhost"/>
-
         <!-- Optional: add secrets required by tests, e.g. -->
         <!-- <env name="API_TOKEN" value=""/> -->
     </php>
