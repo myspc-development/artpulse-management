@@ -7,6 +7,24 @@ on:
 jobs:
   phpunit:
     runs-on: ubuntu-latest
+    env:
+      DB_NAME: wp_phpunit_tests
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: 127.0.0.1
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     strategy:
       matrix:
         php: ['8.1']
@@ -16,7 +34,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: mbstring, gd, intl, zip
+          extensions: mbstring, mysqli, gd, intl, zip
           tools: composer:v2
           coverage: none
 
@@ -45,10 +63,14 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Run tests
-        run: |
-          composer test:unit || true
-          composer test:int  || true
+      - name: Create test database
+        run: mysql -h "$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+      - name: Run unit tests
+        run: composer test:unit
+
+      - name: Run integration tests
+        run: composer test:int
 
   e2e:
     runs-on: ubuntu-latest
