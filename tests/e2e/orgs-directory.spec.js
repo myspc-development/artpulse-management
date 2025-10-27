@@ -1,8 +1,9 @@
+const { test, expect } = require('@playwright/test');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 
 const execFileAsync = promisify(execFile);
-const BASE_URL = process.env.WP_BASE_URL || 'http://localhost:8889';
+const BASE_URL = process.env.WP_BASE_URL || 'http://localhost:8888';
 
 async function runWpCli(args, { ignoreError = false } = {}) {
   try {
@@ -19,12 +20,12 @@ async function runWpCli(args, { ignoreError = false } = {}) {
   }
 }
 
-describe('Organizations directory shortcode', () => {
+test.describe.serial('Organizations directory shortcode', () => {
   const createdOrgIds = [];
   let pageId = 0;
   let favoritesEnabled = false;
 
-  beforeAll(async () => {
+  test.beforeAll(async () => {
     const orgs = [
       { title: 'Art Guild' },
       { title: 'The Blue Whale' },
@@ -75,7 +76,7 @@ describe('Organizations directory shortcode', () => {
     }
   });
 
-  afterAll(async () => {
+  test.afterAll(async () => {
     if (pageId) {
       await runWpCli(['wp', 'post', 'delete', String(pageId), '--force'], { ignoreError: true });
     }
@@ -85,7 +86,7 @@ describe('Organizations directory shortcode', () => {
     }
   });
 
-  it('filters organizations by letter and search', async () => {
+  async function loginAsAdmin(page) {
     await page.goto(`${BASE_URL}/wp-login.php`);
     await page.fill('#user_login', 'admin');
     await page.fill('#user_pass', 'password');
@@ -93,6 +94,10 @@ describe('Organizations directory shortcode', () => {
       page.waitForNavigation(),
       page.click('#wp-submit'),
     ]);
+  }
+
+  test('filters organizations by letter and search', async ({ page }) => {
+    await loginAsAdmin(page);
 
     await page.goto(`${BASE_URL}/?p=${pageId}`);
     await page.waitForSelector('.ap-orgs-dir');
@@ -106,7 +111,10 @@ describe('Organizations directory shortcode', () => {
       return titles.length === 1 && titles[0] === 'The Blue Whale';
     });
 
-    const visibleAfterLetter = await page.$$eval('.ap-grid .ap-card__title', (nodes) => nodes.map((node) => node.textContent.trim()));
+    const visibleAfterLetter = await page.$$eval(
+      '.ap-grid .ap-card__title',
+      (nodes) => nodes.map((node) => node.textContent.trim()),
+    );
     expect(visibleAfterLetter).toEqual(['The Blue Whale']);
 
     const letterAll = await page.waitForSelector('.ap-az__link[data-letter="All"]');
