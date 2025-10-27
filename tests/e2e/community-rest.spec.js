@@ -1,9 +1,10 @@
+const { test, expect } = require('@playwright/test');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const crypto = require('crypto');
 
 const execFileAsync = promisify(execFile);
-const BASE_URL = process.env.WP_BASE_URL || 'http://localhost:8889';
+const BASE_URL = process.env.WP_BASE_URL || 'http://localhost:8888';
 
 async function runWpCli(args, { ignoreError = false } = {}) {
   try {
@@ -20,14 +21,13 @@ async function runWpCli(args, { ignoreError = false } = {}) {
   }
 }
 
-describe('ArtPulse community REST API', () => {
+test.describe.serial('ArtPulse community REST API', () => {
   const username = 'community-e2e-user';
   const password = 'CommunityE2E@123';
-  let nonce = '';
   let postId = 0;
   let userId = 0;
 
-  beforeAll(async () => {
+  test.beforeAll(async () => {
     await runWpCli(['wp', 'user', 'delete', username, '--yes'], { ignoreError: true });
 
     const userCreateOutput = await runWpCli([
@@ -74,6 +74,16 @@ describe('ArtPulse community REST API', () => {
       'sk_test_dummy',
     ], { ignoreError: true });
 
+  });
+
+  test.afterAll(async () => {
+    if (postId) {
+      await runWpCli(['wp', 'post', 'delete', String(postId), '--force'], { ignoreError: true });
+    }
+    await runWpCli(['wp', 'user', 'delete', username, '--yes'], { ignoreError: true });
+  });
+
+  async function loginAndGetNonce(page) {
     await page.goto(`${BASE_URL}/wp-login.php`);
     await page.fill('#user_login', username);
     await page.fill('#user_pass', password);
@@ -84,18 +94,14 @@ describe('ArtPulse community REST API', () => {
 
     await page.goto(`${BASE_URL}/wp-admin/`);
     await page.waitForSelector('#wpadminbar');
-    nonce = await page.evaluate(() => window.wpApiSettings && window.wpApiSettings.nonce);
-    expect(nonce).toBeTruthy();
-  });
+    const nonceValue = await page.evaluate(() => window.wpApiSettings && window.wpApiSettings.nonce);
+    expect(nonceValue).toBeTruthy();
+    return nonceValue;
+  }
 
-  afterAll(async () => {
-    if (postId) {
-      await runWpCli(['wp', 'post', 'delete', String(postId), '--force'], { ignoreError: true });
-    }
-    await runWpCli(['wp', 'user', 'delete', username, '--yes'], { ignoreError: true });
-  });
+  test('returns notifications for authenticated users', async ({ page }) => {
+    const nonce = await loginAndGetNonce(page);
 
-  it('returns notifications for authenticated users', async () => {
     const result = await page.evaluate(async ({ baseUrl, nonceValue }) => {
       const response = await fetch(`${baseUrl}/wp-json/artpulse/v1/notifications`, {
         headers: {
@@ -115,7 +121,9 @@ describe('ArtPulse community REST API', () => {
     expect(Array.isArray(result.data.notifications)).toBe(true);
   });
 
-  it('allows following and unfollowing content', async () => {
+  test('allows following and unfollowing content', async ({ page }) => {
+    const nonce = await loginAndGetNonce(page);
+
     const followResult = await page.evaluate(async ({ baseUrl, nonceValue, id }) => {
       const response = await fetch(`${baseUrl}/wp-json/artpulse/v1/follows`, {
         method: 'POST',
@@ -165,7 +173,9 @@ describe('ArtPulse community REST API', () => {
     expect(Array.isArray(unfollowResult.data.follows)).toBe(true);
   });
 
-  it('accepts signed Stripe webhook payloads', async () => {
+  test('accepts signed Stripe webhook payloads', async ({ page }) => {
+    await page.goto(BASE_URL);
+
     const payload = JSON.stringify({
       id: `evt_${Date.now()}`,
       type: 'checkout.session.completed',
