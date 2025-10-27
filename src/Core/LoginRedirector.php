@@ -7,10 +7,12 @@ namespace ArtPulse\Core;
  */
 class LoginRedirector
 {
-    private const DASHBOARD_ROUTES = [
-        'edit_artpulse_org'       => '/org-dashboard/',
-        'edit_artpulse_artist'    => '/artist-dashboard/',
-        'view_artpulse_dashboard' => '/dashboard/',
+    private const DASHBOARD_PATH = '/dashboard/';
+
+    private const ROLE_CAPABILITIES = [
+        'organization' => 'edit_artpulse_org',
+        'artist'       => 'edit_artpulse_artist',
+        'member'       => 'read',
     ];
 
     public static function register(): void
@@ -38,12 +40,25 @@ class LoginRedirector
             return $redirect_to;
         }
 
-        foreach (self::DASHBOARD_ROUTES as $capability => $path) {
-            if (user_can($user, $capability)) {
-                return home_url($path);
+        $roles = (array) $user->roles;
+
+        foreach (self::ROLE_CAPABILITIES as $role => $capability) {
+            if (in_array($role, $roles, true) && user_can($user, $capability)) {
+                return self::buildDashboardUrl($role);
             }
         }
 
+        if (user_can($user, 'view_artpulse_dashboard')) {
+            return home_url(self::DASHBOARD_PATH);
+        }
+
         return $redirect_to;
+    }
+
+    private static function buildDashboardUrl(string $role): string
+    {
+        $base = home_url(self::DASHBOARD_PATH);
+
+        return add_query_arg('role', $role, $base);
     }
 }
