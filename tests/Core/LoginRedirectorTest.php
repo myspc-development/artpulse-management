@@ -9,6 +9,7 @@ if (!class_exists('WP_User')) {
     class WP_User
     {
         public $ID;
+        public $roles = [];
 
         public function __construct(int $id = 0)
         {
@@ -43,6 +44,7 @@ final class LoginRedirectorTest extends TestCase
     public function testFilterRedirectPrioritizesOrganizationDashboard(): void
     {
         $user = new WP_User(7);
+        $user->roles = ['organization'];
 
         Functions\expect('user_can')
             ->once()
@@ -51,17 +53,23 @@ final class LoginRedirectorTest extends TestCase
 
         Functions\expect('home_url')
             ->once()
-            ->with('/org-dashboard/')
-            ->andReturn('https://example.test/org-dashboard/');
+            ->with('/dashboard/')
+            ->andReturn('https://example.test/dashboard/');
+
+        Functions\expect('add_query_arg')
+            ->once()
+            ->with('role', 'organization', 'https://example.test/dashboard/')
+            ->andReturn('https://example.test/dashboard/?role=organization');
 
         $redirect = LoginRedirector::filterRedirect('', '', $user);
 
-        $this->assertSame('https://example.test/org-dashboard/', $redirect);
+        $this->assertSame('https://example.test/dashboard/?role=organization', $redirect);
     }
 
     public function testFilterRedirectFallsBackToArtistDashboard(): void
     {
         $user = new WP_User(42);
+        $user->roles = ['member', 'artist'];
         $checked = [];
 
         Functions\when('user_can')->alias(function ($actual_user, string $cap) use ($user, &$checked): bool {
@@ -73,25 +81,61 @@ final class LoginRedirectorTest extends TestCase
 
         Functions\expect('home_url')
             ->once()
-            ->with('/artist-dashboard/')
-            ->andReturn('https://example.test/artist-dashboard/');
+            ->with('/dashboard/')
+            ->andReturn('https://example.test/dashboard/');
+
+        Functions\expect('add_query_arg')
+            ->once()
+            ->with('role', 'artist', 'https://example.test/dashboard/')
+            ->andReturn('https://example.test/dashboard/?role=artist');
 
         $redirect = LoginRedirector::filterRedirect('', '', $user);
 
-        $this->assertSame('https://example.test/artist-dashboard/', $redirect);
+        $this->assertSame('https://example.test/dashboard/?role=artist', $redirect);
         $this->assertSame(['edit_artpulse_org', 'edit_artpulse_artist'], $checked);
     }
 
     public function testFilterRedirectUsesSharedDashboardWhenAvailable(): void
     {
         $user = new WP_User(11);
+        $user->roles = ['member'];
         $checked = [];
 
         Functions\when('user_can')->alias(function ($actual_user, string $cap) use ($user, &$checked): bool {
             $this->assertSame($user, $actual_user);
             $checked[] = $cap;
 
-            return 'view_artpulse_dashboard' === $cap;
+            return 'read' === $cap;
+        });
+
+        Functions\expect('home_url')
+            ->once()
+            ->with('/dashboard/')
+            ->andReturn('https://example.test/dashboard/');
+
+        Functions\expect('add_query_arg')
+            ->once()
+            ->with('role', 'member', 'https://example.test/dashboard/')
+            ->andReturn('https://example.test/dashboard/?role=member');
+
+        $redirect = LoginRedirector::filterRedirect('https://example.test/wp-admin/', '', $user);
+
+        $this->assertSame('https://example.test/dashboard/?role=member', $redirect);
+        $this->assertSame(
+            ['edit_artpulse_org', 'edit_artpulse_artist', 'read'],
+            $checked
+        );
+    }
+
+    public function testFilterRedirectPreservesOriginalDestinationForOtherUsers(): void
+    {
+        $user = new WP_User(5);
+        $user->roles = [];
+
+        Functions\when('user_can')->alias(function ($actual_user, string $cap) use ($user) {
+            $this->assertSame($user, $actual_user);
+
+            return $cap === 'view_artpulse_dashboard';
         });
 
         Functions\expect('home_url')
@@ -102,17 +146,18 @@ final class LoginRedirectorTest extends TestCase
         $redirect = LoginRedirector::filterRedirect('https://example.test/wp-admin/', '', $user);
 
         $this->assertSame('https://example.test/dashboard/', $redirect);
-        $this->assertSame(
-            ['edit_artpulse_org', 'edit_artpulse_artist', 'view_artpulse_dashboard'],
-            $checked
-        );
     }
 
-    public function testFilterRedirectPreservesOriginalDestinationForOtherUsers(): void
+    public function testFilterRedirectPreservesOriginalDestinationWhenNoDashboardAccess(): void
     {
-        $user = new WP_User(5);
+        $user = new WP_User(8);
+        $user->roles = [];
 
-        Functions\when('user_can')->alias(fn() => false);
+        Functions\when('user_can')->alias(function ($actual_user, $cap = null) use ($user) {
+            $this->assertSame($user, $actual_user);
+
+            return false;
+        });
 
         $redirect = LoginRedirector::filterRedirect('https://example.test/wp-admin/', '', $user);
 
