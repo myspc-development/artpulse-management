@@ -92,4 +92,44 @@ class RoleDashboardsTest extends \WP_UnitTestCase
 
         $this->assertStringContainsString('Event submissions are currently unavailable.', $output);
     }
+
+    public function test_prepare_dashboard_data_includes_available_roles(): void
+    {
+        $user_id = $this->factory->user->create([
+            'role'       => 'member',
+            'user_login' => 'multi_role_user',
+            'user_pass'  => wp_generate_password(12, false),
+            'user_email' => 'multi-role@example.com',
+        ]);
+
+        $user = get_user_by('id', $user_id);
+        $this->assertInstanceOf(\WP_User::class, $user);
+        $user->add_role('artist');
+
+        wp_set_current_user($user_id);
+
+        $data = RoleDashboards::prepareDashboardData('artist', $user_id);
+
+        $this->assertSame('artist', $data['role']);
+        $this->assertArrayHasKey('available_roles', $data);
+        $this->assertNotEmpty($data['available_roles']);
+
+        $slugs = array_map(
+            static fn($entry) => $entry['role'] ?? null,
+            $data['available_roles']
+        );
+
+        $this->assertContains('member', $slugs);
+        $this->assertContains('artist', $slugs);
+
+        $current_roles = array_values(array_filter(
+            $data['available_roles'],
+            static fn($entry) => !empty($entry['current'])
+        ));
+
+        $this->assertNotEmpty($current_roles);
+        $this->assertSame('artist', $current_roles[0]['role']);
+        $this->assertIsString($current_roles[0]['url']);
+        $this->assertStringContainsString('/dashboard/', $current_roles[0]['url']);
+    }
 }

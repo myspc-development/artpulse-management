@@ -330,6 +330,8 @@ class RoleDashboards
                     'upgrades'          => __('Membership Upgrades', 'artpulse'),
                     'upgradeIntro'      => __('Upgrade to unlock additional features and visibility.', 'artpulse'),
                     'upgradeCta'        => __('Upgrade now', 'artpulse'),
+                    'roleSwitcherLabel' => __('Select a dashboard role', 'artpulse'),
+                    'currentRoleLabel'  => __('Current dashboard', 'artpulse'),
                 ],
             ]
         );
@@ -509,18 +511,19 @@ class RoleDashboards
         $notifications = self::buildNotifications($role, $journeys);
 
         $data = [
-            'role'          => $role,
-            'layout'        => $layout,
-            'favorites'     => $favorites,
-            'follows'       => $follows,
-            'submissions'   => $submissions,
-            'metrics'       => self::buildMetrics($favorites, $follows, $submissions),
-            'profile'       => $profile,
-            'journeys'      => $journeys,
-            'quick_actions' => $quick_actions,
-            'notifications' => $notifications,
-            'upgrades'      => $upgrades,
-            'upgrade_intro' => $upgrade_intro,
+            'role'            => $role,
+            'layout'          => $layout,
+            'favorites'       => $favorites,
+            'follows'         => $follows,
+            'submissions'     => $submissions,
+            'metrics'         => self::buildMetrics($favorites, $follows, $submissions),
+            'profile'         => $profile,
+            'journeys'        => $journeys,
+            'quick_actions'   => $quick_actions,
+            'notifications'   => $notifications,
+            'upgrades'        => $upgrades,
+            'upgrade_intro'   => $upgrade_intro,
+            'available_roles' => self::collectAvailableRoles($user_id, $role),
         ];
 
         /**
@@ -659,6 +662,41 @@ class RoleDashboards
         $loading = esc_html__('Loading dashboard…', 'artpulse');
 
         return sprintf('<div class="%1$s" data-ap-dashboard-role="%2$s"><div class="ap-dashboard-loading">%3$s</div></div>', $classes, esc_attr($role), $loading);
+    }
+
+    /**
+     * Build a list of dashboard roles the user can switch between.
+     */
+    private static function collectAvailableRoles(int $user_id, string $active_role): array
+    {
+        $user = get_user_by('id', $user_id);
+
+        if (!$user instanceof WP_User) {
+            return [];
+        }
+
+        $available    = [];
+        $labels       = self::getRoleLabels();
+        $can_override = user_can($user, 'manage_options') || user_can($user, 'view_artpulse_dashboard');
+
+        foreach (self::ROLE_CONFIG as $role => $config) {
+            if (!self::isRoleEnabled($role)) {
+                continue;
+            }
+
+            if (!$can_override && !self::userCanViewRole($user, $role)) {
+                continue;
+            }
+
+            $available[] = [
+                'role'    => $role,
+                'label'   => $labels[$role]['title'] ?? ucfirst($role),
+                'url'     => add_query_arg('role', $role, home_url('/dashboard/')),
+                'current' => $role === $active_role,
+            ];
+        }
+
+        return $available;
     }
 
     private static function getProfileActionsForUser(WP_User $user): array

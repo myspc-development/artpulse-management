@@ -34,5 +34,7 @@ class UserDashboardManagerTest extends \WP_UnitTestCase
         $this->assertArrayHasKey('submissions', $data);
         $this->assertArrayHasKey('metrics', $data);
         $this->assertArrayHasKey('profile', $data);
+        $this->assertArrayHasKey('available_roles', $data);
+        $this->assertIsArray($data['available_roles']);
     }
 }

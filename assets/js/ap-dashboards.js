@@ -94,6 +94,13 @@
     const header = document.createElement('header');
     header.className = 'ap-dashboard-header';
     header.innerHTML = `<h2>${escapeHtml(headingText)}</h2>`;
+
+    const roleSwitcher = buildRoleSwitcher(role, data.available_roles);
+    if (roleSwitcher) {
+      header.appendChild(roleSwitcher);
+      header.classList.add('ap-dashboard-header--has-switcher');
+    }
+
     container.appendChild(header);
 
     const grid = document.createElement('div');
@@ -111,6 +118,60 @@
     grid.appendChild(buildFollowsSection(data.follows, roleLabels.follows));
 
     container.appendChild(grid);
+  }
+
+  function buildRoleSwitcher(currentRole, availableRoles = []) {
+    if (!Array.isArray(availableRoles)) {
+      return null;
+    }
+
+    const roles = availableRoles.filter((item) => item && item.role);
+
+    if (roles.length <= 1) {
+      return null;
+    }
+
+    const nav = document.createElement('nav');
+    nav.className = 'ap-dashboard-role-switcher';
+    nav.setAttribute('aria-label', strings.roleSwitcherLabel || 'Switch dashboards');
+
+    const list = document.createElement('ul');
+    list.className = 'ap-dashboard-role-switcher__list';
+
+    roles.forEach((role) => {
+      const item = document.createElement('li');
+      item.className = 'ap-dashboard-role-switcher__item';
+
+      const label = role.label || roleTitlesFallback(role.role);
+      const isCurrent = Boolean(role.current) || role.role === currentRole;
+
+      if (isCurrent) {
+        item.classList.add('is-active');
+        const span = document.createElement('span');
+        span.className = 'ap-dashboard-role-switcher__link is-current';
+        span.textContent = label;
+        span.setAttribute('aria-current', 'page');
+
+        if (strings.currentRoleLabel) {
+          span.setAttribute('title', strings.currentRoleLabel);
+        }
+
+        item.appendChild(span);
+      } else {
+        const link = document.createElement('a');
+        link.className = 'ap-dashboard-role-switcher__link';
+        link.href = role.url || `?role=${encodeURIComponent(role.role)}`;
+        link.textContent = label;
+        link.setAttribute('data-role', role.role);
+        item.appendChild(link);
+      }
+
+      list.appendChild(item);
+    });
+
+    nav.appendChild(list);
+
+    return nav;
   }
 
   function buildProfileSection(profile = {}, titleOverride) {
