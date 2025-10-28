@@ -230,9 +230,65 @@
 
       const card = document.createElement('article');
       card.className = 'ap-dashboard-card ap-upgrade-widget__card';
+      card.setAttribute('data-ap-upgrade-card', '1');
+
+      const review = upgrade && typeof upgrade.review === 'object' ? upgrade.review || {} : {};
+      const reviewId = parseInt(
+        review.id || review.request_id || upgrade.review_id || upgrade.request_id || 0,
+        10
+      );
+      if (reviewId) {
+        card.dataset.apUpgradeReview = String(reviewId);
+      }
+
+      const stateValue = String(review.status || upgrade.status || '').toLowerCase();
+      const state = ['pending', 'approved', 'denied'].includes(stateValue) ? stateValue : '';
+      if (state) {
+        card.dataset.apUpgradeStatus = state;
+      }
+
+      const roleLabel = resolveUpgradeRoleLabel(upgrade);
+      if (roleLabel) {
+        card.dataset.apUpgradeRole = roleLabel;
+      }
+
+      const reason = state === 'denied' ? String(review.reason || upgrade.denial_reason || upgrade.reason || '').trim() : '';
+      const statusLabel = state ? getStatusLabel(state) : '';
+      const statusMessage = state ? getStatusMessage(state, roleLabel) : '';
+
+      if (statusLabel) {
+        card.dataset.apUpgradeStatusLabel = statusLabel;
+      }
+      if (statusMessage) {
+        card.dataset.apUpgradeStatusMessage = statusMessage;
+      }
 
       const body = document.createElement('div');
       body.className = 'ap-dashboard-card__body ap-upgrade-widget__card-body';
+
+      const statusRegion = document.createElement('div');
+      statusRegion.className = 'ap-upgrade-status';
+      statusRegion.setAttribute('data-ap-upgrade-status', '');
+      statusRegion.setAttribute('aria-live', 'polite');
+      statusRegion.setAttribute('tabindex', '-1');
+      body.appendChild(statusRegion);
+
+      if (state) {
+        renderStatus(
+          statusRegion,
+          ensureStatusDetails(
+            {
+              state,
+              reason,
+              reviewId: reviewId || undefined,
+              label: statusLabel,
+              message: statusMessage,
+              role: roleLabel,
+            },
+            card
+          )
+        );
+      }
 
       if (upgrade.title) {
         const title = document.createElement('h4');
@@ -252,15 +308,58 @@
 
       const actions = document.createElement('div');
       actions.className = 'ap-dashboard-card__actions ap-upgrade-widget__card-actions';
+      actions.setAttribute('data-ap-upgrade-actions', '1');
 
       const link = document.createElement('a');
       link.className = 'ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta';
       link.href = upgrade.url;
       link.textContent = upgrade.cta || strings.upgradeCta || 'Upgrade now';
-
       actions.appendChild(link);
-      card.appendChild(actions);
 
+      if (state === 'denied' && reviewId) {
+        const reopenButton = document.createElement('button');
+        reopenButton.type = 'button';
+        reopenButton.className = 'button button-secondary ap-upgrade-widget__reopen-button';
+        reopenButton.setAttribute('data-ap-upgrade-reopen', '1');
+        reopenButton.setAttribute('data-id', String(reviewId));
+        reopenButton.textContent = strings.upgradeReopen || 'Re-request review';
+        actions.appendChild(reopenButton);
+      }
+
+      if (Array.isArray(upgrade.secondary_actions)) {
+        upgrade.secondary_actions.forEach((secondary) => {
+          if (!secondary || !secondary.url) {
+            return;
+          }
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'ap-upgrade-widget__secondary-action';
+
+          if (secondary.title) {
+            const heading = document.createElement('h5');
+            heading.className = 'ap-upgrade-widget__secondary-title';
+            heading.textContent = secondary.title;
+            wrapper.appendChild(heading);
+          }
+
+          if (secondary.description) {
+            const text = document.createElement('p');
+            text.className = 'ap-upgrade-widget__secondary-description';
+            text.textContent = secondary.description;
+            wrapper.appendChild(text);
+          }
+
+          const secondaryLink = document.createElement('a');
+          secondaryLink.className = 'ap-dashboard-button ap-dashboard-button--secondary ap-upgrade-widget__cta ap-upgrade-widget__cta--secondary';
+          secondaryLink.href = secondary.url;
+          secondaryLink.textContent = secondary.label || strings.upgradeLearnMore || 'Learn more';
+          wrapper.appendChild(secondaryLink);
+
+          actions.appendChild(wrapper);
+        });
+      }
+
+      card.appendChild(actions);
       list.appendChild(card);
     });
 
@@ -271,6 +370,48 @@
 
     section.appendChild(list);
     return section;
+  }
+
+  function resolveUpgradeRoleLabel(upgrade = {}) {
+    if (!upgrade || typeof upgrade !== 'object') {
+      return '';
+    }
+
+    if (upgrade.role_label) {
+      return String(upgrade.role_label);
+    }
+
+    if (upgrade.role) {
+      return formatRoleLabel(upgrade.role);
+    }
+
+    if (upgrade.slug) {
+      return formatRoleLabel(upgrade.slug);
+    }
+
+    if (upgrade.type) {
+      return formatRoleLabel(upgrade.type);
+    }
+
+    return '';
+  }
+
+  function formatRoleLabel(value) {
+    const normalized = String(value || '').toLowerCase();
+
+    if (!normalized) {
+      return '';
+    }
+
+    if (normalized === 'artist') {
+      return strings.artistRoleLabel || 'Artist';
+    }
+
+    if (normalized === 'organization' || normalized === 'organisation') {
+      return strings.organizationRoleLabel || 'Organization';
+    }
+
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   }
 
   function buildMetricsSection(metrics = {}, titleOverride) {
@@ -628,14 +769,22 @@
 
         reopen(reviewId)
           .then((response) => {
-            const statusEl = renderStatus(card || btn, {
-              state: (response && response.status) || 'pending',
-              reason:
-                response && typeof response.reason === 'string' ? response.reason : '',
-              label: response && response.badge,
-              message: response && response.message,
-              reviewId: response && response.id ? response.id : reviewId,
-            });
+            const target = card || btn;
+            const statusEl = renderStatus(
+              target,
+              ensureStatusDetails(
+                {
+                  state: (response && response.status) || 'pending',
+                  reason:
+                    response && typeof response.reason === 'string' ? response.reason : '',
+                  label: response && response.badge,
+                  message: response && response.message,
+                  reviewId: response && response.id ? response.id : reviewId,
+                  role: getUpgradeRole(target),
+                },
+                target
+              )
+            );
 
             setBusy(btn, false);
 
@@ -649,11 +798,19 @@
           })
           .catch((error) => {
             setBusy(btn, false);
-            const statusEl = renderStatus(card || btn, {
-              state: 'error',
-              message: formatError(error),
-              reason: existingReason,
-            });
+            const target = card || btn;
+            const statusEl = renderStatus(
+              target,
+              ensureStatusDetails(
+                {
+                  state: 'error',
+                  message: formatError(error),
+                  reason: existingReason,
+                  role: getUpgradeRole(target),
+                },
+                target
+              )
+            );
 
             if (statusEl) {
               focusStatusRegion(statusEl);
@@ -782,13 +939,21 @@
 
   function renderUpgradePendingState(button, response, requestedType) {
     const card = findUpgradeCard(button) || button;
-    const statusEl = renderStatus(card, {
-      state: (response && response.status) || 'pending',
-      reason: response && typeof response.reason === 'string' ? response.reason : '',
-      label: response && response.badge,
-      message: response && response.message,
-      reviewId: response && response.id,
-    });
+    const roleLabel = getUpgradeRole(card);
+    const statusEl = renderStatus(
+      card,
+      ensureStatusDetails(
+        {
+          state: (response && response.status) || 'pending',
+          reason: response && typeof response.reason === 'string' ? response.reason : '',
+          label: response && response.badge,
+          message: response && response.message,
+          reviewId: response && response.id,
+          role: roleLabel,
+        },
+        card
+      )
+    );
 
     if (card && card.dataset) {
       card.dataset.apUpgradeType = requestedType;
@@ -813,11 +978,19 @@
 
   function renderUpgradeError(button, error) {
     const card = findUpgradeCard(button);
-    const statusEl = renderStatus(card || button, {
-      state: 'error',
-      message: formatError(error),
-      reason: '',
-    });
+    const target = card || button;
+    const statusEl = renderStatus(
+      target,
+      ensureStatusDetails(
+        {
+          state: 'error',
+          message: formatError(error),
+          reason: '',
+          role: getUpgradeRole(target),
+        },
+        target
+      )
+    );
 
     if (statusEl) {
       focusStatusRegion(statusEl);
@@ -885,6 +1058,19 @@
     );
   }
 
+  function getUpgradeRole(target) {
+    const card =
+      target && target.nodeType === 1 && target.matches && target.matches('[data-ap-upgrade-card]')
+        ? target
+        : findUpgradeCard(target);
+
+    if (card && card.dataset && card.dataset.apUpgradeRole) {
+      return card.dataset.apUpgradeRole;
+    }
+
+    return '';
+  }
+
   function findUpgradeActionsContainer(button) {
     if (!button || !button.closest) {
       return null;
@@ -930,20 +1116,32 @@
       }
     }
 
-    const copy = getStatusCopy(details.state || container.dataset.apUpgradeStatus || '', card, details);
+    const normalized = ensureStatusDetails(
+      Object.assign({}, details, {
+        state: details.state || container.dataset.apUpgradeStatus || '',
+      }),
+      card
+    );
 
-    container.dataset.apUpgradeStatus = copy.state;
+    container.dataset.apUpgradeStatus = normalized.state;
 
     if (card && card.dataset) {
-      card.dataset.apUpgradeStatus = copy.state;
-      if (copy.label) {
-        card.dataset.apUpgradeStatusLabel = copy.label;
+      card.dataset.apUpgradeStatus = normalized.state;
+      if (normalized.label) {
+        card.dataset.apUpgradeStatusLabel = normalized.label;
+      } else {
+        delete card.dataset.apUpgradeStatusLabel;
       }
-      if (copy.message) {
-        card.dataset.apUpgradeStatusMessage = copy.message;
+      if (normalized.message) {
+        card.dataset.apUpgradeStatusMessage = normalized.message;
+      } else {
+        delete card.dataset.apUpgradeStatusMessage;
       }
-      if (details.reviewId) {
-        card.dataset.apUpgradeReview = String(details.reviewId);
+      if (normalized.reviewId) {
+        card.dataset.apUpgradeReview = String(normalized.reviewId);
+      }
+      if (normalized.role) {
+        card.dataset.apUpgradeRole = normalized.role;
       }
     }
 
@@ -953,9 +1151,9 @@
       badge.setAttribute('data-ap-upgrade-badge', '1');
       container.insertBefore(badge, container.firstChild);
     }
-    badge.className = copy.badgeClass;
-    if (copy.label) {
-      badge.textContent = copy.label;
+    badge.className = getBadgeClass(normalized.state, normalized.badgeClass);
+    if (normalized.label) {
+      badge.textContent = normalized.label;
       badge.hidden = false;
     } else {
       badge.textContent = '';
@@ -969,8 +1167,8 @@
       message.setAttribute('data-ap-upgrade-message', '1');
       container.appendChild(message);
     }
-    if (copy.message) {
-      message.textContent = copy.message;
+    if (normalized.message) {
+      message.textContent = normalized.message;
       message.hidden = false;
     } else {
       message.textContent = '';
@@ -978,18 +1176,11 @@
     }
 
     let reason = container.querySelector('[data-ap-upgrade-reason]');
-    if (copy.reason) {
+    if (normalized.state === 'denied' && normalized.reason) {
       if (!reason) {
         reason = document.createElement('p');
         reason.className = 'ap-upgrade-status__reason';
         reason.setAttribute('data-ap-upgrade-reason', '1');
-
-        const label = document.createElement('strong');
-        label.className = 'ap-upgrade-status__reason-label';
-        label.textContent = strings.upgradeReasonLabel || 'Reason:';
-        reason.appendChild(label);
-        reason.appendChild(document.createTextNode(' '));
-
         const text = document.createElement('span');
         text.setAttribute('data-ap-upgrade-reason-text', '1');
         reason.appendChild(text);
@@ -999,55 +1190,73 @@
 
       const textNode = reason.querySelector('[data-ap-upgrade-reason-text]');
       if (textNode) {
-        textNode.textContent = copy.reason;
+        textNode.textContent = normalized.reason;
       }
       reason.hidden = false;
     } else if (reason) {
       reason.remove();
     }
 
-    container.classList.toggle('is-error', copy.state === 'error');
-    container.classList.toggle('is-loading', copy.state === 'loading');
+    container.classList.toggle('is-error', normalized.state === 'error');
+    container.classList.toggle('is-loading', normalized.state === 'loading');
 
     return container;
   }
 
-  function getStatusCopy(state, card, overrides = {}) {
-    const normalized = String(state || '').toLowerCase();
-    const dataset = (card && card.dataset) || {};
-    const fallback = normalized || String(dataset.apUpgradeStatus || '').toLowerCase() || 'pending';
-    const key = fallback.charAt(0).toUpperCase() + fallback.slice(1);
+  function ensureStatusDetails(details = {}, card) {
+    const node = card && card.nodeType === 1 ? card : findUpgradeCard(card);
+    const dataset = (node && node.dataset) || {};
+    const normalized = {};
 
-    const label =
-      (typeof overrides.label === 'string' && overrides.label) ||
-      (typeof overrides.badge === 'string' && overrides.badge) ||
+    const stateInput = details.state || dataset.apUpgradeStatus || '';
+    normalized.state = String(stateInput || '').toLowerCase();
+
+    const capitalized = normalized.state
+      ? normalized.state.charAt(0).toUpperCase() + normalized.state.slice(1)
+      : '';
+
+    normalized.role = details.role || dataset.apUpgradeRole || '';
+
+    normalized.label =
+      (typeof details.label === 'string' && details.label) ||
+      (typeof details.badge === 'string' && details.badge) ||
       dataset.apUpgradeStatusLabel ||
-      strings[`upgrade${key}Badge`] ||
-      getDefaultLabel(fallback);
+      strings[`upgrade${capitalized}Badge`] ||
+      getStatusLabel(normalized.state);
 
-    const message =
-      (typeof overrides.message === 'string' && overrides.message) ||
+    const rawMessage =
+      (typeof details.message === 'string' && details.message) ||
       dataset.apUpgradeStatusMessage ||
-      strings[`upgrade${key}Message`] ||
-      getDefaultMessage(fallback);
+      strings[`upgrade${capitalized}Message`] ||
+      '';
 
-    let reason = '';
-    if (typeof overrides.reason === 'string') {
-      reason = overrides.reason;
-    } else if (fallback === 'denied') {
-      reason = getCurrentReason(card);
+    normalized.message = replaceRolePlaceholder(
+      rawMessage || getStatusMessage(normalized.state, normalized.role),
+      normalized.role
+    );
+
+    if (normalized.state === 'denied') {
+      if (typeof details.reason === 'string' && details.reason.trim() !== '') {
+        normalized.reason = details.reason.trim();
+      } else {
+        normalized.reason = getCurrentReason(node);
+      }
+    } else {
+      normalized.reason = '';
     }
 
-    return {
-      state: fallback,
-      label,
-      message,
-      reason,
-      badgeClass: getBadgeClass(fallback, overrides.badgeClass),
-    };
+    if (typeof details.reviewId !== 'undefined' && details.reviewId !== null) {
+      normalized.reviewId = details.reviewId;
+    } else if (dataset.apUpgradeReview) {
+      normalized.reviewId = dataset.apUpgradeReview;
+    }
+
+    normalized.badgeClass = details.badgeClass || '';
+
+    return normalized;
   }
 
-  function getDefaultLabel(state) {
+  function getStatusLabel(state) {
     switch (state) {
       case 'approved':
         return strings.upgradeApprovedBadge || 'Approved';
@@ -1062,28 +1271,36 @@
     }
   }
 
-  function getDefaultMessage(state) {
+  function getStatusMessage(state, roleLabel) {
     switch (state) {
-      case 'approved':
-        return (
-          strings.upgradeApprovedMessage ||
-          'Your request has been approved. You now have access to the upgraded features.'
-        );
+      case 'approved': {
+        const template = strings.upgradeApprovedMessage || 'Approved — you now have the {role} role.';
+        return replaceRolePlaceholder(template, roleLabel);
+      }
       case 'denied':
-        return (
-          strings.upgradeDeniedMessage ||
-          'Your request was denied. Review the feedback before submitting a new request.'
-        );
+        return strings.upgradeDeniedMessage || 'Denied.';
       case 'pending':
-        return (
-          strings.upgradePendingMessage ||
-          'Your request is pending review. We will email you when a moderator responds.'
-        );
+        return strings.upgradePendingMessage || 'Your upgrade request is pending review.';
       case 'error':
-        return formatError();
+        return strings.upgradeError || 'Unable to submit your request. Please try again.';
       default:
         return '';
     }
+  }
+
+  function replaceRolePlaceholder(text, roleLabel) {
+    if (typeof text !== 'string') {
+      return '';
+    }
+
+    const role = roleLabel || '';
+
+    if (text.includes('{role}')) {
+      const replacement = role || strings.upgradeApprovedGeneric || 'upgraded';
+      return text.replace('{role}', replacement);
+    }
+
+    return text;
   }
 
   function getBadgeClass(state, customClass) {

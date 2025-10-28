@@ -263,7 +263,7 @@ class UpgradeReviewsController
         }
 
         $target_post_id = UpgradeReviewRepository::get_post_id($post);
-        $target_link = $target_post_id > 0 ? get_edit_post_link($target_post_id) : '';
+        $target_link = $target_post_id > 0 ? get_permalink($target_post_id) : '';
         if ($target_link) {
             $custom_actions['ap_review_post'] = sprintf(
                 '<a href="%s">%s</a>',
