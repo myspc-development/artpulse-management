@@ -293,7 +293,7 @@ class RoleDashboards
         wp_enqueue_script(
             'ap-dashboards-js',
             plugins_url('assets/js/ap-dashboards.js', dirname(__DIR__, 2)),
-            ['wp-api-fetch', 'ap-social-js'],
+            ['wp-api-fetch', 'wp-dom-ready', 'ap-social-js'],
             $version,
             true
         );
