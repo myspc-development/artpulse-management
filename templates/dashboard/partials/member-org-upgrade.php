@@ -25,6 +25,7 @@ $journeys = [
     <header class="ap-dashboard-section__header">
         <h3><?php esc_html_e('Next steps', 'artpulse-management'); ?></h3>
         <p><?php esc_html_e('Track progress toward unlocking artist and organization tools.', 'artpulse-management'); ?></p>
+        <p><?php esc_html_e('Artist and organization access work side by side—unlock both roles whenever you need them.', 'artpulse-management'); ?></p>
     </header>
     <div class="ap-dashboard-journeys">
         <?php foreach ($journeys as $slug => $journey) :
