@@ -371,6 +371,8 @@ class Plugin
             ]
         );
 
+        $this->maybe_enqueue_member_dashboard_assets();
+
 
         wp_enqueue_style(
             'ap-forms-css',
@@ -393,5 +395,68 @@ class Plugin
                 'enabled' => true,
             ] );
         }
+    }
+
+    private function maybe_enqueue_member_dashboard_assets(): void
+    {
+        if ( ! $this->page_contains_member_dashboard_shortcode() ) {
+            return;
+        }
+
+        $script_path = plugin_dir_path( ARTPULSE_PLUGIN_FILE ) . 'assets/js/ap-dashboards.js';
+        $version     = file_exists( $script_path ) ? (string) filemtime( $script_path ) : self::VERSION;
+
+        wp_register_script(
+            'ap-dashboards-js',
+            plugins_url( 'assets/js/ap-dashboards.js', ARTPULSE_PLUGIN_FILE ),
+            [ 'wp-api-fetch', 'wp-dom-ready', 'ap-social-js' ],
+            $version,
+            true
+        );
+
+        \ArtPulse\Core\RoleDashboards::enqueueAssets();
+    }
+
+    private function page_contains_member_dashboard_shortcode(): bool
+    {
+        if ( ! is_singular() ) {
+            return false;
+        }
+
+        $post = get_post();
+
+        if ( ! $post instanceof \WP_Post ) {
+            return false;
+        }
+
+        if ( has_shortcode( $post->post_content, 'ap_member_dashboard' ) ) {
+            return true;
+        }
+
+        if ( function_exists( 'has_block' ) && has_block( 'core/shortcode', $post ) ) {
+            $blocks = parse_blocks( $post->post_content );
+
+            foreach ( $blocks as $block ) {
+                if ( ( $block['blockName'] ?? '' ) !== 'core/shortcode' ) {
+                    continue;
+                }
+
+                $inner_content = $block['innerContent'] ?? [];
+
+                foreach ( $inner_content as $content ) {
+                    if ( is_string( $content ) && false !== strpos( $content, '[ap_member_dashboard' ) ) {
+                        return true;
+                    }
+                }
+
+                $inner_html = $block['innerHTML'] ?? '';
+
+                if ( is_string( $inner_html ) && false !== strpos( $inner_html, '[ap_member_dashboard' ) ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
