@@ -98,6 +98,8 @@ class MemberDashboard
                 'url'      => $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'artist'),
                 'variant'  => 'secondary',
                 'disabled' => empty($journey['links']['upgrade']),
+                'mode'     => 'form',
+                'upgrade_type' => 'artist',
             ],
             'journey'     => $journey,
         ];
@@ -122,6 +124,7 @@ class MemberDashboard
                 'url'      => $dashboard_url,
                 'variant'  => 'primary',
                 'disabled' => false,
+                'mode'     => 'link',
             ];
 
             return $state;
@@ -136,6 +139,7 @@ class MemberDashboard
                 'url'      => esc_url_raw($builder_url),
                 'variant'  => 'primary',
                 'disabled' => false,
+                'mode'     => 'link',
             ];
         } elseif ('published' === $portfolio_status || 'scheduled' === $portfolio_status) {
             $state['status']      = 'approved';
@@ -145,6 +149,7 @@ class MemberDashboard
                 'url'      => $dashboard_url,
                 'variant'  => 'primary',
                 'disabled' => false,
+                'mode'     => 'link',
             ];
         }
 
@@ -163,6 +168,8 @@ class MemberDashboard
                 'url'      => $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
                 'variant'  => 'secondary',
                 'disabled' => empty($journey['links']['upgrade']),
+                'mode'     => 'form',
+                'upgrade_type' => 'organization',
             ],
             'journey'  => $journey,
         ];
@@ -187,6 +194,7 @@ class MemberDashboard
                 'url'      => $dashboard_url,
                 'variant'  => 'primary',
                 'disabled' => false,
+                'mode'     => 'link',
             ];
 
             return $state;
@@ -214,14 +222,16 @@ class MemberDashboard
                     'url'      => $dashboard_url,
                     'variant'  => 'primary',
                     'disabled' => false,
+                    'mode'     => 'link',
                 ];
             } elseif ($status === UpgradeReviewRepository::STATUS_DENIED) {
                 $state['status'] = 'denied';
                 $state['cta']    = [
-                    'label'    => __('Review feedback', 'artpulse-management'),
-                    'url'      => sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
-                    'variant'  => 'secondary',
+                    'label'    => __('Reopen organization builder', 'artpulse-management'),
+                    'url'      => esc_url_raw(add_query_arg('step', 'profile', $builder_url)),
+                    'variant'  => 'primary',
                     'disabled' => false,
+                    'mode'     => 'link',
                 ];
             } else {
                 $state['status'] = 'requested';
@@ -230,6 +240,7 @@ class MemberDashboard
                     'url'      => sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
                     'variant'  => 'secondary',
                     'disabled' => false,
+                    'mode'     => 'link',
                 ];
             }
         }
@@ -241,6 +252,7 @@ class MemberDashboard
                 'url'      => esc_url_raw(add_query_arg('step', 'profile', $builder_url)),
                 'variant'  => 'primary',
                 'disabled' => false,
+                'mode'     => 'link',
             ];
         } elseif (in_array($portfolio_status, ['published', 'scheduled'], true)) {
             $state['cta'] = [
@@ -248,6 +260,7 @@ class MemberDashboard
                 'url'      => $dashboard_url,
                 'variant'  => 'primary',
                 'disabled' => false,
+                'mode'     => 'link',
             ];
         }
 
