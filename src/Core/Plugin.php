@@ -68,6 +68,7 @@ class Plugin
         add_action( 'rest_api_init', [ \ArtPulse\Community\FollowRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Community\NotificationRestController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\SubmissionRestController::class, 'register' ] );
+        add_action( 'rest_api_init', [ \ArtPulse\Rest\UpgradeReviewsController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\PortfolioController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Rest\NonceController::class, 'register' ] );
         add_action( 'rest_api_init', [ \ArtPulse\Mobile\MobileRestController::class, 'register' ] );
