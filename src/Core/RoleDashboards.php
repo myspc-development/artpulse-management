@@ -302,12 +302,20 @@ class RoleDashboards
 
         wp_enqueue_script('ap-dashboards-js');
 
+        $admin_email    = sanitize_email((string) get_option('admin_email'));
+        $default_support = $admin_email !== ''
+            ? sprintf('mailto:%s', $admin_email)
+            : home_url('/contact/');
+        $support_url = (string) apply_filters('artpulse/support_contact_url', $default_support);
+        $support_url = esc_url_raw($support_url);
+
         wp_localize_script(
             'ap-dashboards-js',
             'ArtPulseDashboards',
             [
                 'root'   => $api_root,
                 'nonce'  => $api_nonce,
+                'supportUrl' => $support_url,
                 'labels' => self::getRoleLabels(),
                 'strings' => [
                     'loading'                => __('Loading dashboard…', 'artpulse-management'),
@@ -348,6 +356,20 @@ class RoleDashboards
                     'organizationRoleLabel'  => __('Organization', 'artpulse-management'),
                     'roleSwitcherLabel'      => __('Select a dashboard role', 'artpulse-management'),
                     'currentRoleLabel'       => __('Current dashboard', 'artpulse-management'),
+                    'orgRequestNotice'       => __('Your organization upgrade request is pending review.', 'artpulse-management'),
+                    'orgRequestHistoryCta'   => __('View request history', 'artpulse-management'),
+                    'orgRequestSupportCta'   => __('Contact support', 'artpulse-management'),
+                    'orgRequestDismiss'      => __('Dismiss', 'artpulse-management'),
+                    'orgRequestModalTitle'   => __('Organization request history', 'artpulse-management'),
+                    'orgRequestModalDescription' => __('Review the status of your organization upgrade requests.', 'artpulse-management'),
+                    'orgRequestModalEmpty'   => __('No organization upgrade requests yet.', 'artpulse-management'),
+                    'orgRequestHistoryError' => __('We were unable to load your request history. Please try again.', 'artpulse-management'),
+                    'orgRequestModalClose'   => __('Close', 'artpulse-management'),
+                    'orgRequestStatusPending'  => __('Pending', 'artpulse-management'),
+                    'orgRequestStatusApproved' => __('Approved', 'artpulse-management'),
+                    'orgRequestStatusDenied'   => __('Denied', 'artpulse-management'),
+                    'orgRequestSubmittedOn'    => __('Submitted on %s', 'artpulse-management'),
+                    'orgRequestReasonLabel'    => __('Reason', 'artpulse-management'),
                 ],
             ]
         );

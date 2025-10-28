@@ -2,6 +2,16 @@
   const config = window.ArtPulseDashboards || {};
   const labels = config.labels || {};
   const strings = config.strings || {};
+  const supportUrl = config.supportUrl || '';
+  const ORG_REQUEST_STATE_KEY = 'apOrgRequestStatus';
+  const ORG_REQUEST_DISMISSED_KEY = 'apOrgRequestStatusDismissed';
+  let orgRequestHistoryCache = null;
+  let orgRequestHistoryPromise = null;
+  let orgRequestModal = null;
+  let orgRequestModalContent = null;
+  let orgRequestModalClose = null;
+  let orgRequestLastFocused = null;
+  let sessionStorageSupported = null;
 
   function onReady(callback) {
     if (document.readyState === 'loading') {
@@ -1423,6 +1433,410 @@
     return value;
   }
 
+  function initOrgBuilderNotice() {
+    const builder = document.querySelector('.ap-org-builder');
+    if (!builder || isOrgRequestDismissed()) {
+      return;
+    }
+
+    const state = readOrgRequestState();
+    if (state === 'pending') {
+      renderOrgRequestNotice(builder);
+      return;
+    }
+
+    if (state === 'none') {
+      return;
+    }
+
+    fetchOrgPendingReviews()
+      .then((pending) => {
+        if (pending.length > 0) {
+          writeOrgRequestState('pending');
+          renderOrgRequestNotice(builder);
+        } else {
+          writeOrgRequestState('none');
+        }
+      })
+      .catch(() => {
+        // Leave state unset so a future navigation can retry.
+      });
+  }
+
+  function renderOrgRequestNotice(builder) {
+    if (!builder || builder.querySelector('[data-ap-org-request-notice]')) {
+      return;
+    }
+
+    const notice = document.createElement('div');
+    notice.className = 'ap-notice ap-notice--info';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    notice.setAttribute('data-ap-org-request-notice', '1');
+
+    const message = document.createElement('p');
+    message.className = 'ap-notice__message';
+    message.textContent = strings.orgRequestNotice || 'Your organization upgrade request is pending review.';
+    notice.appendChild(message);
+
+    const actions = document.createElement('div');
+    actions.className = 'ap-notice__actions';
+
+    const links = document.createElement('div');
+    links.className = 'ap-notice__links';
+
+    const historyLink = document.createElement('a');
+    historyLink.href = '#';
+    historyLink.className = 'ap-notice__link';
+    historyLink.textContent = strings.orgRequestHistoryCta || 'View request history';
+    historyLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      openOrgRequestHistory();
+    });
+    links.appendChild(historyLink);
+
+    const supportHref = typeof supportUrl === 'string' ? supportUrl.trim() : '';
+    if (supportHref) {
+      const supportLink = document.createElement('a');
+      supportLink.className = 'ap-notice__link';
+      supportLink.href = supportHref;
+      supportLink.textContent = strings.orgRequestSupportCta || 'Contact support';
+      const lowerHref = supportHref.toLowerCase();
+      const isMailto = lowerHref.startsWith('mailto:');
+      const isHttp = lowerHref.startsWith('http://') || lowerHref.startsWith('https://');
+      if (!isMailto && isHttp) {
+        supportLink.target = '_blank';
+        supportLink.rel = 'noopener noreferrer';
+      }
+      links.appendChild(supportLink);
+    }
+
+    actions.appendChild(links);
+
+    const dismissButton = document.createElement('button');
+    dismissButton.type = 'button';
+    dismissButton.className = 'ap-notice__dismiss';
+    dismissButton.setAttribute('aria-label', strings.orgRequestDismiss || 'Dismiss');
+    dismissButton.textContent = strings.orgRequestDismiss || 'Dismiss';
+    dismissButton.addEventListener('click', () => {
+      if (notice.parentNode) {
+        notice.parentNode.removeChild(notice);
+      }
+      markOrgRequestDismissed();
+    });
+
+    actions.appendChild(dismissButton);
+    notice.appendChild(actions);
+
+    if (typeof builder.prepend === 'function') {
+      builder.prepend(notice);
+    } else {
+      builder.insertBefore(notice, builder.firstChild || null);
+    }
+  }
+
+  function openOrgRequestHistory() {
+    showOrgRequestModal();
+    setOrgRequestModalState('loading');
+
+    if (Array.isArray(orgRequestHistoryCache)) {
+      setOrgRequestModalState('list', orgRequestHistoryCache);
+      return;
+    }
+
+    if (orgRequestHistoryPromise) {
+      return;
+    }
+
+    orgRequestHistoryPromise = fetchOrgReviews()
+      .then((items) => {
+        orgRequestHistoryCache = items;
+        setOrgRequestModalState('list', items);
+      })
+      .catch(() => {
+        setOrgRequestModalState('error');
+      })
+      .finally(() => {
+        orgRequestHistoryPromise = null;
+      });
+  }
+
+  function ensureOrgRequestModal() {
+    if (orgRequestModal && document.body.contains(orgRequestModal)) {
+      return orgRequestModal;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ap-org-request-modal';
+    overlay.setAttribute('data-ap-org-request-modal', '1');
+    overlay.setAttribute('hidden', '');
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const dialog = document.createElement('div');
+    dialog.className = 'ap-org-request-modal__dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'ap-org-request-modal-title');
+    dialog.setAttribute('tabindex', '-1');
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'ap-org-request-modal__close';
+    closeButton.textContent = strings.orgRequestModalClose || 'Close';
+    closeButton.addEventListener('click', closeOrgRequestModal);
+
+    const title = document.createElement('h2');
+    title.id = 'ap-org-request-modal-title';
+    title.className = 'ap-org-request-modal__title';
+    title.textContent = strings.orgRequestModalTitle || 'Organization request history';
+
+    const description = document.createElement('p');
+    description.className = 'ap-org-request-modal__description';
+    description.textContent = strings.orgRequestModalDescription || 'Review the status of your organization upgrade requests.';
+
+    const content = document.createElement('div');
+    content.className = 'ap-org-request-modal__content';
+    content.setAttribute('data-ap-org-request-content', '1');
+
+    dialog.appendChild(closeButton);
+    dialog.appendChild(title);
+    dialog.appendChild(description);
+    dialog.appendChild(content);
+    overlay.appendChild(dialog);
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        closeOrgRequestModal();
+      }
+    });
+
+    overlay.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeOrgRequestModal();
+      }
+    });
+
+    document.body.appendChild(overlay);
+
+    orgRequestModal = overlay;
+    orgRequestModalContent = content;
+    orgRequestModalClose = closeButton;
+
+    return overlay;
+  }
+
+  function showOrgRequestModal() {
+    const modal = ensureOrgRequestModal();
+    if (!modal) {
+      return;
+    }
+
+    orgRequestLastFocused = document.activeElement && typeof document.activeElement.focus === 'function'
+      ? document.activeElement
+      : null;
+
+    modal.removeAttribute('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (orgRequestModalClose && typeof orgRequestModalClose.focus === 'function') {
+      try {
+        orgRequestModalClose.focus();
+      } catch (e) {
+        /* focus optional */
+      }
+    }
+  }
+
+  function closeOrgRequestModal() {
+    if (!orgRequestModal) {
+      return;
+    }
+
+    orgRequestModal.setAttribute('hidden', '');
+    orgRequestModal.setAttribute('aria-hidden', 'true');
+
+    if (orgRequestModalContent) {
+      orgRequestModalContent.innerHTML = '';
+    }
+
+    if (orgRequestLastFocused && typeof orgRequestLastFocused.focus === 'function') {
+      try {
+        orgRequestLastFocused.focus();
+      } catch (e) {
+        /* noop */
+      }
+    }
+  }
+
+  function setOrgRequestModalState(state, items = []) {
+    if (!orgRequestModalContent) {
+      ensureOrgRequestModal();
+    }
+
+    if (!orgRequestModalContent) {
+      return;
+    }
+
+    orgRequestModalContent.innerHTML = '';
+
+    if (state === 'loading') {
+      orgRequestModalContent.textContent = strings.loading || 'Loading…';
+      return;
+    }
+
+    if (state === 'error') {
+      const error = document.createElement('p');
+      error.className = 'ap-org-request-modal__error';
+      error.textContent = strings.orgRequestHistoryError || (strings.error || 'Unable to load request history.');
+      orgRequestModalContent.appendChild(error);
+      return;
+    }
+
+    const list = renderOrgRequestHistoryList(items);
+    orgRequestModalContent.appendChild(list);
+  }
+
+  function renderOrgRequestHistoryList(items = []) {
+    if (!Array.isArray(items) || items.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'ap-org-request-modal__empty';
+      empty.textContent = strings.orgRequestModalEmpty || 'No organization upgrade requests yet.';
+      return empty;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'ap-org-request-modal__list';
+
+    items.forEach((item) => {
+      const entry = document.createElement('li');
+      entry.className = 'ap-org-request-modal__item';
+
+      const status = document.createElement('div');
+      status.className = 'ap-org-request-modal__status';
+      status.textContent = getOrgRequestStatusLabel(item && item.status);
+      entry.appendChild(status);
+
+      if (item && item.createdAt) {
+        const date = document.createElement('div');
+        date.className = 'ap-org-request-modal__date';
+        date.textContent = formatOrgRequestSubmittedOn(item.createdAt);
+        entry.appendChild(date);
+      }
+
+      if (item && item.reason) {
+        const reason = document.createElement('div');
+        reason.className = 'ap-org-request-modal__reason';
+        const label = document.createElement('strong');
+        label.textContent = strings.orgRequestReasonLabel || 'Reason';
+        reason.appendChild(label);
+        reason.appendChild(document.createTextNode(`: ${item.reason}`));
+        entry.appendChild(reason);
+      }
+
+      list.appendChild(entry);
+    });
+
+    return list;
+  }
+
+  function getOrgRequestStatusLabel(status) {
+    const key = typeof status === 'string' ? status.toLowerCase() : '';
+    if (key === 'pending') {
+      return strings.orgRequestStatusPending || 'Pending';
+    }
+    if (key === 'approved') {
+      return strings.orgRequestStatusApproved || 'Approved';
+    }
+    if (key === 'denied') {
+      return strings.orgRequestStatusDenied || 'Denied';
+    }
+    return key ? key.charAt(0).toUpperCase() + key.slice(1) : '';
+  }
+
+  function formatOrgRequestSubmittedOn(value) {
+    const formatted = formatDate(value);
+    if (typeof strings.orgRequestSubmittedOn === 'string' && strings.orgRequestSubmittedOn.includes('%s')) {
+      return strings.orgRequestSubmittedOn.replace('%s', formatted);
+    }
+    return `Submitted on ${formatted}`;
+  }
+
+  function fetchOrgReviews(query = {}) {
+    const data = Object.assign({ type: 'organization' }, query || {});
+    return api('/reviews/me', { data }).then((response) => {
+      if (!Array.isArray(response)) {
+        return [];
+      }
+      return response.filter((item) => item && item.type === 'organization');
+    });
+  }
+
+  function fetchOrgPendingReviews() {
+    return fetchOrgReviews({ status: 'pending' }).then((items) =>
+      items.filter((item) => item && item.status === 'pending')
+    );
+  }
+
+  function hasSessionStorage() {
+    if (sessionStorageSupported !== null) {
+      return sessionStorageSupported;
+    }
+
+    sessionStorageSupported = false;
+
+    try {
+      const testKey = '__ap_org_request__';
+      window.sessionStorage.setItem(testKey, '1');
+      window.sessionStorage.removeItem(testKey);
+      sessionStorageSupported = true;
+    } catch (error) {
+      sessionStorageSupported = false;
+    }
+
+    return sessionStorageSupported;
+  }
+
+  function readOrgRequestState() {
+    if (!hasSessionStorage()) {
+      return null;
+    }
+
+    return window.sessionStorage.getItem(ORG_REQUEST_STATE_KEY);
+  }
+
+  function writeOrgRequestState(value) {
+    if (!hasSessionStorage()) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(ORG_REQUEST_STATE_KEY, String(value));
+    } catch (error) {
+      /* storage optional */
+    }
+  }
+
+  function isOrgRequestDismissed() {
+    if (!hasSessionStorage()) {
+      return false;
+    }
+
+    return window.sessionStorage.getItem(ORG_REQUEST_DISMISSED_KEY) === '1';
+  }
+
+  function markOrgRequestDismissed() {
+    if (!hasSessionStorage()) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(ORG_REQUEST_DISMISSED_KEY, '1');
+    } catch (error) {
+      /* storage optional */
+    }
+  }
+
   function joinPath(root, path) {
     if (!root) {
       return path;
@@ -1518,9 +1932,13 @@
   const app = {
     initAll,
     init,
+    initOrgBuilderNotice,
   };
 
-  onReady(initAll);
+  onReady(() => {
+    initAll();
+    initOrgBuilderNotice();
+  });
 
   window.ArtPulseDashboardsApp = Object.assign(window.ArtPulseDashboardsApp || {}, app);
   window.ArtPulseDash = Object.assign(window.ArtPulseDash || {}, {
