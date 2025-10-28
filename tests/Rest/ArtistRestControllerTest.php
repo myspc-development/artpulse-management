@@ -57,4 +57,42 @@ class ArtistRestControllerTest extends \WP_UnitTestCase
 
         $this->assertSame(404, $response->get_status());
     }
+
+    public function test_create_artist_requires_authentication()
+    {
+        wp_set_current_user(0);
+
+        $request  = new WP_REST_Request('POST', '/artpulse/v1/artist/create');
+        $response = rest_do_request($request);
+
+        $this->assertSame(401, $response->get_status());
+    }
+
+    public function test_create_artist_requires_capability()
+    {
+        $user_id = $this->factory->user->create(['role' => 'subscriber']);
+        wp_set_current_user($user_id);
+
+        $request  = new WP_REST_Request('POST', '/artpulse/v1/artist/create');
+        $response = rest_do_request($request);
+
+        $this->assertSame(403, $response->get_status());
+    }
+
+    public function test_create_artist_success()
+    {
+        $user_id = $this->factory->user->create(['role' => 'artist']);
+        wp_set_current_user($user_id);
+
+        $request  = new WP_REST_Request('POST', '/artpulse/v1/artist/create');
+        $response = rest_do_request($request);
+        $data     = $response->get_data();
+
+        $this->assertSame(201, $response->get_status());
+        $this->assertArrayHasKey('postId', $data);
+
+        $post_id = (int) $data['postId'];
+        $this->assertSame('draft', get_post_status($post_id));
+        $this->assertSame($user_id, (int) get_post_meta($post_id, '_ap_owner_user', true));
+    }
 }

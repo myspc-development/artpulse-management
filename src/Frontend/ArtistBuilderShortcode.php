@@ -2,6 +2,7 @@
 
 namespace ArtPulse\Frontend;
 
+use ArtPulse\Artists\ArtistDraftCreator;
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\RateLimitHeaders;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
@@ -41,11 +42,14 @@ final class ArtistBuilderShortcode
             exit;
         }
 
-        $user_id    = get_current_user_id();
+        $user_id = get_current_user_id();
+
+        $auto_create_error = self::maybe_handle_auto_create($user_id);
+
         $artist_ids = self::owned_artists($user_id);
 
         if (empty($artist_ids)) {
-            return '<p>' . esc_html__('No artist profile to manage.', 'artpulse-management') . '</p>';
+            return self::render_empty_state($auto_create_error);
         }
 
         $mobile = isset($_GET['view']) && 'mobile' === sanitize_text_field(wp_unslash($_GET['view']));
@@ -104,7 +108,7 @@ final class ArtistBuilderShortcode
         }
 
         if (empty($profiles)) {
-            return '<p>' . esc_html__('No artist profile to manage.', 'artpulse-management') . '</p>';
+            return self::render_empty_state('');
         }
 
         ob_start();
@@ -120,6 +124,90 @@ final class ArtistBuilderShortcode
         ];
 
         include ARTPULSE_PLUGIN_DIR . 'templates/artist-builder/wrapper.php';
+
+        return (string) ob_get_clean();
+    }
+
+    private static function maybe_handle_auto_create(int $user_id): string
+    {
+        if (!self::should_auto_create()) {
+            return '';
+        }
+
+        $result = ArtistDraftCreator::create_for_user($user_id);
+        if ($result instanceof WP_Error) {
+            return $result->get_error_message();
+        }
+
+        self::redirect_to_builder((int) $result);
+
+        return '';
+    }
+
+    private static function should_auto_create(): bool
+    {
+        if (!isset($_GET['autocreate'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            return false;
+        }
+
+        $value = strtolower(sanitize_text_field(wp_unslash($_GET['autocreate']))); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+        return in_array($value, ['1', 'true'], true);
+    }
+
+    private static function redirect_to_builder(int $post_id): void
+    {
+        $target = add_query_arg('post_id', $post_id, self::builder_base_url());
+
+        wp_safe_redirect($target);
+        exit;
+    }
+
+    private static function builder_base_url(): string
+    {
+        return add_query_arg(['ap_builder' => 'artist'], home_url('/artist-builder/'));
+    }
+
+    private static function render_empty_state(string $error_message): string
+    {
+        wp_enqueue_script(
+            'ap-artist-builder-empty-state',
+            plugins_url('assets/js/ap-artist-builder-empty-state.js', ARTPULSE_PLUGIN_FILE),
+            [],
+            ARTPULSE_VERSION,
+            true
+        );
+
+        wp_localize_script('ap-artist-builder-empty-state', 'APArtistBuilderEmpty', [
+            'endpoint'      => esc_url_raw(rest_url('artpulse/v1/artist/create')),
+            'nonce'         => wp_create_nonce('wp_rest'),
+            'builderUrl'    => esc_url_raw(self::builder_base_url()),
+            'creatingLabel' => esc_html__('Creating your draft…', 'artpulse-management'),
+            'successLabel'  => esc_html__('Draft ready! Redirecting…', 'artpulse-management'),
+            'errorMessage'  => esc_html__('We could not create your artist profile. Please try again.', 'artpulse-management'),
+        ]);
+
+        $error_attributes = '';
+        if ('' === $error_message) {
+            $error_attributes = ' hidden';
+        }
+
+        ob_start();
+        ?>
+        <section class="ap-artist-builder-empty" aria-labelledby="ap-artist-builder-empty-heading">
+            <h2 id="ap-artist-builder-empty-heading"><?php esc_html_e('Let’s set up your Artist profile', 'artpulse-management'); ?></h2>
+            <p><?php esc_html_e('We’ll create a starter draft you can finish later.', 'artpulse-management'); ?></p>
+            <div class="ap-artist-builder-empty__actions">
+                <button type="button" class="ap-dashboard-button ap-dashboard-button--primary" data-ap-artist-create>
+                    <?php esc_html_e('Create my artist profile', 'artpulse-management'); ?>
+                </button>
+                <span class="ap-artist-builder-empty__status" data-ap-artist-create-status role="status" aria-live="polite"></span>
+            </div>
+            <p class="ap-artist-builder-empty__error" data-ap-artist-create-error role="alert"<?php echo $error_attributes; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                <?php echo esc_html($error_message); ?>
+            </p>
+        </section>
+        <?php
 
         return (string) ob_get_clean();
     }
