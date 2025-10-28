@@ -9,6 +9,8 @@ use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
+use function get_gmt_from_date;
+use function mysql_to_rfc3339;
 use function rest_ensure_response;
 use function sanitize_key;
 use function sanitize_text_field;
@@ -209,6 +211,13 @@ final class UpgradeReviewsController
 
         $post_id = (int) UpgradeReviewRepository::get_post_id($post);
         $reason = UpgradeReviewRepository::get_reason($post);
+        $created = '';
+
+        if (!empty($post->post_date_gmt) && '0000-00-00 00:00:00' !== $post->post_date_gmt) {
+            $created = mysql_to_rfc3339($post->post_date_gmt);
+        } elseif (!empty($post->post_date) && '0000-00-00 00:00:00' !== $post->post_date) {
+            $created = mysql_to_rfc3339(get_gmt_from_date($post->post_date));
+        }
 
         $data = [
             'id'     => (int) $post->ID,
@@ -216,6 +225,10 @@ final class UpgradeReviewsController
             'type'   => $response_type,
             'postId' => $post_id > 0 ? $post_id : null,
         ];
+
+        if ('' !== $created) {
+            $data['createdAt'] = $created;
+        }
 
         if (UpgradeReviewRepository::STATUS_DENIED === $status && '' !== $reason) {
             $data['reason'] = sanitize_text_field($reason);

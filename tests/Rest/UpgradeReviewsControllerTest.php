@@ -79,6 +79,8 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
         $this->assertSame('organization', $data['type']);
         $this->assertSame($this->organization_id, $data['postId']);
         $this->assertIsInt($data['id']);
+        $this->assertArrayHasKey('createdAt', $data);
+        $this->assertNotEmpty($data['createdAt']);
 
         $review = get_post($data['id']);
         $this->assertInstanceOf(WP_Post::class, $review);
