@@ -319,7 +319,8 @@ class UpgradeReviewsController
             'org_id'        => $org_id,
             'role_label'    => __('Organization', 'artpulse-management'),
         ];
-        $audit_action  = 'org.upgrade.approved';
+        $audit_action    = 'org.upgrade.approved';
+        $approved_post_id = $org_id;
 
         if (UpgradeReviewRepository::TYPE_ORG_UPGRADE === $type) {
             if ($org_id <= 0) {
@@ -344,7 +345,7 @@ class UpgradeReviewsController
                 'review_id' => $review->ID,
             ]);
         } else {
-            RoleUpgradeManager::grant_role_if_missing($user_id, 'artist', [
+            $artist_post_id = RoleUpgradeManager::grant_role_if_missing($user_id, 'artist', [
                 'source'    => 'upgrade_review',
                 'review_id' => $review->ID,
             ]);
@@ -354,6 +355,18 @@ class UpgradeReviewsController
                 'role_label'    => __('Artist', 'artpulse-management'),
             ];
             $audit_action = 'artist.upgrade.approved';
+
+            if ($artist_post_id) {
+                $approved_post_id = $artist_post_id;
+                update_post_meta($review->ID, UpgradeReviewRepository::META_POST, $artist_post_id);
+                $email_context['post_id']     = $artist_post_id;
+                $email_context['builder_url'] = esc_url_raw(home_url(add_query_arg([
+                    'ap_builder' => 'artist',
+                    'post_id'    => $artist_post_id,
+                ], '/')));
+            } else {
+                $approved_post_id = 0;
+            }
         }
 
         UpgradeReviewRepository::set_status($review->ID, UpgradeReviewRepository::STATUS_APPROVED);
@@ -364,7 +377,7 @@ class UpgradeReviewsController
 
         AuditLogger::info($audit_action, [
             'user_id'   => $user_id,
-            'post_id'   => $org_id,
+            'post_id'   => $approved_post_id,
             'review_id' => $review->ID,
             'type'      => $type,
             'action'    => 'approved',

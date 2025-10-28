@@ -599,6 +599,7 @@ class MemberDashboard
             '{dashboard_url}' => isset($context['dashboard_url']) ? esc_url((string) $context['dashboard_url']) : '',
             '{role_label}'    => isset($context['role_label']) ? sanitize_text_field((string) $context['role_label']) : '',
             '{reason}'        => isset($context['reason']) ? wp_strip_all_tags((string) $context['reason']) : '',
+            '{builder_url}'   => isset($context['builder_url']) ? esc_url((string) $context['builder_url']) : '',
         ];
 
         $message = strtr($message, $replacements);
