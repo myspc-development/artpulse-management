@@ -2,6 +2,8 @@
 
 namespace ArtPulse\Rest;
 
+use ArtPulse\Artists\ArtistDraftCreator;
+use WP_Error;
 use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -60,6 +62,16 @@ class ArtistRestController extends WP_REST_Controller
                 ],
             ]
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/artist/create',
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => [ $this, 'create_artist' ],
+                'permission_callback' => [ Guards::class, 'portfolio_creator_only' ],
+            ]
+        );
     }
 
     /**
@@ -115,5 +127,22 @@ class ArtistRestController extends WP_REST_Controller
         ];
 
         return rest_ensure_response($item);
+    }
+
+    /**
+     * POST /artist/create
+     * Seed a starter artist draft for the current user.
+     */
+    public function create_artist(WP_REST_Request $request)
+    {
+        $result = ArtistDraftCreator::create_for_user(get_current_user_id());
+
+        if ($result instanceof WP_Error) {
+            return $result;
+        }
+
+        return new WP_REST_Response([
+            'postId' => (int) $result,
+        ], 201);
     }
 }
