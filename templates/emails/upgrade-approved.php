@@ -14,6 +14,10 @@ $lines = [
     esc_html__( 'Open your {role_label} dashboard: {dashboard_url}', 'artpulse-management' ),
 ];
 
+if ( ! empty( $context['builder_url'] ) ) {
+    $lines[] = esc_html__( 'Start building your profile now: {builder_url}', 'artpulse-management' );
+}
+
 if ( '' !== trim( $dual_role_message ) ) {
     $lines[] = esc_html( $dual_role_message );
 }

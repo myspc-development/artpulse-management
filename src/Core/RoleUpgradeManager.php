@@ -56,16 +56,16 @@ class RoleUpgradeManager
      *
      * @param array<string, mixed> $context Additional audit context.
      */
-    public static function grant_role(int $user_id, string $role, array $context = []): void
+    public static function grant_role(int $user_id, string $role, array $context = []): ?int
     {
         if ($user_id <= 0 || '' === $role) {
-            return;
+            return null;
         }
 
         $user = get_user_by('id', $user_id);
 
         if (!$user instanceof WP_User) {
-            return;
+            return null;
         }
 
         if (!in_array($role, $user->roles, true)) {
@@ -76,20 +76,39 @@ class RoleUpgradeManager
             update_user_meta($user_id, 'ap_membership_level', self::MEMBERSHIP_LABELS[$role]);
         }
 
+        $profile_post_id = null;
+
+        if ('artist' === $role) {
+            $profile_post_id = self::ensure_artist_profile_exists($user);
+
+            if ($profile_post_id) {
+                $context['artist_post_id'] = $context['artist_post_id'] ?? $profile_post_id;
+                $context['post_id']        = $context['post_id'] ?? $profile_post_id;
+                $context['builder_url']    = $context['builder_url'] ?? home_url(add_query_arg([
+                    'ap_builder' => 'artist',
+                    'post_id'    => $profile_post_id,
+                ], '/'));
+            }
+        }
+
         AuditLogger::log('role_granted', array_merge($context, [
             'user_id' => $user_id,
             'role'    => $role,
         ]));
 
-        self::send_upgrade_email($user, $role);
+        self::send_upgrade_email($user, $role, $context);
+
+        return isset($context['post_id']) && $context['post_id']
+            ? (int) $context['post_id']
+            : $profile_post_id;
     }
 
-    public static function grant_role_if_missing(int $user_id, string $role, array $context = []): void
+    public static function grant_role_if_missing(int $user_id, string $role, array $context = []): ?int
     {
         $user = get_user_by('id', $user_id);
 
         if (!$user instanceof WP_User) {
-            return;
+            return null;
         }
 
         if (in_array($role, $user->roles, true)) {
@@ -97,10 +116,10 @@ class RoleUpgradeManager
                 update_user_meta($user_id, 'ap_membership_level', self::MEMBERSHIP_LABELS[$role]);
             }
 
-            return;
+            return null;
         }
 
-        self::grant_role($user_id, $role, $context);
+        return self::grant_role($user_id, $role, $context);
     }
 
     public static function revoke_role_if_present(int $user_id, string $role, array $context = []): void
@@ -156,7 +175,7 @@ class RoleUpgradeManager
     /**
      * Notify members when they gain a new role.
      */
-    protected static function send_upgrade_email(WP_User $user, string $role): void
+    protected static function send_upgrade_email(WP_User $user, string $role, array $context = []): void
     {
         if (empty($user->user_email)) {
             return;
@@ -177,6 +196,26 @@ class RoleUpgradeManager
         );
 
         $dashboard_url = home_url('dashboard');
+        $builder_url   = '';
+
+        if ('artist' === $role) {
+            $builder_url = isset($context['builder_url']) ? (string) $context['builder_url'] : '';
+
+            if ('' === $builder_url) {
+                $post_id = isset($context['post_id']) ? (int) $context['post_id'] : 0;
+
+                if ($post_id <= 0 && isset($context['artist_post_id'])) {
+                    $post_id = (int) $context['artist_post_id'];
+                }
+
+                if ($post_id > 0) {
+                    $builder_url = home_url(add_query_arg([
+                        'ap_builder' => 'artist',
+                        'post_id'    => $post_id,
+                    ], '/'));
+                }
+            }
+        }
 
         $message = sprintf(
             "%s\n\n%s\n%s",
@@ -190,8 +229,67 @@ class RoleUpgradeManager
             esc_url($dashboard_url)
         );
 
+        if ('' !== $builder_url) {
+            $message .= "\n\n" . sprintf(
+                /* translators: %s is the artist builder URL. */
+                __('Start building your artist profile here: %s', 'artpulse-management'),
+                esc_url($builder_url)
+            );
+        }
+
         wp_mail($user->user_email, $subject, $message);
 
         update_user_meta($user->ID, $meta_key, current_time('mysql')); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
+    }
+
+    private static function ensure_artist_profile_exists(WP_User $user): int
+    {
+        $user_id = (int) $user->ID;
+
+        if ($user_id <= 0) {
+            return 0;
+        }
+
+        $existing = get_posts([
+            'post_type'      => 'artist',
+            'post_status'    => 'any',
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+            'orderby'        => 'ID',
+            'order'          => 'ASC',
+            'meta_query'     => [
+                [
+                    'key'   => '_ap_owner_user_id',
+                    'value' => $user_id,
+                ],
+            ],
+        ]);
+
+        if (!empty($existing)) {
+            $post_id = (int) $existing[0];
+
+            if ($post_id > 0) {
+                add_post_meta($post_id, '_ap_owner_user_id', $user_id, true);
+                update_user_meta($user_id, '_ap_artist_post_id', $post_id);
+
+                return $post_id;
+            }
+        }
+
+        $post_id = wp_insert_post([
+            'post_type'   => 'artist',
+            'post_status' => 'draft',
+            'post_title'  => $user->display_name ?: $user->user_login,
+            'post_author' => $user_id,
+        ]);
+
+        if (!$post_id || is_wp_error($post_id)) {
+            return 0;
+        }
+
+        add_post_meta($post_id, '_ap_owner_user_id', $user_id, true);
+        update_user_meta($user_id, '_ap_artist_post_id', $post_id);
+
+        return (int) $post_id;
     }
 }
