@@ -9,6 +9,9 @@ use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_Error;
 use WP_Post;
 use WP_User;
+use function esc_url;
+use function sanitize_text_field;
+use function wp_strip_all_tags;
 
 class MemberDashboard
 {
@@ -523,6 +526,10 @@ class MemberDashboard
             $context['dual_role_message'] = __('Remember: you can keep both artist and organization access active—switch roles from your dashboard.', 'artpulse-management');
         }
 
+        if (empty($context['role_label']) && in_array($slug, ['upgrade_approved', 'upgrade_denied'], true)) {
+            $context['role_label'] = __('Organization', 'artpulse-management');
+        }
+
         $subject = '';
         $template_file = '';
 
@@ -544,6 +551,7 @@ class MemberDashboard
         }
 
         $message = self::load_email_template($template_file, $context);
+        $message = self::replace_template_placeholders($message, $context);
 
         /**
          * Filter the email content before sending.
@@ -579,5 +587,23 @@ class MemberDashboard
         include $template;
 
         return (string) ob_get_clean();
+    }
+
+    private static function replace_template_placeholders(string $message, array $context): string
+    {
+        if ('' === $message) {
+            return $message;
+        }
+
+        $replacements = [
+            '{dashboard_url}' => isset($context['dashboard_url']) ? esc_url((string) $context['dashboard_url']) : '',
+            '{role_label}'    => isset($context['role_label']) ? sanitize_text_field((string) $context['role_label']) : '',
+            '{reason}'        => isset($context['reason']) ? wp_strip_all_tags((string) $context['reason']) : '',
+        ];
+
+        $message = strtr($message, $replacements);
+        $message = preg_replace("/\n{3,}/", "\n\n", $message);
+
+        return is_string($message) ? trim($message) : '';
     }
 }

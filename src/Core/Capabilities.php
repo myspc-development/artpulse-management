@@ -15,6 +15,8 @@ final class Capabilities
     public const CAP_MANAGE_PORTFOLIO  = 'ap_manage_portfolio';
     public const CAP_MODERATE_EVENTS   = 'ap_moderate_events';
     public const CAP_IMPERSONATE       = 'ap_impersonate_creator';
+    public const CAP_REVIEW_VIEW       = 'ap_review_view';
+    public const CAP_REVIEW_MANAGE     = 'ap_review_manage';
 
     /**
      * Register roles and assign capabilities.
@@ -59,6 +61,8 @@ final class Capabilities
                 self::CAP_MANAGE_OWN_ARTIST,
                 self::CAP_SUBMIT_EVENTS,
                 self::CAP_MANAGE_PORTFOLIO,
+                self::CAP_REVIEW_VIEW,
+                self::CAP_REVIEW_MANAGE,
             ];
 
             foreach ($caps as $cap) {
