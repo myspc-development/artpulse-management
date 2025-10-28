@@ -646,7 +646,8 @@ class RoleDashboards
         }
 
         if (!is_user_logged_in()) {
-            return '<div class="ap-dashboard-message">' . esc_html__('Please log in to view this dashboard.', 'artpulse') . '</div>';
+            auth_redirect();
+            exit;
         }
 
         $user = wp_get_current_user();
