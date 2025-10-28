@@ -12,7 +12,10 @@ class OrganizationDashboardShortcode {
     }
 
     public static function render($atts) {
-        if (!is_user_logged_in()) return '<p>You must be logged in to view this dashboard.</p>';
+        if (!is_user_logged_in()) {
+            auth_redirect();
+            exit;
+        }
 
         $user_id = get_current_user_id();
         $org_id = get_user_meta($user_id, 'ap_organization_id', true);

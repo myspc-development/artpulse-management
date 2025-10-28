@@ -115,7 +115,8 @@ class UserDashboardManager
     public static function renderDashboard($atts)
     {
         if ( ! is_user_logged_in() ) {
-            return '<p>' . __('Please log in to view your dashboard.', 'artpulse') . '</p>';
+            auth_redirect();
+            exit;
         }
         $role = RoleDashboards::getDefaultRoleForUser();
 
@@ -133,4 +134,5 @@ class UserDashboardManager
             $loading
         );
     }
+
 }

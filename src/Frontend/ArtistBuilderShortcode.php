@@ -37,7 +37,8 @@ final class ArtistBuilderShortcode
         }
 
         if (!is_user_logged_in()) {
-            return wp_login_form(['echo' => false]);
+            auth_redirect();
+            exit;
         }
 
         $user_id    = get_current_user_id();

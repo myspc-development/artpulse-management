@@ -45,7 +45,8 @@ class OrgBuilderShortcode
         }
 
         if (!is_user_logged_in()) {
-            return wp_login_form(['echo' => false]);
+            auth_redirect();
+            exit;
         }
 
         $user_id = get_current_user_id();
@@ -112,7 +113,7 @@ class OrgBuilderShortcode
     public static function handle_save(): void
     {
         if (!is_user_logged_in()) {
-            wp_safe_redirect(home_url('/login/'));
+            auth_redirect();
             exit;
         }
 
@@ -875,4 +876,5 @@ class OrgBuilderShortcode
             'permalink'    => get_permalink($org),
         ];
     }
+
 }
