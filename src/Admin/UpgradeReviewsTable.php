@@ -12,6 +12,23 @@ if (!class_exists('WP_List_Table')) {
 
 class UpgradeReviewsTable extends WP_List_Table
 {
+    private const VALID_STATUSES = [
+        UpgradeReviewRepository::STATUS_PENDING,
+        UpgradeReviewRepository::STATUS_APPROVED,
+        UpgradeReviewRepository::STATUS_DENIED,
+    ];
+
+    private const VALID_TYPES = [
+        UpgradeReviewRepository::TYPE_ORG_UPGRADE,
+        UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
+    ];
+
+    private string $view_status = '';
+
+    private string $filter_status = '';
+
+    private string $filter_type = '';
+
     public function __construct()
     {
         parent::__construct([
@@ -19,6 +36,10 @@ class UpgradeReviewsTable extends WP_List_Table
             'plural'   => 'upgrade-reviews',
             'ajax'     => false,
         ]);
+
+        $this->view_status   = $this->sanitize_status($_GET['status'] ?? '');
+        $this->filter_status = $this->sanitize_status($_REQUEST['ap_filter_status'] ?? '');
+        $this->filter_type   = $this->sanitize_type($_REQUEST['ap_filter_type'] ?? '');
     }
 
     public function get_columns(): array
@@ -57,7 +78,18 @@ class UpgradeReviewsTable extends WP_List_Table
         $actions = [];
 
         if ($profile_url) {
-            $actions['edit'] = sprintf('<a href="%s">%s</a>', esc_url($profile_url), esc_html__('View profile', 'artpulse-management'));
+            $actions['view_user'] = sprintf('<a href="%s">%s</a>', esc_url($profile_url), esc_html__('View User', 'artpulse-management'));
+        }
+
+        $post = null;
+        if (!empty($item['post_id'])) {
+            $post = get_post((int) $item['post_id']);
+            if ($post instanceof WP_Post) {
+                $post_link = get_edit_post_link($post);
+                if ($post_link) {
+                    $actions['view_post'] = sprintf('<a href="%s">%s</a>', esc_url($post_link), esc_html__('View Target Post', 'artpulse-management'));
+                }
+            }
         }
 
         $approve_url = wp_nonce_url(
@@ -181,6 +213,29 @@ class UpgradeReviewsTable extends WP_List_Table
             'order'          => 'DESC',
         ];
 
+        $status = $this->get_current_status();
+        $type   = $this->filter_type;
+
+        $meta_query = [];
+
+        if ('' !== $status) {
+            $meta_query[] = [
+                'key'   => UpgradeReviewRepository::META_STATUS,
+                'value' => $status,
+            ];
+        }
+
+        if ('' !== $type) {
+            $meta_query[] = [
+                'key'   => UpgradeReviewRepository::META_TYPE,
+                'value' => $type,
+            ];
+        }
+
+        if (!empty($meta_query)) {
+            $args['meta_query'] = $meta_query;
+        }
+
         $query = new \WP_Query($args);
         $items = [];
 
@@ -201,6 +256,12 @@ class UpgradeReviewsTable extends WP_List_Table
 
         $this->items = $items;
 
+        $columns  = $this->get_columns();
+        $hidden   = [];
+        $sortable = $this->get_sortable_columns();
+
+        $this->_column_headers = [$columns, $hidden, $sortable];
+
         $this->set_pagination_args([
             'total_items' => (int) $query->found_posts,
             'per_page'    => $per_page,
@@ -209,6 +270,169 @@ class UpgradeReviewsTable extends WP_List_Table
 
     protected function get_bulk_actions(): array
     {
-        return [];
+        return [
+            'approve' => __('Approve', 'artpulse-management'),
+            'deny'    => __('Deny', 'artpulse-management'),
+        ];
+    }
+
+    protected function get_views(): array
+    {
+        $counts = [
+            ''                                       => $this->get_status_count(null),
+            UpgradeReviewRepository::STATUS_PENDING  => $this->get_status_count(UpgradeReviewRepository::STATUS_PENDING),
+            UpgradeReviewRepository::STATUS_APPROVED => $this->get_status_count(UpgradeReviewRepository::STATUS_APPROVED),
+            UpgradeReviewRepository::STATUS_DENIED   => $this->get_status_count(UpgradeReviewRepository::STATUS_DENIED),
+        ];
+
+        $base_args = ['page' => 'artpulse-upgrade-reviews'];
+        if ('' !== $this->filter_type) {
+            $base_args['ap_filter_type'] = $this->filter_type;
+        }
+        if ('' !== $this->filter_status) {
+            $base_args['ap_filter_status'] = $this->filter_status;
+        }
+
+        $base_url = add_query_arg($base_args, admin_url('admin.php'));
+
+        $views = [];
+
+        $current = $this->view_status;
+
+        $views['all'] = $this->build_view_link(
+            remove_query_arg('status', $base_url),
+            sprintf('%s <span class="count">(%d)</span>', esc_html__('All', 'artpulse-management'), (int) $counts['']),
+            '' === $current
+        );
+
+        $map = [
+            UpgradeReviewRepository::STATUS_PENDING  => esc_html__('Pending', 'artpulse-management'),
+            UpgradeReviewRepository::STATUS_APPROVED => esc_html__('Approved', 'artpulse-management'),
+            UpgradeReviewRepository::STATUS_DENIED   => esc_html__('Denied', 'artpulse-management'),
+        ];
+
+        foreach ($map as $status => $label) {
+            $url = add_query_arg('status', $status, $base_url);
+            $views[$status] = $this->build_view_link(
+                $url,
+                sprintf('%s <span class="count">(%d)</span>', $label, (int) $counts[$status]),
+                $current === $status
+            );
+        }
+
+        return $views;
+    }
+
+    protected function extra_tablenav($which)
+    {
+        if ('top' !== $which) {
+            return;
+        }
+
+        echo '<div class="alignleft actions">';
+
+        $selected_type = '' !== $this->filter_type ? $this->filter_type : '';
+        $selected_status = $this->view_status ?: $this->filter_status;
+
+        echo '<label class="screen-reader-text" for="ap-filter-type">' . esc_html__('Filter by type', 'artpulse-management') . '</label>';
+        echo '<select name="ap_filter_type" id="ap-filter-type">';
+        echo '<option value="">' . esc_html__('All types', 'artpulse-management') . '</option>';
+        $types = [
+            UpgradeReviewRepository::TYPE_ORG_UPGRADE  => esc_html__('Organization upgrades', 'artpulse-management'),
+            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE => esc_html__('Artist upgrades', 'artpulse-management'),
+        ];
+        foreach ($types as $value => $label) {
+            printf('<option value="%1$s" %3$s>%2$s</option>', esc_attr($value), esc_html($label), selected($selected_type, $value, false));
+        }
+        echo '</select>';
+
+        echo '<label class="screen-reader-text" for="ap-filter-status">' . esc_html__('Filter by status', 'artpulse-management') . '</label>';
+        echo '<select name="ap_filter_status" id="ap-filter-status">';
+        echo '<option value="">' . esc_html__('All statuses', 'artpulse-management') . '</option>';
+        $statuses = [
+            UpgradeReviewRepository::STATUS_PENDING  => esc_html__('Pending', 'artpulse-management'),
+            UpgradeReviewRepository::STATUS_APPROVED => esc_html__('Approved', 'artpulse-management'),
+            UpgradeReviewRepository::STATUS_DENIED   => esc_html__('Denied', 'artpulse-management'),
+        ];
+        foreach ($statuses as $value => $label) {
+            printf('<option value="%1$s" %3$s>%2$s</option>', esc_attr($value), esc_html($label), selected($selected_status, $value, false));
+        }
+        echo '</select>';
+
+        submit_button(__('Filter'), '', 'filter_action', false);
+        echo '</div>';
+    }
+
+    public function get_current_view(): string
+    {
+        return $this->view_status;
+    }
+
+    private function get_current_status(): string
+    {
+        return $this->view_status ?: $this->filter_status;
+    }
+
+    private function sanitize_status($status): string
+    {
+        if (!is_string($status) || '' === $status) {
+            return '';
+        }
+
+        $status = sanitize_key($status);
+
+        return in_array($status, self::VALID_STATUSES, true) ? $status : '';
+    }
+
+    private function sanitize_type($type): string
+    {
+        if (!is_string($type) || '' === $type) {
+            return '';
+        }
+
+        $type = sanitize_key($type);
+
+        return in_array($type, self::VALID_TYPES, true) ? $type : '';
+    }
+
+    private function build_view_link(string $url, string $label, bool $current): string
+    {
+        $class = $current ? ' class="current"' : '';
+
+        return sprintf('<a href="%1$s"%3$s>%2$s</a>', esc_url($url), $label, $class);
+    }
+
+    private function get_status_count(?string $status): int
+    {
+        $meta_query = [];
+
+        if ('' !== $this->filter_type) {
+            $meta_query[] = [
+                'key'   => UpgradeReviewRepository::META_TYPE,
+                'value' => $this->filter_type,
+            ];
+        }
+
+        if (null !== $status && '' !== $status) {
+            $meta_query[] = [
+                'key'   => UpgradeReviewRepository::META_STATUS,
+                'value' => $status,
+            ];
+        }
+
+        $args = [
+            'post_type'      => UpgradeReviewRepository::POST_TYPE,
+            'post_status'    => ['private', 'draft', 'publish'],
+            'posts_per_page' => 1,
+            'paged'          => 1,
+        ];
+
+        if (!empty($meta_query)) {
+            $args['meta_query'] = $meta_query;
+        }
+
+        $query = new \WP_Query($args);
+
+        return (int) $query->found_posts;
     }
 }
