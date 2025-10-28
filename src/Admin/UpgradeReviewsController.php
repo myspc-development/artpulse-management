@@ -20,6 +20,7 @@ class UpgradeReviewsController
     {
         add_action('admin_menu', [self::class, 'add_menu']);
         add_action('admin_post_ap_upgrade_review_action', [self::class, 'handle_action']);
+        add_filter('post_row_actions', [self::class, 'filter_row_actions'], 10, 2);
     }
 
     public static function add_menu(): void
@@ -200,6 +201,78 @@ class UpgradeReviewsController
 
         wp_safe_redirect(add_query_arg('ap_status', $status, $redirect));
         exit;
+    }
+
+    public static function filter_row_actions(array $actions, $post): array
+    {
+        if (!$post instanceof WP_Post || UpgradeReviewRepository::POST_TYPE !== $post->post_type) {
+            return $actions;
+        }
+
+        if (!current_user_can(self::CAPABILITY_MANAGE)) {
+            return $actions;
+        }
+
+        $review_id = (int) $post->ID;
+        $custom_actions = [];
+
+        $approve_url = wp_nonce_url(
+            add_query_arg(
+                [
+                    'action'    => 'ap_upgrade_review_action',
+                    'review'    => $review_id,
+                    'operation' => 'approve',
+                ],
+                admin_url('admin-post.php')
+            ),
+            'ap-upgrade-review-' . $review_id
+        );
+
+        $custom_actions['ap_review_approve'] = sprintf(
+            '<a href="%s">%s</a>',
+            esc_url($approve_url),
+            esc_html__('Approve', 'artpulse-management')
+        );
+
+        $deny_url = wp_nonce_url(
+            add_query_arg(
+                [
+                    'page'   => 'artpulse-upgrade-reviews',
+                    'view'   => 'deny',
+                    'review' => $review_id,
+                ],
+                admin_url('admin.php')
+            ),
+            'ap-upgrade-review-' . $review_id
+        );
+
+        $custom_actions['ap_review_deny'] = sprintf(
+            '<a href="%s">%s</a>',
+            esc_url($deny_url),
+            esc_html__('Deny', 'artpulse-management')
+        );
+
+        $user_id = UpgradeReviewRepository::get_user_id($post);
+        $user_link = $user_id > 0 ? get_edit_user_link($user_id) : '';
+        if ($user_link) {
+            $custom_actions['ap_review_user'] = sprintf(
+                '<a href="%s">%s</a>',
+                esc_url($user_link),
+                esc_html__('View User', 'artpulse-management')
+            );
+        }
+
+        $target_post_id = UpgradeReviewRepository::get_post_id($post);
+        $target_link = $target_post_id > 0 ? get_edit_post_link($target_post_id) : '';
+        if ($target_link) {
+            $custom_actions['ap_review_post'] = sprintf(
+                '<a href="%s">%s</a>',
+                esc_url($target_link),
+                esc_html__('View Target Post', 'artpulse-management')
+            );
+        }
+
+        return array_merge($custom_actions, $actions);
     }
 
     private static function approve(WP_Post $review): bool

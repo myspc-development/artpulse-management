@@ -600,6 +600,66 @@
           });
       });
     });
+
+    root.querySelectorAll('[data-ap-upgrade-reopen][data-id]').forEach((btn) => {
+      if (!btn || btn.dataset.apUpgradeReopenBound === '1') {
+        return;
+      }
+
+      btn.dataset.apUpgradeReopenBound = '1';
+
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+
+        if (btn.dataset.apBusy === '1') {
+          return;
+        }
+
+        const reviewId = parseInt(btn.dataset.id, 10);
+        if (!reviewId) {
+          return;
+        }
+
+        const card = findUpgradeCard(btn);
+        const existingReason = getCurrentReason(card);
+
+        setBusy(btn, true);
+
+        reopen(reviewId)
+          .then((response) => {
+            const statusEl = renderStatus(card || btn, {
+              state: (response && response.status) || 'pending',
+              reason:
+                response && typeof response.reason === 'string' ? response.reason : '',
+              label: response && response.badge,
+              message: response && response.message,
+              reviewId: response && response.id ? response.id : reviewId,
+            });
+
+            setBusy(btn, false);
+
+            if (btn.parentNode) {
+              btn.parentNode.removeChild(btn);
+            }
+
+            if (statusEl) {
+              focusStatusRegion(statusEl);
+            }
+          })
+          .catch((error) => {
+            setBusy(btn, false);
+            const statusEl = renderStatus(card || btn, {
+              state: 'error',
+              message: normalizeErrorMessage(error),
+              reason: existingReason,
+            });
+
+            if (statusEl) {
+              focusStatusRegion(statusEl);
+            }
+          });
+      });
+    });
   }
 
   function bindSocialButtons(scope) {
@@ -651,35 +711,7 @@
 
   function submitUpgradeRequest(type, button) {
     const payload = buildUpgradePayload(type, button);
-
-    if (window.wp && window.wp.apiFetch) {
-      return window.wp.apiFetch({
-        path: '/artpulse/v1/reviews',
-        method: 'POST',
-        headers: {
-          'X-WP-Nonce': apiNonce(),
-        },
-        data: payload,
-      });
-    }
-
-    return fetch(joinPath(apiRoot(), 'artpulse/v1/reviews'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-WP-Nonce': apiNonce(),
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify(payload),
-    }).then((response) => {
-      if (!response.ok) {
-        return response
-          .json()
-          .catch(() => ({}))
-          .then((error) => Promise.reject(error));
-      }
-      return response.json();
-    });
+    return request(payload);
   }
 
   function buildUpgradePayload(type, button) {
@@ -693,6 +725,36 @@
     }
 
     return payload;
+  }
+
+  function request(payload) {
+    const data =
+      typeof payload === 'string'
+        ? { type: payload }
+        : Object.assign({}, payload || {});
+
+    if (!data.type) {
+      return Promise.reject(new Error('Upgrade type is required.'));
+    }
+
+    return api('/artpulse/v1/reviews', {
+      method: 'POST',
+      data,
+    });
+  }
+
+  function reopen(review) {
+    const value =
+      review && typeof review === 'object' && review !== null ? review.id : review;
+    const parsed = parseInt(value, 10);
+
+    if (!parsed) {
+      return Promise.reject(new Error('Invalid review identifier.'));
+    }
+
+    return api(`/artpulse/v1/reviews/${parsed}/reopen`, {
+      method: 'POST',
+    });
   }
 
   function disableUpgradeButton(button) {
@@ -716,42 +778,33 @@
   }
 
   function renderUpgradePendingState(button, response, requestedType) {
-    const card = findUpgradeCard(button);
-    const existing = findUpgradeStatus(card);
-    const statusElements = existing || createUpgradeStatusElements();
-    const texts = getPendingTexts(button, card, response, requestedType);
+    const card = findUpgradeCard(button) || button;
+    const statusEl = renderStatus(card, {
+      state: (response && response.status) || 'pending',
+      reason: response && typeof response.reason === 'string' ? response.reason : '',
+      label: response && response.badge,
+      message: response && response.message,
+      reviewId: response && response.id,
+    });
 
-    if (statusElements.badge) {
-      statusElements.badge.textContent = texts.badge;
+    if (card && card.dataset) {
+      card.dataset.apUpgradeType = requestedType;
     }
-
-    if (statusElements.message) {
-      statusElements.message.textContent = texts.message;
-    }
-
-    statusElements.container.dataset.apUpgradeStatus = (response && response.status) || 'pending';
-    statusElements.container.dataset.apUpgradeType = requestedType;
 
     clearUpgradeError(button);
 
     const form = button.closest('form');
-    const actions = findUpgradeActionsContainer(button);
+    if (form && form.parentNode) {
+      form.parentNode.removeChild(form);
+    }
 
-    if (!existing) {
-      if (form && form.parentNode) {
-        form.parentNode.replaceChild(statusElements.container, form);
-      } else if (actions) {
-        actions.innerHTML = '';
-        actions.appendChild(statusElements.container);
-      } else {
-        button.replaceWith(statusElements.container);
-      }
-    } else {
-      if (form && form.parentNode) {
-        form.parentNode.removeChild(form);
-      } else if (actions && actions.contains(button)) {
-        actions.removeChild(button);
-      }
+    const actions = findUpgradeActionsContainer(button);
+    if (actions && actions.contains(button)) {
+      actions.removeChild(button);
+    }
+
+    if (statusEl) {
+      focusStatusRegion(statusEl);
     }
   }
 
@@ -847,72 +900,267 @@
     );
   }
 
-  function findUpgradeStatus(card) {
-    if (!card || !card.querySelector) {
-      return null;
-    }
+  function renderStatus(target, details = {}) {
+    let card = null;
+    let container = null;
 
-    const container = card.querySelector('[data-ap-upgrade-status]');
+    if (target && target.nodeType === 1 && target.hasAttribute && target.hasAttribute('data-ap-upgrade-status')) {
+      container = target;
+      card = findUpgradeCard(target);
+    } else {
+      card =
+        target && target.nodeType === 1 && target.matches && target.matches('[data-ap-upgrade-card]')
+          ? target
+          : findUpgradeCard(target);
+      container = card && card.querySelector ? card.querySelector('[data-ap-upgrade-status]') : null;
+    }
 
     if (!container) {
-      return null;
+      container = document.createElement('div');
+      container.className = 'ap-upgrade-status';
+      container.setAttribute('data-ap-upgrade-status', '');
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('tabindex', '-1');
+
+      const body = card && card.querySelector ? card.querySelector('.ap-dashboard-card__body') : null;
+      if (body && body.firstChild) {
+        body.insertBefore(container, body.firstChild);
+      } else if (body) {
+        body.appendChild(container);
+      } else if (card) {
+        card.insertBefore(container, card.firstChild || null);
+      }
+    }
+
+    const copy = getStatusCopy(details.state || container.dataset.apUpgradeStatus || '', card, details);
+
+    container.dataset.apUpgradeStatus = copy.state;
+
+    if (card && card.dataset) {
+      card.dataset.apUpgradeStatus = copy.state;
+      if (copy.label) {
+        card.dataset.apUpgradeStatusLabel = copy.label;
+      }
+      if (copy.message) {
+        card.dataset.apUpgradeStatusMessage = copy.message;
+      }
+      if (details.reviewId) {
+        card.dataset.apUpgradeReview = String(details.reviewId);
+      }
+    }
+
+    let badge = container.querySelector('[data-ap-upgrade-badge]');
+    if (!badge) {
+      badge = document.createElement('strong');
+      badge.setAttribute('data-ap-upgrade-badge', '1');
+      container.insertBefore(badge, container.firstChild);
+    }
+    badge.className = copy.badgeClass;
+    if (copy.label) {
+      badge.textContent = copy.label;
+      badge.hidden = false;
+    } else {
+      badge.textContent = '';
+      badge.hidden = true;
+    }
+
+    let message = container.querySelector('[data-ap-upgrade-message]');
+    if (!message) {
+      message = document.createElement('p');
+      message.className = 'ap-upgrade-status__message';
+      message.setAttribute('data-ap-upgrade-message', '1');
+      container.appendChild(message);
+    }
+    if (copy.message) {
+      message.textContent = copy.message;
+      message.hidden = false;
+    } else {
+      message.textContent = '';
+      message.hidden = true;
+    }
+
+    let reason = container.querySelector('[data-ap-upgrade-reason]');
+    if (copy.reason) {
+      if (!reason) {
+        reason = document.createElement('p');
+        reason.className = 'ap-upgrade-status__reason';
+        reason.setAttribute('data-ap-upgrade-reason', '1');
+
+        const label = document.createElement('strong');
+        label.className = 'ap-upgrade-status__reason-label';
+        label.textContent = strings.upgradeReasonLabel || 'Reason:';
+        reason.appendChild(label);
+        reason.appendChild(document.createTextNode(' '));
+
+        const text = document.createElement('span');
+        text.setAttribute('data-ap-upgrade-reason-text', '1');
+        reason.appendChild(text);
+
+        container.appendChild(reason);
+      }
+
+      const textNode = reason.querySelector('[data-ap-upgrade-reason-text]');
+      if (textNode) {
+        textNode.textContent = copy.reason;
+      }
+      reason.hidden = false;
+    } else if (reason) {
+      reason.remove();
+    }
+
+    container.classList.toggle('is-error', copy.state === 'error');
+
+    return container;
+  }
+
+  function getStatusCopy(state, card, overrides = {}) {
+    const normalized = String(state || '').toLowerCase();
+    const dataset = (card && card.dataset) || {};
+    const fallback = normalized || String(dataset.apUpgradeStatus || '').toLowerCase() || 'pending';
+    const key = fallback.charAt(0).toUpperCase() + fallback.slice(1);
+
+    const label =
+      (typeof overrides.label === 'string' && overrides.label) ||
+      (typeof overrides.badge === 'string' && overrides.badge) ||
+      dataset.apUpgradeStatusLabel ||
+      strings[`upgrade${key}Badge`] ||
+      getDefaultLabel(fallback);
+
+    const message =
+      (typeof overrides.message === 'string' && overrides.message) ||
+      dataset.apUpgradeStatusMessage ||
+      strings[`upgrade${key}Message`] ||
+      getDefaultMessage(fallback);
+
+    let reason = '';
+    if (typeof overrides.reason === 'string') {
+      reason = overrides.reason;
+    } else if (fallback === 'denied') {
+      reason = getCurrentReason(card);
     }
 
     return {
-      container,
-      badge:
-        container.querySelector('[data-ap-upgrade-badge]') ||
-        container.querySelector('.ap-dashboard-badge'),
-      message:
-        container.querySelector('[data-ap-upgrade-message]') ||
-        container.querySelector('p') ||
-        null,
-    };
-  }
-
-  function createUpgradeStatusElements() {
-    const container = document.createElement('div');
-    container.className = 'ap-upgrade-status';
-    container.setAttribute('data-ap-upgrade-status', 'pending');
-    container.setAttribute('aria-live', 'polite');
-
-    const badge = document.createElement('span');
-    badge.className = 'ap-dashboard-badge ap-dashboard-badge--info';
-    badge.setAttribute('data-ap-upgrade-badge', '1');
-    badge.textContent = strings.upgradePendingBadge || 'Pending';
-
-    const message = document.createElement('p');
-    message.className = 'ap-upgrade-status__message';
-    message.setAttribute('data-ap-upgrade-message', '1');
-    message.textContent = strings.upgradePendingMessage ||
-      'Your request is pending review. We will email you when a moderator responds.';
-
-    container.appendChild(badge);
-    container.appendChild(message);
-
-    return { container, badge, message };
-  }
-
-  function getPendingTexts(button, card, response, requestedType) {
-    const badge =
-      (card && card.dataset && card.dataset.apUpgradePendingLabel) ||
-      (button && button.dataset && button.dataset.apUpgradePendingLabel) ||
-      (response && response.badge) ||
-      strings.upgradePendingBadge ||
-      'Pending';
-
-    const message =
-      (card && card.dataset && card.dataset.apUpgradePendingMessage) ||
-      (button && button.dataset && button.dataset.apUpgradePendingMessage) ||
-      (response && response.message) ||
-      strings.upgradePendingMessage ||
-      'Your request is pending review. We will email you when a moderator responds.';
-
-    return {
-      badge,
+      state: fallback,
+      label,
       message,
-      type: requestedType,
+      reason,
+      badgeClass: getBadgeClass(fallback, overrides.badgeClass),
     };
+  }
+
+  function getDefaultLabel(state) {
+    switch (state) {
+      case 'approved':
+        return strings.upgradeApprovedBadge || 'Approved';
+      case 'denied':
+        return strings.upgradeDeniedBadge || 'Denied';
+      case 'pending':
+        return strings.upgradePendingBadge || 'Pending';
+      case 'error':
+        return strings.upgradeError || 'Request error';
+      default:
+        return state ? state.charAt(0).toUpperCase() + state.slice(1) : '';
+    }
+  }
+
+  function getDefaultMessage(state) {
+    switch (state) {
+      case 'approved':
+        return (
+          strings.upgradeApprovedMessage ||
+          'Your request has been approved. You now have access to the upgraded features.'
+        );
+      case 'denied':
+        return (
+          strings.upgradeDeniedMessage ||
+          'Your request was denied. Review the feedback before submitting a new request.'
+        );
+      case 'pending':
+        return (
+          strings.upgradePendingMessage ||
+          'Your request is pending review. We will email you when a moderator responds.'
+        );
+      case 'error':
+        return normalizeErrorMessage();
+      default:
+        return '';
+    }
+  }
+
+  function getBadgeClass(state, customClass) {
+    const classes = ['ap-badge'];
+
+    if (typeof customClass === 'string' && customClass.trim() !== '') {
+      classes.push(customClass.trim());
+    }
+
+    if (state) {
+      classes.push(`ap-badge--${state}`);
+    }
+
+    return classes.join(' ');
+  }
+
+  function getCurrentReason(card) {
+    const node = card && card.querySelector ? card.querySelector('[data-ap-upgrade-reason-text]') : null;
+    return node ? node.textContent.trim() : '';
+  }
+
+  function focusStatusRegion(element) {
+    if (!element || typeof element.focus !== 'function') {
+      return;
+    }
+
+    const hadTabindex = element.hasAttribute('tabindex');
+    if (!hadTabindex) {
+      element.setAttribute('tabindex', '-1');
+      element.dataset.apUpgradeFocusTemp = '1';
+    }
+
+    try {
+      element.focus();
+    } catch (e) {
+      /* focus optional */
+    }
+
+    if (!hadTabindex) {
+      element.addEventListener(
+        'blur',
+        () => {
+          element.removeAttribute('tabindex');
+          delete element.dataset.apUpgradeFocusTemp;
+        },
+        { once: true }
+      );
+    }
+  }
+
+  function setBusy(element, busy) {
+    if (!element) {
+      return;
+    }
+
+    const isBusy = Boolean(busy);
+    if (isBusy) {
+      element.dataset.apBusy = '1';
+      element.setAttribute('aria-busy', 'true');
+      element.setAttribute('aria-disabled', 'true');
+      element.classList.add('is-busy');
+
+      if (element.tagName && element.tagName.toLowerCase() === 'button') {
+        element.disabled = true;
+      }
+    } else {
+      element.removeAttribute('aria-busy');
+      element.removeAttribute('aria-disabled');
+      element.classList.remove('is-busy');
+
+      if (element.tagName && element.tagName.toLowerCase() === 'button') {
+        element.disabled = false;
+      }
+
+      delete element.dataset.apBusy;
+    }
   }
 
   function normalizeErrorMessage(error) {
@@ -993,6 +1241,64 @@
     return (window.ArtPulseApi && ArtPulseApi.nonce) || config.nonce;
   }
 
+  function api(path, options = {}) {
+    const normalizedPath = path && path.charAt(0) === '/' ? path : `/${path || ''}`;
+    const method = (options.method || 'GET').toUpperCase();
+    const headers = Object.assign({}, options.headers || {}, {
+      'X-WP-Nonce': apiNonce(),
+    });
+
+    if (window.wp && window.wp.apiFetch) {
+      const apiOptions = Object.assign({}, options, {
+        path: normalizedPath,
+        method,
+        headers,
+      });
+
+      if (options.data) {
+        apiOptions.data = options.data;
+      }
+
+      return window.wp.apiFetch(apiOptions);
+    }
+
+    const fetchOptions = {
+      method,
+      headers,
+      credentials: 'same-origin',
+    };
+
+    let url = joinPath(apiRoot(), normalizedPath);
+
+    if (options.data && method === 'GET') {
+      const params = new URLSearchParams(options.data);
+      url += (url.indexOf('?') === -1 ? '?' : '&') + params.toString();
+    } else if (options.data) {
+      fetchOptions.body = JSON.stringify(options.data);
+      if (!fetchOptions.headers['Content-Type']) {
+        fetchOptions.headers['Content-Type'] = 'application/json';
+      }
+    } else if (typeof options.body !== 'undefined') {
+      fetchOptions.body = options.body;
+    }
+
+    return fetch(url, fetchOptions).then((response) => {
+      if (!response.ok) {
+        return response
+          .json()
+          .catch(() => ({}))
+          .then((error) => Promise.reject(error));
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        return response.json();
+      }
+
+      return response.text();
+    });
+  }
+
   const app = {
     initAll,
     init,
@@ -1001,4 +1307,8 @@
   onReady(initAll);
 
   window.ArtPulseDashboardsApp = Object.assign(window.ArtPulseDashboardsApp || {}, app);
+  window.ArtPulseDash = Object.assign(window.ArtPulseDash || {}, {
+    request,
+    reopen,
+  });
 })();

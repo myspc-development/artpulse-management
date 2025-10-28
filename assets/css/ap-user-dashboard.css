@@ -871,6 +871,57 @@
   margin: 0;
 }
 
+/* Upgrade status badges */
+.ap-upgrade-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ap-upgrade-status__message,
+.ap-upgrade-status__reason {
+  margin: 0;
+}
+
+.ap-upgrade-status__reason-label {
+  font-weight: 600;
+}
+
+.ap-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: var(--ap-badge-background, rgba(15, 23, 42, 0.08));
+  color: var(--ap-badge-color, #0f172a);
+}
+
+.ap-badge--pending {
+  --ap-badge-background: var(--ap-badge-pending-background, rgba(217, 119, 6, 0.12));
+  --ap-badge-color: var(--ap-badge-pending-color, #92400e);
+}
+
+.ap-badge--approved {
+  --ap-badge-background: var(--ap-badge-approved-background, rgba(22, 163, 74, 0.12));
+  --ap-badge-color: var(--ap-badge-approved-color, #047857);
+}
+
+.ap-badge--denied,
+.ap-badge--error {
+  --ap-badge-background: var(--ap-badge-danger-background, rgba(220, 38, 38, 0.12));
+  --ap-badge-color: var(--ap-badge-danger-color, #b91c1c);
+}
+
+.ap-badge--error {
+  font-weight: 700;
+}
+
 @media (min-width: 782px) {
   .ap-dashboard-header {
     flex-direction: row;

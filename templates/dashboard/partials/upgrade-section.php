@@ -26,6 +26,7 @@
             $status = isset($upgrade['status']) ? sanitize_key((string) $upgrade['status']) : '';
             $status_label = isset($upgrade['status_label']) ? (string) $upgrade['status_label'] : '';
             $status_variant = isset($upgrade['status_variant']) ? sanitize_key((string) $upgrade['status_variant']) : '';
+            $status_message = isset($upgrade['status_message']) ? (string) $upgrade['status_message'] : '';
             $denial_reason = '';
 
             if (isset($upgrade['denial_reason'])) {
@@ -66,29 +67,52 @@
                     }
                 }
 
-                if ($status_variant === '') {
+                if ($status_message === '') {
                     switch ($status) {
                         case 'pending':
-                            $status_variant = 'warning';
+                            $status_message = __('Your request is pending review. We will notify you once it has been processed.', 'artpulse-management');
                             break;
                         case 'approved':
-                            $status_variant = 'success';
+                            $status_message = __('Your upgrade request has been approved. Enjoy your new tools.', 'artpulse-management');
                             break;
                         case 'denied':
-                            $status_variant = 'danger';
+                            $status_message = __('Your upgrade request was denied. Review the feedback below before resubmitting.', 'artpulse-management');
                             break;
                         default:
-                            $status_variant = 'info';
+                            $status_message = __('Status update available for this request.', 'artpulse-management');
                             break;
                     }
                 }
             }
 
-            $status_classes = 'ap-dashboard-badge ap-upgrade-widget__status-badge';
+            if ($status_variant === '') {
+                switch ($status) {
+                    case 'pending':
+                        $status_variant = 'pending';
+                        break;
+                    case 'approved':
+                        $status_variant = 'approved';
+                        break;
+                    case 'denied':
+                        $status_variant = 'denied';
+                        break;
+                    default:
+                        $status_variant = '';
+                        break;
+                }
+            }
+
+            $status_classes = ['ap-badge'];
 
             if ($status_variant !== '') {
-                $status_classes .= ' ap-dashboard-badge--' . sanitize_html_class($status_variant);
+                $status_classes[] = 'ap-badge--' . sanitize_html_class($status_variant);
             }
+
+            if ($status !== '' && $status_variant !== $status) {
+                $status_classes[] = 'ap-badge--' . sanitize_html_class($status);
+            }
+
+            $status_class_attr = implode(' ', array_unique(array_filter($status_classes)));
 
             $card_attributes = 'class="ap-dashboard-card ap-upgrade-widget__card"';
 
@@ -98,6 +122,10 @@
                 if ($status_label !== '') {
                     $card_attributes .= ' data-ap-upgrade-status-label="' . esc_attr($status_label) . '"';
                 }
+
+                if ($status_message !== '') {
+                    $card_attributes .= ' data-ap-upgrade-status-message="' . esc_attr($status_message) . '"';
+                }
             }
 
             if ($review_id > 0) {
@@ -106,11 +134,22 @@
             ?>
             <article <?php echo $card_attributes; ?>>
                 <div class="ap-dashboard-card__body ap-upgrade-widget__card-body">
-                    <?php if ($status_label !== '') : ?>
-                        <div class="ap-upgrade-widget__status" aria-live="polite">
-                            <span class="<?php echo esc_attr($status_classes); ?>"><?php echo esc_html($status_label); ?></span>
-                        </div>
-                    <?php endif; ?>
+                    <div class="ap-upgrade-status" data-ap-upgrade-status="<?php echo esc_attr($status); ?>" aria-live="polite" tabindex="-1">
+                        <?php if ($status_label !== '') : ?>
+                            <strong class="<?php echo esc_attr($status_class_attr); ?>" data-ap-upgrade-badge><?php echo esc_html($status_label); ?></strong>
+                        <?php endif; ?>
+
+                        <?php if ($status_message !== '') : ?>
+                            <p class="ap-upgrade-status__message" data-ap-upgrade-message><?php echo esc_html($status_message); ?></p>
+                        <?php endif; ?>
+
+                        <?php if ('denied' === $status && $denial_reason !== '') : ?>
+                            <p class="ap-upgrade-status__reason" data-ap-upgrade-reason>
+                                <strong class="ap-upgrade-status__reason-label"><?php esc_html_e('Reason:', 'artpulse-management'); ?></strong>
+                                <span data-ap-upgrade-reason-text><?php echo esc_html($denial_reason); ?></span>
+                            </p>
+                        <?php endif; ?>
+                    </div>
 
                     <?php if (!empty($upgrade['title'])) : ?>
                         <h4 class="ap-upgrade-widget__card-title"><?php echo esc_html($upgrade['title']); ?></h4>
@@ -120,12 +159,6 @@
                         <p class="ap-upgrade-widget__card-description"><?php echo esc_html($upgrade['description']); ?></p>
                     <?php endif; ?>
 
-                    <?php if ('denied' === $status && $denial_reason !== '') : ?>
-                        <p class="ap-upgrade-widget__status-reason">
-                            <strong><?php esc_html_e('Reason:', 'artpulse-management'); ?></strong>
-                            <?php echo esc_html($denial_reason); ?>
-                        </p>
-                    <?php endif; ?>
                 </div>
 
                 <div class="ap-dashboard-card__actions ap-upgrade-widget__card-actions" data-ap-upgrade-actions="1">
@@ -134,12 +167,12 @@
                     </a>
 
                     <?php if ('denied' === $status && $review_id > 0) : ?>
-                        <form class="ap-upgrade-widget__reopen-form" method="post" action="<?php echo esc_url(rest_url(sprintf('artpulse/v1/reviews/%d/reopen', $review_id))); ?>">
-                            <?php wp_nonce_field('wp_rest', '_wpnonce', false); ?>
-                            <button type="submit" class="ap-dashboard-button ap-dashboard-button--secondary ap-upgrade-widget__reopen-button">
-                                <?php esc_html_e('Re-request', 'artpulse-management'); ?>
-                            </button>
-                        </form>
+                        <button type="button"
+                                class="button button-secondary ap-upgrade-widget__reopen-button"
+                                data-ap-upgrade-reopen
+                                data-id="<?php echo esc_attr((string) $review_id); ?>">
+                            <?php esc_html_e('Re-request review', 'artpulse-management'); ?>
+                        </button>
                     <?php endif; ?>
 
                     <?php if (!empty($upgrade['secondary_actions']) && is_array($upgrade['secondary_actions'])) : ?>
