@@ -588,6 +588,7 @@
 
         clearUpgradeError(btn);
         disableUpgradeButton(btn);
+        renderStatus(btn, { state: 'loading' });
 
         submitUpgradeRequest(type, btn)
           .then((response) => {
@@ -650,7 +651,7 @@
             setBusy(btn, false);
             const statusEl = renderStatus(card || btn, {
               state: 'error',
-              message: normalizeErrorMessage(error),
+              message: formatError(error),
               reason: existingReason,
             });
 
@@ -759,8 +760,9 @@
 
   function disableUpgradeButton(button) {
     button.dataset.apUpgradeBusy = '1';
-    button.classList.add('is-disabled');
+    button.classList.add('is-loading');
     button.setAttribute('aria-disabled', 'true');
+    button.setAttribute('aria-busy', 'true');
 
     if (button.tagName === 'BUTTON') {
       button.disabled = true;
@@ -769,8 +771,9 @@
 
   function enableUpgradeButton(button) {
     delete button.dataset.apUpgradeBusy;
-    button.classList.remove('is-disabled');
+    button.classList.remove('is-loading');
     button.removeAttribute('aria-disabled');
+    button.removeAttribute('aria-busy');
 
     if (button.tagName === 'BUTTON') {
       button.disabled = false;
@@ -810,28 +813,15 @@
 
   function renderUpgradeError(button, error) {
     const card = findUpgradeCard(button);
-    const message = normalizeErrorMessage(error);
+    const statusEl = renderStatus(card || button, {
+      state: 'error',
+      message: formatError(error),
+      reason: '',
+    });
 
-    let container = card ? card.querySelector('[data-ap-upgrade-error]') : null;
-
-    if (!container) {
-      container = document.createElement('div');
-      container.className = 'ap-dashboard-error';
-      container.setAttribute('data-ap-upgrade-error', '1');
-      container.setAttribute('role', 'status');
-      container.setAttribute('aria-live', 'polite');
-
-      const actions = findUpgradeActionsContainer(button);
-      if (actions && actions.parentNode) {
-        actions.parentNode.insertBefore(container, actions.nextSibling);
-      } else if (card) {
-        card.appendChild(container);
-      } else {
-        button.insertAdjacentElement('afterend', container);
-      }
+    if (statusEl) {
+      focusStatusRegion(statusEl);
     }
-
-    container.textContent = message;
   }
 
   function clearUpgradeError(button) {
@@ -844,6 +834,14 @@
           node.parentNode.removeChild(node);
         }
       });
+    }
+
+    const status = card ? card.querySelector('[data-ap-upgrade-status]') : null;
+    if (status) {
+      status.classList.remove('is-error');
+      if (status.dataset) {
+        delete status.dataset.apUpgradeStatus;
+      }
     }
   }
 
@@ -1009,6 +1007,7 @@
     }
 
     container.classList.toggle('is-error', copy.state === 'error');
+    container.classList.toggle('is-loading', copy.state === 'loading');
 
     return container;
   }
@@ -1081,7 +1080,7 @@
           'Your request is pending review. We will email you when a moderator responds.'
         );
       case 'error':
-        return normalizeErrorMessage();
+        return formatError();
       default:
         return '';
     }
@@ -1145,7 +1144,7 @@
       element.dataset.apBusy = '1';
       element.setAttribute('aria-busy', 'true');
       element.setAttribute('aria-disabled', 'true');
-      element.classList.add('is-busy');
+      element.classList.add('is-loading');
 
       if (element.tagName && element.tagName.toLowerCase() === 'button') {
         element.disabled = true;
@@ -1153,7 +1152,7 @@
     } else {
       element.removeAttribute('aria-busy');
       element.removeAttribute('aria-disabled');
-      element.classList.remove('is-busy');
+      element.classList.remove('is-loading');
 
       if (element.tagName && element.tagName.toLowerCase() === 'button') {
         element.disabled = false;
@@ -1163,7 +1162,7 @@
     }
   }
 
-  function normalizeErrorMessage(error) {
+  function formatError(error) {
     if (error) {
       if (typeof error.message === 'string' && error.message.trim() !== '') {
         return error.message.trim();
