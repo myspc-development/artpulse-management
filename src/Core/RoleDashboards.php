@@ -290,13 +290,17 @@ class RoleDashboards
             );
         }
 
-        wp_enqueue_script(
-            'ap-dashboards-js',
-            plugins_url('assets/js/ap-dashboards.js', dirname(__DIR__, 2)),
-            ['wp-api-fetch', 'wp-dom-ready', 'ap-social-js'],
-            $version,
-            true
-        );
+        if (!wp_script_is('ap-dashboards-js', 'registered')) {
+            wp_register_script(
+                'ap-dashboards-js',
+                plugins_url('assets/js/ap-dashboards.js', dirname(__DIR__, 2)),
+                ['wp-api-fetch', 'wp-dom-ready', 'ap-social-js'],
+                $version,
+                true
+            );
+        }
+
+        wp_enqueue_script('ap-dashboards-js');
 
         wp_localize_script(
             'ap-dashboards-js',
