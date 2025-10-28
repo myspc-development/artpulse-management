@@ -347,7 +347,15 @@ class MemberDashboard
                 'user_id' => $user_id,
             ]);
 
-            wp_safe_redirect(add_query_arg('ap_artist_upgrade', 'approved', $redirect_base));
+            $dashboard_url = add_query_arg(
+                [
+                    'role'              => 'artist',
+                    'ap_artist_upgrade' => 'approved',
+                ],
+                home_url('/dashboard/')
+            );
+
+            wp_safe_redirect($dashboard_url);
             exit;
         }
 
