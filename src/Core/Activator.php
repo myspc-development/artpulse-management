@@ -24,5 +24,7 @@ class Activator
         if (get_option('artpulse_webhook_status') === false) {
             add_option('artpulse_webhook_status', 'Not yet received');
         }
+
+        Capabilities::add_roles_and_capabilities();
     }
 }

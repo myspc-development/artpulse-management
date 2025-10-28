@@ -3,15 +3,18 @@
 namespace ArtPulse\Admin;
 
 use ArtPulse\Core\AuditLogger;
+use ArtPulse\Core\Capabilities;
 use ArtPulse\Core\RoleUpgradeManager;
 use ArtPulse\Core\UpgradeReviewRepository;
 use ArtPulse\Frontend\MemberDashboard;
 use WP_Post;
 use WP_User;
+use function esc_url_raw;
 
 class UpgradeReviewsController
 {
-    private const CAPABILITY = 'ap_review_manage';
+    private const CAPABILITY_VIEW = Capabilities::CAP_REVIEW_VIEW;
+    private const CAPABILITY_MANAGE = Capabilities::CAP_REVIEW_MANAGE;
 
     public static function register(): void
     {
@@ -25,7 +28,7 @@ class UpgradeReviewsController
             'artpulse-settings',
             __('Upgrade Reviews', 'artpulse-management'),
             __('Upgrade Reviews', 'artpulse-management'),
-            self::CAPABILITY,
+            self::CAPABILITY_VIEW,
             'artpulse-upgrade-reviews',
             [self::class, 'render']
         );
@@ -33,11 +36,13 @@ class UpgradeReviewsController
 
     public static function render(): void
     {
-        if (!current_user_can(self::CAPABILITY)) {
+        $user = wp_get_current_user();
+
+        if (!$user instanceof WP_User || !user_can($user, self::CAPABILITY_VIEW)) {
             wp_die(esc_html__('You do not have permission to view this page.', 'artpulse-management'));
         }
 
-        self::maybe_process_bulk_action();
+        self::maybe_process_bulk_action($user);
 
         $view = isset($_GET['view']) ? sanitize_key(wp_unslash($_GET['view'])) : '';
         $review_id = isset($_GET['review']) ? absint($_GET['review']) : 0;
@@ -152,7 +157,9 @@ class UpgradeReviewsController
 
     public static function handle_action(): void
     {
-        if (!current_user_can(self::CAPABILITY)) {
+        $user = wp_get_current_user();
+
+        if (!$user instanceof WP_User || !user_can($user, self::CAPABILITY_MANAGE)) {
             wp_die(esc_html__('Insufficient permissions.', 'artpulse-management'));
         }
 
@@ -235,8 +242,9 @@ class UpgradeReviewsController
         }
 
         $email_context = [
-            'dashboard_url' => add_query_arg('role', 'organization', home_url('/dashboard/')),
+            'dashboard_url' => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
             'org_id'        => $org_id,
+            'role_label'    => __('Organization', 'artpulse-management'),
         ];
         $audit_action  = 'org.upgrade.approved';
 
@@ -269,7 +277,8 @@ class UpgradeReviewsController
             ]);
 
             $email_context = [
-                'dashboard_url' => add_query_arg('role', 'artist', home_url('/dashboard/')),
+                'dashboard_url' => esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/'))),
+                'role_label'    => __('Artist', 'artpulse-management'),
             ];
             $audit_action = 'artist.upgrade.approved';
         }
@@ -322,9 +331,19 @@ class UpgradeReviewsController
 
         $user = get_user_by('id', $user_id);
         if ($user instanceof WP_User) {
+            $role_label = __('Organization', 'artpulse-management');
+            $dashboard_url = esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/')));
+
+            if (UpgradeReviewRepository::TYPE_ARTIST_UPGRADE === $type) {
+                $role_label = __('Artist', 'artpulse-management');
+                $dashboard_url = esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/')));
+            }
+
             MemberDashboard::send_member_email('upgrade_denied', $user, [
-                'reason' => $sanitized_reason,
-                'org_id' => $org_id,
+                'reason'        => $sanitized_reason,
+                'org_id'        => $org_id,
+                'role_label'    => $role_label,
+                'dashboard_url' => $dashboard_url,
             ]);
         }
 
@@ -379,13 +398,17 @@ class UpgradeReviewsController
         ];
     }
 
-    private static function maybe_process_bulk_action(): void
+    private static function maybe_process_bulk_action(WP_User $user): void
     {
         if ('POST' !== $_SERVER['REQUEST_METHOD']) {
             return;
         }
 
         if (!isset($_POST['ap_bulk_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ap_bulk_nonce'])), 'ap-upgrade-review-bulk')) {
+            return;
+        }
+
+        if (!user_can($user, self::CAPABILITY_MANAGE)) {
             return;
         }
 
