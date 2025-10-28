@@ -28,6 +28,114 @@ $metric_labels = [
     'pending_submissions'   => esc_html__('Pending', 'artpulse-management'),
     'published_submissions' => esc_html__('Published', 'artpulse-management'),
 ];
+
+$query_notifications = [];
+
+$artist_status = isset($_GET['ap_artist_upgrade']) ? sanitize_key((string) $_GET['ap_artist_upgrade']) : '';
+if ($artist_status !== '') {
+    $artist_dashboard_url  = esc_url(add_query_arg('role', 'artist', home_url('/dashboard/')));
+    $artist_dashboard_link = sprintf(
+        '<a href="%s">%s</a>',
+        $artist_dashboard_url,
+        esc_html__('Open the artist dashboard', 'artpulse-management')
+    );
+
+    switch ($artist_status) {
+        case 'approved':
+            $query_notifications[] = [
+                'type'    => 'success',
+                'message' => sprintf(
+                    '%1$s %2$s %3$s',
+                    esc_html__('Artist tools are ready!', 'artpulse-management'),
+                    esc_html__('You can use artist and organization dashboards side by side.', 'artpulse-management'),
+                    $artist_dashboard_link
+                ),
+            ];
+            break;
+        case 'exists':
+            $query_notifications[] = [
+                'type'    => 'info',
+                'message' => sprintf(
+                    '%1$s %2$s',
+                    esc_html__('You already have artist access.', 'artpulse-management'),
+                    $artist_dashboard_link
+                ),
+            ];
+            break;
+        case 'pending':
+            $query_notifications[] = [
+                'type'    => 'info',
+                'message' => esc_html__('Your artist upgrade request is pending review. We will email you as soon as it is processed.', 'artpulse-management'),
+            ];
+            break;
+        default:
+            $query_notifications[] = [
+                'type'    => 'error',
+                'message' => esc_html__('We could not process your artist upgrade request. Please try again or contact support if the issue persists.', 'artpulse-management'),
+            ];
+            break;
+    }
+}
+
+$org_status = isset($_GET['ap_org_upgrade']) ? sanitize_key((string) $_GET['ap_org_upgrade']) : '';
+if ($org_status !== '') {
+    $org_dashboard_url  = esc_url(add_query_arg('role', 'organization', home_url('/dashboard/')));
+    $org_dashboard_link = sprintf(
+        '<a href="%s">%s</a>',
+        $org_dashboard_url,
+        esc_html__('Open the organization dashboard', 'artpulse-management')
+    );
+
+    switch ($org_status) {
+        case 'approved':
+            $query_notifications[] = [
+                'type'    => 'success',
+                'message' => sprintf(
+                    '%1$s %2$s %3$s',
+                    esc_html__('Organization tools are ready!', 'artpulse-management'),
+                    esc_html__('You can manage organization and artist access at the same time.', 'artpulse-management'),
+                    $org_dashboard_link
+                ),
+            ];
+            break;
+        case 'pending':
+            $query_notifications[] = [
+                'type'    => 'info',
+                'message' => esc_html__('Your organization upgrade request is pending review. We will email you when a moderator responds.', 'artpulse-management'),
+            ];
+            break;
+        case 'exists':
+            $query_notifications[] = [
+                'type'    => 'info',
+                'message' => sprintf(
+                    '%1$s %2$s',
+                    esc_html__('You already manage an organization on ArtPulse.', 'artpulse-management'),
+                    $org_dashboard_link
+                ),
+            ];
+            break;
+        case 'denied':
+            $query_notifications[] = [
+                'type'    => 'error',
+                'message' => sprintf(
+                    '%1$s %2$s',
+                    esc_html__('Your organization request was not approved this time.', 'artpulse-management'),
+                    esc_html__('Review the feedback in your dashboard and try again when you are ready.', 'artpulse-management')
+                ),
+            ];
+            break;
+        default:
+            $query_notifications[] = [
+                'type'    => 'error',
+                'message' => esc_html__('We could not submit your organization upgrade request. Please try again or contact support if the problem continues.', 'artpulse-management'),
+            ];
+            break;
+    }
+}
+
+if (!empty($query_notifications)) {
+    $notifications = array_merge($query_notifications, is_array($notifications) ? $notifications : []);
+}
 ?>
 <div class="ap-dashboard-widget ap-dashboard-widget--modern" data-ap-dashboard-role="<?php echo esc_attr($role); ?>">
     <?php if (!empty($profile)) : ?>

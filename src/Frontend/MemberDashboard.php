@@ -505,6 +505,24 @@ class MemberDashboard
 
         $context['user'] = $user;
 
+        $default_dashboard_urls = [
+            'upgrade_requested' => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
+            'upgrade_approved'  => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
+            'upgrade_denied'    => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
+        ];
+
+        if (empty($context['dashboard_url']) && isset($default_dashboard_urls[$slug])) {
+            $context['dashboard_url'] = $default_dashboard_urls[$slug];
+        }
+
+        if (empty($context['dashboard_url'])) {
+            $context['dashboard_url'] = esc_url_raw(home_url('/dashboard/'));
+        }
+
+        if (empty($context['dual_role_message'])) {
+            $context['dual_role_message'] = __('Remember: you can keep both artist and organization access active—switch roles from your dashboard.', 'artpulse-management');
+        }
+
         $subject = '';
         $template_file = '';
 
