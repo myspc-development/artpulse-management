@@ -413,6 +413,19 @@ class UpgradeReviewsController
                     'user_id'      => (int) $user_id,
                 ]);
             }
+        } elseif (UpgradeReviewRepository::TYPE_ARTIST_UPGRADE === $type) {
+            $artist_draft_id = (int) get_post_meta($review->ID, '_ap_placeholder_artist_id', true);
+            if ($artist_draft_id > 0) {
+                wp_trash_post($artist_draft_id);
+                delete_post_meta($artist_draft_id, '_ap_owner_user');
+                delete_post_meta($review->ID, '_ap_placeholder_artist_id');
+
+                AuditLogger::info('upgrade.deny.cleanup', [
+                    'review_id'       => (int) $review->ID,
+                    'artist_draft_id' => $artist_draft_id,
+                    'user_id'         => (int) $user_id,
+                ]);
+            }
         }
 
         $user = get_user_by('id', $user_id);
