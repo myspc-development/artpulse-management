@@ -1301,6 +1301,7 @@ class RoleDashboards
         $journeys = [];
 
         if (in_array($role, ['member', 'artist'], true)) {
+            $artist_review = self::getArtistUpgradeReviewState($user_id);
             $journeys['artist'] = self::buildJourneyState(
                 'artist',
                 $user_id,
@@ -1310,11 +1311,13 @@ class RoleDashboards
                     'dashboard' => add_query_arg('role', 'artist', home_url('/dashboard/')),
                     'public'    => '',
                     'upgrade'   => $upgrade_links['artist'] ?? '',
-                ]
+                ],
+                $artist_review
             );
         }
 
         if (in_array($role, ['member', 'organization'], true)) {
+            $org_review = self::getOrgUpgradeReviewState($user_id);
             $journeys['organization'] = self::buildJourneyState(
                 'organization',
                 $user_id,
@@ -1324,7 +1327,8 @@ class RoleDashboards
                     'dashboard' => add_query_arg('role', 'organization', home_url('/dashboard/')),
                     'public'    => '',
                     'upgrade'   => $upgrade_links['organization'] ?? '',
-                ]
+                ],
+                $org_review
             );
         }
 
@@ -1508,7 +1512,7 @@ class RoleDashboards
         return $snapshot;
     }
 
-    private static function buildJourneyState(string $journey, int $user_id, string $post_type, array $links): array
+    private static function buildJourneyState(string $journey, int $user_id, string $post_type, array $links, array $review = []): array
     {
         $snapshot = self::summarizePortfolio($user_id, $post_type);
 
@@ -1536,12 +1540,6 @@ class RoleDashboards
             'disabled' => empty($links['upgrade']),
         ];
         $anchor = sprintf('#ap-journey-%s', $journey);
-        $review = [];
-
-        if ('organization' === $journey) {
-            $review = self::getOrgUpgradeReviewState($user_id);
-        }
-
         if ($has_access) {
             $status       = $snapshot['status'];
             $status_label = $snapshot['status_label'];
@@ -1620,6 +1618,36 @@ class RoleDashboards
                         'disabled' => false,
                     ];
                 }
+            } elseif ('artist' === $journey) {
+                if (($review['status'] ?? '') === 'pending') {
+                    $status       = 'pending_request';
+                    $status_label = __('Upgrade request pending', 'artpulse-management');
+                    $badge        = [
+                        'label'   => __('Pending review', 'artpulse-management'),
+                        'variant' => 'warning',
+                    ];
+                    $description = __('We are reviewing your artist request. We will email you once it is approved.', 'artpulse-management');
+                    $cta = [
+                        'label'    => __('Check request status', 'artpulse-management'),
+                        'url'      => $anchor,
+                        'variant'  => 'secondary',
+                        'disabled' => false,
+                    ];
+                } elseif (($review['status'] ?? '') === 'denied') {
+                    $status       = 'denied';
+                    $status_label = __('Request denied', 'artpulse-management');
+                    $badge        = [
+                        'label'   => __('Action required', 'artpulse-management'),
+                        'variant' => 'danger',
+                    ];
+                    $description = __('Your last artist request was denied. Review the feedback and resubmit when you are ready.', 'artpulse-management');
+                    $cta = [
+                        'label'    => __('Review feedback', 'artpulse-management'),
+                        'url'      => $anchor,
+                        'variant'  => 'secondary',
+                        'disabled' => false,
+                    ];
+                }
             }
         }
 
@@ -1639,6 +1667,40 @@ class RoleDashboards
             'anchor'           => $anchor,
             'review'           => $review,
         ];
+    }
+
+    private static function getArtistUpgradeReviewState(int $user_id): array
+    {
+        $state = [
+            'status'     => 'none',
+            'reason'     => '',
+            'request_id' => 0,
+            'artist_id'  => 0,
+            'updated_at' => null,
+        ];
+
+        $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+
+        if (!$request instanceof WP_Post) {
+            return $state;
+        }
+
+        $state['request_id'] = (int) $request->ID;
+        $state['artist_id']  = UpgradeReviewRepository::get_post_id($request);
+        $state['reason']     = UpgradeReviewRepository::get_reason($request);
+        $state['updated_at'] = get_post_modified_time('U', true, $request);
+
+        $status = UpgradeReviewRepository::get_status($request);
+
+        if ($status === UpgradeReviewRepository::STATUS_APPROVED) {
+            $state['status'] = 'approved';
+        } elseif ($status === UpgradeReviewRepository::STATUS_DENIED) {
+            $state['status'] = 'denied';
+        } else {
+            $state['status'] = 'pending';
+        }
+
+        return $state;
     }
 
     private static function getOrgUpgradeReviewState(int $user_id): array
@@ -1722,6 +1784,7 @@ class RoleDashboards
             'variant' => 'muted',
         ];
         $disabled_reason = __('Publish a profile to unlock event submissions.', 'artpulse-management');
+        $action_status   = 'locked';
         $target_journey  = null;
 
         if ('organization' === $role) {
@@ -1742,17 +1805,18 @@ class RoleDashboards
         $cta_url = $base_url;
 
         if ($target_journey) {
-            $status = $target_journey['portfolio']['status'] ?? 'missing';
+            $journey_status = $target_journey['status'] ?? 'locked';
+            $portfolio      = $target_journey['portfolio'] ?? [];
+            $post_id        = $portfolio['post_id'] ?? 0;
 
-            if (in_array($status, ['published', 'scheduled'], true)) {
+            if ($journey_status === 'published') {
                 $enabled      = true;
                 $status_label = __('Ready', 'artpulse-management');
                 $badge        = [
                     'label'   => __('Ready', 'artpulse-management'),
                     'variant' => 'success',
                 ];
-                $portfolio = $target_journey['portfolio'] ?? [];
-                $post_id   = $portfolio['post_id'] ?? 0;
+                $action_status = 'ready';
 
                 if ($post_id) {
                     $cta_url = add_query_arg(
@@ -1763,6 +1827,41 @@ class RoleDashboards
                 }
 
                 $disabled_reason = '';
+            } elseif ($journey_status === 'pending_review') {
+                $status_label    = __('Pending review', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('Pending review', 'artpulse-management'),
+                    'variant' => 'warning',
+                ];
+                $disabled_reason = __('Your profile is pending review. We will email you once it is approved.', 'artpulse-management');
+                $action_status   = 'pending';
+            } elseif ($journey_status === 'in_progress') {
+                $status_label    = __('Finish your profile to continue', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('In progress', 'artpulse-management'),
+                    'variant' => 'info',
+                ];
+                $disabled_reason = __('Publish your profile to unlock event submissions.', 'artpulse-management');
+            } elseif ($journey_status === 'pending_request') {
+                $status_label  = __('Pending review', 'artpulse-management');
+                $badge         = [
+                    'label'   => __('Pending review', 'artpulse-management'),
+                    'variant' => 'warning',
+                ];
+                $action_status = 'pending';
+
+                if (($target_journey['slug'] ?? '') === 'artist') {
+                    $disabled_reason = __('We are reviewing your artist request. We will email you once it is approved.', 'artpulse-management');
+                } else {
+                    $disabled_reason = __('We are reviewing your organization request. We will email you once it is approved.', 'artpulse-management');
+                }
+            } elseif ($journey_status === 'denied') {
+                $status_label    = __('Action required', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('Action required', 'artpulse-management'),
+                    'variant' => 'danger',
+                ];
+                $disabled_reason = __('Review the feedback on your upgrade request to unlock event submissions.', 'artpulse-management');
             } else {
                 $disabled_reason = __('Publish your profile to unlock event submissions.', 'artpulse-management');
             }
@@ -1773,7 +1872,7 @@ class RoleDashboards
             'title'            => __('Submit an event', 'artpulse-management'),
             'description'      => $description,
             'badge'            => $badge,
-            'status'           => $enabled ? 'ready' : 'locked',
+            'status'           => $action_status,
             'status_label'     => $status_label,
             'progress_percent' => $enabled ? 100 : 0,
             'cta'              => [

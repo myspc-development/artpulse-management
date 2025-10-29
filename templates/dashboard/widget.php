@@ -65,7 +65,7 @@ if ($artist_status !== '') {
         case 'pending':
             $query_notifications[] = [
                 'type'    => 'info',
-                'message' => esc_html__('Your artist upgrade request is pending review. We will email you as soon as it is processed.', 'artpulse-management'),
+                'message' => esc_html__('We are reviewing your artist request. We will email you once it is approved.', 'artpulse-management'),
             ];
             break;
         default:
