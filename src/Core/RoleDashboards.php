@@ -358,6 +358,8 @@ class RoleDashboards
                     'roleSwitcherLabel'      => __('Select a dashboard role', 'artpulse-management'),
                     'currentRoleLabel'       => __('Current dashboard', 'artpulse-management'),
                     'orgRequestNotice'       => __('Your organization upgrade request is pending review.', 'artpulse-management'),
+                    'artistRequestNotice'    => __('Your artist upgrade request is pending review.', 'artpulse-management'),
+                    'artistRequestDenied'    => __('Your artist upgrade request was denied.', 'artpulse-management'),
                     'orgRequestHistoryCta'   => __('View request history', 'artpulse-management'),
                     'orgRequestSupportCta'   => __('Contact support', 'artpulse-management'),
                     'orgRequestDismiss'      => __('Dismiss', 'artpulse-management'),
@@ -1387,6 +1389,31 @@ class RoleDashboards
                 ];
             } elseif (($review['status'] ?? '') === 'denied') {
                 $message = __('Your organization upgrade request was denied.', 'artpulse-management');
+
+                if (!empty($review['reason'])) {
+                    $message .= ' ' . sprintf(__('Reason: %s', 'artpulse-management'), $review['reason']);
+                }
+
+                $notifications[] = [
+                    'type'    => 'warning',
+                    'message' => $message,
+                    'anchor'  => $anchor,
+                ];
+            }
+        }
+
+        if (isset($journeys['artist']['review'])) {
+            $review = $journeys['artist']['review'];
+            $anchor = $journeys['artist']['anchor'] ?? '';
+
+            if (($review['status'] ?? '') === 'pending') {
+                $notifications[] = [
+                    'type'    => 'info',
+                    'message' => __('Your artist upgrade request is pending review.', 'artpulse-management'),
+                    'anchor'  => $anchor,
+                ];
+            } elseif (($review['status'] ?? '') === 'denied') {
+                $message = __('Your artist upgrade request was denied.', 'artpulse-management');
 
                 if (!empty($review['reason'])) {
                     $message .= ' ' . sprintf(__('Reason: %s', 'artpulse-management'), $review['reason']);
