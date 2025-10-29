@@ -1776,7 +1776,25 @@ class RoleDashboards
 
     private static function buildSubmitEventAction(string $role, int $user_id, array $journeys): ?array
     {
-        $base_url        = home_url('/submit-event/');
+        $submission_page_id = self::locateFrontendEventSubmissionPage();
+        $base_url            = '';
+
+        if ($submission_page_id) {
+            $permalink = get_permalink($submission_page_id);
+
+            if (is_string($permalink) && $permalink !== '') {
+                $base_url = $permalink;
+            }
+        }
+
+        if ($base_url === '') {
+            $base_url = self::getSubmissionCreateUrl('artpulse_event');
+        }
+
+        if ($base_url === '') {
+            $base_url = admin_url('post-new.php?post_type=artpulse_event');
+        }
+
         $description     = __('Share upcoming events with the ArtPulse community.', 'artpulse-management');
         $enabled         = false;
         $status_label    = __('Locked', 'artpulse-management');
