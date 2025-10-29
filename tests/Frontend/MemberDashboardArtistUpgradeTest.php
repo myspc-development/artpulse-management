@@ -24,6 +24,8 @@ class MemberDashboardArtistUpgradeTest extends WP_UnitTestCase
 
     protected function tearDown(): void
     {
+        wp_set_current_user(0);
+
         if (post_type_exists('artpulse_artist')) {
             unregister_post_type('artpulse_artist');
         }
@@ -39,6 +41,7 @@ class MemberDashboardArtistUpgradeTest extends WP_UnitTestCase
         ]);
 
         $user = get_user_by('id', $user_id);
+        wp_set_current_user($user_id);
         $result = $this->invoke_process_artist_upgrade_request($user);
 
         $this->assertIsArray($result);
@@ -72,6 +75,7 @@ class MemberDashboardArtistUpgradeTest extends WP_UnitTestCase
         ]);
 
         $user = get_user_by('id', $user_id);
+        wp_set_current_user($user_id);
         $first_result = $this->invoke_process_artist_upgrade_request($user);
         $this->assertIsArray($first_result);
 
@@ -87,6 +91,7 @@ class MemberDashboardArtistUpgradeTest extends WP_UnitTestCase
         ]);
 
         $user   = get_user_by('id', $user_id);
+        wp_set_current_user($user_id);
         $result = $this->invoke_process_artist_upgrade_request($user);
         $request_id = (int) ($result['request_id'] ?? 0);
         $artist_id  = (int) ($result['artist_id'] ?? 0);
