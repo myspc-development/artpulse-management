@@ -46,6 +46,7 @@ $journeys = [
             $progress         = max(0, min(100, (int) ($state['journey']['progress_percent'] ?? 0)));
             $status_notice    = '';
             $notice_variant   = '';
+            $profile_url      = isset($state['profile_url']) ? (string) $state['profile_url'] : '';
 
             if ('requested' === $status) {
                 $status_notice  = __('Your request is pending review. We will email you when a moderator responds.', 'artpulse-management');
@@ -89,6 +90,11 @@ $journeys = [
                             <span class="ap-dashboard-button ap-dashboard-button--<?php echo esc_attr($cta_variant); ?> is-disabled" role="link" aria-disabled="true"><?php echo esc_html($cta_label); ?></span>
                         <?php else : ?>
                             <a class="ap-dashboard-button ap-dashboard-button--<?php echo esc_attr($cta_variant); ?>" href="<?php echo esc_url($cta_url); ?>"><?php echo esc_html($cta_label); ?></a>
+                        <?php endif; ?>
+                        <?php if ('requested' === $status && $profile_url !== '') : ?>
+                            <a class="ap-dashboard-journey__secondary-link" href="<?php echo esc_url($profile_url); ?>">
+                                <?php esc_html_e('Preview your draft artist profile', 'artpulse-management'); ?>
+                            </a>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
