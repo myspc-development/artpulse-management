@@ -133,6 +133,60 @@ class MemberDashboard
             return $state;
         }
 
+        $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        $status_locked = false;
+
+        if ($request instanceof WP_Post) {
+            $state['reason'] = UpgradeReviewRepository::get_reason($request);
+
+            $profile_id = UpgradeReviewRepository::get_post_id($request);
+            if ($profile_id > 0) {
+                $permalink = get_permalink($profile_id);
+                if ($permalink) {
+                    $state['profile_url'] = esc_url_raw($permalink);
+                }
+            }
+
+            $review_status = UpgradeReviewRepository::get_status($request);
+
+            if ($review_status === UpgradeReviewRepository::STATUS_PENDING) {
+                $state['status'] = 'requested';
+                $state['cta']    = [
+                    'label'    => __('Check request status', 'artpulse-management'),
+                    'url'      => sprintf('#ap-journey-%s', $journey['slug'] ?? 'artist'),
+                    'variant'  => 'secondary',
+                    'disabled' => false,
+                    'mode'     => 'link',
+                ];
+                $status_locked = true;
+            } elseif ($review_status === UpgradeReviewRepository::STATUS_DENIED) {
+                $state['status'] = 'denied';
+                $state['cta']    = [
+                    'label'    => __('Reopen artist builder', 'artpulse-management'),
+                    'url'      => esc_url_raw($builder_url),
+                    'variant'  => 'primary',
+                    'disabled' => false,
+                    'mode'     => 'link',
+                ];
+                $status_locked = true;
+            } elseif ($review_status === UpgradeReviewRepository::STATUS_APPROVED) {
+                $state['status']      = 'approved';
+                $state['profile_url'] = $dashboard_url;
+                $state['cta']         = [
+                    'label'    => __('Open artist tools', 'artpulse-management'),
+                    'url'      => $dashboard_url,
+                    'variant'  => 'primary',
+                    'disabled' => false,
+                    'mode'     => 'link',
+                ];
+                $status_locked = true;
+            }
+        }
+
+        if ($status_locked) {
+            return $state;
+        }
+
         $portfolio_status = $journey['portfolio']['status'] ?? '';
 
         if ('draft' === $portfolio_status || 'pending' === $portfolio_status) {
@@ -337,9 +391,10 @@ class MemberDashboard
             if (is_wp_error($result)) {
                 $code = $result->get_error_code();
                 $target = match ($code) {
-                    'ap_artist_upgrade_exists'  => 'exists',
-                    'ap_artist_upgrade_invalid' => 'failed',
-                    default                     => 'failed',
+                    'ap_artist_upgrade_exists'   => 'exists',
+                    'ap_artist_upgrade_pending'  => 'pending',
+                    'ap_artist_upgrade_invalid'  => 'failed',
+                    default                      => 'failed',
                 };
 
                 wp_safe_redirect(add_query_arg('ap_artist_upgrade', $target, $redirect_base));
@@ -348,17 +403,11 @@ class MemberDashboard
 
             AuditLogger::info('artist.upgrade.requested', [
                 'user_id' => $user_id,
+                'post_id' => $result['artist_id'] ?? 0,
+                'request_id' => $result['request_id'] ?? 0,
             ]);
 
-            $dashboard_url = add_query_arg(
-                [
-                    'role'              => 'artist',
-                    'ap_artist_upgrade' => 'approved',
-                ],
-                home_url('/dashboard/')
-            );
-
-            wp_safe_redirect($dashboard_url);
+            wp_safe_redirect(add_query_arg('ap_artist_upgrade', 'pending', $redirect_base));
             exit;
         }
 
@@ -410,11 +459,61 @@ class MemberDashboard
             return new WP_Error('ap_artist_upgrade_exists', __('You already have access to the artist tools.', 'artpulse-management'));
         }
 
-        RoleUpgradeManager::grant_role($user_id, 'artist', [
-            'source' => 'dashboard_request',
+        $existing_request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        if ($existing_request instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing_request)) {
+            return new WP_Error('ap_artist_upgrade_pending', __('Your previous request is still pending.', 'artpulse-management'));
+        }
+
+        $artist_id = self::create_placeholder_artist($user_id, $user);
+        if (!$artist_id) {
+            return new WP_Error('ap_artist_upgrade_profile_failed', __('Unable to create the artist draft.', 'artpulse-management'));
+        }
+
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE, $artist_id);
+        $request_id = (int) ($result['request_id'] ?? 0);
+
+        if ($request_id <= 0) {
+            wp_delete_post($artist_id, true);
+
+            return new WP_Error('ap_artist_upgrade_request_failed', __('Unable to create the review request.', 'artpulse-management'));
+        }
+
+        update_post_meta($request_id, '_ap_placeholder_artist_id', $artist_id);
+
+        return [
+            'artist_id'  => $artist_id,
+            'request_id' => $request_id,
+        ];
+    }
+
+    private static function create_placeholder_artist(int $user_id, WP_User $user): ?int
+    {
+        $display_name = trim($user->display_name ?: $user->user_login);
+
+        if ('' === $display_name) {
+            $title = __('New artist profile', 'artpulse-management');
+        } else {
+            $title = sprintf(
+                /* translators: %s member display name. */
+                __('Artist profile for %s', 'artpulse-management'),
+                $display_name
+            );
+        }
+
+        $artist_id = wp_insert_post([
+            'post_type'   => 'artpulse_artist',
+            'post_status' => 'draft',
+            'post_title'  => $title,
+            'post_author' => $user_id,
         ]);
 
-        return ['role' => 'artist'];
+        if (!$artist_id || is_wp_error($artist_id)) {
+            return null;
+        }
+
+        RoleUpgradeManager::attach_owner((int) $artist_id, $user_id);
+
+        return (int) $artist_id;
     }
 
     /**
