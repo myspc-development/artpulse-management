@@ -690,6 +690,24 @@
   background: #ffffff;
 }
 
+.ap-dashboard-journey__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.ap-dashboard-journey__secondary-link {
+  font-size: 0.9rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.ap-dashboard-journey__secondary-link:hover,
+.ap-dashboard-journey__secondary-link:focus {
+  text-decoration: underline;
+}
+
 .ap-dashboard-journey__title {
   margin: 0;
   font-size: 1.05rem;

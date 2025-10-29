@@ -14,6 +14,10 @@ msgstr ""
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: artpulse\n"
 
+#: templates/dashboard/partials/member-org-upgrade.php:96
+msgid "Preview your draft artist profile"
+msgstr ""
+
 #. Plugin Name of the plugin
 #: artpulse-management.php
 msgid "ArtPulse Management"
