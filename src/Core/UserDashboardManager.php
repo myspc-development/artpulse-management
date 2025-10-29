@@ -102,14 +102,297 @@ class UserDashboardManager
     public static function updateProfile(WP_REST_Request $request)
     {
         $user_id = get_current_user_id();
-        $params  = $request->get_json_params();
-        if ( isset($params['display_name']) ) {
-            wp_update_user([
-                'ID'           => $user_id,
-                'display_name' => sanitize_text_field($params['display_name']),
-            ]);
+
+        if (!$user_id) {
+            return new \WP_REST_Response([
+                'message' => __('You must be logged in to update your profile.', 'artpulse-management'),
+            ], 401);
         }
-        return rest_ensure_response([ 'success' => true ]);
+
+        $params = $request->get_json_params();
+
+        if (!is_array($params)) {
+            return new \WP_REST_Response([
+                'message' => __('Invalid profile payload.', 'artpulse-management'),
+            ], 400);
+        }
+
+        $profile_input    = [];
+        $membership_input = [];
+
+        if (isset($params['profile']) && is_array($params['profile'])) {
+            $profile_input = $params['profile'];
+        } else {
+            $profile_input = $params;
+        }
+
+        if (isset($params['membership']) && is_array($params['membership'])) {
+            $membership_input = $params['membership'];
+        } elseif (isset($profile_input['membership']) && is_array($profile_input['membership'])) {
+            $membership_input = $profile_input['membership'];
+            unset($profile_input['membership']);
+        }
+
+        $user_update_args = [ 'ID' => $user_id ];
+        $should_update_user = false;
+        $updates_applied    = false;
+
+        $sanitized_profile_fields    = [];
+        $sanitized_membership_fields = [];
+
+        if (isset($profile_input['display_name'])) {
+            if (!is_string($profile_input['display_name'])) {
+                return new \WP_REST_Response([
+                    'message' => __('The display name must be a string value.', 'artpulse-management'),
+                ], 400);
+            }
+
+            $display_name = sanitize_text_field($profile_input['display_name']);
+            $user_update_args['display_name'] = $display_name;
+            $sanitized_profile_fields['display_name'] = $display_name;
+            $should_update_user = true;
+        }
+
+        if (isset($profile_input['first_name'])) {
+            if (!is_string($profile_input['first_name'])) {
+                return new \WP_REST_Response([
+                    'message' => __('The first name must be a string value.', 'artpulse-management'),
+                ], 400);
+            }
+
+            $first_name = sanitize_text_field($profile_input['first_name']);
+            $user_update_args['first_name'] = $first_name;
+            $sanitized_profile_fields['first_name'] = $first_name;
+            $should_update_user = true;
+        }
+
+        if (isset($profile_input['last_name'])) {
+            if (!is_string($profile_input['last_name'])) {
+                return new \WP_REST_Response([
+                    'message' => __('The last name must be a string value.', 'artpulse-management'),
+                ], 400);
+            }
+
+            $last_name = sanitize_text_field($profile_input['last_name']);
+            $user_update_args['last_name'] = $last_name;
+            $sanitized_profile_fields['last_name'] = $last_name;
+            $should_update_user = true;
+        }
+
+        $bio_value = null;
+
+        if (isset($profile_input['biography'])) {
+            $bio_value = $profile_input['biography'];
+        } elseif (isset($profile_input['bio'])) {
+            $bio_value = $profile_input['bio'];
+        } elseif (isset($profile_input['description'])) {
+            $bio_value = $profile_input['description'];
+        }
+
+        if ($bio_value !== null) {
+            if (!is_string($bio_value)) {
+                return new \WP_REST_Response([
+                    'message' => __('The biography must be a string value.', 'artpulse-management'),
+                ], 400);
+            }
+
+            $biography = wp_kses_post($bio_value);
+            update_user_meta($user_id, 'description', $biography);
+            $sanitized_profile_fields['biography'] = $biography;
+            $sanitized_profile_fields['bio']        = $biography;
+            $sanitized_profile_fields['description'] = $biography;
+            $updates_applied = true;
+        }
+
+        if (isset($profile_input['website'])) {
+            if (!is_string($profile_input['website'])) {
+                return new \WP_REST_Response([
+                    'message' => __('The website must be a string value.', 'artpulse-management'),
+                ], 400);
+            }
+
+            $website = esc_url_raw($profile_input['website']);
+            $user_update_args['user_url'] = $website;
+            $sanitized_profile_fields['website'] = $website;
+            $should_update_user = true;
+
+            // Maintain legacy social website meta for consistency across forms.
+            update_user_meta($user_id, 'ap_social_website', $website);
+        } elseif (isset($profile_input['user_url'])) {
+            if (!is_string($profile_input['user_url'])) {
+                return new \WP_REST_Response([
+                    'message' => __('The website must be a string value.', 'artpulse-management'),
+                ], 400);
+            }
+
+            $website = esc_url_raw($profile_input['user_url']);
+            $user_update_args['user_url'] = $website;
+            $sanitized_profile_fields['website'] = $website;
+            $should_update_user = true;
+
+            update_user_meta($user_id, 'ap_social_website', $website);
+        }
+
+        $legacy_social_fields = [
+            'ap_social_twitter'   => 'twitter',
+            'ap_social_instagram' => 'instagram',
+            'ap_social_website'   => 'website',
+        ];
+
+        foreach ($legacy_social_fields as $legacy_key => $social_key) {
+            if (!array_key_exists($legacy_key, $profile_input)) {
+                continue;
+            }
+
+            if (!isset($profile_input['social']) || !is_array($profile_input['social'])) {
+                $profile_input['social'] = [];
+            }
+
+            $profile_input['social'][$social_key] = $profile_input[$legacy_key];
+        }
+
+        if (isset($profile_input['social']) && is_array($profile_input['social'])) {
+            $social_map = [
+                'twitter'   => 'ap_social_twitter',
+                'instagram' => 'ap_social_instagram',
+                'website'   => 'ap_social_website',
+            ];
+
+            foreach ($social_map as $key => $meta_key) {
+                if (!array_key_exists($key, $profile_input['social'])) {
+                    continue;
+                }
+
+                $value = $profile_input['social'][$key];
+
+                if ($value === null || $value === '') {
+                    delete_user_meta($user_id, $meta_key);
+                    $sanitized_profile_fields['social'][$key] = '';
+                    $updates_applied = true;
+                    continue;
+                }
+
+                if (!is_string($value)) {
+                    return new \WP_REST_Response([
+                        'message' => __('Social profile URLs must be strings.', 'artpulse-management'),
+                    ], 400);
+                }
+
+                $sanitized = esc_url_raw($value);
+                update_user_meta($user_id, $meta_key, $sanitized);
+                $sanitized_profile_fields['social'][$key] = $sanitized;
+                $updates_applied = true;
+            }
+        }
+
+        if ($should_update_user) {
+            $result = wp_update_user($user_update_args);
+
+            if (is_wp_error($result)) {
+                return new \WP_REST_Response([
+                    'message' => __('Unable to save profile changes.', 'artpulse-management'),
+                    'errors'  => $result->get_error_messages(),
+                ], 500);
+            }
+
+            $updates_applied = true;
+        }
+
+        if (!empty($membership_input)) {
+            if (!current_user_can('manage_options') && !current_user_can('promote_users')) {
+                return new \WP_REST_Response([
+                    'message' => __('You are not allowed to modify membership details.', 'artpulse-management'),
+                ], 403);
+            }
+
+            if (isset($membership_input['level'])) {
+                if (!is_string($membership_input['level'])) {
+                    return new \WP_REST_Response([
+                        'message' => __('The membership level must be a string value.', 'artpulse-management'),
+                    ], 400);
+                }
+
+                $level = sanitize_text_field($membership_input['level']);
+                update_user_meta($user_id, 'ap_membership_level', $level);
+                $sanitized_membership_fields['level'] = $level;
+                $updates_applied = true;
+            }
+
+            $expires_raw = null;
+
+            if (array_key_exists('expires', $membership_input)) {
+                $expires_raw = $membership_input['expires'];
+            } elseif (array_key_exists('expires_timestamp', $membership_input)) {
+                $expires_raw = $membership_input['expires_timestamp'];
+            }
+
+            if ($expires_raw !== null) {
+                if ($expires_raw === '' || $expires_raw === false) {
+                    delete_user_meta($user_id, 'ap_membership_expires');
+                    $sanitized_membership_fields['expires'] = null;
+                } elseif (is_numeric($expires_raw)) {
+                    $timestamp = (int) $expires_raw;
+                    update_user_meta($user_id, 'ap_membership_expires', $timestamp);
+                    $sanitized_membership_fields['expires'] = $timestamp;
+                } elseif (is_string($expires_raw)) {
+                    $timestamp = strtotime($expires_raw);
+
+                    if ($timestamp === false) {
+                        return new \WP_REST_Response([
+                            'message' => __('The membership expiry date is invalid.', 'artpulse-management'),
+                        ], 400);
+                    }
+
+                    update_user_meta($user_id, 'ap_membership_expires', $timestamp);
+                    $sanitized_membership_fields['expires'] = $timestamp;
+                } else {
+                    return new \WP_REST_Response([
+                        'message' => __('The membership expiry date is invalid.', 'artpulse-management'),
+                    ], 400);
+                }
+
+                $updates_applied = true;
+            }
+        }
+
+        if (!$updates_applied) {
+            return new \WP_REST_Response([
+                'message' => __('No profile changes were supplied.', 'artpulse-management'),
+            ], 400);
+        }
+
+        $requested_role = isset($params['role']) ? sanitize_key((string) $params['role']) : '';
+        $role           = '';
+
+        if ($requested_role !== '' && RoleDashboards::userCanAccessRole($requested_role, $user_id)) {
+            $role = $requested_role;
+        } else {
+            $role = RoleDashboards::getDefaultRoleForUser($user_id) ?: '';
+        }
+
+        $profile_summary = [];
+
+        if ($role !== '') {
+            $dashboard_data  = RoleDashboards::prepareDashboardData($role, $user_id);
+            $profile_summary = $dashboard_data['profile'] ?? [];
+
+            if (!empty($profile_summary['membership']['expires_display'])) {
+                $profile_summary['membership']['renewal_label'] = sprintf(
+                    /* translators: %s: formatted membership renewal date. */
+                    esc_html__('Renews %s', 'artpulse-management'),
+                    $profile_summary['membership']['expires_display']
+                );
+            }
+        }
+
+        return rest_ensure_response([
+            'success'             => true,
+            'message'             => __('Profile updated successfully.', 'artpulse-management'),
+            'profile'             => $profile_summary,
+            'role'                => $role,
+            'fields'              => $sanitized_profile_fields,
+            'membership_fields'   => $sanitized_membership_fields,
+        ]);
     }
 
     public static function renderDashboard($atts)
