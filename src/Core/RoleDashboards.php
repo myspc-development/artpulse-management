@@ -4,6 +4,7 @@ namespace ArtPulse\Core;
 
 use ArtPulse\Community\FavoritesManager;
 use ArtPulse\Community\FollowManager;
+use ArtPulse\Frontend\ArtistRequestStatusRoute;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Post;
 use WP_REST_Request;
@@ -1599,7 +1600,7 @@ class RoleDashboards
                     $description = __('We are reviewing your organization request. We will email you once it is approved.', 'artpulse-management');
                     $cta = [
                         'label'    => __('Check request status', 'artpulse-management'),
-                        'url'      => $anchor,
+                        'url'      => ArtistRequestStatusRoute::get_status_url('organization'),
                         'variant'  => 'secondary',
                         'disabled' => false,
                     ];
@@ -1629,7 +1630,7 @@ class RoleDashboards
                     $description = __('We are reviewing your artist request. We will email you once it is approved.', 'artpulse-management');
                     $cta = [
                         'label'    => __('Check request status', 'artpulse-management'),
-                        'url'      => $anchor,
+                        'url'      => ArtistRequestStatusRoute::get_status_url('artist'),
                         'variant'  => 'secondary',
                         'disabled' => false,
                     ];

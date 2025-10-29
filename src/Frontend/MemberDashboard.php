@@ -5,6 +5,7 @@ namespace ArtPulse\Frontend;
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\RoleUpgradeManager;
 use ArtPulse\Core\UpgradeReviewRepository;
+use ArtPulse\Frontend\ArtistRequestStatusRoute;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_Error;
 use WP_Post;
@@ -153,7 +154,7 @@ class MemberDashboard
                 $state['status'] = 'requested';
                 $state['cta']    = [
                     'label'    => __('Check request status', 'artpulse-management'),
-                    'url'      => sprintf('#ap-journey-%s', $journey['slug'] ?? 'artist'),
+                    'url'      => ArtistRequestStatusRoute::get_status_url('artist'),
                     'variant'  => 'secondary',
                     'disabled' => false,
                     'mode'     => 'link',
@@ -294,7 +295,7 @@ class MemberDashboard
                 $state['status'] = 'requested';
                 $state['cta']    = [
                     'label'    => __('Check request status', 'artpulse-management'),
-                    'url'      => sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
+                    'url'      => ArtistRequestStatusRoute::get_status_url('organization'),
                     'variant'  => 'secondary',
                     'disabled' => false,
                     'mode'     => 'link',

@@ -5,6 +5,7 @@ namespace Tests\Core;
 use ArtPulse\Core\RoleDashboards;
 use ArtPulse\Core\RoleSetup;
 use ArtPulse\Core\UpgradeReviewRepository;
+use ArtPulse\Frontend\ArtistRequestStatusRoute;
 
 class RoleDashboardsDataTest extends \WP_UnitTestCase
 {
@@ -226,6 +227,8 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertNotNull($journey);
         $this->assertSame('pending_request', $journey['status']);
         $this->assertSame('Upgrade request pending', $journey['status_label']);
+        $this->assertArrayHasKey('cta', $journey);
+        $this->assertSame(ArtistRequestStatusRoute::get_status_url('organization'), $journey['cta']['url']);
     }
 
     public function test_member_dashboard_enables_org_request_form_without_upgrade_link(): void

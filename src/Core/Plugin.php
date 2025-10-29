@@ -47,6 +47,7 @@ class Plugin
         add_action( 'init',               [ \ArtPulse\Frontend\SubmissionForms::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Core\RoleDashboards::class, 'register' ] );
         add_action( 'init',               [ \ArtPulse\Frontend\MemberDashboard::class, 'register' ] );
+        add_action( 'init',               [ \ArtPulse\Frontend\ArtistRequestStatusRoute::class, 'register' ] );
         if ( get_option( 'ap_enable_org_builder', true ) ) {
             add_action( 'init', [ \ArtPulse\Frontend\OrgBuilderShortcode::class, 'register' ] );
         }
@@ -122,6 +123,7 @@ class Plugin
         \ArtPulse\Core\PostTypeRegistrar::register();
         \ArtPulse\Core\Rewrites::add_rewrite_rules();
         \ArtPulse\Core\Rewrites::register_directory_sitemap_route();
+        \ArtPulse\Frontend\ArtistRequestStatusRoute::register();
         flush_rewrite_rules();
 
         // Setup roles and capabilities
