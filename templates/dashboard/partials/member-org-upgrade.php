@@ -92,9 +92,9 @@ $journeys = [
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
-                <?php if ($reason !== '') : ?>
+                <?php if ('denied' === $status && $reason !== '') : ?>
                     <div class="ap-dashboard-journey__feedback">
-                        <strong><?php echo esc_html('denied' === $status ? __('Moderator feedback', 'artpulse-management') : __('Feedback', 'artpulse-management')); ?>:</strong>
+                        <strong><?php esc_html_e('Moderator feedback', 'artpulse-management'); ?>:</strong>
                         <p><?php echo wp_kses_post($reason); ?></p>
                     </div>
                 <?php endif; ?>
