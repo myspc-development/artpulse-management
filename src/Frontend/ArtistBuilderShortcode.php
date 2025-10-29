@@ -5,6 +5,7 @@ namespace ArtPulse\Frontend;
 use ArtPulse\Artists\ArtistDraftCreator;
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\RateLimitHeaders;
+use ArtPulse\Core\UpgradeReviewRepository;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Error;
@@ -49,6 +50,20 @@ final class ArtistBuilderShortcode
         $artist_ids = self::owned_artists($user_id);
 
         if (empty($artist_ids)) {
+            $review = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+
+            if ($review instanceof \WP_Post) {
+                $review_status = UpgradeReviewRepository::get_status($review);
+
+                if (UpgradeReviewRepository::STATUS_PENDING === $review_status) {
+                    return '<div class="ap-artist-builder__notice ap-artist-builder__notice--pending">' . esc_html__('Your artist upgrade request is pending review. We will email you once it is approved.', 'artpulse-management') . '</div>';
+                }
+
+                if (UpgradeReviewRepository::STATUS_DENIED === $review_status) {
+                    return '<div class="ap-artist-builder__notice ap-artist-builder__notice--denied">' . esc_html__('Your artist upgrade request requires updates. Please review the feedback from our moderators.', 'artpulse-management') . '</div>';
+                }
+            }
+
             return self::render_empty_state($auto_create_error);
         }
 
@@ -56,6 +71,14 @@ final class ArtistBuilderShortcode
 
         $profiles = [];
         foreach ($artist_ids as $artist_id) {
+            if (!PortfolioAccess::can_manage_portfolio($user_id, $artist_id)) {
+                continue;
+            }
+
+            if (!current_user_can('edit_post', $artist_id)) {
+                continue;
+            }
+
             $post = get_post($artist_id);
             if (!$post instanceof \WP_Post) {
                 continue;
@@ -104,11 +127,18 @@ final class ArtistBuilderShortcode
                     'public'       => $public_url,
                     'submit_event' => $submit_event_url,
                 ],
+                'media_enabled'   => current_user_can('upload_files'),
             ];
         }
 
         if (empty($profiles)) {
-            return self::render_empty_state('');
+            $review = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+
+            if ($review instanceof \WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($review)) {
+                return '<div class="ap-artist-builder__notice ap-artist-builder__notice--pending">' . esc_html__('Your artist upgrade request is pending review. We will email you once it is approved.', 'artpulse-management') . '</div>';
+            }
+
+            return self::render_empty_state($auto_create_error);
         }
 
         ob_start();

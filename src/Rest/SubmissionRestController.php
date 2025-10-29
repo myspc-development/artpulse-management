@@ -23,6 +23,8 @@ class SubmissionRestController
         'artpulse_org',
     ];
 
+    private const APPROVED_PORTFOLIO_STATUSES = [ 'publish', 'future' ];
+
     /**
      * Register the submission endpoint.
      */
@@ -104,18 +106,18 @@ class SubmissionRestController
                 );
             }
 
-            $owned_org_id = self::resolve_owned_org_id( $current_user_id, absint( $params['event_organization'] ?? 0 ) );
+            $owned_org_id     = self::resolve_owned_org_id( $current_user_id, absint( $params['event_organization'] ?? 0 ) );
+            $owned_artist_id  = self::resolve_owned_artist_id( $current_user_id, absint( $params['artist_id'] ?? 0 ) );
 
-            if ( ! $owned_org_id ) {
+            if ( ! $owned_org_id && ! $owned_artist_id ) {
                 return new WP_Error(
                     'rest_forbidden',
-                    __( 'You must manage an organization before submitting events.', 'artpulse-management' ),
+                    __( 'Publish at least one organization or artist profile before submitting events.', 'artpulse-management' ),
                     [ 'status' => rest_authorization_required_code() ]
                 );
             }
 
             $params['event_organization'] = $owned_org_id;
-            $owned_artist_id              = self::resolve_owned_artist_id( $current_user_id, absint( $params['artist_id'] ?? 0 ) );
             $params['artist_id']          = $owned_artist_id;
 
             $rate_error = FormRateLimiter::enforce( $current_user_id, 'event_submit', 10, 60 );
@@ -227,6 +229,9 @@ class SubmissionRestController
             $moderation_state      = 'publish' === $status ? 'approved' : 'pending';
             $moderation_changed_at = current_time( 'timestamp', true );
 
+            $org_id    = (int) $params['event_organization'];
+            $artist_id = (int) ( $params['artist_id'] ?? 0 );
+
             AuditLogger::info( 'event.submit', [
                 'event_id'   => $post_id,
                 'user_id'    => $current_user_id,
@@ -236,11 +241,21 @@ class SubmissionRestController
                 'state'      => $moderation_state,
                 'reason'     => '',
                 'changed_at' => $moderation_changed_at,
-                'org_id'     => (int) $params['event_organization'],
-                'artist_id'  => (int) ( $params['artist_id'] ?? 0 ),
+                'org_id'     => $org_id,
+                'artist_id'  => $artist_id,
             ] );
-            update_post_meta( $post_id, '_ap_org_id', (int) $params['event_organization'] );
-            update_post_meta( $post_id, '_ap_artist_id', (int) ( $params['artist_id'] ?? 0 ) );
+
+            if ( $org_id > 0 ) {
+                update_post_meta( $post_id, '_ap_org_id', $org_id );
+            } else {
+                delete_post_meta( $post_id, '_ap_org_id' );
+            }
+
+            if ( $artist_id > 0 ) {
+                update_post_meta( $post_id, '_ap_artist_id', $artist_id );
+            } else {
+                delete_post_meta( $post_id, '_ap_artist_id' );
+            }
 
         }
 
@@ -369,7 +384,7 @@ class SubmissionRestController
     {
         return match ( $field_key ) {
             'event_organization' => ( $value = absint( $value ) ) ? $value : null,
-            'artist_id'         => absint( $value ),
+            'artist_id'         => ( $value = absint( $value ) ) ? $value : null,
             'artist_org'        => absint( $value ),
             'org_email'         => sanitize_email( $value ),
             'org_website'       => esc_url_raw( $value ),
@@ -394,10 +409,14 @@ class SubmissionRestController
                 );
             }
 
-            if ( empty( self::get_user_owned_org_ids( get_current_user_id() ) ) ) {
+            $user_id         = get_current_user_id();
+            $owned_org_ids   = self::get_user_owned_org_ids( $user_id );
+            $owned_artist_ids = self::get_user_owned_artist_ids( $user_id );
+
+            if ( empty( $owned_org_ids ) && empty( $owned_artist_ids ) ) {
                 return new WP_Error(
                     'rest_forbidden',
-                    __( 'You must manage an organization before submitting events.', 'artpulse-management' ),
+                    __( 'Publish at least one organization or artist profile before submitting events.', 'artpulse-management' ),
                     [ 'status' => rest_authorization_required_code() ]
                 );
             }
@@ -460,7 +479,7 @@ class SubmissionRestController
 
         $owned_meta = get_posts([
             'post_type'      => 'artpulse_org',
-            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'post_status'    => self::APPROVED_PORTFOLIO_STATUSES,
             'fields'         => 'ids',
             'posts_per_page' => -1,
             'meta_query'     => [
@@ -473,7 +492,7 @@ class SubmissionRestController
 
         $owned_author = get_posts([
             'post_type'      => 'artpulse_org',
-            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'post_status'    => self::APPROVED_PORTFOLIO_STATUSES,
             'fields'         => 'ids',
             'posts_per_page' => -1,
             'author'         => $user_id,
@@ -497,7 +516,7 @@ class SubmissionRestController
 
         $author_owned = get_posts([
             'post_type'      => 'artpulse_artist',
-            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'post_status'    => self::APPROVED_PORTFOLIO_STATUSES,
             'fields'         => 'ids',
             'posts_per_page' => -1,
             'author'         => $user_id,
@@ -505,7 +524,7 @@ class SubmissionRestController
 
         $primary_owned = get_posts([
             'post_type'      => 'artpulse_artist',
-            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'post_status'    => self::APPROVED_PORTFOLIO_STATUSES,
             'fields'         => 'ids',
             'posts_per_page' => -1,
             'meta_key'       => '_ap_owner_user',
@@ -514,7 +533,7 @@ class SubmissionRestController
 
         $team_owned = get_posts([
             'post_type'      => 'artpulse_artist',
-            'post_status'    => [ 'publish', 'draft', 'pending' ],
+            'post_status'    => self::APPROVED_PORTFOLIO_STATUSES,
             'fields'         => 'ids',
             'posts_per_page' => -1,
             'meta_query'     => [
