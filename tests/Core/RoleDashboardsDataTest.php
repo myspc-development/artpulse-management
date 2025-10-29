@@ -228,6 +228,45 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertSame('Upgrade request pending', $journey['status_label']);
     }
 
+    public function test_member_dashboard_enables_org_request_form_without_upgrade_link(): void
+    {
+        $member_id = $this->factory->user->create([
+            'role'       => 'member',
+            'user_login' => 'org_ready_member',
+            'user_pass'  => wp_generate_password(12, false),
+            'user_email' => 'org-ready@example.com',
+        ]);
+
+        wp_set_current_user($member_id);
+        update_user_meta($member_id, 'ap_membership_level', 'org');
+
+        $data = RoleDashboards::prepareDashboardData('member', $member_id);
+
+        $this->assertArrayHasKey('journeys', $data);
+        $this->assertArrayHasKey('artist', $data['journeys']);
+        $this->assertArrayHasKey('organization', $data['journeys']);
+
+        $artist_journey = $data['journeys']['artist'];
+        $this->assertSame('not_started', $artist_journey['status']);
+        $this->assertArrayHasKey('cta', $artist_journey);
+
+        $artist_cta = $artist_journey['cta'];
+        $this->assertSame('form', $artist_cta['mode']);
+        $this->assertFalse($artist_cta['disabled']);
+        $this->assertSame('artist', $artist_cta['upgrade_type']);
+
+        $journey = $data['journeys']['organization'];
+
+        $this->assertSame('not_started', $journey['status']);
+        $this->assertArrayHasKey('cta', $journey);
+
+        $cta = $journey['cta'];
+
+        $this->assertSame('form', $cta['mode']);
+        $this->assertFalse($cta['disabled']);
+        $this->assertSame('organization', $cta['upgrade_type']);
+    }
+
     private function createRelationshipTables(): void
     {
         global $wpdb;

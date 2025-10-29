@@ -5,7 +5,7 @@ This document summarizes the current implementation of dashboard upgrade widgets
 
 ## Member Dashboard Upgrade Widgets
 - `RoleDashboards::getUpgradeWidgetData()` prepares the upgrade payload for member dashboards, populating intro copy and upgrade entries when options are available.【F:src/Core/RoleDashboards.php†L512-L543】
-- `RoleDashboards::getUpgradeOptions()` builds upgrade options for artist and organization tiers, skipping the current membership level and sourcing purchase URLs from `MembershipUrls` before consolidating them.【F:src/Core/RoleDashboards.php†L1194-L1237】
+- `RoleDashboards::getUpgradeOptions()` builds upgrade options for artist and organization tiers, skipping the current membership level and sourcing purchase URLs from `MembershipUrls`, optionally merging the organization action into the artist card for UI reuse.【F:src/Core/RoleDashboards.php†L1194-L1250】
 - `mergeOrganizationUpgradeIntoArtistCard()` folds the organization upgrade call-to-action into the artist option as a secondary action to avoid duplicate cards while still exposing the organization path.【F:src/Core/RoleDashboards.php†L1240-L1287】
 - `MemberDashboard::remove_org_upgrade_option()` strips both artist and organization upgrade entries from the shared widget because the member dashboard renders a dedicated upgrade card for these flows, preventing duplicate CTAs.【F:src/Frontend/MemberDashboard.php†L38-L66】
 - `MemberDashboard::inject_dashboard_card()` augments dashboard data with `org_upgrade` state so templates can render upgrade progress or entry points.【F:src/Frontend/MemberDashboard.php†L27-L35】
