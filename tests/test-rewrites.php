@@ -58,4 +58,14 @@ class AP_DirectoryRewritesTest extends WP_UnitTestCase
         $galleries = Rewrites::get_directory_letter_url('galleries', '#');
         $this->assertStringContainsString('/organizations/letter/%23/', $galleries);
     }
+
+    public function test_artist_request_status_route_sets_query_flag(): void
+    {
+        do_action('init');
+        flush_rewrite_rules(false);
+
+        $this->go_to(home_url('/artist-request/status/'));
+
+        $this->assertSame('1', get_query_var('ap_artist_request_status'));
+    }
 }
