@@ -30,6 +30,11 @@ class EventSubmissionShortcode {
             return '<p>You must be logged in to submit an event.</p>';
         }
 
+        $prefill = [
+            'event_organization' => isset($_GET['org_id']) ? absint($_GET['org_id']) : 0, // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            'artist_id'          => isset($_GET['artist_id']) ? absint($_GET['artist_id']) : 0, // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        ];
+
         ob_start();
 
         echo SubmissionForms::render_form([
@@ -41,6 +46,7 @@ class EventSubmissionShortcode {
             'submit_name'   => 'ap_submit_event',
             'extra_classes' => 'ap-event-form',
             'notices'       => self::get_fallback_notices(),
+            'prefill'       => $prefill,
         ]);
 
         return ob_get_clean();
@@ -64,6 +70,7 @@ class EventSubmissionShortcode {
             'event_date'         => sanitize_text_field($_POST['event_date'] ?? ''),
             'event_location'     => sanitize_text_field($_POST['event_location'] ?? ''),
             'event_organization' => absint($_POST['event_organization'] ?? 0),
+            'artist_id'          => absint($_POST['artist_id'] ?? 0),
         ];
 
         if (empty($payload['title'])) {
@@ -91,8 +98,8 @@ class EventSubmissionShortcode {
             return;
         }
 
-        if ($payload['event_organization'] <= 0) {
-            self::add_notice(__('Please select an organization.', 'artpulse'), 'error');
+        if ($payload['event_organization'] <= 0 && $payload['artist_id'] <= 0) {
+            self::add_notice(__('Select an organization or artist profile for this event.', 'artpulse-management'), 'error');
             return;
         }
 

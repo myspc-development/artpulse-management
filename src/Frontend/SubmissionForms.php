@@ -35,6 +35,7 @@ class SubmissionForms
                 'submit_name'   => '',
                 'extra_classes' => '',
                 'notices'       => [],
+                'prefill'       => [],
             ],
             $atts,
             'ap_submission_form'
@@ -52,7 +53,9 @@ class SubmissionForms
         )));
 
         $organizations = self::get_user_organizations();
+        $artists       = self::get_user_artists();
         $notices       = is_array($atts['notices']) ? $atts['notices'] : [];
+        $prefill       = is_array($atts['prefill']) ? array_map('absint', $atts['prefill']) : [];
 
         ob_start();
         ?>
@@ -77,7 +80,7 @@ class SubmissionForms
             <?php
             switch ($post_type) {
                 case 'artpulse_event':
-                    self::render_event_fields($field_prefix, $organizations);
+                    self::render_event_fields($field_prefix, $organizations, $artists, $prefill);
                     break;
                 case 'artpulse_artist':
                     self::render_artist_fields($field_prefix, $organizations);
@@ -136,7 +139,7 @@ class SubmissionForms
     /**
      * Render fields for event submissions.
      */
-    private static function render_event_fields(string $field_prefix, array $organizations): void
+    private static function render_event_fields(string $field_prefix, array $organizations, array $artists, array $prefill): void
     {
         ?>
         <p class="ap-field ap-field--content">
@@ -169,7 +172,36 @@ class SubmissionForms
                 data-required="<?php esc_attr_e('Location is required', 'artpulse'); ?>"
             />
         </p>
-        <?php self::render_organization_field('event_organization', $organizations, __('Organization*', 'artpulse')); ?>
+        <?php
+        $selected_org    = isset($prefill['event_organization']) ? (int) $prefill['event_organization'] : 0;
+        $selected_artist = isset($prefill['artist_id']) ? (int) $prefill['artist_id'] : 0;
+
+        self::render_organization_field(
+            'event_organization',
+            $organizations,
+            __('Organization', 'artpulse'),
+            empty($artists),
+            __('Select an organization', 'artpulse'),
+            $selected_org
+        );
+
+        self::render_organization_field(
+            'artist_id',
+            $artists,
+            __('Artist profile', 'artpulse'),
+            empty($organizations),
+            __('Select an artist', 'artpulse'),
+            $selected_artist
+        );
+
+        if (empty($organizations) && empty($artists)) :
+            ?>
+            <p class="ap-field ap-field--notice">
+                <?php esc_html_e('Publish an organization or artist profile to unlock event submissions.', 'artpulse-management'); ?>
+            </p>
+            <?php
+        endif;
+        ?>
         <?php
     }
 
@@ -273,31 +305,30 @@ class SubmissionForms
     /**
      * Render an organization selector or a hidden field when only one organization exists.
      */
-    private static function render_organization_field(string $field_name, array $organizations, string $label, bool $required = true): void
+    private static function render_organization_field(string $field_name, array $organizations, string $label, bool $required = true, ?string $placeholder = null, int $selected = 0): void
     {
-        $count = count($organizations);
-
-        if (0 === $count) {
+        if (empty($organizations)) {
+            if ($required) {
+                ?>
+                <p class="ap-field ap-field--organization ap-field--empty">
+                    <span class="ap-field-label"><?php echo esc_html($label); ?></span><br>
+                    <em><?php esc_html_e('No matching profiles are linked to your account yet.', 'artpulse-management'); ?></em>
+                </p>
+                <?php
+            }
             ?>
-            <p class="ap-field ap-field--organization ap-field--empty">
-                <span class="ap-field-label"><?php echo esc_html($label); ?></span><br>
-                <em><?php esc_html_e('No organization is linked to your account yet. You can submit now and assign one later.', 'artpulse'); ?></em>
-            </p>
+            <input type="hidden" name="<?php echo esc_attr($field_name); ?>" value="0" />
             <?php
             return;
         }
 
-        if (1 === $count) {
-            $organization = reset($organizations);
-            ?>
-            <input type="hidden" name="<?php echo esc_attr($field_name); ?>" value="<?php echo esc_attr($organization['id']); ?>" />
-            <p class="ap-field ap-field--organization ap-field--readonly">
-                <span class="ap-field-label"><?php echo esc_html($label); ?></span><br>
-                <span class="ap-field-value"><?php echo esc_html($organization['name']); ?></span>
-            </p>
-            <?php
-            return;
+        $placeholder = $placeholder ?: __('Select an organization', 'artpulse');
+
+        if ($selected <= 0 && 1 === count($organizations)) {
+            $selected = (int) ($organizations[0]['id'] ?? 0);
         }
+
+        $required_message = sprintf(esc_html__('%s is required', 'artpulse-management'), strip_tags($label));
 
         ?>
         <p class="ap-field ap-field--organization">
@@ -306,11 +337,14 @@ class SubmissionForms
                 id="<?php echo esc_attr('ap-organization-' . $field_name); ?>"
                 name="<?php echo esc_attr($field_name); ?>"
                 <?php echo $required ? ' required' : ''; ?>
-                <?php echo $required ? ' data-required="' . esc_attr__('Organization is required', 'artpulse') . '"' : ''; ?>
+                <?php echo $required ? ' data-required="' . esc_attr($required_message) . '"' : ''; ?>
             >
-                <option value=""><?php esc_html_e('Select an organization', 'artpulse'); ?></option>
-                <?php foreach ($organizations as $organization): ?>
-                    <option value="<?php echo esc_attr($organization['id']); ?>"><?php echo esc_html($organization['name']); ?></option>
+                <option value=""><?php echo esc_html($placeholder); ?></option>
+                <?php foreach ($organizations as $organization):
+                    $value  = (int) ($organization['id'] ?? 0);
+                    $is_sel = $selected > 0 && $value === $selected;
+                    ?>
+                    <option value="<?php echo esc_attr($value); ?>"<?php selected($is_sel, true); ?>><?php echo esc_html($organization['name']); ?></option>
                 <?php endforeach; ?>
             </select>
         </p>
@@ -344,7 +378,7 @@ class SubmissionForms
 
         $authored_orgs = get_posts([
             'post_type'      => 'artpulse_org',
-            'post_status'    => ['publish', 'pending', 'draft'],
+            'post_status'    => ['publish', 'future'],
             'author'         => $user_id,
             'numberposts'    => -1,
             'suppress_filters' => false,
@@ -354,6 +388,54 @@ class SubmissionForms
             $collected[$organization->ID] = [
                 'id'   => (int) $organization->ID,
                 'name' => $organization->post_title,
+            ];
+        }
+
+        return array_values($collected);
+    }
+
+    /**
+     * Return a list of published artist profiles connected to the current user.
+     *
+     * @return array<int, array{id:int, name:string}>
+     */
+    private static function get_user_artists(): array
+    {
+        if (!is_user_logged_in()) {
+            return [];
+        }
+
+        $user_id   = get_current_user_id();
+        $collected = [];
+
+        $authored_artists = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => ['publish', 'future'],
+            'author'         => $user_id,
+            'numberposts'    => -1,
+            'suppress_filters' => false,
+        ]);
+
+        foreach ($authored_artists as $artist) {
+            $collected[$artist->ID] = [
+                'id'   => (int) $artist->ID,
+                'name' => $artist->post_title,
+            ];
+        }
+
+        $owned_artists = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => ['publish', 'future'],
+            'meta_key'       => '_ap_owner_user',
+            'meta_value'     => $user_id,
+            'numberposts'    => -1,
+            'suppress_filters' => false,
+        ]);
+
+        foreach ($owned_artists as $artist) {
+            $collected[$artist->ID] = [
+                'id'   => (int) $artist->ID,
+                'name' => $artist->post_title,
             ];
         }
 
