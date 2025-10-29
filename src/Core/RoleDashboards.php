@@ -535,7 +535,7 @@ class RoleDashboards
         $upgrade_intro  = '';
 
         if ($role === 'member') {
-            $raw_upgrades = self::getUpgradeOptions($user_id);
+            $raw_upgrades = self::getUpgradeOptions($user_id, false);
 
             $upgrade_data  = self::getUpgradeWidgetData($user_id);
             $upgrades      = $upgrade_data['upgrades'] ?? [];
@@ -1952,7 +1952,7 @@ class RoleDashboards
         ];
     }
 
-    private static function getUpgradeOptions(int $user_id): array
+    private static function getUpgradeOptions(int $user_id, bool $mergeOrganizationIntoArtist = true): array
     {
         $current_level = strtolower((string) get_user_meta($user_id, 'ap_membership_level', true));
 
@@ -1993,6 +1993,10 @@ class RoleDashboards
                 'cta'         => $option['cta'] ?? __('Upgrade now', 'artpulse'),
                 'url'         => $url,
             ];
+        }
+
+        if (!$mergeOrganizationIntoArtist) {
+            return array_values($upgrades);
         }
 
         return self::mergeOrganizationUpgradeIntoArtistCard($upgrades);

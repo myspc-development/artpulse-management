@@ -51,7 +51,7 @@ class UpgradeReviewsController
         $is_bulk_deny = 'deny' === $view && '' !== $bulk_reviews_raw;
 
         echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('Organization Upgrade Reviews', 'artpulse-management') . '</h1>';
+        echo '<h1>' . esc_html__('Upgrade Reviews', 'artpulse-management') . '</h1>';
 
         if ('deny' === $view && ($review_id || $is_bulk_deny)) {
             $review_ids = [];

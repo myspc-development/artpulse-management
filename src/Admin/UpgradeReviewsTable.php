@@ -47,7 +47,8 @@ class UpgradeReviewsTable extends WP_List_Table
         return [
             'cb'         => '<input type="checkbox" />',
             'user'       => __('Member', 'artpulse-management'),
-            'org'        => __('Organization Draft', 'artpulse-management'),
+            'type'       => __('Upgrade Type', 'artpulse-management'),
+            'target'     => __('Profile Draft', 'artpulse-management'),
             'status'     => __('Status', 'artpulse-management'),
             'submitted'  => __('Submitted', 'artpulse-management'),
             'reason'     => __('Reason', 'artpulse-management'),
@@ -136,7 +137,23 @@ class UpgradeReviewsTable extends WP_List_Table
         return sprintf('<strong>%1$s</strong><br>%2$s%3$s', $display_name, $email_markup, $this->row_actions($actions));
     }
 
-    protected function column_org($item): string
+    protected function column_type($item): string
+    {
+        $type = $item['type'] ?? '';
+
+        $map = [
+            UpgradeReviewRepository::TYPE_ORG_UPGRADE    => __('Organization', 'artpulse-management'),
+            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE => __('Artist', 'artpulse-management'),
+        ];
+
+        if ('' === $type || !isset($map[$type])) {
+            return esc_html__('—', 'artpulse-management');
+        }
+
+        return esc_html($map[$type]);
+    }
+
+    protected function column_target($item): string
     {
         $post_id = (int) $item['post_id'];
         if (!$post_id) {
@@ -248,6 +265,7 @@ class UpgradeReviewsTable extends WP_List_Table
                 'ID'        => $post->ID,
                 'user_id'   => (int) get_post_meta($post->ID, UpgradeReviewRepository::META_USER, true),
                 'post_id'   => (int) get_post_meta($post->ID, UpgradeReviewRepository::META_POST, true),
+                'type'      => get_post_meta($post->ID, UpgradeReviewRepository::META_TYPE, true),
                 'status'    => UpgradeReviewRepository::get_status($post),
                 'reason'    => UpgradeReviewRepository::get_reason($post),
                 'date_gmt'  => $post->post_date_gmt,

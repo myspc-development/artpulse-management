@@ -83,6 +83,10 @@ final class Capabilities
      */
     public static function map_meta_caps(array $caps, string $cap, int $user_id, array $args): array
     {
+        if (in_array($cap, ['create_ap_review_requests', 'edit_ap_review_requests'], true)) {
+            return $user_id > 0 ? ['exist'] : ['do_not_allow'];
+        }
+
         $managed_caps = [
             self::CAP_MANAGE_OWN_ORG,
             self::CAP_MANAGE_OWN_ARTIST,
