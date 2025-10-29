@@ -185,7 +185,16 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $view_profile = $this->findQuickAction($data['quick_actions'], 'view_profile');
         $this->assertNotNull($view_profile);
         $this->assertSame('locked', $view_profile['status']);
-        $this->assertTrue($view_profile['cta']['disabled']);
+        $this->assertFalse($view_profile['cta']['disabled']);
+        $this->assertSame('Open builder', $view_profile['cta']['label']);
+        $this->assertSame(
+            $journey['links']['builder'],
+            $view_profile['cta']['url'],
+            'CTA should link to the builder for unpublished portfolios.'
+        );
+        $this->assertSame('Draft', $view_profile['badge']['label']);
+        $this->assertSame('info', $view_profile['badge']['variant']);
+        $this->assertSame('Not yet published', $view_profile['status_label']);
 
         $submit_event = $this->findQuickAction($data['quick_actions'], 'submit_event');
         $this->assertNotNull($submit_event);

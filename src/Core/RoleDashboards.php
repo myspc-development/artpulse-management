@@ -1906,12 +1906,24 @@ class RoleDashboards
         $status    = $portfolio['status'] ?? 'missing';
         $permalink = $portfolio['permalink'] ?? '';
 
-        $enabled = $permalink !== '' && in_array($status, ['published', 'scheduled'], true);
+        $enabled     = $permalink !== '' && in_array($status, ['published', 'scheduled'], true);
+        $builder_url = $target['links']['builder'] ?? '';
 
-        $badge = [
-            'label'   => $enabled ? __('Live', 'artpulse-management') : __('Preview only', 'artpulse-management'),
-            'variant' => $enabled ? 'success' : 'muted',
-        ];
+        if ($enabled) {
+            $badge = [
+                'label'   => __('Live', 'artpulse-management'),
+                'variant' => 'success',
+            ];
+            $cta_label = __('View profile', 'artpulse-management');
+            $cta_url   = $permalink;
+        } else {
+            $badge = [
+                'label'   => __('Draft', 'artpulse-management'),
+                'variant' => 'info',
+            ];
+            $cta_label = __('Open builder', 'artpulse-management');
+            $cta_url   = $builder_url;
+        }
 
         return [
             'slug'             => 'view_profile',
@@ -1922,12 +1934,12 @@ class RoleDashboards
             'status_label'     => $enabled ? __('Live', 'artpulse-management') : __('Not yet published', 'artpulse-management'),
             'progress_percent' => $enabled ? 100 : 0,
             'cta'              => [
-                'label'    => __('View profile', 'artpulse-management'),
-                'url'      => $enabled ? $permalink : ($target['links']['builder'] ?? ''),
+                'label'    => $cta_label,
+                'url'      => $cta_url,
                 'variant'  => 'secondary',
-                'disabled' => !$enabled,
+                'disabled' => false,
             ],
-            'disabled_reason'  => $enabled ? '' : __('Publish your profile to share it publicly.', 'artpulse-management'),
+            'disabled_reason'  => '',
         ];
     }
 
