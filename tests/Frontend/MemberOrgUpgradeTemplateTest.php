@@ -28,6 +28,65 @@ class MemberOrgUpgradeTemplateTest extends WP_UnitTestCase
         $this->assertStringContainsString('<strong>Update your artist statement.</strong>', $output);
     }
 
+    public function test_start_profile_cta_uses_builder_link(): void
+    {
+        $org_upgrade = $this->getOrgUpgradeState();
+        $org_upgrade['artist'] = array_merge(
+            $org_upgrade['artist'],
+            [
+                'exists'      => false,
+                'status'      => 'none',
+                'builder_url' => 'https://example.com/builder',
+            ]
+        );
+
+        $output = $this->renderTemplate($org_upgrade);
+
+        $this->assertStringContainsString('href="https://example.com/builder"', $output);
+        $this->assertStringContainsString('Start your profile', $output);
+    }
+
+    public function test_pending_profile_shows_notice_and_edit_submission_cta(): void
+    {
+        $org_upgrade = $this->getOrgUpgradeState();
+        $org_upgrade['artist'] = array_merge(
+            $org_upgrade['artist'],
+            [
+                'exists'      => true,
+                'status'      => 'pending',
+                'builder_url' => 'https://example.com/edit',
+            ]
+        );
+
+        $output = $this->renderTemplate($org_upgrade);
+
+        $this->assertStringContainsString('Your profile submission is under review. We will email you when a moderator responds.', $output);
+        $this->assertStringContainsString('href="https://example.com/edit"', $output);
+        $this->assertStringContainsString('Edit submission', $output);
+    }
+
+    public function test_denied_profile_has_support_link_and_edit_cta(): void
+    {
+        $org_upgrade = $this->getOrgUpgradeState();
+        $org_upgrade['artist'] = array_merge(
+            $org_upgrade['artist'],
+            [
+                'exists'      => true,
+                'status'      => 'denied',
+                'builder_url' => 'https://example.com/edit',
+                'public_url'  => 'https://example.com/profile',
+                'support_url' => 'https://example.com/support',
+            ]
+        );
+
+        $output = $this->renderTemplate($org_upgrade);
+
+        $this->assertStringContainsString('href="https://example.com/edit"', $output);
+        $this->assertStringContainsString('Edit profile', $output);
+        $this->assertStringContainsString('href="https://example.com/support"', $output);
+        $this->assertStringContainsString('What to fix', $output);
+    }
+
     /**
      * @return array<string, mixed>
      */
