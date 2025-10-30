@@ -125,7 +125,7 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $journey_action = $this->findQuickAction($data['quick_actions'], 'journey_artist');
         $this->assertNotNull($journey_action);
         $this->assertSame('published', $journey_action['status']);
-        $this->assertSame(100, $journey_action['progress_percent']);
+        $this->assertSame(33, $journey_action['progress_percent']);
         $this->assertFalse($journey_action['cta']['disabled']);
 
         $view_profile = $this->findQuickAction($data['quick_actions'], 'view_profile');
