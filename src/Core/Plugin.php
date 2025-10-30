@@ -60,6 +60,7 @@ class Plugin
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
         add_action( 'init',               [ \ArtPulse\Admin\UpgradeReviewsController::class, 'register' ] );
+        \ArtPulse\Admin\Settings::register();
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
         add_action( 'after_setup_theme',  [ $this, 'register_image_sizes' ] );
         add_action( 'after_setup_theme',  [ \ArtPulse\Frontend\Salient\ImageFallback::class, 'register' ] );

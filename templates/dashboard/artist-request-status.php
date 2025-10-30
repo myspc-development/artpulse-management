@@ -16,9 +16,14 @@ if (!in_array($journey, ['artist', 'organization'], true)) {
 $heading = 'artist' === $journey
     ? __('Track your artist access request', 'artpulse-management')
     : __('Track your organization access request', 'artpulse-management');
+$dashboard_base = \ArtPulse\Core\get_page_url('dashboard_page_id');
+if (!$dashboard_base) {
+    $dashboard_base = \ArtPulse\Core\get_missing_page_fallback('dashboard_page_id');
+}
+
 $dashboard_url = 'artist' === $journey
-    ? add_query_arg('role', 'artist', home_url('/dashboard/'))
-    : add_query_arg('role', 'organization', home_url('/dashboard/'));
+    ? \ArtPulse\Core\add_query_args($dashboard_base, ['role' => 'artist'])
+    : \ArtPulse\Core\add_query_args($dashboard_base, ['role' => 'organization']);
 
 get_header();
 ?>

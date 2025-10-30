@@ -9,6 +9,9 @@ use ArtPulse\Frontend\Shared\PortfolioAccess;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
 use WP_Error;
 use WP_Post;
+use function ArtPulse\Core\add_query_args;
+use function ArtPulse\Core\get_missing_page_fallback;
+use function ArtPulse\Core\get_page_url;
 
 class OrganizationEventForm {
 
@@ -438,9 +441,12 @@ class OrganizationEventForm {
 
         if ($should_redirect) {
             self::remember_errors(get_current_user_id(), $errors);
-            $redirect = wp_get_referer() ?: home_url('/dashboard/');
+            $redirect = wp_get_referer();
+            if (!$redirect) {
+                $redirect = self::get_dashboard_base_url();
+            }
             if (!empty($errors)) {
-                $redirect = add_query_arg('event_error', '1', $redirect);
+                $redirect = add_query_args($redirect, ['event_error' => '1']);
             }
             wp_safe_redirect($redirect);
             exit;
@@ -687,5 +693,16 @@ class OrganizationEventForm {
         }
 
         return null;
+    }
+
+    private static function get_dashboard_base_url(): string
+    {
+        $url = get_page_url('dashboard_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('dashboard_page_id');
     }
 }

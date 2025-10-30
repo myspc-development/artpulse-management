@@ -11,6 +11,9 @@ use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Error;
 use WP_Post;
 use WP_User;
+use function ArtPulse\Core\add_query_args;
+use function ArtPulse\Core\get_missing_page_fallback;
+use function ArtPulse\Core\get_page_url;
 
 class OrgBuilderShortcode
 {
@@ -127,7 +130,12 @@ class OrgBuilderShortcode
         $step    = isset($_POST['builder_step']) ? sanitize_key(wp_unslash($_POST['builder_step'])) : 'profile';
 
         if (!$org_id) {
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', wp_get_referer() ?: home_url('/dashboard/')));
+            $redirect_base = wp_get_referer();
+            if (!$redirect_base) {
+                $redirect_base = self::get_dashboard_base_url();
+            }
+
+            wp_safe_redirect(add_query_args($redirect_base, ['ap_builder' => 'error']));
             exit;
         }
 
@@ -148,9 +156,13 @@ class OrgBuilderShortcode
             );
         }
 
-        $redirect = add_query_arg([
-            'step' => $step,
-        ], wp_get_referer() ?: add_query_arg(['step' => $step], home_url('/dashboard/')));
+        $redirect_base = wp_get_referer();
+        if (!$redirect_base) {
+            $dashboard = self::get_dashboard_base_url();
+            $redirect_base = add_query_args($dashboard, ['step' => $step]);
+        }
+
+        $redirect = add_query_args($redirect_base, ['step' => $step]);
 
         $rate_error = FormRateLimiter::enforce($user_id, 'builder_write', 30, 60);
         if ($rate_error instanceof WP_Error) {
@@ -159,19 +171,19 @@ class OrgBuilderShortcode
 
         $org = get_post($org_id);
         if (!$org instanceof WP_Post) {
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
+            wp_safe_redirect(add_query_args($redirect, ['ap_builder' => 'error']));
             exit;
         }
 
         if (!PortfolioAccess::can_manage_portfolio($user_id, $org_id)) {
             self::remember_errors($user_id, [__('You do not have permission to update this organization.', 'artpulse-management')]);
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
+            wp_safe_redirect(add_query_args($redirect, ['ap_builder' => 'error']));
             exit;
         }
 
         if (!self::user_can_manage_org($org)) {
             self::remember_errors($user_id, [__('You do not have permission to update this organization.', 'artpulse-management')]);
-            wp_safe_redirect(add_query_arg('ap_builder', 'error', $redirect));
+            wp_safe_redirect(add_query_args($redirect, ['ap_builder' => 'error']));
             exit;
         }
 
@@ -203,7 +215,7 @@ class OrgBuilderShortcode
             self::remember_errors($user_id, $errors);
         }
 
-        wp_safe_redirect(add_query_arg('ap_builder', $status, $redirect));
+        wp_safe_redirect(add_query_args($redirect, ['ap_builder' => $status]));
         exit;
     }
 
@@ -232,6 +244,17 @@ class OrgBuilderShortcode
             ],
             $retry_after
         );
+    }
+
+    private static function get_dashboard_base_url(): string
+    {
+        $url = get_page_url('dashboard_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('dashboard_page_id');
     }
 
     private static function respond_with_error(

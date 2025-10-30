@@ -11,8 +11,12 @@ use WP_Error;
 use WP_Post;
 use WP_User;
 use function esc_url;
+use function esc_url_raw;
 use function sanitize_text_field;
 use function wp_strip_all_tags;
+use function ArtPulse\Core\add_query_args;
+use function ArtPulse\Core\get_missing_page_fallback;
+use function ArtPulse\Core\get_page_url;
 
 class MemberDashboard
 {
@@ -117,8 +121,10 @@ class MemberDashboard
             return $state;
         }
 
-        $dashboard_url = esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/')));
-        $builder_url   = isset($journey['links']['builder']) ? (string) $journey['links']['builder'] : home_url('/artist-builder/');
+        $dashboard_url = self::get_dashboard_url_for_role('artist');
+        $builder_url   = isset($journey['links']['builder'])
+            ? (string) $journey['links']['builder']
+            : self::get_artist_builder_base_url();
 
         if (in_array('artist', (array) $user->roles, true)) {
             $state['status']      = 'approved';
@@ -241,8 +247,10 @@ class MemberDashboard
             return $state;
         }
 
-        $dashboard_url = esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/')));
-        $builder_url   = isset($journey['links']['builder']) ? (string) $journey['links']['builder'] : home_url('/org-builder/');
+        $dashboard_url = self::get_dashboard_url_for_role('organization');
+        $builder_url   = isset($journey['links']['builder'])
+            ? (string) $journey['links']['builder']
+            : self::get_org_builder_base_url();
 
         if (in_array('organization', (array) $user->roles, true)) {
             $state['status']  = 'approved';
@@ -286,7 +294,7 @@ class MemberDashboard
                 $state['status'] = 'denied';
                 $state['cta']    = [
                     'label'    => __('Reopen organization builder', 'artpulse-management'),
-                    'url'      => esc_url_raw(add_query_arg('step', 'profile', $builder_url)),
+                    'url'      => esc_url_raw(add_query_args($builder_url, ['step' => 'profile'])),
                     'variant'  => 'primary',
                     'disabled' => false,
                     'mode'     => 'link',
@@ -307,7 +315,7 @@ class MemberDashboard
         if (in_array($portfolio_status, ['draft', 'pending'], true)) {
             $state['cta'] = [
                 'label'    => __('Continue organization builder', 'artpulse-management'),
-                'url'      => esc_url_raw(add_query_arg('step', 'profile', $builder_url)),
+                'url'      => esc_url_raw(add_query_args($builder_url, ['step' => 'profile'])),
                 'variant'  => 'primary',
                 'disabled' => false,
                 'mode'     => 'link',
@@ -335,7 +343,7 @@ class MemberDashboard
         $user_id = get_current_user_id();
 
         if (!current_user_can('read')) {
-            wp_safe_redirect(home_url('/dashboard/'));
+            wp_safe_redirect(self::get_dashboard_base_url());
             exit;
         }
 
@@ -374,12 +382,12 @@ class MemberDashboard
         $user    = get_user_by('id', $user_id);
 
         if (!$user instanceof WP_User) {
-            wp_safe_redirect(wp_get_referer() ?: home_url('/dashboard/'));
+            wp_safe_redirect(wp_get_referer() ?: self::get_dashboard_base_url());
             exit;
         }
 
         $requested_upgrade = isset($_POST['upgrade_type']) ? sanitize_key((string) $_POST['upgrade_type']) : '';
-        $redirect_base     = wp_get_referer() ?: home_url('/dashboard/');
+        $redirect_base     = wp_get_referer() ?: self::get_dashboard_base_url();
 
         if ('' === $requested_upgrade) {
             wp_safe_redirect($redirect_base);
@@ -398,7 +406,7 @@ class MemberDashboard
                     default                      => 'failed',
                 };
 
-                wp_safe_redirect(add_query_arg('ap_artist_upgrade', $target, $redirect_base));
+                wp_safe_redirect(add_query_args($redirect_base, ['ap_artist_upgrade' => $target]));
                 exit;
             }
 
@@ -408,7 +416,7 @@ class MemberDashboard
                 'request_id' => $result['request_id'] ?? 0,
             ]);
 
-            wp_safe_redirect(add_query_arg('ap_artist_upgrade', 'pending', $redirect_base));
+            wp_safe_redirect(add_query_args($redirect_base, ['ap_artist_upgrade' => 'pending']));
             exit;
         }
 
@@ -427,7 +435,7 @@ class MemberDashboard
                 default                  => 'failed',
             };
 
-            wp_safe_redirect(add_query_arg('ap_org_upgrade', $target, $redirect_base));
+            wp_safe_redirect(add_query_args($redirect_base, ['ap_org_upgrade' => $target]));
             exit;
         }
 
@@ -441,7 +449,7 @@ class MemberDashboard
             'org_id' => $result['org_id'],
         ]);
 
-        wp_safe_redirect(add_query_arg('ap_org_upgrade', 'pending', $redirect_base));
+        wp_safe_redirect(add_query_args($redirect_base, ['ap_org_upgrade' => 'pending']));
         exit;
     }
 
@@ -609,9 +617,9 @@ class MemberDashboard
         $context['user'] = $user;
 
         $default_dashboard_urls = [
-            'upgrade_requested' => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
-            'upgrade_approved'  => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
-            'upgrade_denied'    => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
+            'upgrade_requested' => self::get_dashboard_url_for_role('organization'),
+            'upgrade_approved'  => self::get_dashboard_url_for_role('organization'),
+            'upgrade_denied'    => self::get_dashboard_url_for_role('organization'),
         ];
 
         if (empty($context['dashboard_url']) && isset($default_dashboard_urls[$slug])) {
@@ -619,7 +627,7 @@ class MemberDashboard
         }
 
         if (empty($context['dashboard_url'])) {
-            $context['dashboard_url'] = esc_url_raw(home_url('/dashboard/'));
+            $context['dashboard_url'] = esc_url_raw(self::get_dashboard_base_url());
         }
 
         if (empty($context['dual_role_message'])) {
@@ -672,6 +680,44 @@ class MemberDashboard
         $message = $filtered['message'] ?? $message;
 
         wp_mail($email, $subject, $message);
+    }
+
+    private static function get_dashboard_base_url(): string
+    {
+        $url = get_page_url('dashboard_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('dashboard_page_id');
+    }
+
+    private static function get_dashboard_url_for_role(string $role): string
+    {
+        return esc_url_raw(add_query_args(self::get_dashboard_base_url(), ['role' => $role]));
+    }
+
+    private static function get_artist_builder_base_url(): string
+    {
+        $url = get_page_url('artist_builder_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('artist_builder_page_id');
+    }
+
+    private static function get_org_builder_base_url(): string
+    {
+        $url = get_page_url('org_builder_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('org_builder_page_id');
     }
 
     private static function load_email_template(string $slug, array $context = []): string

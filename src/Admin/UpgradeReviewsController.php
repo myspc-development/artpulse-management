@@ -10,6 +10,9 @@ use ArtPulse\Frontend\MemberDashboard;
 use WP_Post;
 use WP_User;
 use function esc_url_raw;
+use function ArtPulse\Core\add_query_args;
+use function ArtPulse\Core\get_missing_page_fallback;
+use function ArtPulse\Core\get_page_url;
 
 class UpgradeReviewsController
 {
@@ -203,6 +206,19 @@ class UpgradeReviewsController
         exit;
     }
 
+    private static function build_dashboard_url(string $role): string
+    {
+        $base = get_page_url('dashboard_page_id');
+
+        if (!$base) {
+            $base = get_missing_page_fallback('dashboard_page_id');
+        }
+
+        $url = add_query_args($base, ['role' => $role]);
+
+        return esc_url_raw($url);
+    }
+
     public static function filter_row_actions(array $actions, $post): array
     {
         if (!$post instanceof WP_Post || UpgradeReviewRepository::POST_TYPE !== $post->post_type) {
@@ -315,7 +331,7 @@ class UpgradeReviewsController
         }
 
         $email_context = [
-            'dashboard_url' => esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/'))),
+            'dashboard_url' => self::build_dashboard_url('organization'),
             'org_id'        => $org_id,
             'role_label'    => __('Organization', 'artpulse-management'),
         ];
@@ -351,7 +367,7 @@ class UpgradeReviewsController
             ]);
 
             $email_context = [
-                'dashboard_url' => esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/'))),
+                'dashboard_url' => self::build_dashboard_url('artist'),
                 'role_label'    => __('Artist', 'artpulse-management'),
             ];
             $audit_action = 'artist.upgrade.approved';
@@ -431,11 +447,11 @@ class UpgradeReviewsController
         $user = get_user_by('id', $user_id);
         if ($user instanceof WP_User) {
             $role_label = __('Organization', 'artpulse-management');
-            $dashboard_url = esc_url_raw(add_query_arg('role', 'organization', home_url('/dashboard/')));
+        $dashboard_url = self::build_dashboard_url('organization');
 
             if (UpgradeReviewRepository::TYPE_ARTIST_UPGRADE === $type) {
                 $role_label = __('Artist', 'artpulse-management');
-                $dashboard_url = esc_url_raw(add_query_arg('role', 'artist', home_url('/dashboard/')));
+                $dashboard_url = self::build_dashboard_url('artist');
             }
 
             MemberDashboard::send_member_email('upgrade_denied', $user, [

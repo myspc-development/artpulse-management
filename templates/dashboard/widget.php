@@ -29,11 +29,16 @@ $metric_labels = [
     'published_submissions' => esc_html__('Published', 'artpulse-management'),
 ];
 
+$dashboard_base = \ArtPulse\Core\get_page_url('dashboard_page_id');
+if (!$dashboard_base) {
+    $dashboard_base = \ArtPulse\Core\get_missing_page_fallback('dashboard_page_id');
+}
+
 $query_notifications = [];
 
 $artist_status = isset($_GET['ap_artist_upgrade']) ? sanitize_key((string) $_GET['ap_artist_upgrade']) : '';
 if ($artist_status !== '') {
-    $artist_dashboard_url  = esc_url(add_query_arg('role', 'artist', home_url('/dashboard/')));
+    $artist_dashboard_url  = esc_url(\ArtPulse\Core\add_query_args($dashboard_base, ['role' => 'artist']));
     $artist_dashboard_link = sprintf(
         '<a href="%s">%s</a>',
         $artist_dashboard_url,
@@ -79,7 +84,7 @@ if ($artist_status !== '') {
 
 $org_status = isset($_GET['ap_org_upgrade']) ? sanitize_key((string) $_GET['ap_org_upgrade']) : '';
 if ($org_status !== '') {
-    $org_dashboard_url  = esc_url(add_query_arg('role', 'organization', home_url('/dashboard/')));
+    $org_dashboard_url  = esc_url(\ArtPulse\Core\add_query_args($dashboard_base, ['role' => 'organization']));
     $org_dashboard_link = sprintf(
         '<a href="%s">%s</a>',
         $org_dashboard_url,
