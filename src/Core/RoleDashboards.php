@@ -1335,7 +1335,7 @@ class RoleDashboards
                 $user_id,
                 'artpulse_artist',
                 [
-                    'builder'   => self::getBuilderBaseUrl('artist_builder_page_id'),
+                    'builder'   => self::getBuilderUrlForJourney('artist'),
                     'dashboard' => self::getDashboardUrlForRole('artist'),
                     'public'    => '',
                     'upgrade'   => $upgrade_links['artist'] ?? '',
@@ -1351,7 +1351,7 @@ class RoleDashboards
                 $user_id,
                 'artpulse_org',
                 [
-                    'builder'   => self::getBuilderBaseUrl('org_builder_page_id'),
+                    'builder'   => self::getBuilderUrlForJourney('organization'),
                     'dashboard' => self::getDashboardUrlForRole('organization'),
                     'public'    => '',
                     'upgrade'   => $upgrade_links['organization'] ?? '',
@@ -1562,12 +1562,33 @@ class RoleDashboards
         $snapshot['has_published']   = in_array('publish', $statuses, true);
         $snapshot['has_unpublished'] = !empty(array_intersect($statuses, ['draft', 'pending']));
 
+        if ('artpulse_org' === $post_type) {
+            $logo_id  = (int) get_post_meta($selected->ID, '_ap_logo_id', true);
+            $cover_id = (int) get_post_meta($selected->ID, '_ap_cover_id', true);
+            $gallery  = get_post_meta($selected->ID, '_ap_gallery_ids', true);
+
+            if (!is_array($gallery)) {
+                $gallery = (array) $gallery;
+            }
+
+            $gallery_ids = array_values(array_filter(array_map('intval', $gallery)));
+
+            $snapshot['media'] = [
+                'logo_id'     => $logo_id,
+                'cover_id'    => $cover_id,
+                'gallery_ids' => $gallery_ids,
+                'has_images'  => $logo_id > 0 || $cover_id > 0 || !empty($gallery_ids),
+            ];
+        }
+
         return $snapshot;
     }
 
     private static function buildJourneyState(string $journey, int $user_id, string $post_type, array $links, array $review = []): array
     {
         $snapshot = self::summarizePortfolio($user_id, $post_type);
+
+        $links['builder'] = self::enrichBuilderUrl($journey, $links['builder'] ?? '', $snapshot);
 
         if (!empty($snapshot['permalink'])) {
             $links['public'] = $snapshot['permalink'];
@@ -2184,6 +2205,87 @@ class RoleDashboards
         }
 
         return get_missing_page_fallback($key);
+    }
+
+    private static function getBuilderUrlForJourney(string $journey): string
+    {
+        if ($journey === 'artist') {
+            $base = self::getBuilderBaseUrl('artist_builder_page_id');
+
+            if ($base === '') {
+                return '';
+            }
+
+            return esc_url_raw(add_query_args($base, ['ap_builder' => 'artist']));
+        }
+
+        if ($journey === 'organization') {
+            $base = self::getBuilderBaseUrl('org_builder_page_id');
+
+            if ($base === '') {
+                return '';
+            }
+
+            return esc_url_raw(add_query_args($base, ['ap_builder' => 'organization']));
+        }
+
+        return '';
+    }
+
+    private static function enrichBuilderUrl(string $journey, string $builder_url, array $snapshot): string
+    {
+        if ($builder_url === '') {
+            return '';
+        }
+
+        $args = [];
+
+        if ('artist' === $journey) {
+            if (($snapshot['status'] ?? '') === 'missing') {
+                $args['autocreate'] = '1';
+            }
+        } elseif ('organization' === $journey) {
+            $post_id = isset($snapshot['post_id']) ? (int) $snapshot['post_id'] : 0;
+
+            if ($post_id > 0) {
+                $args['org_id'] = (string) $post_id;
+            }
+
+            $step = self::determineOrganizationBuilderStep($snapshot);
+            if ($step !== null) {
+                $args['step'] = $step;
+            }
+        }
+
+        if (empty($args)) {
+            return esc_url_raw($builder_url);
+        }
+
+        return esc_url_raw(add_query_args($builder_url, $args));
+    }
+
+    private static function determineOrganizationBuilderStep(array $snapshot): ?string
+    {
+        $post_id = isset($snapshot['post_id']) ? (int) $snapshot['post_id'] : 0;
+
+        if ($post_id <= 0) {
+            return null;
+        }
+
+        $media      = $snapshot['media'] ?? [];
+        $has_images = (bool) ($media['has_images'] ?? false);
+
+        if (!$has_images) {
+            return 'images';
+        }
+
+        $post_status = $snapshot['post_status'] ?? '';
+
+        if ($post_status !== 'publish') {
+            return 'preview';
+        }
+
+        return null;
     }
 
     private static function getRoleLabels(): array

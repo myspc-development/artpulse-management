@@ -318,6 +318,137 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertStringContainsString('autocreate=1', $create_url);
     }
 
+    public function test_artist_journey_builder_link_autocreates_missing_portfolio(): void
+    {
+        $artist_id = $this->factory->user->create([
+            'role'       => 'artist',
+            'user_login' => 'artist_journey_builder',
+            'user_pass'  => wp_generate_password(12, false),
+            'user_email' => 'artist-journey-builder@example.com',
+        ]);
+
+        wp_set_current_user($artist_id);
+
+        update_option('ap_enable_artist_builder', true);
+
+        $builder_page_id = $this->factory->post->create([
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_content' => '[ap_artist_builder]',
+            'post_title'   => 'Artist Builder Journey',
+        ]);
+
+        $pages = get_option('artpulse_pages', []);
+        if (!is_array($pages)) {
+            $pages = [];
+        }
+        $pages['artist_builder_page_id'] = $builder_page_id;
+        update_option('artpulse_pages', $pages);
+
+        $data = RoleDashboards::prepareDashboardData('artist', $artist_id);
+
+        $journey     = $data['journeys']['artist'] ?? [];
+        $builder_url = $journey['links']['builder'] ?? '';
+
+        $this->assertNotSame('', $builder_url);
+        $this->assertStringContainsString('ap_builder=artist', $builder_url);
+        $this->assertStringContainsString('autocreate=1', $builder_url);
+    }
+
+    public function test_organization_journey_builder_highlights_images_when_media_missing(): void
+    {
+        $org_user_id = $this->factory->user->create([
+            'role'       => 'organization',
+            'user_login' => 'org_builder_media',
+            'user_pass'  => wp_generate_password(12, false),
+            'user_email' => 'org-builder-media@example.com',
+        ]);
+
+        wp_set_current_user($org_user_id);
+
+        update_option('ap_enable_org_builder', true);
+
+        $builder_page_id = $this->factory->post->create([
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_content' => '[ap_org_builder]',
+            'post_title'   => 'Org Builder Journey',
+        ]);
+
+        $pages = get_option('artpulse_pages', []);
+        if (!is_array($pages)) {
+            $pages = [];
+        }
+        $pages['org_builder_page_id'] = $builder_page_id;
+        update_option('artpulse_pages', $pages);
+
+        $org_post_id = $this->factory->post->create([
+            'post_type'   => 'artpulse_org',
+            'post_status' => 'draft',
+            'post_author' => $org_user_id,
+            'post_title'  => 'Media Missing Org',
+        ]);
+
+        $data = RoleDashboards::prepareDashboardData('organization', $org_user_id);
+
+        $journey     = $data['journeys']['organization'] ?? [];
+        $builder_url = $journey['links']['builder'] ?? '';
+
+        $this->assertNotSame('', $builder_url);
+        $this->assertStringContainsString('ap_builder=organization', $builder_url);
+        $this->assertStringContainsString('step=images', $builder_url);
+        $this->assertStringContainsString('org_id=' . $org_post_id, $builder_url);
+    }
+
+    public function test_organization_journey_builder_focuses_preview_when_unpublished_with_media(): void
+    {
+        $org_user_id = $this->factory->user->create([
+            'role'       => 'organization',
+            'user_login' => 'org_builder_preview',
+            'user_pass'  => wp_generate_password(12, false),
+            'user_email' => 'org-builder-preview@example.com',
+        ]);
+
+        wp_set_current_user($org_user_id);
+
+        update_option('ap_enable_org_builder', true);
+
+        $builder_page_id = $this->factory->post->create([
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_content' => '[ap_org_builder]',
+            'post_title'   => 'Org Builder Preview',
+        ]);
+
+        $pages = get_option('artpulse_pages', []);
+        if (!is_array($pages)) {
+            $pages = [];
+        }
+        $pages['org_builder_page_id'] = $builder_page_id;
+        update_option('artpulse_pages', $pages);
+
+        $org_post_id = $this->factory->post->create([
+            'post_type'   => 'artpulse_org',
+            'post_status' => 'draft',
+            'post_author' => $org_user_id,
+            'post_title'  => 'Preview Focus Org',
+        ]);
+
+        update_post_meta($org_post_id, '_ap_logo_id', 123);
+        update_post_meta($org_post_id, '_ap_cover_id', 456);
+        update_post_meta($org_post_id, '_ap_gallery_ids', [789]);
+
+        $data = RoleDashboards::prepareDashboardData('organization', $org_user_id);
+
+        $journey     = $data['journeys']['organization'] ?? [];
+        $builder_url = $journey['links']['builder'] ?? '';
+
+        $this->assertNotSame('', $builder_url);
+        $this->assertStringContainsString('ap_builder=organization', $builder_url);
+        $this->assertStringContainsString('step=preview', $builder_url);
+        $this->assertStringContainsString('org_id=' . $org_post_id, $builder_url);
+    }
+
     private function createRelationshipTables(): void
     {
         global $wpdb;
