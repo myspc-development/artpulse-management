@@ -41,16 +41,11 @@ class PortfolioRestController
         }
 
         $items = get_posts([
-            'post_type'        => ['artpulse_portfolio', 'portfolio'],
+            'post_type'        => 'portfolio',
             'author'           => $user_id,
             'post_status'      => 'publish',
             'numberposts'      => -1,
             'meta_query'       => [
-                'relation' => 'OR',
-                [
-                    'key'   => '_ap_visibility',
-                    'value' => 'public',
-                ],
                 [
                     'key'   => 'portfolio_visibility',
                     'value' => 'public',
@@ -63,23 +58,17 @@ class PortfolioRestController
 
         $response = [];
         foreach ($items as $post_id) {
-            $content     = (string) get_post_field('post_content', $post_id);
-            $legacy      = (string) get_post_meta($post_id, 'portfolio_description', true);
-            if ('' === trim($content) && '' !== $legacy) {
-                $content = $legacy;
-            }
-
-            $link        = (string) get_post_meta($post_id, '_ap_portfolio_link', true);
-            if ($link === '') {
-                $link = (string) get_post_meta($post_id, 'portfolio_link', true);
-            }
+            $description = (string) get_post_meta($post_id, 'portfolio_description', true);
+            $link        = (string) get_post_meta($post_id, 'portfolio_link', true);
+            $image       = (string) get_post_meta($post_id, 'portfolio_image', true);
             $categories  = wp_get_post_terms($post_id, 'portfolio_category', ['fields' => 'slugs']);
 
             $response[] = [
                 'id'          => $post_id,
                 'title'       => get_post_field('post_title', $post_id),
-                'description' => wp_kses_post($content),
+                'description' => wp_kses_post($description),
                 'link'        => esc_url_raw($link),
+                'image'       => esc_url_raw($image),
                 'category'    => isset($categories[0]) ? sanitize_key((string) $categories[0]) : '',
             ];
         }
