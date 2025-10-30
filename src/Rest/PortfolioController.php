@@ -10,6 +10,7 @@ use WP_Post;
 use WP_REST_Request;
 use WP_REST_Server;
 use function ArtPulse\Core\get_page_url;
+use function __;
 use function absint;
 use function array_filter;
 use function array_map;
@@ -100,7 +101,7 @@ final class PortfolioController
         if ('edit' === $context) {
             $cap = 'artist' === $type ? 'edit_artpulse_artist' : 'edit_artpulse_org';
             if (!current_user_can('edit_post', $post_id) || !current_user_can($cap)) {
-                return self::error('ap_forbidden', esc_html__('You do not have permission to edit this profile.', 'artpulse-management'), 403);
+                return self::error('ap_forbidden', __('You cannot edit this profile.', 'artpulse-management'), 403);
             }
         } else {
             $visibility = (string) get_post_meta($post_id, '_ap_visibility', true);
@@ -134,7 +135,7 @@ final class PortfolioController
 
         $cap = 'artist' === $type ? 'edit_artpulse_artist' : 'edit_artpulse_org';
         if (!current_user_can('edit_post', $post_id) || !current_user_can($cap)) {
-            return self::error('ap_forbidden', esc_html__('You do not have permission to edit this profile.', 'artpulse-management'), 403);
+            return self::error('ap_forbidden', __('You cannot edit this profile.', 'artpulse-management'), 403);
         }
 
         $rate = FormRateLimiter::enforce($user_id, self::RATE_CONTEXT, 30, MINUTE_IN_SECONDS);
