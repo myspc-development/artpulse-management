@@ -14,6 +14,7 @@ use WP_User;
 use function ArtPulse\Core\add_query_args;
 use function ArtPulse\Core\get_missing_page_fallback;
 use function ArtPulse\Core\get_page_url;
+use function esc_url_raw;
 
 class OrgBuilderShortcode
 {
@@ -97,6 +98,29 @@ class OrgBuilderShortcode
         ob_start();
 
         wp_enqueue_style('ap-org-builder', plugins_url('assets/css/ap-org-builder.css', ARTPULSE_PLUGIN_FILE), [], ARTPULSE_VERSION);
+
+        wp_enqueue_script(
+            'ap-autosave',
+            plugins_url('assets/js/ap-autosave.js', ARTPULSE_PLUGIN_FILE),
+            ['wp-api-fetch'],
+            ARTPULSE_VERSION,
+            true
+        );
+
+        wp_localize_script('ap-autosave', 'APAutosave', [
+            'nonce'    => wp_create_nonce('wp_rest'),
+            'postId'   => (int) $org->ID,
+            'role'     => 'organization',
+            'endpoint' => esc_url_raw(rest_url('artpulse/v1/portfolio/org/' . $org->ID)),
+            'strings'  => [
+                'saving'       => esc_html__('Saving…', 'artpulse-management'),
+                'savedJustNow' => esc_html__('Saved just now', 'artpulse-management'),
+                'savedAgo'     => esc_html__('Saved %s ago', 'artpulse-management'),
+                'failed'       => esc_html__('Failed to save. Retry?', 'artpulse-management'),
+                'sessionExpired' => esc_html__('Your session expired. Please refresh.', 'artpulse-management'),
+                'retryingIn'   => esc_html__('Retrying in %d seconds…', 'artpulse-management'),
+            ],
+        ]);
 
         $org_post = $org;
         $builder_meta = $meta;

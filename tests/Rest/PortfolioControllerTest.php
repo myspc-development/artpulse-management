@@ -34,6 +34,77 @@ class PortfolioControllerTest extends WP_UnitTestCase
         do_action('rest_api_init');
     }
 
+    public function test_update_portfolio_valid_payload_updates_meta(): void
+    {
+        $request = new WP_REST_Request('POST', '/artpulse/v1/portfolio/org/' . $this->post_id);
+        $request->set_param('id', $this->post_id);
+        $request->set_param('type', 'org');
+        $request->set_header('content-type', 'application/json');
+        $request->set_body(wp_json_encode([
+            'tagline'    => 'Updated tagline',
+            'website'    => 'https://example.com',
+            'socials'    => ['https://example.org/profile'],
+            'phone'      => '123-456-7890',
+            'email'      => 'team@example.com',
+            'address'    => '123 Main Street',
+            'visibility' => 'private',
+        ]));
+
+        $response = rest_do_request($request);
+
+        $this->assertSame(200, $response->get_status());
+        $this->assertSame('Updated tagline', get_post_meta($this->post_id, '_ap_tagline', true));
+        $this->assertSame('https://example.com', get_post_meta($this->post_id, '_ap_website', true));
+        $this->assertSame('https://example.org/profile', get_post_meta($this->post_id, '_ap_socials', true));
+        $this->assertSame('123-456-7890', get_post_meta($this->post_id, '_ap_phone', true));
+        $this->assertSame('team@example.com', get_post_meta($this->post_id, '_ap_email', true));
+        $this->assertSame('123 Main Street', get_post_meta($this->post_id, '_ap_address', true));
+        $this->assertSame('private', get_post_meta($this->post_id, 'portfolio_visibility', true));
+    }
+
+    public function test_update_portfolio_rejects_invalid_url(): void
+    {
+        $request = new WP_REST_Request('POST', '/artpulse/v1/portfolio/org/' . $this->post_id);
+        $request->set_param('id', $this->post_id);
+        $request->set_param('type', 'org');
+        $request->set_header('content-type', 'application/json');
+        $request->set_body(wp_json_encode([
+            'website' => 'not-a-valid-url',
+        ]));
+
+        $response = rest_do_request($request);
+
+        $this->assertSame(422, $response->get_status());
+        $data = $response->get_data();
+        $this->assertSame('invalid_portfolio_payload', $data['code']);
+        $this->assertArrayHasKey('errors', $data['data']);
+        $this->assertArrayHasKey('website', $data['data']['errors']);
+    }
+
+    public function test_update_portfolio_respects_rate_limit(): void
+    {
+        set_transient('ap_rate_builder_write_' . $this->user_id, [
+            'count' => 30,
+            'reset' => time() + 30,
+        ], 30);
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/portfolio/org/' . $this->post_id);
+        $request->set_param('id', $this->post_id);
+        $request->set_param('type', 'org');
+        $request->set_header('content-type', 'application/json');
+        $request->set_body(wp_json_encode([]));
+
+        $response = rest_do_request($request);
+
+        $this->assertSame(429, $response->get_status());
+        $data = $response->get_data();
+        $this->assertSame('rate_limited', $data['code']);
+        $this->assertArrayHasKey('retry_after', $data['data']);
+        $this->assertGreaterThan(0, $data['data']['retry_after']);
+
+        delete_transient('ap_rate_builder_write_' . $this->user_id);
+    }
+
     public function test_media_upload_validates_dimensions(): void
     {
         $tmp = wp_tempnam('small-image');
