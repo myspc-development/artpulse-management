@@ -287,6 +287,7 @@ class Plugin
         \ArtPulse\Rest\RestRoutes::register();
         \ArtPulse\Rest\EventsController::boot();
         \ArtPulse\Rest\ArtistRestController::register();
+        \ArtPulse\Rest\OrganizationRestController::register();
 
         // Admin meta box registrations
         \ArtPulse\Admin\MetaBoxesArtist::register();

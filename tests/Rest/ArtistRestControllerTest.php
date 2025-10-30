@@ -2,8 +2,9 @@
 
 namespace Tests\Rest;
 
-use WP_UnitTestCase;
+use ArtPulse\Core\Capabilities;
 use WP_REST_Request;
+use WP_UnitTestCase;
 
 class ArtistRestControllerTest extends \WP_UnitTestCase
 {
@@ -12,6 +13,8 @@ class ArtistRestControllerTest extends \WP_UnitTestCase
     public function set_up(): void
     {
         parent::set_up();
+
+        Capabilities::add_roles_and_capabilities();
 
         // Create a test artist post
         $this->artist_post = $this->factory->post->create_and_get([
@@ -23,6 +26,8 @@ class ArtistRestControllerTest extends \WP_UnitTestCase
                 '_ap_artist_org' => 101,
             ]
         ]);
+
+        do_action('rest_api_init');
     }
 
     public function test_can_fetch_all_artists()
@@ -94,5 +99,106 @@ class ArtistRestControllerTest extends \WP_UnitTestCase
         $post_id = (int) $data['postId'];
         $this->assertSame('draft', get_post_status($post_id));
         $this->assertSame($user_id, (int) get_post_meta($post_id, '_ap_owner_user', true));
+    }
+
+    public function test_update_artist_requires_permission(): void
+    {
+        $owner_id    = $this->factory->user->create(['role' => 'artist']);
+        $intruder_id = $this->factory->user->create(['role' => 'artist']);
+
+        $post_id = $this->factory->post->create([
+            'post_type'   => 'artpulse_artist',
+            'post_status' => 'draft',
+            'post_author' => $owner_id,
+            'meta_input'  => [
+                '_ap_owner_user' => $owner_id,
+            ],
+        ]);
+
+        wp_set_current_user($intruder_id);
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/artists/' . $post_id);
+        $request->set_param('id', $post_id);
+        $request->set_body_params([
+            'title' => 'Not allowed',
+        ]);
+
+        $response = rest_do_request($request);
+        $data     = $response->get_data();
+
+        $this->assertSame(403, $response->get_status());
+        $this->assertSame('ap_forbidden', $data['code']);
+    }
+
+    public function test_update_artist_success(): void
+    {
+        $user_id = $this->factory->user->create(['role' => 'artist']);
+        wp_set_current_user($user_id);
+
+        $post_id = $this->factory->post->create([
+            'post_type'   => 'artpulse_artist',
+            'post_status' => 'draft',
+            'post_author' => $user_id,
+            'meta_input'  => [
+                '_ap_owner_user' => $user_id,
+            ],
+        ]);
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/artists/' . $post_id);
+        $request->set_param('id', $post_id);
+        $request->set_body_params([
+            'title'        => 'Updated Artist',
+            'excerpt'      => str_repeat('a', 40),
+            'website_url'  => 'https://example.com',
+            'socials'      => ['https://twitter.com/example', ''],
+            'location'     => 'Seattle, WA',
+            'status'       => 'publish',
+            'visibility'   => 'private',
+        ]);
+
+        $response = rest_do_request($request);
+        $data     = $response->get_data();
+
+        $this->assertSame(200, $response->get_status());
+        $this->assertSame('Updated Artist', $data['title']);
+        $this->assertSame('publish', $data['status']);
+        $this->assertSame('private', $data['visibility']);
+        $this->assertSame('https://example.com', $data['website_url']);
+        $this->assertSame(['https://twitter.com/example'], $data['socials']);
+
+        $this->assertSame('https://example.com', get_post_meta($post_id, '_ap_website', true));
+        $this->assertSame('publish', get_post_status($post_id));
+
+        $location_meta = get_post_meta($post_id, '_ap_location', true);
+        $this->assertIsArray($location_meta);
+        $this->assertSame('Seattle, WA', $location_meta['address'] ?? '');
+    }
+
+    public function test_update_artist_rejects_invalid_website(): void
+    {
+        $user_id = $this->factory->user->create(['role' => 'artist']);
+        wp_set_current_user($user_id);
+
+        $post_id = $this->factory->post->create([
+            'post_type'   => 'artpulse_artist',
+            'post_status' => 'draft',
+            'post_author' => $user_id,
+            'meta_input'  => [
+                '_ap_owner_user' => $user_id,
+            ],
+        ]);
+
+        $request = new WP_REST_Request('POST', '/artpulse/v1/artists/' . $post_id);
+        $request->set_param('id', $post_id);
+        $request->set_body_params([
+            'website_url' => 'not-a-valid-url',
+        ]);
+
+        $response = rest_do_request($request);
+        $data     = $response->get_data();
+
+        $this->assertSame(422, $response->get_status());
+        $this->assertSame('ap_invalid_param', $data['code']);
+        $this->assertSame('website_url', $data['data']['field']);
     }
 }
