@@ -45,6 +45,7 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
 }
 
 require_once __DIR__ . '/src/helpers.php';
+require_once __DIR__ . '/src/Core/Urls.php';
 
 if (!class_exists(Plugin::class)) {
     $message = 'ArtPulse Management bootstrap aborted: Plugin class unavailable.';
