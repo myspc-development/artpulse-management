@@ -14,12 +14,14 @@ use function absint;
 use function array_filter;
 use function array_map;
 use function array_values;
+use function array_unique;
 use function current_user_can;
 use function esc_html__;
 use function esc_url_raw;
 use function get_current_user_id;
 use function get_post;
 use function get_post_meta;
+use function get_posts;
 use function get_permalink;
 use function header;
 use function in_array;
@@ -295,7 +297,7 @@ final class PortfolioController
 
         if (array_key_exists('featured_media', $payload)) {
             $featured = absint($payload['featured_media']);
-            if ($featured > 0 && !self::user_owns_attachment($featured, $user_id)) {
+            if ($featured > 0 && !self::user_owns_attachments([$featured], $user_id)) {
                 return self::error('ap_invalid_param', esc_html__('Select an image you uploaded.', 'artpulse-management'), 422, ['field' => 'featured_media']);
             }
             $data['featured_media'] = $featured;
@@ -306,16 +308,9 @@ final class PortfolioController
                 return self::error('ap_invalid_param', esc_html__('Gallery must be an array of media identifiers.', 'artpulse-management'), 422, ['field' => 'gallery']);
             }
 
-            $gallery = [];
-            foreach ($payload['gallery'] as $item) {
-                $attachment_id = absint($item);
-                if ($attachment_id <= 0) {
-                    continue;
-                }
-                if (!self::user_owns_attachment($attachment_id, $user_id)) {
-                    return self::error('ap_invalid_param', esc_html__('One of the selected gallery items is not available.', 'artpulse-management'), 422, ['field' => 'gallery']);
-                }
-                $gallery[] = $attachment_id;
+            $gallery = array_values(array_filter(array_map('absint', $payload['gallery'])));
+            if (!empty($gallery) && !self::user_owns_attachments($gallery, $user_id)) {
+                return self::error('ap_invalid_param', esc_html__('One of the selected gallery items is not available.', 'artpulse-management'), 422, ['field' => 'gallery']);
             }
 
             $data['gallery'] = $gallery;
@@ -389,26 +384,22 @@ final class PortfolioController
         return self::error('ap_rate_limited', $error->get_error_message(), 429, ['retry_after' => $retry]);
     }
 
-    private static function user_owns_attachment(int $attachment_id, int $user_id): bool
+    private static function user_owns_attachments(array $ids, int $uid): bool
     {
-        if ($attachment_id <= 0) {
-            return false;
-        }
-
-        if (current_user_can('manage_options')) {
+        $ids = array_values(array_unique(array_map('intval', array_filter($ids))));
+        if (!$ids) {
             return true;
         }
 
-        $attachment = get_post($attachment_id);
-        if (!$attachment instanceof WP_Post) {
-            return false;
-        }
+        $found = get_posts([
+            'post_type'       => 'attachment',
+            'post__in'        => $ids,
+            'author'          => $uid,
+            'fields'          => 'ids',
+            'posts_per_page'  => count($ids),
+        ]);
 
-        if ('attachment' !== $attachment->post_type) {
-            return false;
-        }
-
-        return (int) $attachment->post_author === $user_id;
+        return count($found) === count($ids);
     }
 
     private static function error(string $code, string $message, int $status, array $extra = []): WP_Error
