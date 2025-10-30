@@ -48,6 +48,24 @@ final class ProfileState
     }
 
     /**
+     * Purge cache entries for a given post identifier.
+     */
+    public static function purge_by_post_id(int $post_id): void
+    {
+        $post = get_post($post_id);
+        if (!$post instanceof WP_Post) {
+            return;
+        }
+
+        $type = self::type_from_post_type($post->post_type);
+        if (!$type) {
+            return;
+        }
+
+        delete_transient(self::cache_key($type, (int) $post->post_author));
+    }
+
+    /**
      * Retrieve a cached snapshot for the given user.
      *
      * @return array<string, mixed>

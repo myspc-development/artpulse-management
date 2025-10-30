@@ -37,6 +37,32 @@ class Plugin
         \ArtPulse\Core\LoginRedirector::register();
         \ArtPulse\Core\TitleTools::register();
         \ArtPulse\Core\Rewrites::register();
+        \ArtPulse\Core\ProfileState::register();
+
+        add_action( 'save_post_artpulse_artist', [ \ArtPulse\Core\ProfileState::class, 'purge_by_post_id' ], 10, 1 );
+        add_action( 'save_post_artpulse_org', [ \ArtPulse\Core\ProfileState::class, 'purge_by_post_id' ], 10, 1 );
+        add_action( 'set_post_thumbnail', [ \ArtPulse\Core\ProfileState::class, 'purge_by_post_id' ], 10, 1 );
+        add_action( 'delete_post_thumbnail', [ \ArtPulse\Core\ProfileState::class, 'purge_by_post_id' ], 10, 1 );
+        add_action(
+            'transition_post_status',
+            function ( $new_status, $old_status, $post ) {
+                if ( $post instanceof \WP_Post && in_array( $post->post_type, [ 'artpulse_artist', 'artpulse_org' ], true ) ) {
+                    \ArtPulse\Core\ProfileState::purge_by_post_id( (int) $post->ID );
+                }
+            },
+            10,
+            3
+        );
+        add_action(
+            'updated_post_meta',
+            function ( $meta_id, $post_id, $meta_key ) {
+                if ( in_array( $meta_key, [ 'ap_visibility', 'ap_tagline', 'ap_gallery', 'ap_socials', 'ap_website_url' ], true ) ) {
+                    \ArtPulse\Core\ProfileState::purge_by_post_id( (int) $post_id );
+                }
+            },
+            10,
+            3
+        );
 
         add_action( 'admin_init', [ $this, 'maybe_retry_letter_index' ] );
         add_action( 'admin_notices', [ $this, 'maybe_display_letter_index_notice' ] );
@@ -259,7 +285,6 @@ class Plugin
         \ArtPulse\Core\AnalyticsManager::register();
         \ArtPulse\Core\AnalyticsDashboard::register();
         \ArtPulse\Core\FrontendMembershipPage::register();
-        \ArtPulse\Core\ProfileState::register();
         \ArtPulse\Community\ProfileLinkRequestManager::register();
         \ArtPulse\Core\MyFollowsShortcode::register();
         \ArtPulse\Core\NotificationShortcode::register();
