@@ -62,6 +62,8 @@
   var debounceTimer = null;
   var backgroundTimer = null;
   var retryTimer = null;
+  var featuredFrame = null;
+  var galleryFrame = null;
   var dirty = false;
   var pending = false;
   var lastSavedAt = 0;
@@ -164,6 +166,61 @@
     }
   }
 
+  function showFieldError(field, message, shouldFocus) {
+    if (typeof shouldFocus === 'undefined') {
+      shouldFocus = true;
+    }
+
+    var el = document.querySelector('[data-field="' + field + '"]');
+    if (!el) {
+      return;
+    }
+
+    el.setAttribute('aria-invalid', 'true');
+
+    var label = el.closest('label');
+    var hint = label && label.querySelector('.ap-field-hint');
+
+    if (!hint && label) {
+      hint = document.createElement('div');
+      hint.className = 'ap-field-hint';
+      label.appendChild(hint);
+    }
+
+    if (hint) {
+      hint.textContent = message;
+    }
+
+    if (shouldFocus && typeof el.focus === 'function') {
+      el.focus({ preventScroll: false });
+    }
+
+    if (shouldFocus && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'center' });
+    }
+  }
+
+  function clearFieldError(field) {
+    var el = document.querySelector('[data-field="' + field + '"]');
+    if (!el) {
+      return;
+    }
+
+    el.removeAttribute('aria-invalid');
+
+    var label = el.closest('label');
+    var hint = label && label.querySelector('.ap-field-hint');
+
+    if (hint) {
+      hint.textContent = '';
+    }
+
+    var errorNode = form.querySelector('[data-error="' + field + '"]');
+    if (errorNode) {
+      errorNode.textContent = '';
+    }
+  }
+
   function setDirty(value) {
     dirty = value;
     updateBeforeUnload();
@@ -261,25 +318,26 @@
       node.textContent = '';
     });
 
+    var seen = {};
+
     Array.prototype.slice.call(form.querySelectorAll('[data-field]')).forEach(function (node) {
-      node.removeAttribute('aria-invalid');
+      var field = node.getAttribute('data-field');
+      if (!field || seen[field]) {
+        return;
+      }
+
+      seen[field] = true;
+      clearFieldError(field);
     });
   }
 
-  function applyFieldError(field, message) {
-    var nodes = fieldNodes(field);
-    nodes.forEach(function (node) {
-      node.setAttribute('aria-invalid', 'true');
-    });
-
+  function applyFieldError(field, message, shouldFocus) {
     var errorNode = form.querySelector('[data-error="' + field + '"]');
     if (errorNode) {
       errorNode.textContent = message;
     }
 
-    if (nodes.length && typeof nodes[0].focus === 'function') {
-      nodes[0].focus({ preventScroll: false });
-    }
+    showFieldError(field, message, shouldFocus);
   }
 
   function applyErrors(error) {
@@ -288,13 +346,17 @@
     }
 
     if (error.data.field) {
-      applyFieldError(error.data.field, error.message || savingErrorLabel);
+      var singleMessage = error.message || savingErrorLabel;
+      applyFieldError(error.data.field, singleMessage, true);
       return;
     }
 
     if (error.data.fields && typeof error.data.fields === 'object') {
+      var hasFocused = false;
       Object.keys(error.data.fields).forEach(function (field) {
-        applyFieldError(field, error.data.fields[field]);
+        var message = error.data.fields[field];
+        applyFieldError(field, message, !hasFocused);
+        hasFocused = true;
       });
     }
   }
@@ -361,6 +423,9 @@
       setDirty(false);
       lastSavedAt = Date.now();
       setStatus(savedJustNowLabel);
+      Object.keys(payload).forEach(function (field) {
+        clearFieldError(field);
+      });
       handleProgress(data);
     }).catch(function (error) {
       pending = false;
@@ -520,23 +585,21 @@
       return;
     }
 
-    var frame = null;
-
     addButton.addEventListener('click', function (event) {
       event.preventDefault();
 
-      if (frame) {
-        frame.open();
+      if (galleryFrame) {
+        galleryFrame.open();
         return;
       }
 
-      frame = window.wp.media({
+      galleryFrame = window.wp.media({
         title: __('Select media', 'artpulse-management'),
         multiple: true,
       });
 
-      frame.on('select', function () {
-        var selection = frame.state().get('selection');
+      galleryFrame.on('select', function () {
+        var selection = galleryFrame.state().get('selection');
         selection.each(function (attachment) {
           var id = attachment.get('id');
           if (!id) {
@@ -549,7 +612,7 @@
         markDirty();
       });
 
-      frame.open();
+      galleryFrame.open();
     });
 
     container.addEventListener('click', function (event) {
@@ -572,23 +635,21 @@
       return;
     }
 
-    var frame = null;
-
     button.addEventListener('click', function (event) {
       event.preventDefault();
 
-      if (frame) {
-        frame.open();
+      if (featuredFrame) {
+        featuredFrame.open();
         return;
       }
 
-      frame = window.wp.media({
+      featuredFrame = window.wp.media({
         title: __('Select featured image', 'artpulse-management'),
         multiple: false,
       });
 
-      frame.on('select', function () {
-        var selection = frame.state().get('selection');
+      featuredFrame.on('select', function () {
+        var selection = featuredFrame.state().get('selection');
         var attachment = selection.first();
         if (!attachment) {
           return;
@@ -597,7 +658,7 @@
         markDirty();
       });
 
-      frame.open();
+      featuredFrame.open();
     });
   }
 

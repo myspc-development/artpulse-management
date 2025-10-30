@@ -192,3 +192,6 @@
         </section>
     </form>
 </div>
+<noscript>
+    <p><?php esc_html_e('This editor requires JavaScript. Please use the classic edit screen.', 'artpulse-management'); ?></p>
+</noscript>
