@@ -115,6 +115,14 @@ final class ProfileState
         return $state;
     }
 
+    public static function can_submit_events(array $state): bool
+    {
+        return ($state['exists'] ?? false)
+            && (($state['status'] ?? '') === 'publish')
+            && (($state['visibility'] ?? '') === 'public')
+            && (int) ($state['complete'] ?? 0) >= 80;
+    }
+
     /**
      * Purge cache entries when the post is saved.
      */
