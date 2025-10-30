@@ -12,6 +12,7 @@ use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_User;
+use function add_query_arg;
 use function array_filter;
 use function array_map;
 use function esc_url_raw;
@@ -1928,32 +1929,53 @@ class RoleDashboards
             }
         }
 
-        $cta_url = $base_url;
+        $cta_url       = $base_url;
+        $state         = [];
+        $portfolio     = [];
+        $journey_slug  = '';
+        $journey_status = 'locked';
 
         if ($target_journey) {
-            $journey_status = $target_journey['status'] ?? 'locked';
-            $portfolio      = $target_journey['portfolio'] ?? [];
-            $post_id        = $portfolio['post_id'] ?? 0;
+            $journey_slug   = (string) ($target_journey['slug'] ?? '');
+            $journey_status = (string) ($target_journey['status'] ?? 'locked');
+            $portfolio      = is_array($target_journey['portfolio'] ?? null)
+                ? $target_journey['portfolio']
+                : [];
 
-            if ($journey_status === 'published') {
-                $enabled      = true;
-                $status_label = __('Ready', 'artpulse-management');
-                $badge        = [
-                    'label'   => __('Ready', 'artpulse-management'),
-                    'variant' => 'success',
-                ];
-                $action_status = 'ready';
+            if (isset($portfolio['state']) && is_array($portfolio['state'])) {
+                $state = $portfolio['state'];
+            }
 
-                if ($post_id) {
-                    $cta_url = add_query_arg(
-                        'organization' === ($target_journey['slug'] ?? '') ? 'org_id' : 'artist_id',
-                        (int) $post_id,
-                        $base_url
-                    );
-                }
+            if (empty($state) && in_array($journey_slug, ['artist', 'organization'], true)) {
+                $state = ProfileState::for_user($journey_slug, $user_id);
+            }
+        }
 
-                $disabled_reason = '';
-            } elseif ($journey_status === 'pending_review') {
+        if (ProfileState::can_submit_events($state)) {
+            $enabled      = true;
+            $status_label = __('Ready', 'artpulse-management');
+            $badge        = [
+                'label'   => __('Ready', 'artpulse-management'),
+                'variant' => 'success',
+            ];
+            $action_status   = 'ready';
+            $disabled_reason = '';
+
+            $post_id = (int) ($state['post_id'] ?? ($portfolio['post_id'] ?? 0));
+
+            if ($post_id) {
+                $cta_url = add_query_arg(
+                    'organization' === $journey_slug ? 'org_id' : 'artist_id',
+                    $post_id,
+                    $base_url
+                );
+            }
+        } else {
+            $status     = (string) ($state['status'] ?? '');
+            $visibility = (string) ($state['visibility'] ?? '');
+            $complete   = (int) ($state['complete'] ?? 0);
+
+            if ($journey_status === 'pending_review') {
                 $status_label    = __('Pending review', 'artpulse-management');
                 $badge           = [
                     'label'   => __('Pending review', 'artpulse-management'),
@@ -1961,13 +1983,6 @@ class RoleDashboards
                 ];
                 $disabled_reason = __('Your profile is pending review. We will email you once it is approved.', 'artpulse-management');
                 $action_status   = 'pending';
-            } elseif (in_array($journey_status, ['in_progress', 'not_started'], true)) {
-                $status_label    = __('Finish your profile to continue', 'artpulse-management');
-                $badge           = [
-                    'label'   => __('In progress', 'artpulse-management'),
-                    'variant' => 'info',
-                ];
-                $disabled_reason = __('Publish your profile to unlock event submissions.', 'artpulse-management');
             } elseif ($journey_status === 'pending_request') {
                 $status_label  = __('Pending review', 'artpulse-management');
                 $badge         = [
@@ -1976,7 +1991,7 @@ class RoleDashboards
                 ];
                 $action_status = 'pending';
 
-                if (($target_journey['slug'] ?? '') === 'artist') {
+                if ($journey_slug === 'artist') {
                     $disabled_reason = __('We are reviewing your artist request. We will email you once it is approved.', 'artpulse-management');
                 } else {
                     $disabled_reason = __('We are reviewing your organization request. We will email you once it is approved.', 'artpulse-management');
@@ -1988,7 +2003,48 @@ class RoleDashboards
                     'variant' => 'danger',
                 ];
                 $disabled_reason = __('Review the feedback on your upgrade request to unlock event submissions.', 'artpulse-management');
+            } elseif (in_array($journey_status, ['in_progress', 'not_started'], true)) {
+                $status_label    = __('Finish your profile to continue', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('In progress', 'artpulse-management'),
+                    'variant' => 'info',
+                ];
+                $disabled_reason = __('Publish your profile to unlock event submissions.', 'artpulse-management');
+            } elseif ($status === 'pending') {
+                $status_label    = __('Pending review', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('Pending review', 'artpulse-management'),
+                    'variant' => 'warning',
+                ];
+                $disabled_reason = __('Your profile is pending review. We will email you once it is approved.', 'artpulse-management');
+                $action_status   = 'pending';
+            } elseif ($status === 'publish' && $visibility !== 'public') {
+                $status_label    = __('Profile is private', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('Private', 'artpulse-management'),
+                    'variant' => 'info',
+                ];
+                $disabled_reason = __('Make your profile public to unlock event submissions.', 'artpulse-management');
+            } elseif ($status === 'publish' && $visibility === 'public' && $complete < 80) {
+                $status_label    = __('Keep going', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('In progress', 'artpulse-management'),
+                    'variant' => 'info',
+                ];
+                $disabled_reason = __('Complete at least 80% of your profile to unlock event submissions.', 'artpulse-management');
+            } elseif (!$state || !($state['exists'] ?? false)) {
+                $status_label    = __('Not started', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('Locked', 'artpulse-management'),
+                    'variant' => 'muted',
+                ];
+                $disabled_reason = __('Publish your profile to unlock event submissions.', 'artpulse-management');
             } else {
+                $status_label    = __('Locked', 'artpulse-management');
+                $badge           = [
+                    'label'   => __('Locked', 'artpulse-management'),
+                    'variant' => 'muted',
+                ];
                 $disabled_reason = __('Publish your profile to unlock event submissions.', 'artpulse-management');
             }
         }
