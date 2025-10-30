@@ -2,7 +2,6 @@
 
 namespace ArtPulse\Rest;
 
-use ArtPulse\Artists\ArtistDraftCreator;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Error;
@@ -13,20 +12,15 @@ use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
 
-class ArtistRestController extends WP_REST_Controller
+class OrganizationRestController extends WP_REST_Controller
 {
-    private const POST_TYPE = 'artpulse_artist';
-    private const RATE_LIMIT_CONTEXT = 'artist_builder';
+    private const POST_TYPE = 'artpulse_org';
+    private const RATE_LIMIT_CONTEXT = 'organization_builder';
     private const MAX_TITLE_LENGTH = 200;
     private const MAX_EXCERPT_LENGTH = 400;
     private const ALLOWED_VISIBILITY = ['public', 'private'];
     private const ALLOWED_STATUS = ['draft', 'pending', 'publish'];
 
-    /**
-     * Namespace for the REST API.
-     *
-     * @var string
-     */
     protected $namespace = 'artpulse/v1';
 
     public function __construct()
@@ -43,11 +37,11 @@ class ArtistRestController extends WP_REST_Controller
     {
         register_rest_route(
             $this->namespace,
-            '/artists',
+            '/organizations',
             [
                 [
                     'methods'             => WP_REST_Server::READABLE,
-                    'callback'            => [$this, 'get_artists'],
+                    'callback'            => [$this, 'get_organizations'],
                     'permission_callback' => '__return_true',
                     'schema'              => [$this, 'get_public_item_schema'],
                 ],
@@ -56,15 +50,15 @@ class ArtistRestController extends WP_REST_Controller
 
         register_rest_route(
             $this->namespace,
-            '/artists/(?P<id>\\d+)',
+            '/organizations/(?P<id>\\d+)',
             [
                 [
                     'methods'             => WP_REST_Server::READABLE,
-                    'callback'            => [$this, 'get_artist'],
+                    'callback'            => [$this, 'get_organization'],
                     'permission_callback' => '__return_true',
                     'args'                => [
                         'id' => [
-                            'description'       => __('Unique identifier for the artist.', 'artpulse-management'),
+                            'description'       => __('Unique identifier for the organization.', 'artpulse-management'),
                             'type'              => 'integer',
                             'required'          => true,
                             'sanitize_callback' => 'absint',
@@ -75,12 +69,12 @@ class ArtistRestController extends WP_REST_Controller
                 ],
                 [
                     'methods'             => WP_REST_Server::EDITABLE,
-                    'callback'            => [$this, 'update_artist'],
+                    'callback'            => [$this, 'update_organization'],
                     'permission_callback' => [$this, 'permissions_check'],
                     'args'                => array_merge(
                         [
                             'id' => [
-                                'description'       => __('Unique identifier for the artist.', 'artpulse-management'),
+                                'description'       => __('Unique identifier for the organization.', 'artpulse-management'),
                                 'type'              => 'integer',
                                 'required'          => true,
                                 'sanitize_callback' => 'absint',
@@ -93,19 +87,9 @@ class ArtistRestController extends WP_REST_Controller
                 ],
             ]
         );
-
-        register_rest_route(
-            $this->namespace,
-            '/artist/create',
-            [
-                'methods'             => WP_REST_Server::CREATABLE,
-                'callback'            => [$this, 'create_artist'],
-                'permission_callback' => [Guards::class, 'portfolio_creator_only'],
-            ]
-        );
     }
 
-    public function get_artists(WP_REST_Request $request): WP_REST_Response
+    public function get_organizations(WP_REST_Request $request): WP_REST_Response
     {
         $query = new WP_Query([
             'post_type'      => self::POST_TYPE,
@@ -115,7 +99,6 @@ class ArtistRestController extends WP_REST_Controller
         ]);
 
         $data = [];
-
         foreach ($query->posts as $post_id) {
             $post = get_post((int) $post_id);
             if (!$post instanceof WP_Post) {
@@ -129,7 +112,7 @@ class ArtistRestController extends WP_REST_Controller
         return rest_ensure_response($data);
     }
 
-    public function get_artist(WP_REST_Request $request)
+    public function get_organization(WP_REST_Request $request)
     {
         $post = $this->get_post_from_request($request);
         if ($post instanceof WP_Error) {
@@ -139,22 +122,7 @@ class ArtistRestController extends WP_REST_Controller
         return $this->prepare_item_for_response($post, $request);
     }
 
-    public function create_artist(WP_REST_Request $request)
-    {
-        $result = ArtistDraftCreator::create_for_user(get_current_user_id());
-
-        if ($result instanceof WP_Error) {
-            $status = (int) ($result->get_error_data()['status'] ?? 400);
-
-            return RestUtils::error($result->get_error_code(), $result->get_error_message(), $status);
-        }
-
-        return new WP_REST_Response([
-            'postId' => (int) $result,
-        ], 201);
-    }
-
-    public function update_artist(WP_REST_Request $request)
+    public function update_organization(WP_REST_Request $request)
     {
         $post = $this->get_post_from_request($request);
         if ($post instanceof WP_Error) {
@@ -173,7 +141,7 @@ class ArtistRestController extends WP_REST_Controller
             );
         }
 
-        $post_update       = ['ID' => $post->ID];
+        $post_update        = ['ID' => $post->ID];
         $should_update_post = false;
 
         $title = $request->get_param('title');
@@ -205,14 +173,14 @@ class ArtistRestController extends WP_REST_Controller
             if ($updated instanceof WP_Error) {
                 return RestUtils::error(
                     'ap_update_failed',
-                    __('Unable to update artist.', 'artpulse-management'),
+                    __('Unable to update organization.', 'artpulse-management'),
                     500
                 );
             }
 
             $post = get_post($post->ID);
             if (!$post instanceof WP_Post) {
-                return RestUtils::error('ap_not_found', __('Artist not found.', 'artpulse-management'), 404);
+                return RestUtils::error('ap_not_found', __('Organization not found.', 'artpulse-management'), 404);
             }
         }
 
@@ -280,17 +248,17 @@ class ArtistRestController extends WP_REST_Controller
 
         $this->schema = [
             '$schema'    => 'http://json-schema.org/draft-07/schema#',
-            'title'      => 'artist',
+            'title'      => 'organization',
             'type'       => 'object',
             'properties' => [
                 'id' => [
-                    'description' => __('Unique identifier for the artist.', 'artpulse-management'),
+                    'description' => __('Unique identifier for the organization.', 'artpulse-management'),
                     'type'        => 'integer',
                     'context'     => ['view', 'edit'],
                     'readonly'    => true,
                 ],
                 'title' => [
-                    'description' => __('Title of the artist profile.', 'artpulse-management'),
+                    'description' => __('Title of the organization profile.', 'artpulse-management'),
                     'type'        => 'string',
                     'context'     => ['view', 'edit'],
                     'minLength'   => 0,
@@ -301,7 +269,7 @@ class ArtistRestController extends WP_REST_Controller
                     ],
                 ],
                 'content' => [
-                    'description' => __('Primary description of the artist.', 'artpulse-management'),
+                    'description' => __('Primary description of the organization.', 'artpulse-management'),
                     'type'        => 'string',
                     'context'     => ['view', 'edit'],
                     'arg_options' => [
@@ -309,7 +277,7 @@ class ArtistRestController extends WP_REST_Controller
                     ],
                 ],
                 'excerpt' => [
-                    'description' => __('Short summary of the artist.', 'artpulse-management'),
+                    'description' => __('Short summary of the organization.', 'artpulse-management'),
                     'type'        => 'string',
                     'context'     => ['view', 'edit'],
                     'minLength'   => 0,
@@ -320,7 +288,7 @@ class ArtistRestController extends WP_REST_Controller
                     ],
                 ],
                 'website_url' => [
-                    'description' => __('Primary website for the artist.', 'artpulse-management'),
+                    'description' => __('Primary website for the organization.', 'artpulse-management'),
                     'type'        => 'string',
                     'format'      => 'uri',
                     'context'     => ['view', 'edit'],
@@ -343,7 +311,7 @@ class ArtistRestController extends WP_REST_Controller
                     ],
                 ],
                 'location' => [
-                    'description' => __('Primary location label for the artist.', 'artpulse-management'),
+                    'description' => __('Primary location label for the organization.', 'artpulse-management'),
                     'type'        => 'string',
                     'context'     => ['view', 'edit'],
                     'arg_options' => [
@@ -374,7 +342,7 @@ class ArtistRestController extends WP_REST_Controller
                     ],
                 ],
                 'visibility' => [
-                    'description' => __('Visibility state for the artist profile.', 'artpulse-management'),
+                    'description' => __('Visibility state for the organization.', 'artpulse-management'),
                     'type'        => 'string',
                     'enum'        => self::ALLOWED_VISIBILITY,
                     'context'     => ['view', 'edit'],
@@ -384,7 +352,7 @@ class ArtistRestController extends WP_REST_Controller
                     ],
                 ],
                 'status' => [
-                    'description' => __('Publication status for the artist.', 'artpulse-management'),
+                    'description' => __('Publication status for the organization.', 'artpulse-management'),
                     'type'        => 'string',
                     'enum'        => self::ALLOWED_STATUS,
                     'context'     => ['view', 'edit'],
@@ -403,7 +371,7 @@ class ArtistRestController extends WP_REST_Controller
     {
         $post = get_post((int) $value);
         if (!$post instanceof WP_Post || self::POST_TYPE !== $post->post_type) {
-            return RestUtils::error('ap_not_found', __('Artist not found.', 'artpulse-management'), 404, $param);
+            return RestUtils::error('ap_not_found', __('Organization not found.', 'artpulse-management'), 404, $param);
         }
 
         return true;
@@ -714,7 +682,7 @@ class ArtistRestController extends WP_REST_Controller
         $post    = get_post($post_id);
 
         if (!$post instanceof WP_Post || self::POST_TYPE !== $post->post_type) {
-            return RestUtils::error('ap_not_found', __('Artist not found.', 'artpulse-management'), 404, 'id');
+            return RestUtils::error('ap_not_found', __('Organization not found.', 'artpulse-management'), 404, 'id');
         }
 
         return $post;
