@@ -13,6 +13,7 @@ use function ArtPulse\Core\get_page_url;
 use function absint;
 use function array_filter;
 use function array_map;
+use function array_values;
 use function current_user_can;
 use function esc_html__;
 use function esc_url_raw;
@@ -32,6 +33,7 @@ use function wp_kses_post;
 use function wp_update_post;
 use function delete_post_meta;
 use function delete_post_thumbnail;
+use function sanitize_key;
 use function sanitize_text_field;
 
 /**
@@ -395,6 +397,159 @@ final class PortfolioController
         return new WP_Error($code, $message, $data);
     }
 
+    public static function validate_title_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        $value = (string) $value;
+        if ('' === trim($value)) {
+            return self::error('ap_invalid_param', esc_html__('Title cannot be empty.', 'artpulse-management'), 422, ['field' => 'title']);
+        }
+
+        if (mb_strlen($value) > 200) {
+            return self::error('ap_invalid_param', esc_html__('Title must be 200 characters or fewer.', 'artpulse-management'), 422, ['field' => 'title']);
+        }
+
+        return true;
+    }
+
+    public static function validate_tagline_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        $value = (string) $value;
+        if (mb_strlen($value) > 160) {
+            return self::error('ap_invalid_param', esc_html__('Tagline must be 160 characters or fewer.', 'artpulse-management'), 422, ['field' => 'tagline']);
+        }
+
+        return true;
+    }
+
+    public static function validate_website_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        $value = trim((string) $value);
+        if ('' === $value) {
+            return true;
+        }
+
+        if (!wp_http_validate_url($value)) {
+            return self::error('ap_invalid_param', esc_html__('Enter a valid website URL.', 'artpulse-management'), 422, ['field' => 'website_url']);
+        }
+
+        return true;
+    }
+
+    public static function sanitize_socials_arg($value)
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return array_map(static fn($item) => sanitize_text_field((string) $item), $value);
+    }
+
+    public static function validate_socials_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        if (!is_array($value)) {
+            return self::error('ap_invalid_param', esc_html__('Social links must be an array.', 'artpulse-management'), 422, ['field' => 'socials']);
+        }
+
+        foreach ($value as $url) {
+            $url = trim((string) $url);
+            if ('' === $url) {
+                continue;
+            }
+
+            if (!wp_http_validate_url($url)) {
+                return self::error('ap_invalid_param', esc_html__('Enter valid URLs for your social profiles.', 'artpulse-management'), 422, ['field' => 'socials']);
+            }
+        }
+
+        return true;
+    }
+
+    public static function validate_featured_media_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        $value = (int) $value;
+        if ($value < 0) {
+            return self::error('ap_invalid_param', esc_html__('Select an image you uploaded.', 'artpulse-management'), 422, ['field' => 'featured_media']);
+        }
+
+        return true;
+    }
+
+    public static function sanitize_gallery_arg($value)
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_map('absint', $value));
+    }
+
+    public static function validate_gallery_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        if (!is_array($value)) {
+            return self::error('ap_invalid_param', esc_html__('Gallery must be an array of media identifiers.', 'artpulse-management'), 422, ['field' => 'gallery']);
+        }
+
+        foreach ($value as $item) {
+            if ((int) $item < 0) {
+                return self::error('ap_invalid_param', esc_html__('Gallery must be an array of media identifiers.', 'artpulse-management'), 422, ['field' => 'gallery']);
+            }
+        }
+
+        return true;
+    }
+
+    public static function validate_visibility_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        $value = strtolower((string) $value);
+        if (!in_array($value, ['public', 'private'], true)) {
+            return self::error('ap_invalid_param', esc_html__('Visibility must be public or private.', 'artpulse-management'), 422, ['field' => 'visibility']);
+        }
+
+        return true;
+    }
+
+    public static function validate_status_arg($value, WP_REST_Request $request, string $param)
+    {
+        if (null === $value) {
+            return true;
+        }
+
+        $value = strtolower((string) $value);
+        if (!in_array($value, ['draft', 'pending', 'publish'], true)) {
+            return self::error('ap_invalid_param', esc_html__('Status must be draft, pending, or publish.', 'artpulse-management'), 422, ['field' => 'status']);
+        }
+
+        return true;
+    }
+
     /**
      * Schema for writable parameters.
      *
@@ -407,11 +562,13 @@ final class PortfolioController
                 'type'              => 'string',
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_text_field',
+                'validate_callback' => [self::class, 'validate_title_arg'],
             ],
             'tagline' => [
                 'type'              => 'string',
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_text_field',
+                'validate_callback' => [self::class, 'validate_tagline_arg'],
             ],
             'bio' => [
                 'type'              => 'string',
@@ -421,33 +578,38 @@ final class PortfolioController
             'website_url' => [
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => 'esc_url_raw',
+                'validate_callback' => [self::class, 'validate_website_arg'],
             ],
             'socials' => [
                 'type'     => 'array',
                 'required' => false,
-                'items'    => [
-                    'type' => 'string',
-                ],
+                'sanitize_callback' => [self::class, 'sanitize_socials_arg'],
+                'validate_callback' => [self::class, 'validate_socials_arg'],
             ],
             'featured_media' => [
                 'type'     => 'integer',
                 'required' => false,
+                'sanitize_callback' => 'absint',
+                'validate_callback' => [self::class, 'validate_featured_media_arg'],
             ],
             'gallery' => [
                 'type'     => 'array',
                 'required' => false,
-                'items'    => [
-                    'type' => 'integer',
-                ],
+                'sanitize_callback' => [self::class, 'sanitize_gallery_arg'],
+                'validate_callback' => [self::class, 'validate_gallery_arg'],
             ],
             'visibility' => [
                 'type'     => 'string',
                 'required' => false,
+                'sanitize_callback' => 'sanitize_key',
+                'validate_callback' => [self::class, 'validate_visibility_arg'],
             ],
             'status' => [
                 'type'     => 'string',
                 'required' => false,
+                'sanitize_callback' => 'sanitize_key',
+                'validate_callback' => [self::class, 'validate_status_arg'],
             ],
         ];
     }

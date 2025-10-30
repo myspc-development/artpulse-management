@@ -48,7 +48,7 @@ $journeys = [
             $notice_variant   = '';
             $profile_url      = isset($state['profile_url']) ? (string) $state['profile_url'] : '';
 
-            if ('requested' === $status) {
+            if ('pending_request' === $status) {
                 $status_notice  = __('Your request is pending review. We will email you when a moderator responds.', 'artpulse-management');
                 $notice_variant = 'pending';
             } elseif ('denied' === $status) {
@@ -91,9 +91,18 @@ $journeys = [
                         <?php else : ?>
                             <a class="ap-dashboard-button ap-dashboard-button--<?php echo esc_attr($cta_variant); ?>" href="<?php echo esc_url($cta_url); ?>"><?php echo esc_html($cta_label); ?></a>
                         <?php endif; ?>
-                        <?php if ('requested' === $status && $profile_url !== '') : ?>
+                        <?php if ($profile_url !== '') : ?>
+                            <?php
+                            if ('pending_request' === $status) {
+                                $profile_link_label = __('Preview your draft profile', 'artpulse-management');
+                            } elseif ('pending_review' === $status) {
+                                $profile_link_label = __('Preview submitted profile', 'artpulse-management');
+                            } else {
+                                $profile_link_label = __('View profile', 'artpulse-management');
+                            }
+                            ?>
                             <a class="ap-dashboard-journey__secondary-link" href="<?php echo esc_url($profile_url); ?>">
-                                <?php esc_html_e('Preview your draft artist profile', 'artpulse-management'); ?>
+                                <?php echo esc_html($profile_link_label); ?>
                             </a>
                         <?php endif; ?>
                     </div>
