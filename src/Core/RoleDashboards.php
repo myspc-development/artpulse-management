@@ -10,6 +10,7 @@ use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_User;
+use function esc_url_raw;
 
 class RoleDashboards
 {
@@ -303,12 +304,7 @@ class RoleDashboards
 
         wp_enqueue_script('ap-dashboards-js');
 
-        $admin_email    = sanitize_email((string) get_option('admin_email'));
-        $default_support = $admin_email !== ''
-            ? sprintf('mailto:%s', $admin_email)
-            : home_url('/contact/');
-        $support_url = (string) apply_filters('artpulse/support_contact_url', $default_support);
-        $support_url = esc_url_raw($support_url);
+        $support_url = esc_url_raw(get_support_url());
 
         wp_localize_script(
             'ap-dashboards-js',
@@ -732,7 +728,7 @@ class RoleDashboards
             $available[] = [
                 'role'    => $role,
                 'label'   => $labels[$role]['title'] ?? ucfirst($role),
-                'url'     => add_query_arg('role', $role, home_url('/dashboard/')),
+                'url'     => self::getDashboardUrlForRole($role),
                 'current' => $role === $active_role,
             ];
         }
@@ -1310,8 +1306,8 @@ class RoleDashboards
                 $user_id,
                 'artpulse_artist',
                 [
-                    'builder'   => home_url('/artist-builder/'),
-                    'dashboard' => add_query_arg('role', 'artist', home_url('/dashboard/')),
+                    'builder'   => self::getBuilderBaseUrl('artist_builder_page_id'),
+                    'dashboard' => self::getDashboardUrlForRole('artist'),
                     'public'    => '',
                     'upgrade'   => $upgrade_links['artist'] ?? '',
                 ],
@@ -1326,8 +1322,8 @@ class RoleDashboards
                 $user_id,
                 'artpulse_org',
                 [
-                    'builder'   => home_url('/org-builder/'),
-                    'dashboard' => add_query_arg('role', 'organization', home_url('/dashboard/')),
+                    'builder'   => self::getBuilderBaseUrl('org_builder_page_id'),
+                    'dashboard' => self::getDashboardUrlForRole('organization'),
                     'public'    => '',
                     'upgrade'   => $upgrade_links['organization'] ?? '',
                 ],
@@ -2132,6 +2128,33 @@ class RoleDashboards
             'thumbnail'  => $thumbnail ?: null,
             'edit_url'   => $edit_link ?: null,
         ];
+    }
+
+    private static function getDashboardBaseUrl(): string
+    {
+        $url = get_page_url('dashboard_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('dashboard_page_id');
+    }
+
+    private static function getDashboardUrlForRole(string $role): string
+    {
+        return esc_url_raw(add_query_args(self::getDashboardBaseUrl(), ['role' => $role]));
+    }
+
+    private static function getBuilderBaseUrl(string $key): string
+    {
+        $url = get_page_url($key);
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback($key);
     }
 
     private static function getRoleLabels(): array

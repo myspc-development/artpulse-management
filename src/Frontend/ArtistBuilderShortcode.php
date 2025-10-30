@@ -9,6 +9,9 @@ use ArtPulse\Core\UpgradeReviewRepository;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Error;
+use function ArtPulse\Core\add_query_args;
+use function ArtPulse\Core\get_missing_page_fallback;
+use function ArtPulse\Core\get_page_url;
 
 /**
  * Shortcode for managing artist profiles via the front-end builder.
@@ -103,8 +106,8 @@ final class ArtistBuilderShortcode
                 $progress = 95;
             }
 
-            $builder_url = add_query_arg(['artist_id' => $artist_id], home_url('/artist-builder/'));
-            $dashboard_url = add_query_arg('role', 'artist', home_url('/dashboard/'));
+            $builder_url = add_query_args(self::builder_base_url(), ['artist_id' => (string) $artist_id]);
+            $dashboard_url = add_query_args(self::get_dashboard_base_url(), ['role' => 'artist']);
             $public_url   = get_permalink($artist_id) ?: '';
             $submit_event_url = '';
 
@@ -187,7 +190,7 @@ final class ArtistBuilderShortcode
 
     private static function redirect_to_builder(int $post_id): void
     {
-        $target = add_query_arg('post_id', $post_id, self::builder_base_url());
+        $target = add_query_args(self::builder_base_url(), ['post_id' => (string) $post_id]);
 
         wp_safe_redirect($target);
         exit;
@@ -195,7 +198,29 @@ final class ArtistBuilderShortcode
 
     private static function builder_base_url(): string
     {
-        return add_query_arg(['ap_builder' => 'artist'], home_url('/artist-builder/'));
+        return add_query_args(self::get_builder_page_url(), ['ap_builder' => 'artist']);
+    }
+
+    private static function get_builder_page_url(): string
+    {
+        $url = get_page_url('artist_builder_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('artist_builder_page_id');
+    }
+
+    private static function get_dashboard_base_url(): string
+    {
+        $url = get_page_url('dashboard_page_id');
+
+        if ($url) {
+            return $url;
+        }
+
+        return get_missing_page_fallback('dashboard_page_id');
     }
 
     private static function render_empty_state(string $error_message): string
