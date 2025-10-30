@@ -104,6 +104,8 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
             'post_title'  => 'Artist Portfolio',
         ]);
 
+        update_post_meta($portfolio_id, '_ap_visibility', 'public');
+
         $draft_id = $this->factory->post->create([
             'post_type'   => 'artpulse_artwork',
             'post_status' => 'draft',
@@ -121,6 +123,11 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertSame('published', $artist_journey['status']);
         $this->assertSame('Published', $artist_journey['badge']['label']);
         $this->assertSame($portfolio_id, $artist_journey['portfolio']['post_id']);
+        $this->assertSame(
+            esc_url_raw(get_permalink($portfolio_id)),
+            $artist_journey['links']['view']
+        );
+        $this->assertSame('', $artist_journey['links']['preview']);
 
         $journey_action = $this->findQuickAction($data['quick_actions'], 'journey_artist');
         $this->assertNotNull($journey_action);
@@ -133,6 +140,11 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertSame('ready', $view_profile['status']);
         $this->assertFalse($view_profile['cta']['disabled']);
         $this->assertSame('Live', $view_profile['badge']['label']);
+        $this->assertSame(
+            esc_url_raw(get_permalink($portfolio_id)),
+            $view_profile['links']['view'] ?? ''
+        );
+        $this->assertSame('', $view_profile['links']['preview'] ?? '');
 
         $submit_event = $this->findQuickAction($data['quick_actions'], 'submit_event');
         $this->assertNotNull($submit_event);
@@ -176,6 +188,8 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertSame('in_progress', $journey['status']);
         $this->assertSame($org_post_id, $journey['portfolio']['post_id']);
         $this->assertSame('Draft', $journey['badge']['label']);
+        $this->assertSame('', $journey['links']['view']);
+        $this->assertStringContainsString('preview=true', $journey['links']['preview']);
 
         $journey_action = $this->findQuickAction($data['quick_actions'], 'journey_organization');
         $this->assertNotNull($journey_action);
@@ -195,6 +209,8 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertSame('Draft', $view_profile['badge']['label']);
         $this->assertSame('info', $view_profile['badge']['variant']);
         $this->assertSame('Not yet published', $view_profile['status_label']);
+        $this->assertSame('', $view_profile['links']['view'] ?? '');
+        $this->assertStringContainsString('preview=true', $view_profile['links']['preview'] ?? '');
 
         $submit_event = $this->findQuickAction($data['quick_actions'], 'submit_event');
         $this->assertNotNull($submit_event);

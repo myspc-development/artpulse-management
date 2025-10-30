@@ -91,16 +91,28 @@ $journeys = [
                         <?php else : ?>
                             <a class="ap-dashboard-button ap-dashboard-button--<?php echo esc_attr($cta_variant); ?>" href="<?php echo esc_url($cta_url); ?>"><?php echo esc_html($cta_label); ?></a>
                         <?php endif; ?>
-                        <?php if ($profile_url !== '') : ?>
-                            <?php
+                        <?php
+                        $journey_links = $state['journey']['links'] ?? [];
+                        $view_link     = $journey_links['view'] ?? '';
+                        $preview_link  = $journey_links['preview'] ?? '';
+
+                        if ($view_link !== '') {
+                            $profile_url       = $view_link;
+                            $profile_link_label = __('View profile', 'artpulse-management');
+                        } elseif ($preview_link !== '') {
+                            $profile_url = $preview_link;
                             if ('pending_request' === $status) {
                                 $profile_link_label = __('Preview your draft profile', 'artpulse-management');
                             } elseif ('pending_review' === $status) {
                                 $profile_link_label = __('Preview submitted profile', 'artpulse-management');
                             } else {
-                                $profile_link_label = __('View profile', 'artpulse-management');
+                                $profile_link_label = __('Preview profile', 'artpulse-management');
                             }
-                            ?>
+                        } else {
+                            $profile_url = '';
+                        }
+                        ?>
+                        <?php if ($profile_url !== '') : ?>
                             <a class="ap-dashboard-journey__secondary-link" href="<?php echo esc_url($profile_url); ?>">
                                 <?php echo esc_html($profile_link_label); ?>
                             </a>

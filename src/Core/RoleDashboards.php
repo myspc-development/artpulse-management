@@ -4,6 +4,7 @@ namespace ArtPulse\Core;
 
 use ArtPulse\Community\FavoritesManager;
 use ArtPulse\Community\FollowManager;
+use ArtPulse\Core\ProfileLinkHelpers;
 use ArtPulse\Core\ProfileState;
 use ArtPulse\Frontend\ArtistRequestStatusRoute;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
@@ -1572,10 +1573,18 @@ class RoleDashboards
         $builder_url     = isset($state['builder_url']) ? (string) $state['builder_url'] : ($links['builder'] ?? '');
         $links['builder'] = self::enrichBuilderUrl($journey, $builder_url, $snapshot);
 
-        $public_url = isset($state['public_url']) ? (string) $state['public_url'] : ($snapshot['permalink'] ?? '');
-        if ($public_url !== '') {
-            $links['public'] = $public_url;
+        $state_for_links = is_array($state) ? $state : [];
+        $state_for_links['builder_url'] = $links['builder'] ?? ($state_for_links['builder_url'] ?? '');
+        $state_for_links['public_url'] = $snapshot['permalink'] ?? ($state_for_links['public_url'] ?? '');
+
+        $profile_links = ProfileLinkHelpers::assemble_links($state_for_links);
+        $links = array_merge($links, $profile_links);
+
+        if (($state_for_links['public_url'] ?? '') !== '') {
+            $links['public'] = $state_for_links['public_url'];
         }
+
+        $state = $state_for_links;
 
         $has_access = 'artist' === $journey
             ? user_can($user_id, 'edit_artpulse_artist')
@@ -1596,7 +1605,10 @@ class RoleDashboards
             'variant'  => 'secondary',
             'disabled' => empty($links['upgrade']),
         ];
-        $profile_link = '';
+        $profile_link = $profile_links['view'] ?? '';
+        if ($profile_link === '') {
+            $profile_link = $profile_links['preview'] ?? '';
+        }
         $anchor       = sprintf('#ap-journey-%s', $journey);
 
         if ($has_access) {
@@ -1657,7 +1669,7 @@ class RoleDashboards
                     ];
                     $description = __('Your profile is live. Keep it fresh with new media and updates.', 'artpulse-management');
                     $cta['label'] = __('Edit profile', 'artpulse-management');
-                    $profile_link = $links['public'] ?? '';
+                    $profile_link = $profile_links['view'] ?? '';
                 }
             } else {
                 $status       = 'not_started';
@@ -2016,42 +2028,74 @@ class RoleDashboards
         }
 
         $portfolio = $target['portfolio'] ?? [];
-        $status    = $portfolio['status'] ?? 'none';
-        $permalink = $portfolio['permalink'] ?? '';
+        $state     = isset($portfolio['state']) && is_array($portfolio['state']) ? $portfolio['state'] : [];
+        $status    = $state['status'] ?? ($portfolio['status'] ?? 'none');
+        $visibility = $state['visibility'] ?? '';
 
-        $enabled     = $permalink !== '' && in_array($status, ['publish'], true);
         $builder_url = $target['links']['builder'] ?? '';
 
-        if ($enabled) {
+        $state_for_links = $state;
+        $state_for_links['builder_url'] = $builder_url;
+        $state_for_links['public_url'] = $portfolio['permalink'] ?? ($state_for_links['public_url'] ?? '');
+
+        $links     = ProfileLinkHelpers::assemble_links($state_for_links);
+        $is_public = ProfileLinkHelpers::is_public($state_for_links);
+
+        $view_url = $links['view'] ?? '';
+        $edit_url = $links['edit'] ?? $builder_url;
+
+        if ($is_public && $view_url !== '') {
             $badge = [
                 'label'   => __('Live', 'artpulse-management'),
                 'variant' => 'success',
             ];
-            $cta_label = __('View profile', 'artpulse-management');
-            $cta_url   = $permalink;
+            $status_value = 'ready';
+            $status_label = __('Live', 'artpulse-management');
+            $cta_label    = __('View profile', 'artpulse-management');
+            $cta_url      = $view_url;
+            $description  = __('Open your public page to confirm how the community sees your profile.', 'artpulse-management');
         } else {
             $badge = [
                 'label'   => __('Draft', 'artpulse-management'),
                 'variant' => 'info',
             ];
-            $cta_label = __('Open builder', 'artpulse-management');
-            $cta_url   = $builder_url;
+            $status_value = 'locked';
+            $status_label = __('Not yet published', 'artpulse-management');
+
+            if ($status === 'pending') {
+                $badge = [
+                    'label'   => __('Pending review', 'artpulse-management'),
+                    'variant' => 'warning',
+                ];
+                $status_label = __('Pending review', 'artpulse-management');
+            } elseif ($status === 'publish' && $visibility === 'private') {
+                $badge = [
+                    'label'   => __('Private', 'artpulse-management'),
+                    'variant' => 'info',
+                ];
+                $status_label = __('Private', 'artpulse-management');
+            }
+
+            $cta_label   = __('Open builder', 'artpulse-management');
+            $cta_url     = $edit_url;
+            $description = __('Preview your profile or continue editing before publishing.', 'artpulse-management');
         }
 
         return [
             'slug'             => 'view_profile',
             'title'            => __('View public profile', 'artpulse-management'),
-            'description'      => __('Open your public page to confirm how the community sees your profile.', 'artpulse-management'),
+            'description'      => $description,
             'badge'            => $badge,
-            'status'           => $enabled ? 'ready' : 'locked',
-            'status_label'     => $enabled ? __('Live', 'artpulse-management') : __('Not yet published', 'artpulse-management'),
-            'progress_percent' => $enabled ? 100 : 0,
+            'status'           => $status_value,
+            'status_label'     => $status_label,
+            'progress_percent' => $is_public && $view_url !== '' ? 100 : 0,
             'cta'              => [
                 'label'    => $cta_label,
                 'url'      => $cta_url,
                 'variant'  => 'secondary',
-                'disabled' => false,
+                'disabled' => $cta_url === '',
             ],
+            'links'            => $links,
             'disabled_reason'  => '',
         ];
     }
