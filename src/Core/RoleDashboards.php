@@ -1040,6 +1040,35 @@ class RoleDashboards
 
     private static function getSubmissionCreateUrl(string $post_type): string
     {
+        if ('artpulse_artist' === $post_type && get_option('ap_enable_artist_builder', true)) {
+            $page_url = get_page_url('artist_builder_page_id');
+
+            if (is_string($page_url) && $page_url !== '') {
+                $builder_url = add_query_args($page_url, [
+                    'ap_builder' => 'artist',
+                    'autocreate' => '1',
+                ]);
+
+                return esc_url_raw($builder_url);
+            }
+
+            return get_missing_page_fallback('artist_builder_page_id');
+        }
+
+        if ('artpulse_org' === $post_type && get_option('ap_enable_org_builder', true)) {
+            $page_url = get_page_url('org_builder_page_id');
+
+            if (is_string($page_url) && $page_url !== '') {
+                $builder_url = add_query_args($page_url, [
+                    'ap_builder' => 'organization',
+                ]);
+
+                return esc_url_raw($builder_url);
+            }
+
+            return get_missing_page_fallback('org_builder_page_id');
+        }
+
         $page_id = self::locateFrontendSubmissionPageForPostType($post_type);
 
         if ($page_id) {

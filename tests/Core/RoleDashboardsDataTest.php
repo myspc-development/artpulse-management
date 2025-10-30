@@ -279,6 +279,45 @@ class RoleDashboardsDataTest extends \WP_UnitTestCase
         $this->assertSame('organization', $cta['upgrade_type']);
     }
 
+    public function test_artist_profile_create_url_uses_builder_autocreate(): void
+    {
+        $artist_id = $this->factory->user->create([
+            'role'       => 'artist',
+            'user_login' => 'artist_builder_test',
+            'user_pass'  => wp_generate_password(12, false),
+            'user_email' => 'artist-builder@example.com',
+        ]);
+
+        wp_set_current_user($artist_id);
+
+        update_option('ap_enable_artist_builder', true);
+
+        $builder_page_id = $this->factory->post->create([
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_content' => '[ap_artist_builder]',
+            'post_title'   => 'Artist Builder',
+        ]);
+
+        $pages = get_option('artpulse_pages', []);
+        if (!is_array($pages)) {
+            $pages = [];
+        }
+        $pages['artist_builder_page_id'] = $builder_page_id;
+        update_option('artpulse_pages', $pages);
+
+        $data = RoleDashboards::prepareDashboardData('artist', $artist_id);
+
+        $this->assertArrayHasKey('submissions', $data);
+        $this->assertArrayHasKey('artpulse_artist', $data['submissions']);
+
+        $create_url = $data['submissions']['artpulse_artist']['create_url'] ?? '';
+
+        $this->assertNotSame('', $create_url);
+        $this->assertStringContainsString('ap_builder=artist', $create_url);
+        $this->assertStringContainsString('autocreate=1', $create_url);
+    }
+
     private function createRelationshipTables(): void
     {
         global $wpdb;
