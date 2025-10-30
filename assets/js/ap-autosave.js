@@ -1,4 +1,4 @@
-(function (window, document) {
+(function (window, document, undefined) {
   'use strict';
 
   if (!window || !document) {
@@ -10,12 +10,24 @@
     return;
   }
 
+  var i18n = window.wp && window.wp.i18n ? window.wp.i18n : null;
+  var __ = i18n && typeof i18n.__ === 'function' ? i18n.__ : function (text) {
+    return text;
+  };
+  var sprintf = i18n && typeof i18n.sprintf === 'function' ? i18n.sprintf : function (format) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return format.replace(/%s|%d/g, function () {
+      var value = args.shift();
+      return value === undefined ? '' : value;
+    });
+  };
+
   var apiFetch = window.wp && window.wp.apiFetch ? window.wp.apiFetch : null;
   if (!apiFetch) {
     return;
   }
 
-  var endpoint = typeof settings.endpoint === 'string' ? settings.endpoint.trim() : '';
+  var endpoint = typeof settings.endpoint === 'string' ? settings.endpoint : '';
   var nonce = typeof settings.nonce === 'string' ? settings.nonce : '';
   var postId = parseInt(settings.postId, 10) || 0;
 
@@ -25,6 +37,11 @@
 
   var root = document.querySelector('[data-ap-autosave-root]');
   if (!root) {
+    return;
+  }
+
+  var form = root.querySelector('#ap-profile-form');
+  if (!form) {
     return;
   }
 
@@ -40,74 +57,142 @@
   var failedLabel = strings.failed || 'Failed to save. Retry?';
   var sessionExpiredLabel = strings.sessionExpired || 'Your session expired. Please refresh.';
   var retryingInLabel = strings.retryingIn || 'Retrying in %d seconds…';
+  var savingErrorLabel = strings.savingError || 'Please fix the highlighted field.';
 
-  var tracked = Array.prototype.slice.call(root.querySelectorAll('[data-ap-autosave-track]'));
-  if (!tracked.length) {
-    return;
-  }
-
-  var fieldMap = {};
-  var errorMap = {};
-  var describedByCache = {};
   var debounceTimer = null;
   var backgroundTimer = null;
   var retryTimer = null;
-  var lastSavedSnapshot = '';
-  var latestSnapshot = '';
-  var pending = false;
   var dirty = false;
-  var isEnabled = true;
+  var pending = false;
   var lastSavedAt = 0;
+  var lastSnapshot = '';
 
-  var sessionBanner = null;
-  var statusInterval = null;
+  var retryDelay = 0;
+  var beforeUnloadAttached = false;
 
-  var editorWatchers = [];
-  var initialGallerySignature = '[]';
+  function fieldNodes(field) {
+    return Array.prototype.slice.call(form.querySelectorAll('[data-field="' + field + '"]'));
+  }
 
-  (function initialiseGallerySignature() {
-    var mediaRoot = root.querySelector('[data-ap-autosave="media"]');
-    if (!mediaRoot) {
+  function getFieldValue(field) {
+    var nodes = fieldNodes(field);
+    if (!nodes.length) {
+      return null;
+    }
+
+    if (nodes.length > 1) {
+      if ('socials' === field || 'gallery' === field) {
+        return nodes.map(function (node) {
+          return (node.value || '').trim();
+        }).filter(function (value) {
+          return value !== '';
+        });
+      }
+    }
+
+    var element = nodes[0];
+    var type = element.type || element.nodeName;
+
+    if (type === 'select-one') {
+      return element.value;
+    }
+
+    if (type === 'textarea') {
+      return element.value;
+    }
+
+    if (type === 'hidden' || type === 'text' || type === 'url') {
+      if ('featured_media' === field) {
+        return parseInt(element.value, 10) || 0;
+      }
+
+      if ('gallery' === field) {
+        var galleryValues = nodes.map(function (node) {
+          return parseInt(node.value, 10) || 0;
+        }).filter(function (value) {
+          return value > 0;
+        });
+        return galleryValues;
+      }
+
+      return element.value;
+    }
+
+    return element.value;
+  }
+
+  function collectPayload() {
+    var payload = {};
+    payload.title = (getFieldValue('title') || '').trim();
+    payload.tagline = (getFieldValue('tagline') || '').trim();
+    payload.bio = getFieldValue('bio') || '';
+    payload.website_url = (getFieldValue('website_url') || '').trim();
+
+    var socials = getFieldValue('socials');
+    if (Array.isArray(socials)) {
+      payload.socials = socials;
+    } else if (socials) {
+      payload.socials = [socials];
+    } else {
+      payload.socials = [];
+    }
+
+    payload.featured_media = parseInt(getFieldValue('featured_media'), 10) || 0;
+
+    var gallery = getFieldValue('gallery');
+    if (Array.isArray(gallery)) {
+      payload.gallery = gallery.map(function (value) {
+        return parseInt(value, 10) || 0;
+      }).filter(function (value) {
+        return value > 0;
+      });
+    } else {
+      payload.gallery = [];
+    }
+
+    payload.visibility = getFieldValue('visibility') || '';
+    payload.status = getFieldValue('status') || '';
+
+    return payload;
+  }
+
+  function computeSnapshot() {
+    try {
+      return JSON.stringify(collectPayload());
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function setDirty(value) {
+    dirty = value;
+    updateBeforeUnload();
+  }
+
+  function markDirty() {
+    if (pending) {
       return;
     }
 
-    var initialIds = Array.prototype.slice.call(mediaRoot.querySelectorAll('input[name="existing_gallery_ids[]"]')).map(function (input) {
-      return parseInt(input.value, 10) || 0;
-    }).filter(function (value) {
-      return value > 0;
-    });
-
-    initialGallerySignature = JSON.stringify(initialIds);
-  })();
-
-  Array.prototype.slice.call(root.querySelectorAll('[data-ap-autosave-field]')).forEach(function (element) {
-    var field = element.getAttribute('data-ap-autosave-field');
-    if (!field) {
-      return;
+    var snapshot = computeSnapshot();
+    if (snapshot !== lastSnapshot) {
+      setDirty(true);
+      scheduleSave();
     }
+  }
 
-    fieldMap[field] = element;
-    var describedBy = element.getAttribute('aria-describedby');
-    if (describedBy) {
-      describedByCache[field] = describedBy;
+  function updateBeforeUnload() {
+    if (dirty && !beforeUnloadAttached) {
+      window.addEventListener('beforeunload', beforeUnloadHandler);
+      beforeUnloadAttached = true;
+    } else if (!dirty && beforeUnloadAttached) {
+      window.removeEventListener('beforeunload', beforeUnloadHandler);
+      beforeUnloadAttached = false;
     }
-  });
-
-  Array.prototype.slice.call(root.querySelectorAll('[data-ap-error]')).forEach(function (element) {
-    var field = element.getAttribute('data-ap-error');
-    if (!field) {
-      return;
-    }
-
-    if (!element.id) {
-      element.id = 'ap-error-' + field;
-    }
-
-    errorMap[field] = element;
-  });
+  }
 
   function beforeUnloadHandler(event) {
-    if (!dirty || !isEnabled) {
+    if (!dirty) {
       return;
     }
 
@@ -116,12 +201,28 @@
     return '';
   }
 
-  function updateBeforeUnload() {
-    if (dirty && isEnabled) {
-      window.addEventListener('beforeunload', beforeUnloadHandler);
-    } else {
-      window.removeEventListener('beforeunload', beforeUnloadHandler);
+  function scheduleSave() {
+    if (debounceTimer) {
+      window.clearTimeout(debounceTimer);
     }
+
+    debounceTimer = window.setTimeout(function () {
+      if (dirty && !pending) {
+        save(false);
+      }
+    }, 750);
+  }
+
+  function startBackgroundTimer() {
+    if (backgroundTimer) {
+      window.clearInterval(backgroundTimer);
+    }
+
+    backgroundTimer = window.setInterval(function () {
+      if (dirty && !pending) {
+        save(false);
+      }
+    }, 15000);
   }
 
   function setStatus(text) {
@@ -133,7 +234,7 @@
   }
 
   function updateSavedStatus() {
-    if (!statusEl || !lastSavedAt) {
+    if (!lastSavedAt) {
       return;
     }
 
@@ -147,283 +248,105 @@
     if (diffSeconds < 60) {
       display = diffSeconds + 's';
     } else if (diffSeconds < 3600) {
-      var minutes = Math.round(diffSeconds / 60);
-      display = minutes + 'm';
+      display = Math.round(diffSeconds / 60) + 'm';
     } else {
-      var hours = Math.round(diffSeconds / 3600);
-      display = hours + 'h';
+      display = Math.round(diffSeconds / 3600) + 'h';
     }
 
     setStatus(savedAgoLabel.replace('%s', display));
   }
 
-  function startSavedInterval() {
-    if (statusInterval) {
-      window.clearInterval(statusInterval);
-    }
-
-    statusInterval = window.setInterval(function () {
-      if (!pending && !dirty) {
-        updateSavedStatus();
-      }
-    }, 5000);
-  }
-
   function clearErrors() {
-    Object.keys(fieldMap).forEach(function (field) {
-      var element = fieldMap[field];
-      if (!element) {
-        return;
-      }
+    Array.prototype.slice.call(form.querySelectorAll('[data-error]')).forEach(function (node) {
+      node.textContent = '';
+    });
 
-      element.removeAttribute('aria-invalid');
+    Array.prototype.slice.call(form.querySelectorAll('[data-field]')).forEach(function (node) {
+      node.removeAttribute('aria-invalid');
+    });
+  }
 
-      if (Object.prototype.hasOwnProperty.call(describedByCache, field)) {
-        element.setAttribute('aria-describedby', describedByCache[field]);
+  function applyFieldError(field, message) {
+    var nodes = fieldNodes(field);
+    nodes.forEach(function (node) {
+      node.setAttribute('aria-invalid', 'true');
+    });
+
+    var errorNode = form.querySelector('[data-error="' + field + '"]');
+    if (errorNode) {
+      errorNode.textContent = message;
+    }
+
+    if (nodes.length && typeof nodes[0].focus === 'function') {
+      nodes[0].focus({ preventScroll: false });
+    }
+  }
+
+  function applyErrors(error) {
+    if (!error || !error.data) {
+      return;
+    }
+
+    if (error.data.field) {
+      applyFieldError(error.data.field, error.message || savingErrorLabel);
+      return;
+    }
+
+    if (error.data.fields && typeof error.data.fields === 'object') {
+      Object.keys(error.data.fields).forEach(function (field) {
+        applyFieldError(field, error.data.fields[field]);
+      });
+    }
+  }
+
+  function handleProgress(response) {
+    if (!response || typeof response !== 'object') {
+      return;
+    }
+
+    if (!response.progress || typeof response.progress !== 'object') {
+      return;
+    }
+
+    var steps = Array.isArray(response.progress.steps) ? response.progress.steps : [];
+    var percent = parseInt(response.progress.percent, 10) || 0;
+
+    var stepButtons = root.querySelectorAll('[data-step]');
+    Array.prototype.forEach.call(stepButtons, function (button) {
+      var slug = button.getAttribute('data-step');
+      var match = steps.find(function (step) {
+        return step.slug === slug;
+      });
+      if (match && match.complete) {
+        button.classList.add('is-complete');
       } else {
-        element.removeAttribute('aria-describedby');
+        button.classList.remove('is-complete');
       }
     });
 
-    Object.keys(errorMap).forEach(function (field) {
-      errorMap[field].textContent = '';
-    });
-  }
-
-  function applyFieldErrors(fieldErrors) {
-    if (!fieldErrors || typeof fieldErrors !== 'object') {
-      return;
-    }
-
-    var firstInvalid = null;
-
-    Object.keys(fieldErrors).forEach(function (field) {
-      var message = fieldErrors[field];
-      var element = fieldMap[field];
-      var errorEl = errorMap[field];
-
-      if (element) {
-        element.setAttribute('aria-invalid', 'true');
-        var describedByIds = describedByCache[field] ? describedByCache[field].split(/\s+/) : [];
-        if (errorEl) {
-          if (!errorEl.id) {
-            errorEl.id = 'ap-error-' + field;
-          }
-          describedByIds.push(errorEl.id);
-        }
-        if (describedByIds.length) {
-          element.setAttribute('aria-describedby', describedByIds.join(' ').trim());
-        }
-        if (!firstInvalid && typeof element.focus === 'function') {
-          firstInvalid = element;
-        }
-      }
-
-      if (errorEl) {
-        errorEl.textContent = message;
-      }
-    });
-
-    if (firstInvalid) {
-      firstInvalid.focus({ preventScroll: false });
+    var bar = root.querySelector('.ap-profile-builder__progress-bar');
+    if (bar) {
+      bar.style.width = percent + '%';
     }
   }
 
-  function ensureSessionBanner() {
-    if (sessionBanner && document.body.contains(sessionBanner)) {
-      return sessionBanner;
-    }
-
-    var banner = document.createElement('div');
-    banner.className = 'ap-autosave-banner';
-    banner.setAttribute('role', 'alert');
-    banner.textContent = sessionExpiredLabel;
-
-    var container = root.querySelector('.ap-org-builder__header') || root;
-    container.insertBefore(banner, container.firstChild || null);
-
-    sessionBanner = banner;
-    return banner;
-  }
-
-  function computeSnapshot() {
-    try {
-      return JSON.stringify(collectPayload());
-    } catch (error) {
-      return '';
-    }
-  }
-
-  function markDirty() {
-    if (!isEnabled) {
-      return;
-    }
-
-    latestSnapshot = computeSnapshot();
-    if (latestSnapshot !== lastSavedSnapshot) {
-      dirty = true;
-      updateBeforeUnload();
-      scheduleSave();
-    }
-  }
-
-  function scheduleSave() {
-    if (debounceTimer) {
-      window.clearTimeout(debounceTimer);
-    }
-
-    debounceTimer = window.setTimeout(function () {
-      if (dirty && !pending) {
-        save();
-      }
-    }, 750);
-  }
-
-  function startBackgroundTimer() {
-    if (backgroundTimer) {
-      window.clearInterval(backgroundTimer);
-    }
-
-    backgroundTimer = window.setInterval(function () {
-      if (dirty && !pending) {
-        save();
-      }
-    }, 15000);
-  }
-
-  function collectPayload() {
-    var payload = {};
-
-    if (fieldMap.title) {
-      payload.title = fieldMap.title.value || '';
-    }
-
-    if (fieldMap.tagline) {
-      payload.tagline = fieldMap.tagline.value || '';
-    }
-
-    if (fieldMap.website) {
-      payload.website = fieldMap.website.value || '';
-    }
-
-    if (fieldMap.phone) {
-      payload.phone = fieldMap.phone.value || '';
-    }
-
-    if (fieldMap.email) {
-      payload.email = fieldMap.email.value || '';
-    }
-
-    if (fieldMap.address) {
-      payload.address = fieldMap.address.value || '';
-    }
-
-    if (fieldMap.socials) {
-      var socialsValue = fieldMap.socials.value || '';
-      payload.socials = socialsValue.split(/\r?\n/).map(function (item) {
-        return item.trim();
-      }).filter(function (item) {
-        return item !== '';
-      });
-    }
-
-    if (fieldMap.visibility) {
-      payload.visibility = fieldMap.visibility.value || '';
-    }
-
-    if (fieldMap.about) {
-      payload.about = getEditorContent(fieldMap.about);
-    }
-
-    var locationField = root.querySelector('[data-ap-autosave-location]');
-    if (locationField) {
-      try {
-        var parsed = JSON.parse(locationField.value);
-        if (parsed && typeof parsed === 'object') {
-          payload.location = parsed;
-        }
-      } catch (error) {
-        // ignore malformed location payloads
-      }
-    }
-
-    var mediaSection = root.querySelector('[data-ap-autosave="media"]');
-    if (mediaSection) {
-      var galleryIds = Array.prototype.slice.call(mediaSection.querySelectorAll('input[name="existing_gallery_ids[]"]')).map(function (input) {
-        return parseInt(input.value, 10) || 0;
-      }).filter(function (value) {
-        return value > 0;
-      });
-
-      if (galleryIds.length) {
-        payload.gallery_ids = galleryIds;
-        initialGallerySignature = JSON.stringify(galleryIds);
-      } else if (initialGallerySignature !== '[]') {
-        payload.gallery_ids = [];
-        initialGallerySignature = '[]';
-      }
-
-      var orderInputs = Array.prototype.slice.call(mediaSection.querySelectorAll('[data-ap-gallery-order]'));
-      if (orderInputs.length) {
-        var order = {};
-        orderInputs.forEach(function (input) {
-          var id = parseInt(input.getAttribute('data-ap-gallery-order'), 10) || 0;
-          var position = parseInt(input.value, 10) || 0;
-          if (id > 0 && position > 0) {
-            order[id] = position;
-          }
-        });
-        if (Object.keys(order).length) {
-          payload.gallery_order = order;
-        }
-      }
-
-      var featuredInput = mediaSection.querySelector('input[name="ap_featured_image"]:checked');
-      if (featuredInput) {
-        payload.featured_id = parseInt(featuredInput.value, 10) || 0;
-      }
-    }
-
-    return payload;
-  }
-
-  function getEditorContent(element) {
-    if (!element) {
-      return '';
-    }
-
-    var textareaId = element.id || element.getAttribute('id');
-    if (textareaId && window.tinymce) {
-      var editor = window.tinymce.get(textareaId);
-      if (editor) {
-        return editor.getContent({ format: 'html' }) || '';
-      }
-    }
-
-    return element.value || '';
-  }
-
-  function save() {
-    if (!isEnabled || pending) {
-      return;
-    }
-
-    if (retryTimer) {
-      window.clearTimeout(retryTimer);
-      retryTimer = null;
-    }
-
-    clearErrors();
-
-    var payload = collectPayload();
-    var snapshot = JSON.stringify(payload);
-
-    if (snapshot === lastSavedSnapshot && !dirty) {
+  function save(fromSubmit) {
+    if (!dirty && !fromSubmit) {
       return;
     }
 
     pending = true;
+    clearErrors();
     setStatus(savingLabel);
+
+    if (retryTimer) {
+      window.clearTimeout(retryTimer);
+      retryTimer = null;
+      retryDelay = 0;
+    }
+
+    var payload = collectPayload();
+    var snapshot = computeSnapshot();
 
     apiFetch({
       url: endpoint,
@@ -432,121 +355,267 @@
         'X-WP-Nonce': nonce,
       },
       data: payload,
-    }).then(function () {
+    }).then(function (data) {
       pending = false;
-      lastSavedSnapshot = snapshot;
+      lastSnapshot = snapshot;
+      setDirty(false);
       lastSavedAt = Date.now();
-
-      if (snapshot === latestSnapshot) {
-        dirty = false;
-      }
-
-      updateBeforeUnload();
-      updateSavedStatus();
-      startSavedInterval();
+      setStatus(savedJustNowLabel);
+      handleProgress(data);
     }).catch(function (error) {
       pending = false;
-      dirty = true;
-      updateBeforeUnload();
-      handleError(error);
+      setStatus(failedLabel);
+
+      var status = error && error.status ? error.status : (error && error.data && error.data.status ? error.data.status : 0);
+
+      if (status) {
+        if (status === 403) {
+          setStatus(sessionExpiredLabel);
+          setDirty(false);
+          return;
+        }
+
+        if (status === 429) {
+          var retryAfter = 0;
+          var response = error && error.response ? error.response : null;
+          if (response && response.headers && typeof response.headers.get === 'function') {
+            retryAfter = parseInt(response.headers.get('Retry-After'), 10) || 0;
+          }
+
+          if (!retryAfter && error.data && error.data.retry_after) {
+            retryAfter = parseInt(error.data.retry_after, 10) || 0;
+          }
+
+          retryAfter = Math.max(retryAfter, 5);
+          setStatus(retryingInLabel.replace('%d', retryAfter));
+
+          retryDelay = retryAfter;
+          scheduleRetry();
+          return;
+        }
+
+        if (status === 422) {
+          applyErrors(error);
+          setDirty(true);
+          setStatus(savingErrorLabel);
+          return;
+        }
+      }
+
+      setDirty(true);
     });
   }
 
-  function handleError(error) {
-    if (!error) {
-      setStatus(failedLabel);
-      return;
-    }
-
-    var status = error.status || (error.data && error.data.status) || 0;
-
-    if (status === 403) {
-      isEnabled = false;
-      ensureSessionBanner();
-      setStatus(failedLabel);
-      return;
-    }
-
-    if (status === 429) {
-      var retryAfter = 0;
-      if (error.headers && typeof error.headers.get === 'function') {
-        var headerValue = error.headers.get('Retry-After');
-        if (headerValue) {
-          retryAfter = parseInt(headerValue, 10) || 0;
-        }
-      }
-
-      if (!retryAfter && error.data && error.data.retry_after) {
-        retryAfter = parseInt(error.data.retry_after, 10) || 0;
-      }
-
-      retryAfter = retryAfter > 0 ? retryAfter : 15;
-      setStatus(retryingInLabel.replace('%d', retryAfter));
-
-      retryTimer = window.setTimeout(function () {
-        retryTimer = null;
-        if (dirty && !pending) {
-          save();
-        }
-      }, retryAfter * 1000);
-
-      return;
-    }
-
-    if (status === 422 && error.data && error.data.errors) {
-      applyFieldErrors(error.data.errors);
-    }
-
-    setStatus(failedLabel);
-  }
-
-  function initEditorWatcher(textarea) {
-    if (!textarea || !textarea.id || !window || !window.tinymce) {
-      return;
-    }
-
-    var intervalId = window.setInterval(function () {
-      var editor = window.tinymce.get(textarea.id);
-      if (editor) {
-        editor.on('change keyup paste setcontent', markDirty);
-        window.clearInterval(intervalId);
-      }
-    }, 300);
-
-    editorWatchers.push(intervalId);
-  }
-
-  tracked.forEach(function (element) {
-    element.addEventListener('input', markDirty, { passive: true });
-    element.addEventListener('change', markDirty, { passive: true });
-  });
-
-  if (fieldMap.about) {
-    initEditorWatcher(fieldMap.about);
-  }
-
-  latestSnapshot = computeSnapshot();
-  lastSavedSnapshot = latestSnapshot;
-  lastSavedAt = Date.now();
-  updateSavedStatus();
-  startBackgroundTimer();
-  startSavedInterval();
-
-  window.addEventListener('unload', function () {
-    if (debounceTimer) {
-      window.clearTimeout(debounceTimer);
-    }
-    if (backgroundTimer) {
-      window.clearInterval(backgroundTimer);
-    }
+  function scheduleRetry() {
     if (retryTimer) {
       window.clearTimeout(retryTimer);
     }
-    editorWatchers.forEach(function (intervalId) {
-      window.clearInterval(intervalId);
+
+    retryTimer = window.setTimeout(function () {
+      retryTimer = null;
+      if (dirty && !pending) {
+        save(false);
+      }
+    }, Math.max(5000, retryDelay * 1000));
+  }
+
+  function bindFieldListeners() {
+    Array.prototype.slice.call(form.querySelectorAll('[data-field]')).forEach(function (node) {
+      var eventName = node.tagName === 'SELECT' ? 'change' : 'input';
+      node.addEventListener(eventName, markDirty);
+      node.addEventListener('change', markDirty);
     });
-    if (statusInterval) {
-      window.clearInterval(statusInterval);
+  }
+
+  function bindFormSubmit() {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      save(true);
+    });
+  }
+
+  function setupSocialControls() {
+    var addButton = form.querySelector('[data-social-add]');
+    var list = form.querySelector('[data-social-items]');
+
+    if (!addButton || !list) {
+      return;
     }
-  });
+
+    addButton.addEventListener('click', function () {
+      var index = list.querySelectorAll('.ap-profile-builder__social-item').length;
+      var wrapper = document.createElement('div');
+      wrapper.className = 'ap-profile-builder__social-item';
+
+      var input = document.createElement('input');
+      input.type = 'url';
+      input.name = 'socials[]';
+      input.placeholder = 'https://';
+      input.setAttribute('data-field', 'socials');
+      input.id = 'ap-social-' + index + '-' + Date.now();
+
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'button-link';
+      remove.setAttribute('data-social-remove', '1');
+      remove.textContent = __('Remove', 'artpulse-management');
+
+      wrapper.appendChild(input);
+      wrapper.appendChild(remove);
+      list.appendChild(wrapper);
+
+      bindFieldListeners();
+      markDirty();
+    });
+
+    list.addEventListener('click', function (event) {
+      if (event.target && event.target.hasAttribute('data-social-remove')) {
+        event.preventDefault();
+        var item = event.target.closest('.ap-profile-builder__social-item');
+        if (item) {
+          item.parentNode.removeChild(item);
+          markDirty();
+        }
+      }
+    });
+  }
+
+  function createGalleryItem(id) {
+    var container = form.querySelector('[data-gallery-items]');
+    if (!container) {
+      return;
+    }
+
+    var item = document.createElement('div');
+    item.className = 'ap-profile-builder__gallery-item';
+    item.setAttribute('data-gallery-item', String(id));
+
+    var label = document.createElement('span');
+    label.className = 'ap-profile-builder__gallery-label';
+    label.textContent = sprintf(__('Media #%s', 'artpulse-management'), id);
+
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'gallery[]';
+    input.value = String(id);
+    input.setAttribute('data-field', 'gallery');
+
+    var remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'button-link';
+    remove.setAttribute('data-gallery-remove', String(id));
+    remove.textContent = __('Remove', 'artpulse-management');
+
+    item.appendChild(label);
+    item.appendChild(input);
+    item.appendChild(remove);
+    container.appendChild(item);
+  }
+
+  function setupGalleryControls() {
+    var addButton = form.querySelector('[data-gallery-add]');
+    var container = form.querySelector('[data-gallery-items]');
+
+    if (!addButton || !container || !window.wp || !window.wp.media) {
+      return;
+    }
+
+    var frame = null;
+
+    addButton.addEventListener('click', function (event) {
+      event.preventDefault();
+
+      if (frame) {
+        frame.open();
+        return;
+      }
+
+      frame = window.wp.media({
+        title: __('Select media', 'artpulse-management'),
+        multiple: true,
+      });
+
+      frame.on('select', function () {
+        var selection = frame.state().get('selection');
+        selection.each(function (attachment) {
+          var id = attachment.get('id');
+          if (!id) {
+            return;
+          }
+
+          createGalleryItem(id);
+        });
+        bindFieldListeners();
+        markDirty();
+      });
+
+      frame.open();
+    });
+
+    container.addEventListener('click', function (event) {
+      if (event.target && event.target.hasAttribute('data-gallery-remove')) {
+        event.preventDefault();
+        var item = event.target.closest('[data-gallery-item]');
+        if (item) {
+          item.parentNode.removeChild(item);
+          markDirty();
+        }
+      }
+    });
+  }
+
+  function setupFeaturedMedia() {
+    var button = form.querySelector('[data-media-select="featured_media"]');
+    var input = form.querySelector('input[data-field="featured_media"]');
+
+    if (!button || !input || !window.wp || !window.wp.media) {
+      return;
+    }
+
+    var frame = null;
+
+    button.addEventListener('click', function (event) {
+      event.preventDefault();
+
+      if (frame) {
+        frame.open();
+        return;
+      }
+
+      frame = window.wp.media({
+        title: __('Select featured image', 'artpulse-management'),
+        multiple: false,
+      });
+
+      frame.on('select', function () {
+        var selection = frame.state().get('selection');
+        var attachment = selection.first();
+        if (!attachment) {
+          return;
+        }
+        input.value = String(attachment.get('id'));
+        markDirty();
+      });
+
+      frame.open();
+    });
+  }
+
+  function init() {
+    lastSnapshot = computeSnapshot();
+    bindFieldListeners();
+    bindFormSubmit();
+    setupSocialControls();
+    setupGalleryControls();
+    setupFeaturedMedia();
+    startBackgroundTimer();
+
+    window.setInterval(function () {
+      if (!pending && !dirty) {
+        updateSavedStatus();
+      }
+    }, 5000);
+  }
+
+  init();
 })(window, document);

@@ -4,13 +4,22 @@ namespace ArtPulse\Core;
 
 use ArtPulse\Community\FavoritesManager;
 use ArtPulse\Community\FollowManager;
+use ArtPulse\Core\ProfileState;
 use ArtPulse\Frontend\ArtistRequestStatusRoute;
 use ArtPulse\Frontend\Shared\PortfolioAccess;
 use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_User;
+use function array_filter;
+use function array_map;
 use function esc_url_raw;
+use function get_post;
+use function get_post_meta;
+use function get_permalink;
+use function get_the_title;
+use function in_array;
+use function is_array;
 
 class RoleDashboards
 {
@@ -1457,115 +1466,52 @@ class RoleDashboards
 
     private static function summarizePortfolio(int $user_id, string $post_type): array
     {
+        $type_key = 'artpulse_org' === $post_type ? 'org' : 'artist';
+        $state    = ProfileState::for_user($type_key, $user_id);
+
         $snapshot = [
             'post_type'        => $post_type,
-            'status'           => 'missing',
-            'status_label'     => __('Not started', 'artpulse-management'),
-            'progress_percent' => 0,
-            'badge_variant'    => 'muted',
-            'post_id'          => null,
+            'status'           => $state['exists'] ? (string) ($state['status'] ?? 'draft') : 'missing',
+            'status_label'     => $state['exists'] ? self::status_label_from_state((string) ($state['status'] ?? 'draft')) : __('Not started', 'artpulse-management'),
+            'progress_percent' => (int) ($state['complete'] ?? 0),
+            'badge_variant'    => self::badge_variant_from_state((string) ($state['status'] ?? 'draft')),
+            'post_id'          => $state['post_id'] ? (int) $state['post_id'] : null,
             'post_ids'         => [],
-            'post_status'      => '',
+            'post_status'      => $state['status'] ?? '',
             'title'            => '',
-            'permalink'        => '',
+            'permalink'        => (string) ($state['public_url'] ?? ''),
             'total'            => 0,
-            'has_published'    => false,
-            'has_unpublished'  => false,
+            'has_published'    => 'publish' === ($state['status'] ?? ''),
+            'has_unpublished'  => in_array($state['status'] ?? '', ['draft', 'pending'], true),
+            'visibility'       => $state['visibility'] ?? null,
         ];
 
         $ids = PortfolioAccess::get_owned_portfolio_ids($user_id, $post_type);
         $snapshot['post_ids'] = $ids;
         $snapshot['total']    = count($ids);
 
-        if (empty($ids)) {
+        if (!$state['exists'] || empty($state['post_id'])) {
             return $snapshot;
         }
 
-        $posts = array_filter(
-            array_map('get_post', $ids),
-            static fn($post) => $post instanceof WP_Post
-        );
-
-        if (empty($posts)) {
+        $post = get_post((int) $state['post_id']);
+        if (!$post instanceof WP_Post) {
             return $snapshot;
         }
 
-        $status_priority = ['publish', 'future', 'pending', 'draft'];
-        $selected        = null;
+        $snapshot['post_id']     = (int) $post->ID;
+        $snapshot['post_status'] = $post->post_status;
+        $snapshot['title']       = get_the_title($post);
 
-        foreach ($status_priority as $status) {
-            foreach ($posts as $post) {
-                if ($post->post_status === $status) {
-                    $selected = $post;
-                    break 2;
-                }
-            }
-        }
-
-        if (!$selected) {
-            $selected = $posts[0];
-        }
-
-        $status_meta = [
-            'publish' => [
-                'status'        => 'published',
-                'label'         => __('Published', 'artpulse-management'),
-                'progress'      => 100,
-                'badge_variant' => 'success',
-            ],
-            'future' => [
-                'status'        => 'scheduled',
-                'label'         => __('Scheduled', 'artpulse-management'),
-                'progress'      => 95,
-                'badge_variant' => 'info',
-            ],
-            'pending' => [
-                'status'        => 'pending',
-                'label'         => __('Pending review', 'artpulse-management'),
-                'progress'      => 80,
-                'badge_variant' => 'warning',
-            ],
-            'draft' => [
-                'status'        => 'draft',
-                'label'         => __('Draft', 'artpulse-management'),
-                'progress'      => 45,
-                'badge_variant' => 'info',
-            ],
-        ];
-
-        $selected_status = $selected->post_status;
-        $meta            = $status_meta[$selected_status] ?? [
-            'status'        => 'draft',
-            'label'         => __('In progress', 'artpulse-management'),
-            'progress'      => 45,
-            'badge_variant' => 'info',
-        ];
-
-        $snapshot['status']           = $meta['status'];
-        $snapshot['status_label']     = $meta['label'];
-        $snapshot['progress_percent'] = (int) $meta['progress'];
-        $snapshot['badge_variant']    = $meta['badge_variant'];
-        $snapshot['post_id']          = (int) $selected->ID;
-        $snapshot['post_status']      = $selected_status;
-        $snapshot['title']            = get_the_title($selected);
-
-        $permalink = get_permalink($selected);
+        $permalink = $state['public_url'] ?: get_permalink($post);
         if (is_string($permalink)) {
             $snapshot['permalink'] = $permalink;
         }
 
-        $statuses = array_map(
-            static fn(WP_Post $post): string => $post->post_status,
-            $posts
-        );
-
-        $snapshot['has_published']   = in_array('publish', $statuses, true);
-        $snapshot['has_unpublished'] = !empty(array_intersect($statuses, ['draft', 'pending']));
-
         if ('artpulse_org' === $post_type) {
-            $logo_id  = (int) get_post_meta($selected->ID, '_ap_logo_id', true);
-            $cover_id = (int) get_post_meta($selected->ID, '_ap_cover_id', true);
-            $gallery  = get_post_meta($selected->ID, '_ap_gallery_ids', true);
+            $logo_id  = (int) get_post_meta($post->ID, '_ap_logo_id', true);
+            $cover_id = (int) get_post_meta($post->ID, '_ap_cover_id', true);
+            $gallery  = get_post_meta($post->ID, '_ap_gallery_ids', true);
 
             if (!is_array($gallery)) {
                 $gallery = (array) $gallery;
@@ -1582,6 +1528,32 @@ class RoleDashboards
         }
 
         return $snapshot;
+    }
+
+    private static function status_label_from_state(string $status): string
+    {
+        switch ($status) {
+            case 'publish':
+                return __('Published', 'artpulse-management');
+            case 'pending':
+                return __('Pending review', 'artpulse-management');
+            case 'draft':
+            default:
+                return __('Draft', 'artpulse-management');
+        }
+    }
+
+    private static function badge_variant_from_state(string $status): string
+    {
+        switch ($status) {
+            case 'publish':
+                return 'success';
+            case 'pending':
+                return 'warning';
+            case 'draft':
+            default:
+                return 'info';
+        }
     }
 
     private static function buildJourneyState(string $journey, int $user_id, string $post_type, array $links, array $review = []): array

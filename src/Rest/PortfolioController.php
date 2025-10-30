@@ -2,26 +2,45 @@
 
 namespace ArtPulse\Rest;
 
-use ArtPulse\Core\AuditLogger;
-use ArtPulse\Core\ImageTools;
+use ArtPulse\Core\ProfileProgress;
+use ArtPulse\Frontend\ProfileBuilderConfig;
 use ArtPulse\Frontend\Shared\FormRateLimiter;
-use ArtPulse\Frontend\Shared\PortfolioWidgetRegistry;
 use WP_Error;
+use WP_Post;
 use WP_REST_Request;
 use WP_REST_Server;
+use function ArtPulse\Core\get_page_url;
 use function absint;
+use function array_filter;
+use function array_map;
+use function current_user_can;
+use function esc_html__;
 use function esc_url_raw;
-use function is_email;
-use function sanitize_email;
-use function sanitize_text_field;
-use function sanitize_textarea_field;
+use function get_current_user_id;
+use function get_post;
+use function get_post_meta;
+use function get_permalink;
+use function header;
+use function in_array;
+use function is_array;
+use function preg_split;
+use function set_post_thumbnail;
+use function trim;
+use function update_post_meta;
 use function wp_http_validate_url;
+use function wp_kses_post;
+use function wp_update_post;
+use function delete_post_meta;
+use function delete_post_thumbnail;
+use function sanitize_text_field;
 
 /**
- * REST endpoints for retrieving and updating artist/organization portfolios.
+ * REST endpoints for managing artist and organization profiles.
  */
 final class PortfolioController
 {
+    private const RATE_CONTEXT = 'builder_write';
+
     public static function register(): void
     {
         register_rest_route('artpulse/v1', '/portfolio/(?P<type>org|artist)/(?P<id>\d+)', [
@@ -29,642 +48,407 @@ final class PortfolioController
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => [self::class, 'get_portfolio'],
                 'permission_callback' => '__return_true',
-            ],
-            [
-                'methods'             => WP_REST_Server::EDITABLE,
-                'callback'            => [self::class, 'update_portfolio'],
-                'permission_callback' => [Guards::class, 'own_portfolio_only'],
-            ],
-        ]);
-
-        register_rest_route('artpulse/v1', '/portfolio/(?P<type>org|artist)/(?P<id>\d+)/media', [
-            [
-                'methods'             => WP_REST_Server::CREATABLE,
-                'callback'            => [self::class, 'upload_media'],
-                'permission_callback' => [Guards::class, 'own_portfolio_only'],
                 'args'                => [
-                    'file' => [
-                        'required' => true,
+                    'context' => [
+                        'default'           => 'view',
+                        'sanitize_callback' => [self::class, 'sanitize_context'],
+                        'validate_callback' => [self::class, 'validate_context'],
                     ],
                 ],
             ],
             [
                 'methods'             => WP_REST_Server::EDITABLE,
-                'callback'            => [self::class, 'reorder_media'],
-                'permission_callback' => [Guards::class, 'own_portfolio_only'],
+                'callback'            => [self::class, 'update_portfolio'],
+                'permission_callback' => '__return_true',
+                'args'                => self::request_args_schema(),
             ],
         ]);
     }
 
+    public static function sanitize_context($value): string
+    {
+        $value = is_string($value) ? strtolower(trim($value)) : 'view';
+        return in_array($value, ['view', 'edit'], true) ? $value : 'view';
+    }
+
+    public static function validate_context($value): bool
+    {
+        return in_array($value, ['view', 'edit'], true);
+    }
+
     public static function get_portfolio(WP_REST_Request $request)
     {
+        $type    = (string) $request['type'];
         $post_id = (int) $request['id'];
-        $post    = get_post($post_id);
+        $context = self::sanitize_context($request->get_param('context'));
 
-        if (!$post) {
-            return new WP_Error('not_found', __('Portfolio not found', 'artpulse-management'), ['status' => 404]);
+        $post = get_post($post_id);
+        if (!$post instanceof WP_Post) {
+            return self::error('ap_not_found', esc_html__('Portfolio not found.', 'artpulse-management'), 404);
         }
 
-        $meta = [
-            'tagline'  => get_post_meta($post_id, '_ap_tagline', true),
-            'about'    => wp_kses_post(get_post_meta($post_id, '_ap_about', true)),
-            'website'  => esc_url_raw(get_post_meta($post_id, '_ap_website', true)),
-            'socials'  => (array) get_post_meta($post_id, '_ap_socials', true),
-            'location' => (array) get_post_meta($post_id, '_ap_location', true),
-        ];
+        $expected_post_type = self::post_type_from_type($type);
+        if ($post->post_type !== $expected_post_type) {
+            return self::error('ap_not_found', esc_html__('Portfolio not found.', 'artpulse-management'), 404);
+        }
 
-        $media = [
-            'logo'        => self::format_image((int) get_post_meta($post_id, '_ap_logo_id', true)),
-            'cover'       => self::format_image((int) get_post_meta($post_id, '_ap_cover_id', true), 'large'),
-            'gallery'     => array_values(
-                array_filter(
-                    array_map(
-                        static fn($attachment_id) => self::format_image((int) $attachment_id),
-                        (array) get_post_meta($post_id, '_ap_gallery_ids', true)
-                    )
-                )
-            ),
-            'featured_id' => (int) get_post_thumbnail_id($post_id),
-        ];
+        if ('edit' === $context) {
+            $cap = 'artist' === $type ? 'edit_artpulse_artist' : 'edit_artpulse_org';
+            if (!current_user_can('edit_post', $post_id) || !current_user_can($cap)) {
+                return self::error('ap_forbidden', esc_html__('You do not have permission to edit this profile.', 'artpulse-management'), 403);
+            }
+        } else {
+            $visibility = (string) get_post_meta($post_id, '_ap_visibility', true);
+            if ('publish' !== $post->post_status || 'public' !== $visibility) {
+                return self::error('ap_not_found', esc_html__('Portfolio not found.', 'artpulse-management'), 404);
+            }
+        }
 
-        return [
-            'id'    => $post_id,
-            'title' => get_the_title($post_id),
-            'meta'  => $meta,
-            'media' => $media,
-            'widgets' => PortfolioWidgetRegistry::for_post($post_id),
-        ];
+        return self::prepare_response($post, $type, $context);
     }
 
     public static function update_portfolio(WP_REST_Request $request)
     {
+        $type    = (string) $request['type'];
         $post_id = (int) $request['id'];
         $post    = get_post($post_id);
 
-        if (!$post instanceof \WP_Post) {
-            return new WP_Error('not_found', __('Portfolio not found', 'artpulse-management'), ['status' => 404]);
+        if (!$post instanceof WP_Post) {
+            return self::error('ap_not_found', esc_html__('Portfolio not found.', 'artpulse-management'), 404);
         }
 
-        if (!in_array($post->post_type, ['artpulse_org', 'artpulse_artist'], true)) {
-            return new WP_Error('invalid_portfolio', __('Unsupported portfolio type.', 'artpulse-management'), ['status' => 400]);
+        $expected_post_type = self::post_type_from_type($type);
+        if ($post->post_type !== $expected_post_type) {
+            return self::error('ap_not_found', esc_html__('Portfolio not found.', 'artpulse-management'), 404);
         }
 
-        $rate_error = FormRateLimiter::enforce(get_current_user_id(), 'builder_write', 30, 60);
-        if ($rate_error instanceof WP_Error) {
-            return self::prepare_rate_limit_error($rate_error);
+        $user_id = get_current_user_id();
+        if ($user_id <= 0) {
+            return self::error('ap_forbidden', esc_html__('You must be logged in to update this profile.', 'artpulse-management'), 403);
         }
 
-        $validated = self::validate_payload($request, $post);
-        if ($validated instanceof WP_Error) {
-            return $validated;
+        $cap = 'artist' === $type ? 'edit_artpulse_artist' : 'edit_artpulse_org';
+        if (!current_user_can('edit_post', $post_id) || !current_user_can($cap)) {
+            return self::error('ap_forbidden', esc_html__('You do not have permission to edit this profile.', 'artpulse-management'), 403);
         }
 
-        self::persist_portfolio_update($post, $validated);
-
-        AuditLogger::info('portfolio.update', [
-            'post_id' => $post_id,
-            'user_id' => get_current_user_id(),
-        ]);
-
-        return self::get_portfolio($request);
-    }
-
-    /**
-     * Normalize and validate a portfolio payload.
-     */
-    private static function validate_payload(WP_REST_Request $request, \WP_Post $post)
-    {
-        $body = $request->get_json_params();
-        if (!is_array($body)) {
-            $body = [];
+        $rate = FormRateLimiter::enforce($user_id, self::RATE_CONTEXT, 30, MINUTE_IN_SECONDS);
+        if ($rate instanceof WP_Error) {
+            return self::rate_limit_error($rate);
         }
 
-        $errors        = [];
-        $meta_updates  = [];
-        $post_updates  = [];
-        $data          = [];
-        $post_id       = (int) $post->ID;
-        $current_gallery = self::filter_portfolio_attachments((array) get_post_meta($post_id, '_ap_gallery_ids', true), $post_id);
-        $sanitized_gallery = null;
-        $gallery_order    = [];
+        $payload = $request->get_json_params();
+        if (!is_array($payload)) {
+            $payload = [];
+        }
 
-        if (array_key_exists('title', $body)) {
-            $title = sanitize_text_field((string) $body['title']);
-            if ('' === $title) {
-                $errors['title'] = __('Title cannot be empty.', 'artpulse-management');
-            } else {
-                $post_updates['post_title'] = $title;
+        $validation = self::validate_update_payload($payload, $type, $post_id, $user_id);
+        if ($validation instanceof WP_Error) {
+            return $validation;
+        }
+
+        $post_updates = $validation['post'];
+        $meta_updates = $validation['meta'];
+
+        if (!empty($post_updates)) {
+            $post_updates['ID'] = $post_id;
+            $result = wp_update_post($post_updates, true);
+            if ($result instanceof WP_Error) {
+                return self::error('ap_invalid_param', esc_html__('Unable to update the profile.', 'artpulse-management'), 500);
             }
         }
 
-        if (array_key_exists('tagline', $body)) {
-            $tagline = sanitize_text_field((string) $body['tagline']);
-            if (self::string_length($tagline) > 160) {
-                $errors['tagline'] = __('Tagline must be 160 characters or fewer.', 'artpulse-management');
-            } else {
-                $meta_updates['_ap_tagline'] = $tagline;
-            }
-        }
-
-        if (array_key_exists('about', $body)) {
-            $meta_updates['_ap_about'] = wp_kses_post((string) $body['about']);
-        }
-
-        if (array_key_exists('website', $body)) {
-            $website = trim((string) $body['website']);
-            if ('' !== $website && !wp_http_validate_url($website)) {
-                $errors['website'] = __('Enter a valid website URL (including https://).', 'artpulse-management');
-            } else {
-                $meta_updates['_ap_website'] = esc_url_raw($website);
-            }
-        }
-
-        if (array_key_exists('phone', $body)) {
-            $phone = sanitize_text_field((string) $body['phone']);
-            if (self::string_length($phone) > 40) {
-                $errors['phone'] = __('Phone numbers must be 40 characters or fewer.', 'artpulse-management');
-            } else {
-                $meta_updates['_ap_phone'] = $phone;
-            }
-        }
-
-        if (array_key_exists('email', $body)) {
-            $email = sanitize_email((string) $body['email']);
-            if ('' !== $email && !is_email($email)) {
-                $errors['email'] = __('Enter a valid email address or leave the field blank.', 'artpulse-management');
-            } else {
-                $meta_updates['_ap_email'] = $email;
-            }
-        }
-
-        if (array_key_exists('address', $body)) {
-            $meta_updates['_ap_address'] = sanitize_textarea_field((string) $body['address']);
-        }
-
-        if (array_key_exists('socials', $body)) {
-            $social_input = $body['socials'];
-            if (is_string($social_input)) {
-                $social_input = preg_split('/\r?\n/', $social_input) ?: [];
+        foreach ($meta_updates as $meta_key => $value) {
+            if (null === $value) {
+                delete_post_meta($post_id, $meta_key);
+                continue;
             }
 
-            $socials = [];
-            if (is_array($social_input)) {
-                foreach ($social_input as $social) {
-                    $social = trim((string) $social);
-                    if ('' === $social) {
-                        continue;
-                    }
-
-                    $url = esc_url_raw($social);
-                    if ('' === $url || !wp_http_validate_url($url)) {
-                        $errors['socials'] = __('Enter full URLs (including https://) for your social links.', 'artpulse-management');
-                        break;
-                    }
-
-                    $socials[] = $url;
-                }
-            }
-
-            if (!isset($errors['socials'])) {
-                $meta_updates['_ap_socials'] = implode("\n", $socials);
-            }
+            update_post_meta($post_id, $meta_key, $value);
         }
 
-        if (array_key_exists('location', $body)) {
-            $location = (array) $body['location'];
-            $lat      = isset($location['lat']) ? (float) $location['lat'] : 0.0;
-            $lng      = isset($location['lng']) ? (float) $location['lng'] : 0.0;
-            $address  = isset($location['address']) ? sanitize_text_field((string) $location['address']) : '';
-
-            if (0.0 !== $lat || 0.0 !== $lng || '' !== $address) {
-                if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
-                    $errors['location'] = __('Location coordinates are outside the supported range.', 'artpulse-management');
-                } else {
-                    $meta_updates['_ap_location'] = [
-                        'lat'     => $lat,
-                        'lng'     => $lng,
-                        'address' => $address,
-                    ];
-                }
-            } else {
-                $meta_updates['_ap_location'] = [];
-            }
-        }
-
-        if (array_key_exists('visibility', $body)) {
-            $visibility = sanitize_key((string) $body['visibility']);
-            if ('' === $visibility) {
-                $data['visibility'] = '';
-            } elseif (!in_array($visibility, ['public', 'private'], true)) {
-                $errors['visibility'] = __('Choose a valid visibility option.', 'artpulse-management');
-            } else {
-                $data['visibility'] = $visibility;
-            }
-        }
-
-        if (array_key_exists('gallery_ids', $body)) {
-            $sanitized_gallery = self::filter_portfolio_attachments((array) $body['gallery_ids'], $post_id);
-        }
-
-        if (array_key_exists('gallery_order', $body) && is_array($body['gallery_order'])) {
-            foreach ($body['gallery_order'] as $attachment_id => $position) {
-                $attachment_id = absint($attachment_id);
-                $position      = absint($position);
-                if ($attachment_id > 0 && $position > 0) {
-                    $gallery_order[$attachment_id] = $position;
-                }
-            }
-        }
-
-        if (null !== $sanitized_gallery) {
-            if (!empty($gallery_order)) {
-                $sanitized_gallery = self::apply_gallery_order($sanitized_gallery, $gallery_order);
-            }
-            $data['gallery_ids'] = $sanitized_gallery;
-        }
-
-        $allowed_featured = $sanitized_gallery ?? $current_gallery;
-        $cover_id         = (int) get_post_meta($post_id, '_ap_cover_id', true);
-        if ($cover_id) {
-            $allowed_featured[] = $cover_id;
-        }
-        $allowed_featured = array_values(array_unique(array_filter(array_map('intval', $allowed_featured))));
-
-        if (array_key_exists('featured_id', $body)) {
-            $featured_id = absint($body['featured_id']);
-            if ($featured_id > 0 && !in_array($featured_id, $allowed_featured, true)) {
-                $errors['featured'] = __('Choose a featured image from your gallery or cover.', 'artpulse-management');
-            } else {
-                $data['featured_id'] = $featured_id;
-            }
-        }
-
-        if (array_key_exists('widgets', $body)) {
-            $data['widgets'] = is_array($body['widgets']) ? $body['widgets'] : [];
-        }
-
-        if (!empty($errors)) {
-            return new WP_Error(
-                'invalid_portfolio_payload',
-                __('Some fields need attention before we can save your changes.', 'artpulse-management'),
-                [
-                    'status' => 422,
-                    'errors' => $errors,
-                ]
-            );
-        }
-
-        $data['meta'] = $meta_updates;
-        $data['post'] = $post_updates;
-
-        return $data;
-    }
-
-    /**
-     * Persist sanitized portfolio data.
-     *
-     * @param array<string, mixed> $data
-     */
-    private static function persist_portfolio_update(\WP_Post $post, array $data): void
-    {
-        $post_id = (int) $post->ID;
-
-        if (!empty($data['post'])) {
-            $payload = array_merge(['ID' => $post_id], $data['post']);
-            wp_update_post($payload);
-        }
-
-        if (!empty($data['meta']) && is_array($data['meta'])) {
-            foreach ($data['meta'] as $meta_key => $value) {
-                if (is_array($value)) {
-                    $filtered = array_filter($value, static function ($item) {
-                        return $item !== '' && null !== $item && 0.0 !== $item;
-                    });
-                    if (empty($filtered)) {
-                        delete_post_meta($post_id, $meta_key);
-                        continue;
-                    }
-                }
-
-                if (is_string($value)) {
-                    $value = trim($value);
-                }
-
-                if ('' === $value || (is_array($value) && empty($value))) {
-                    delete_post_meta($post_id, $meta_key);
-                } else {
-                    update_post_meta($post_id, $meta_key, $value);
-                }
-            }
-        }
-
-        if (array_key_exists('visibility', $data)) {
-            $visibility = (string) $data['visibility'];
-            if ('' === $visibility) {
-                delete_post_meta($post_id, 'portfolio_visibility');
-            } else {
-                update_post_meta($post_id, 'portfolio_visibility', $visibility);
-            }
-        }
-
-        if (array_key_exists('gallery_ids', $data)) {
-            $gallery_ids = array_map('intval', (array) $data['gallery_ids']);
-            update_post_meta($post_id, '_ap_gallery_ids', $gallery_ids);
-        }
-
-        if (array_key_exists('featured_id', $data)) {
-            $featured_id = (int) $data['featured_id'];
-            if ($featured_id > 0) {
-                set_post_thumbnail($post_id, $featured_id);
+        if (array_key_exists('featured_media', $validation)) {
+            $featured = (int) $validation['featured_media'];
+            if ($featured > 0) {
+                set_post_thumbnail($post_id, $featured);
             } else {
                 delete_post_thumbnail($post_id);
             }
         }
 
-        if (array_key_exists('widgets', $data)) {
-            PortfolioWidgetRegistry::save($post_id, is_array($data['widgets']) ? $data['widgets'] : []);
+        if (array_key_exists('gallery', $validation)) {
+            update_post_meta($post_id, '_ap_gallery_ids', $validation['gallery']);
         }
+
+        $updated = get_post($post_id);
+        if (!$updated instanceof WP_Post) {
+            return self::error('ap_not_found', esc_html__('Portfolio not found.', 'artpulse-management'), 404);
+        }
+
+        return self::prepare_response($updated, $type, 'edit');
     }
 
     /**
-     * Normalize rate limit errors for REST responses.
+     * Validate and normalize incoming payload values.
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>|WP_Error
      */
-    private static function prepare_rate_limit_error(WP_Error $error): WP_Error
+    private static function validate_update_payload(array $payload, string $type, int $post_id, int $user_id)
     {
-        $data = (array) $error->get_error_data();
+        $data = [
+            'post'           => [],
+            'meta'           => [],
+        ];
 
-        if (!empty($data['headers']) && is_array($data['headers'])) {
-            foreach ($data['headers'] as $name => $value) {
-                header(trim((string) $name) . ': ' . trim((string) $value));
+        if (array_key_exists('title', $payload)) {
+            $title = (string) $payload['title'];
+            $title = sanitize_text_field($title);
+            if ('' === trim($title)) {
+                return self::error('ap_invalid_param', esc_html__('Title cannot be empty.', 'artpulse-management'), 422, ['field' => 'title']);
             }
+            if (mb_strlen($title) > 200) {
+                return self::error('ap_invalid_param', esc_html__('Title must be 200 characters or fewer.', 'artpulse-management'), 422, ['field' => 'title']);
+            }
+            $data['post']['post_title'] = $title;
         }
+
+        if (array_key_exists('tagline', $payload)) {
+            $tagline = sanitize_text_field((string) $payload['tagline']);
+            if (mb_strlen($tagline) > 160) {
+                return self::error('ap_invalid_param', esc_html__('Tagline must be 160 characters or fewer.', 'artpulse-management'), 422, ['field' => 'tagline']);
+            }
+            $data['meta']['_ap_tagline'] = $tagline;
+        }
+
+        if (array_key_exists('bio', $payload)) {
+            $bio = wp_kses_post((string) $payload['bio']);
+            $data['meta']['_ap_about'] = $bio;
+        }
+
+        if (array_key_exists('website_url', $payload)) {
+            $website = trim((string) $payload['website_url']);
+            if ('' !== $website && !wp_http_validate_url($website)) {
+                return self::error('ap_invalid_param', esc_html__('Enter a valid website URL.', 'artpulse-management'), 422, ['field' => 'website_url']);
+            }
+            $data['meta']['_ap_website'] = esc_url_raw($website);
+        }
+
+        if (array_key_exists('socials', $payload)) {
+            $socials_raw = $payload['socials'];
+            if (!is_array($socials_raw)) {
+                return self::error('ap_invalid_param', esc_html__('Social links must be an array.', 'artpulse-management'), 422, ['field' => 'socials']);
+            }
+
+            $socials = [];
+            foreach ($socials_raw as $url) {
+                $url = trim((string) $url);
+                if ('' === $url) {
+                    continue;
+                }
+                if (!wp_http_validate_url($url)) {
+                    return self::error('ap_invalid_param', esc_html__('Enter valid URLs for your social profiles.', 'artpulse-management'), 422, ['field' => 'socials']);
+                }
+                $socials[] = esc_url_raw($url);
+            }
+
+            $data['meta']['_ap_socials'] = implode("\n", $socials);
+        }
+
+        if (array_key_exists('visibility', $payload)) {
+            $visibility = strtolower(trim((string) $payload['visibility']));
+            if (!in_array($visibility, ['public', 'private'], true)) {
+                return self::error('ap_invalid_param', esc_html__('Visibility must be public or private.', 'artpulse-management'), 422, ['field' => 'visibility']);
+            }
+            $data['meta']['_ap_visibility'] = $visibility;
+        }
+
+        if (array_key_exists('status', $payload)) {
+            $status = strtolower(trim((string) $payload['status']));
+            if (!in_array($status, ['draft', 'pending', 'publish'], true)) {
+                return self::error('ap_invalid_param', esc_html__('Status must be draft, pending, or publish.', 'artpulse-management'), 422, ['field' => 'status']);
+            }
+            $data['post']['post_status'] = $status;
+        }
+
+        if (array_key_exists('featured_media', $payload)) {
+            $featured = absint($payload['featured_media']);
+            if ($featured > 0 && !self::user_owns_attachment($featured, $user_id)) {
+                return self::error('ap_invalid_param', esc_html__('Select an image you uploaded.', 'artpulse-management'), 422, ['field' => 'featured_media']);
+            }
+            $data['featured_media'] = $featured;
+        }
+
+        if (array_key_exists('gallery', $payload)) {
+            if (!is_array($payload['gallery'])) {
+                return self::error('ap_invalid_param', esc_html__('Gallery must be an array of media identifiers.', 'artpulse-management'), 422, ['field' => 'gallery']);
+            }
+
+            $gallery = [];
+            foreach ($payload['gallery'] as $item) {
+                $attachment_id = absint($item);
+                if ($attachment_id <= 0) {
+                    continue;
+                }
+                if (!self::user_owns_attachment($attachment_id, $user_id)) {
+                    return self::error('ap_invalid_param', esc_html__('One of the selected gallery items is not available.', 'artpulse-management'), 422, ['field' => 'gallery']);
+                }
+                $gallery[] = $attachment_id;
+            }
+
+            $data['gallery'] = $gallery;
+        }
+
+        return $data;
+    }
+
+    private static function prepare_response(WP_Post $post, string $type, string $context): array
+    {
+        $post_id    = (int) $post->ID;
+        $visibility = (string) get_post_meta($post_id, '_ap_visibility', true);
+        $tagline    = (string) get_post_meta($post_id, '_ap_tagline', true);
+        $bio        = (string) get_post_meta($post_id, '_ap_about', true);
+        $website    = (string) get_post_meta($post_id, '_ap_website', true);
+        $socials_raw = (string) get_post_meta($post_id, '_ap_socials', true);
+        $socials = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $socials_raw) ?: []));
+        $gallery_meta = get_post_meta($post_id, '_ap_gallery_ids', true);
+        $gallery_ids  = array_values(array_filter(array_map('absint', is_array($gallery_meta) ? $gallery_meta : (array) $gallery_meta)));
 
         $payload = [
-            'status'      => isset($data['status']) ? (int) $data['status'] : 429,
-            'retry_after' => isset($data['retry_after']) ? (int) $data['retry_after'] : null,
-            'limit'       => isset($data['limit']) ? (int) $data['limit'] : null,
-            'reset'       => isset($data['reset']) ? (int) $data['reset'] : null,
+            'id'             => $post_id,
+            'type'           => $type,
+            'title'          => $post->post_title,
+            'tagline'        => $tagline,
+            'bio'            => $bio,
+            'website_url'    => $website,
+            'socials'        => $socials,
+            'featured_media' => (int) get_post_thumbnail_id($post_id),
+            'gallery'        => $gallery_ids,
+            'visibility'     => $visibility,
+            'status'         => $post->post_status,
+            'dashboard_url'  => get_page_url('dashboard_page_id'),
+            'public_url'     => get_permalink($post_id) ?: '',
         ];
 
-        return new WP_Error($error->get_error_code(), $error->get_error_message(), $payload);
-    }
+        $config    = ProfileBuilderConfig::for($type);
+        $progress  = ProfileProgress::compute($payload, $config['required_fields'], $config['steps']);
+        $payload['progress'] = $progress;
 
-    /**
-     * Apply display order to a gallery collection.
-     *
-     * @param int[] $gallery_ids
-     * @param array<int, int> $order
-     *
-     * @return int[]
-     */
-    private static function apply_gallery_order(array $gallery_ids, array $order): array
-    {
-        if (empty($gallery_ids)) {
-            return $gallery_ids;
+        if ('view' === $context) {
+            unset($payload['dashboard_url']);
         }
 
-        usort($gallery_ids, static function ($a, $b) use ($order) {
-            $position_a = $order[$a] ?? PHP_INT_MAX;
-            $position_b = $order[$b] ?? PHP_INT_MAX;
-
-            if ($position_a === $position_b) {
-                return $a <=> $b;
-            }
-
-            return $position_a <=> $position_b;
-        });
-
-        return $gallery_ids;
-    }
-
-    private static function string_length(string $value): int
-    {
-        return function_exists('mb_strlen') ? mb_strlen($value) : strlen($value);
-    }
-
-    public static function upload_media(WP_REST_Request $request)
-    {
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        require_once ABSPATH . 'wp-admin/includes/media.php';
-        require_once ABSPATH . 'wp-admin/includes/image.php';
-
-        $files = $request->get_file_params();
-        $file  = $files['file'] ?? ($_FILES['file'] ?? null); // phpcs:ignore WordPress.VIP.SuperGlobalInputUsage.AccessDetected
-
-        if (!$file) {
-            return new WP_Error('bad_request', __('No file provided', 'artpulse-management'), ['status' => 400]);
+        if ('publish' !== $post->post_status || 'public' !== $visibility) {
+            $payload['public_url'] = '';
         }
 
-        $post_id = (int) $request['id'];
-
-        $validation = self::validate_image_file($file);
-        if ($validation instanceof WP_Error) {
-            return $validation;
-        }
-
-        $attachment_id = media_handle_sideload($file, $post_id);
-        if (is_wp_error($attachment_id)) {
-            return $attachment_id;
-        }
-
-        wp_update_post([
-            'ID'          => $attachment_id,
-            'post_parent' => $post_id,
-        ]);
-
-        return [
-            'attachment' => self::format_image((int) $attachment_id),
-        ];
+        return $payload;
     }
 
-    public static function reorder_media(WP_REST_Request $request)
+    private static function post_type_from_type(string $type): string
     {
-        $post_id = (int) $request['id'];
-        $body    = $request->get_json_params();
+        return 'org' === $type ? 'artpulse_org' : 'artpulse_artist';
+    }
 
-        $order = self::filter_portfolio_attachments((array) ($body['gallery_ids'] ?? []), $post_id);
-        update_post_meta($post_id, '_ap_gallery_ids', $order);
-
-        if (!empty($body['featured_id'])) {
-            $featured = (int) $body['featured_id'];
-            $allowed  = $order;
-            $cover_id = (int) get_post_meta($post_id, '_ap_cover_id', true);
-            if ($cover_id) {
-                $allowed[] = $cover_id;
-            }
-
-            if (in_array($featured, $allowed, true)) {
-                set_post_thumbnail($post_id, $featured);
+    private static function rate_limit_error(WP_Error $error): WP_Error
+    {
+        $data = $error->get_error_data();
+        if (is_array($data) && isset($data['headers']) && is_array($data['headers'])) {
+            foreach ($data['headers'] as $name => $value) {
+                header($name . ': ' . $value);
             }
         }
 
-        AuditLogger::info('portfolio.media.reorder', [
-            'post_id' => $post_id,
-            'user_id' => get_current_user_id(),
-        ]);
+        $retry = 0;
+        if (is_array($data) && isset($data['retry_after'])) {
+            $retry = (int) $data['retry_after'];
+        }
 
-        return self::get_portfolio($request);
+        return self::error('ap_rate_limited', $error->get_error_message(), 429, ['retry_after' => $retry]);
     }
 
-    private static function format_image(int $attachment_id, string $preferred_size = 'ap-grid'): ?array
+    private static function user_owns_attachment(int $attachment_id, int $user_id): bool
     {
         if ($attachment_id <= 0) {
-            return null;
+            return false;
         }
 
-        $best = ImageTools::best_image_src($attachment_id, $preferred_size);
-        if (!$best) {
-            return null;
-        }
-
-        $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
-
-        return [
-            'id'     => $attachment_id,
-            'url'    => $best['src'],
-            'size'   => $best['size'],
-            'width'  => $best['width'],
-            'height' => $best['height'],
-            'alt'    => sanitize_text_field($alt),
-        ];
-    }
-
-    private static function validate_image_file(array $file)
-    {
-        if (!is_array($file) || empty($file)) {
-            return new WP_Error(
-                'invalid_file',
-                __('Uploaded file could not be processed.', 'artpulse-management'),
-                ['status' => 400]
-            );
-        }
-
-        $error = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_OK;
-        if (UPLOAD_ERR_OK !== $error) {
-            switch ($error) {
-                case UPLOAD_ERR_NO_FILE:
-                    return new WP_Error(
-                        'bad_request',
-                        __('No file provided', 'artpulse-management'),
-                        ['status' => 400]
-                    );
-                case UPLOAD_ERR_INI_SIZE:
-                case UPLOAD_ERR_FORM_SIZE:
-                    return new WP_Error(
-                        'too_large',
-                        __('Images must be smaller than 10MB', 'artpulse-management'),
-                        ['status' => 413]
-                    );
-                default:
-                    return new WP_Error(
-                        'upload_error',
-                        __('The upload could not be completed. Please try again.', 'artpulse-management'),
-                        ['status' => 500]
-                    );
-            }
-        }
-
-        $tmp_name = $file['tmp_name'] ?? '';
-        $name     = $file['name'] ?? '';
-
-        if (!$tmp_name || !file_exists($tmp_name)) {
-            return new WP_Error('invalid_file', __('Uploaded file could not be processed.', 'artpulse-management'), ['status' => 400]);
-        }
-
-        $check = wp_check_filetype_and_ext($tmp_name, $name);
-        $type  = $check['type'] ?? '';
-        if (!in_array($type, ['image/jpeg', 'image/png', 'image/webp'], true)) {
-            return new WP_Error('invalid_mime', __('Only images are allowed', 'artpulse-management'), ['status' => 415]);
-        }
-
-        $size = isset($file['size']) ? (int) $file['size'] : 0;
-        if ($size > 10 * MB_IN_BYTES) {
-            return new WP_Error('too_large', __('Images must be smaller than 10MB', 'artpulse-management'), ['status' => 413]);
-        }
-
-        $dimensions = @getimagesize($tmp_name); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-        if (!is_array($dimensions) || count($dimensions) < 2) {
-            return new WP_Error('invalid_image', __('Unable to determine image dimensions.', 'artpulse-management'), ['status' => 415]);
-        }
-
-        if ($dimensions[0] < 200 || $dimensions[1] < 200) {
-            return new WP_Error(
-                'image_too_small',
-                __('Images must be at least 200×200 pixels.', 'artpulse-management'),
-                ['status' => 415]
-            );
-        }
-
-        if ('image/jpeg' === $type) {
-            $channels = isset($dimensions['channels']) ? (int) $dimensions['channels'] : 0;
-            if ($channels >= 4) {
-                return new WP_Error(
-                    'image_cmyk',
-                    __('CMYK JPEGs are not supported. Please upload an RGB image.', 'artpulse-management'),
-                    ['status' => 415]
-                );
-            }
-        }
-
-        return null;
-    }
-
-    private static function filter_portfolio_attachments(array $attachments, int $post_id): array
-    {
-        $filtered = [];
-
-        foreach ($attachments as $attachment_id) {
-            $attachment_id = (int) $attachment_id;
-            if ($attachment_id <= 0) {
-                continue;
-            }
-
-            $attachment = get_post($attachment_id);
-            if (!$attachment || 'attachment' !== $attachment->post_type) {
-                continue;
-            }
-
-            $parent = (int) $attachment->post_parent;
-            if ($parent === $post_id || $parent === 0) {
-                if (0 === $parent) {
-                    wp_update_post([
-                        'ID'          => $attachment_id,
-                        'post_parent' => $post_id,
-                    ]);
-                }
-
-                $filtered[] = $attachment_id;
-            }
-        }
-
-        return array_values(array_unique($filtered));
-    }
-
-    private static function replace_feature_media(int $post_id, int $attachment_id, string $meta_key): void
-    {
-        $old_id = (int) get_post_meta($post_id, $meta_key, true);
-
-        if ($attachment_id <= 0) {
-            delete_post_meta($post_id, $meta_key);
-            return;
+        if (current_user_can('manage_options')) {
+            return true;
         }
 
         $attachment = get_post($attachment_id);
-        if (!$attachment instanceof \WP_Post || 'attachment' !== $attachment->post_type) {
-            return;
+        if (!$attachment instanceof WP_Post) {
+            return false;
         }
 
-        if ((int) $attachment->post_parent !== $post_id) {
-            wp_update_post([
-                'ID'          => $attachment_id,
-                'post_parent' => $post_id,
-            ]);
+        if ('attachment' !== $attachment->post_type) {
+            return false;
         }
 
-        if ($old_id && $old_id !== $attachment_id) {
-            delete_post_meta($post_id, $meta_key);
-        }
+        return (int) $attachment->post_author === $user_id;
+    }
 
-        update_post_meta($post_id, $meta_key, $attachment_id);
+    private static function error(string $code, string $message, int $status, array $extra = []): WP_Error
+    {
+        $data = array_merge(['status' => $status], $extra);
+        return new WP_Error($code, $message, $data);
+    }
+
+    /**
+     * Schema for writable parameters.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private static function request_args_schema(): array
+    {
+        return [
+            'title' => [
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'tagline' => [
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'bio' => [
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'wp_kses_post',
+            ],
+            'website_url' => [
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'socials' => [
+                'type'     => 'array',
+                'required' => false,
+                'items'    => [
+                    'type' => 'string',
+                ],
+            ],
+            'featured_media' => [
+                'type'     => 'integer',
+                'required' => false,
+            ],
+            'gallery' => [
+                'type'     => 'array',
+                'required' => false,
+                'items'    => [
+                    'type' => 'integer',
+                ],
+            ],
+            'visibility' => [
+                'type'     => 'string',
+                'required' => false,
+            ],
+            'status' => [
+                'type'     => 'string',
+                'required' => false,
+            ],
+        ];
     }
 }

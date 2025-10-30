@@ -178,7 +178,6 @@ class AdminColumnsTest extends TestCase
             '\\ArtPulse\\Frontend\\OrganizationEventForm',
             '\\ArtPulse\\Frontend\\UserProfileShortcode',
             '\\ArtPulse\\Frontend\\ProfileEditShortcode',
-            '\\ArtPulse\\Frontend\\PortfolioBuilder',
             '\\ArtPulse\\Admin\\MetaBoxesRelationship',
             '\\ArtPulse\\Blocks\\RelatedItemsSelectorBlock',
             '\\ArtPulse\\Admin\\ApprovalManager',

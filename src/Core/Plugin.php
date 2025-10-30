@@ -259,6 +259,7 @@ class Plugin
         \ArtPulse\Core\AnalyticsManager::register();
         \ArtPulse\Core\AnalyticsDashboard::register();
         \ArtPulse\Core\FrontendMembershipPage::register();
+        \ArtPulse\Core\ProfileState::register();
         \ArtPulse\Community\ProfileLinkRequestManager::register();
         \ArtPulse\Core\MyFollowsShortcode::register();
         \ArtPulse\Core\NotificationShortcode::register();
@@ -277,7 +278,6 @@ class Plugin
         \ArtPulse\Frontend\ProfileEditShortcode::register();
         \ArtPulse\Frontend\ArtistsDirectory::register();
         \ArtPulse\Frontend\OrgsDirectory::register();
-        \ArtPulse\Frontend\PortfolioBuilder::register();
         \ArtPulse\Frontend\EventsCalendar::register();
         \ArtPulse\Frontend\TemplateLoader::register();
         \ArtPulse\Admin\MetaBoxesRelationship::register();
