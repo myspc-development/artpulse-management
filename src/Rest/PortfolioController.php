@@ -30,6 +30,7 @@ use function trim;
 use function update_post_meta;
 use function wp_http_validate_url;
 use function wp_kses_post;
+use function wp_strip_all_tags;
 use function wp_update_post;
 use function delete_post_meta;
 use function delete_post_thumbnail;
@@ -151,6 +152,25 @@ final class PortfolioController
 
         $post_updates = $validation['post'];
         $meta_updates = $validation['meta'];
+
+        $requested_status = strtolower(trim((string) ($payload['status'] ?? '')));
+        if ('publish' === $requested_status) {
+            $final_state = [
+                'title'          => $post_updates['post_title'] ?? $post->post_title,
+                'bio'            => $meta_updates['_ap_about'] ?? (string) get_post_meta($post_id, '_ap_about', true),
+                'featured_media' => array_key_exists('featured_media', $validation)
+                    ? (int) $validation['featured_media']
+                    : (int) get_post_thumbnail_id($post_id),
+            ];
+
+            if (!self::meets_minimum_requirements($final_state)) {
+                return self::error(
+                    'ap_invalid_state',
+                    esc_html__('Complete required fields before publishing.', 'artpulse-management'),
+                    422
+                );
+            }
+        }
 
         if (!empty($post_updates)) {
             $post_updates['ID'] = $post_id;
@@ -551,6 +571,29 @@ final class PortfolioController
     }
 
     /**
+     * Determine if the portfolio meets minimum publish requirements.
+     *
+     * @param array{title?:string,bio?:string,featured_media?:int} $state
+     */
+    private static function meets_minimum_requirements(array $state): bool
+    {
+        $title = isset($state['title']) ? trim((string) $state['title']) : '';
+        if ('' === $title) {
+            return false;
+        }
+
+        $bio_raw = isset($state['bio']) ? (string) $state['bio'] : '';
+        $bio     = trim(wp_strip_all_tags($bio_raw));
+        if ('' === $bio) {
+            return false;
+        }
+
+        $featured = isset($state['featured_media']) ? (int) $state['featured_media'] : 0;
+
+        return $featured > 0;
+    }
+
+    /**
      * Schema for writable parameters.
      *
      * @return array<string, array<string, mixed>>
@@ -560,54 +603,59 @@ final class PortfolioController
         return [
             'title' => [
                 'type'              => 'string',
-                'required'          => false,
+                'minLength'         => 1,
+                'maxLength'         => 200,
                 'sanitize_callback' => 'sanitize_text_field',
                 'validate_callback' => [self::class, 'validate_title_arg'],
             ],
             'tagline' => [
                 'type'              => 'string',
-                'required'          => false,
+                'maxLength'         => 160,
                 'sanitize_callback' => 'sanitize_text_field',
                 'validate_callback' => [self::class, 'validate_tagline_arg'],
             ],
             'bio' => [
                 'type'              => 'string',
-                'required'          => false,
+                'maxLength'         => 5000,
                 'sanitize_callback' => 'wp_kses_post',
             ],
             'website_url' => [
                 'type'              => 'string',
-                'required'          => false,
+                'format'            => 'uri',
                 'sanitize_callback' => 'esc_url_raw',
                 'validate_callback' => [self::class, 'validate_website_arg'],
             ],
             'socials' => [
                 'type'     => 'array',
-                'required' => false,
+                'items'    => [
+                    'type'   => 'string',
+                    'format' => 'uri',
+                ],
                 'sanitize_callback' => [self::class, 'sanitize_socials_arg'],
                 'validate_callback' => [self::class, 'validate_socials_arg'],
             ],
             'featured_media' => [
                 'type'     => 'integer',
-                'required' => false,
                 'sanitize_callback' => 'absint',
                 'validate_callback' => [self::class, 'validate_featured_media_arg'],
             ],
             'gallery' => [
                 'type'     => 'array',
-                'required' => false,
+                'items'    => [
+                    'type' => 'integer',
+                ],
                 'sanitize_callback' => [self::class, 'sanitize_gallery_arg'],
                 'validate_callback' => [self::class, 'validate_gallery_arg'],
             ],
             'visibility' => [
                 'type'     => 'string',
-                'required' => false,
+                'enum'     => ['public', 'private'],
                 'sanitize_callback' => 'sanitize_key',
                 'validate_callback' => [self::class, 'validate_visibility_arg'],
             ],
             'status' => [
                 'type'     => 'string',
-                'required' => false,
+                'enum'     => ['draft', 'pending', 'publish'],
                 'sanitize_callback' => 'sanitize_key',
                 'validate_callback' => [self::class, 'validate_status_arg'],
             ],
