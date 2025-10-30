@@ -12,6 +12,7 @@ use WP_Error;
 use function ArtPulse\Core\add_query_args;
 use function ArtPulse\Core\get_missing_page_fallback;
 use function ArtPulse\Core\get_page_url;
+use function esc_url_raw;
 
 /**
  * Shortcode for managing artist profiles via the front-end builder.
@@ -147,6 +148,39 @@ final class ArtistBuilderShortcode
         ob_start();
 
         wp_enqueue_style('ap-artist-builder', plugins_url('assets/css/ap-artist-builder.css', ARTPULSE_PLUGIN_FILE), [], ARTPULSE_VERSION);
+
+        $autosave_artist_id = 0;
+        if (isset($_GET['artist_id'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $candidate_id = absint(wp_unslash($_GET['artist_id'])); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if ($candidate_id > 0 && in_array($candidate_id, $artist_ids, true)) {
+                $autosave_artist_id = $candidate_id;
+            }
+        }
+
+        if ($autosave_artist_id > 0) {
+            wp_enqueue_script(
+                'ap-autosave',
+                plugins_url('assets/js/ap-autosave.js', ARTPULSE_PLUGIN_FILE),
+                ['wp-api-fetch'],
+                ARTPULSE_VERSION,
+                true
+            );
+
+            wp_localize_script('ap-autosave', 'APAutosave', [
+                'nonce'    => wp_create_nonce('wp_rest'),
+                'postId'   => $autosave_artist_id,
+                'role'     => 'artist',
+                'endpoint' => esc_url_raw(rest_url('artpulse/v1/portfolio/artist/' . $autosave_artist_id)),
+                'strings'  => [
+                    'saving'       => esc_html__('Saving…', 'artpulse-management'),
+                    'savedJustNow' => esc_html__('Saved just now', 'artpulse-management'),
+                    'savedAgo'     => esc_html__('Saved %s ago', 'artpulse-management'),
+                    'failed'       => esc_html__('Failed to save. Retry?', 'artpulse-management'),
+                    'sessionExpired' => esc_html__('Your session expired. Please refresh.', 'artpulse-management'),
+                    'retryingIn'   => esc_html__('Retrying in %d seconds…', 'artpulse-management'),
+                ],
+            ]);
+        }
 
         $builder_artist_ids = $artist_ids;
         $builder_profiles   = $profiles;

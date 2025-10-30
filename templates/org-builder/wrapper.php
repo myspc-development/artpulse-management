@@ -14,7 +14,7 @@ $builder_nonce_html = wp_nonce_field('ap_portfolio_update', '_ap_nonce', false, 
 $steps              = $builder_progress['steps'] ?? [];
 $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
 ?>
-<div class="ap-org-builder" data-org-id="<?php echo esc_attr($org_post->ID); ?>" data-ap-nonce="<?php echo esc_attr($builder_nonce); ?>">
+<div class="ap-org-builder" data-org-id="<?php echo esc_attr($org_post->ID); ?>" data-ap-nonce="<?php echo esc_attr($builder_nonce); ?>" data-ap-autosave-root="1">
     <?php echo $builder_nonce_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
     <header class="ap-org-builder__header">
         <h2><?php echo esc_html(get_the_title($org_post)); ?></h2>
@@ -54,6 +54,7 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
             </ol>
         </nav>
     </header>
+    <div id="ap-save-status" aria-live="polite" role="status" class="ap-status"></div>
 
     <?php if ($builder_message !== '') : ?>
         <div class="ap-org-builder__notice ap-org-builder__notice--success" role="status" aria-live="polite">
@@ -73,7 +74,7 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
 
     <div class="ap-org-builder__content">
         <?php if ('profile' === $builder_step) : ?>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="ap-org-builder__panel">
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="ap-org-builder__panel" data-ap-autosave="profile">
                 <?php wp_nonce_field('ap_portfolio_update', '_ap_nonce'); ?>
                 <input type="hidden" name="action" value="ap_org_builder_save" />
                 <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
@@ -83,15 +84,17 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
                     <legend><?php esc_html_e('Identity', 'artpulse-management'); ?></legend>
                     <p class="ap-org-builder__field">
                         <label for="ap_org_title"><?php esc_html_e('Organization Name', 'artpulse-management'); ?></label>
-                        <input id="ap_org_title" type="text" value="<?php echo esc_attr(get_the_title($org_post)); ?>" disabled />
+                        <input id="ap_org_title" type="text" value="<?php echo esc_attr(get_the_title($org_post)); ?>" disabled data-ap-autosave-field="title" data-ap-autosave-track="true" />
                     </p>
                     <p class="ap-org-builder__field">
                         <label for="ap_org_tagline"><?php esc_html_e('Tagline', 'artpulse-management'); ?></label>
-                        <input id="ap_org_tagline" type="text" name="ap_tagline" value="<?php echo esc_attr($builder_meta['tagline']); ?>" />
+                        <input id="ap_org_tagline" type="text" name="ap_tagline" value="<?php echo esc_attr($builder_meta['tagline']); ?>" data-ap-autosave-field="tagline" data-ap-autosave-track="true" />
+                        <span class="ap-org-builder__field-error" data-ap-error="tagline" role="alert" aria-live="polite"></span>
                     </p>
                     <p class="ap-org-builder__field">
                         <label for="ap_org_about"><?php esc_html_e('About', 'artpulse-management'); ?></label>
                         <?php
+                        ob_start();
                         wp_editor(
                             wp_kses_post($builder_meta['about']),
                             'ap_org_about',
@@ -102,7 +105,16 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
                                 'teeny'         => true,
                             ]
                         );
+                        $editor_markup = (string) ob_get_clean();
+                        $editor_markup = preg_replace(
+                            '/<textarea/',
+                            '<textarea data-ap-autosave-field="about" data-ap-autosave-track="true"',
+                            $editor_markup,
+                            1
+                        );
+                        echo $editor_markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                         ?>
+                        <span class="ap-org-builder__field-error" data-ap-error="about" role="alert" aria-live="polite"></span>
                     </p>
                 </fieldset>
 
@@ -110,32 +122,37 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
                     <legend><?php esc_html_e('Contact', 'artpulse-management'); ?></legend>
                     <p class="ap-org-builder__field">
                         <label for="ap_org_website"><?php esc_html_e('Website', 'artpulse-management'); ?></label>
-                        <input id="ap_org_website" type="url" name="ap_website" value="<?php echo esc_attr($builder_meta['website']); ?>" />
+                        <input id="ap_org_website" type="url" name="ap_website" value="<?php echo esc_attr($builder_meta['website']); ?>" data-ap-autosave-field="website" data-ap-autosave-track="true" />
+                        <span class="ap-org-builder__field-error" data-ap-error="website" role="alert" aria-live="polite"></span>
                     </p>
                     <p class="ap-org-builder__field">
                         <label for="ap_org_socials"><?php esc_html_e('Social Links', 'artpulse-management'); ?></label>
-                        <textarea id="ap_org_socials" name="ap_socials" rows="3" placeholder="<?php esc_attr_e('One URL per line', 'artpulse-management'); ?>"><?php echo esc_textarea($builder_meta['socials']); ?></textarea>
+                        <textarea id="ap_org_socials" name="ap_socials" rows="3" placeholder="<?php esc_attr_e('One URL per line', 'artpulse-management'); ?>" data-ap-autosave-field="socials" data-ap-autosave-track="true"><?php echo esc_textarea($builder_meta['socials']); ?></textarea>
+                        <span class="ap-org-builder__field-error" data-ap-error="socials" role="alert" aria-live="polite"></span>
                     </p>
                     <div class="ap-org-builder__field-grid">
                         <p class="ap-org-builder__field">
                             <label for="ap_org_phone"><?php esc_html_e('Phone', 'artpulse-management'); ?></label>
-                            <input id="ap_org_phone" type="text" name="ap_phone" value="<?php echo esc_attr($builder_meta['phone']); ?>" />
+                            <input id="ap_org_phone" type="text" name="ap_phone" value="<?php echo esc_attr($builder_meta['phone']); ?>" data-ap-autosave-field="phone" data-ap-autosave-track="true" />
+                            <span class="ap-org-builder__field-error" data-ap-error="phone" role="alert" aria-live="polite"></span>
                         </p>
                         <p class="ap-org-builder__field">
                             <label for="ap_org_email"><?php esc_html_e('Public Email', 'artpulse-management'); ?></label>
-                            <input id="ap_org_email" type="email" name="ap_email" value="<?php echo esc_attr($builder_meta['email']); ?>" />
+                            <input id="ap_org_email" type="email" name="ap_email" value="<?php echo esc_attr($builder_meta['email']); ?>" data-ap-autosave-field="email" data-ap-autosave-track="true" />
+                            <span class="ap-org-builder__field-error" data-ap-error="email" role="alert" aria-live="polite"></span>
                         </p>
                     </div>
                     <p class="ap-org-builder__field">
                         <label for="ap_org_address"><?php esc_html_e('Address', 'artpulse-management'); ?></label>
-                        <textarea id="ap_org_address" name="ap_address" rows="3"><?php echo esc_textarea($builder_meta['address']); ?></textarea>
+                        <textarea id="ap_org_address" name="ap_address" rows="3" data-ap-autosave-field="address" data-ap-autosave-track="true"><?php echo esc_textarea($builder_meta['address']); ?></textarea>
+                        <span class="ap-org-builder__field-error" data-ap-error="address" role="alert" aria-live="polite"></span>
                     </p>
                 </fieldset>
 
                 <button type="submit" class="ap-org-builder__submit button button-primary"><?php esc_html_e('Save profile', 'artpulse-management'); ?></button>
             </form>
         <?php elseif ('images' === $builder_step) : ?>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="ap-org-builder__panel">
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="ap-org-builder__panel" data-ap-autosave="media">
                 <?php wp_nonce_field('ap_portfolio_update', '_ap_nonce'); ?>
                 <input type="hidden" name="action" value="ap_org_builder_save" />
                 <input type="hidden" name="org_id" value="<?php echo esc_attr($org_post->ID); ?>" />
@@ -155,8 +172,9 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
                                     ]); ?>
                                 </div>
                             <?php endif; ?>
-                            <input id="ap_org_logo_input" type="file" name="ap_logo" accept="image/jpeg,image/png,image/webp" data-test="org-logo-input" />
-                            <p class="description"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
+                            <?php $logo_help_id = 'ap_org_logo_help'; ?>
+                            <input id="ap_org_logo_input" type="file" name="ap_logo" accept="image/jpeg,image/png,image/webp" data-test="org-logo-input" aria-describedby="<?php echo esc_attr($logo_help_id); ?>" />
+                            <p class="description" id="<?php echo esc_attr($logo_help_id); ?>"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
                         </div>
                         <div>
                             <label class="ap-org-builder__upload-label" for="ap_org_cover_input"><?php esc_html_e('Cover Image', 'artpulse-management'); ?></label>
@@ -169,11 +187,12 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
                                     ]); ?>
                                 </div>
                             <?php endif; ?>
-                            <input id="ap_org_cover_input" type="file" name="ap_cover" accept="image/jpeg,image/png,image/webp" />
-                            <p class="description"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
+                            <?php $cover_help_id = 'ap_org_cover_help'; ?>
+                            <input id="ap_org_cover_input" type="file" name="ap_cover" accept="image/jpeg,image/png,image/webp" aria-describedby="<?php echo esc_attr($cover_help_id); ?>" />
+                            <p class="description" id="<?php echo esc_attr($cover_help_id); ?>"><?php esc_html_e('JPG, PNG, or WebP. Max 10MB.', 'artpulse-management'); ?></p>
                             <?php if (!empty($builder_meta['cover_id'])) : ?>
                                 <label class="ap-org-builder__radio">
-                                    <input type="radio" name="ap_featured_image" value="<?php echo esc_attr((int) $builder_meta['cover_id']); ?>" <?php checked((int) $builder_meta['featured_id'], (int) $builder_meta['cover_id']); ?> />
+                                    <input type="radio" name="ap_featured_image" value="<?php echo esc_attr((int) $builder_meta['cover_id']); ?>" <?php checked((int) $builder_meta['featured_id'], (int) $builder_meta['cover_id']); ?> data-ap-autosave-track="true" />
                                     <span><?php esc_html_e('Use cover image as featured', 'artpulse-management'); ?></span>
                                 </label>
                             <?php endif; ?>
@@ -196,10 +215,10 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
                                 <div class="ap-org-builder__gallery-controls">
                                     <label>
                                         <span class="screen-reader-text"><?php esc_html_e('Display order', 'artpulse-management'); ?></span>
-                                        <input type="number" name="gallery_order[<?php echo esc_attr((int) $gallery_id); ?>]" value="<?php echo esc_attr($index + 1); ?>" min="1" />
+                                        <input type="number" name="gallery_order[<?php echo esc_attr((int) $gallery_id); ?>]" value="<?php echo esc_attr($index + 1); ?>" min="1" data-ap-autosave-track="true" data-ap-gallery-order="<?php echo esc_attr((int) $gallery_id); ?>" />
                                     </label>
                                     <label class="ap-org-builder__radio">
-                                        <input type="radio" name="ap_featured_image" value="<?php echo esc_attr((int) $gallery_id); ?>" <?php checked((int) $builder_meta['featured_id'], (int) $gallery_id); ?> />
+                                        <input type="radio" name="ap_featured_image" value="<?php echo esc_attr((int) $gallery_id); ?>" <?php checked((int) $builder_meta['featured_id'], (int) $gallery_id); ?> data-ap-autosave-track="true" />
                                         <span><?php esc_html_e('Use as featured', 'artpulse-management'); ?></span>
                                     </label>
                                 </div>
@@ -208,8 +227,9 @@ $overall_progress   = $builder_progress['overall']['percent'] ?? 0;
                         <?php endforeach; ?>
                     </div>
                     <label class="ap-org-builder__upload-label" for="ap_org_gallery_input"><?php esc_html_e('Add gallery images', 'artpulse-management'); ?></label>
-                    <input id="ap_org_gallery_input" type="file" name="ap_gallery[]" multiple accept="image/jpeg,image/png,image/webp" />
-                    <p class="description"><?php esc_html_e('Upload multiple images up to 10MB each. Use the order fields to arrange them.', 'artpulse-management'); ?></p>
+                    <?php $gallery_help_id = 'ap_org_gallery_help'; ?>
+                    <input id="ap_org_gallery_input" type="file" name="ap_gallery[]" multiple accept="image/jpeg,image/png,image/webp" aria-describedby="<?php echo esc_attr($gallery_help_id); ?>" />
+                    <p class="description" id="<?php echo esc_attr($gallery_help_id); ?>"><?php esc_html_e('Upload multiple images up to 10MB each. Use the order fields to arrange them.', 'artpulse-management'); ?></p>
                 </fieldset>
 
                 <button type="submit" class="ap-org-builder__submit button button-primary" data-test="org-builder-save"><?php esc_html_e('Save images', 'artpulse-management'); ?></button>
