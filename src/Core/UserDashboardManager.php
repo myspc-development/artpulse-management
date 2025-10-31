@@ -7,6 +7,7 @@ use WP_REST_Request;
 use WP_User;
 use function is_user_logged_in;
 use function rest_authorization_required_code;
+use function sanitize_key;
 use function wp_verify_nonce;
 
 class UserDashboardManager
@@ -525,10 +526,9 @@ class UserDashboardManager
 
     private static function mapRepositoryTypeToResponse(string $type): string
     {
-        return match ($type) {
-            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE => 'artist',
-            UpgradeReviewRepository::TYPE_ORG_UPGRADE    => 'org',
-            default                                      => 'org',
+        return match (sanitize_key($type)) {
+            'artist' => 'artist',
+            default  => 'org',
         };
     }
 
@@ -563,7 +563,7 @@ class UserDashboardManager
             return false;
         }
 
-        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST);
 
         if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
             return false;
@@ -588,7 +588,7 @@ class UserDashboardManager
             return false;
         }
 
-        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG);
 
         if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
             return false;
@@ -613,9 +613,15 @@ class UserDashboardManager
      */
     private static function normaliseProfileState(string $type, array $state, string $role): array
     {
-        $status = isset($state['status']) ? (string) $state['status'] : '';
-        if ($status === '') {
-            $status = null;
+        $exists = (bool) ($state['exists'] ?? false);
+        $raw_status = isset($state['status']) ? (string) $state['status'] : '';
+        if (!$exists) {
+            $status = 'none';
+        } else {
+            $status = match ($raw_status) {
+                'publish' => 'publish',
+                default   => 'draft',
+            };
         }
 
         $post_id = isset($state['post_id']) ? (int) $state['post_id'] : 0;
@@ -626,7 +632,7 @@ class UserDashboardManager
         $builder_url = self::buildBuilderUrl($type, $state['builder_url'] ?? null, $role);
 
         return [
-            'exists'      => (bool) ($state['exists'] ?? false),
+            'exists'      => $exists,
             'status'      => $status,
             'post_id'     => $post_id,
             'builder_url' => $builder_url,

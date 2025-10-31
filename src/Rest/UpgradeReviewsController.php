@@ -9,6 +9,7 @@ use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
+use function check_ajax_referer;
 use function get_gmt_from_date;
 use function get_post;
 use function is_user_logged_in;
@@ -58,7 +59,7 @@ final class UpgradeReviewsController
             );
         }
 
-        if (!self::verify_nonce($request)) {
+        if (!self::verify_request_nonce($request)) {
             return new WP_Error(
                 'rest_invalid_nonce',
                 __('Security check failed. Please refresh and try again.', 'artpulse-management'),
@@ -78,7 +79,8 @@ final class UpgradeReviewsController
             return self::format_rate_limit_error($rate_error);
         }
 
-        $type = self::normalise_request_type((string) $request->get_param('type'));
+        $type_param = (string) $request->get_param('type');
+        $type = self::normalise_request_type($type_param);
         if (null === $type) {
             return new WP_Error(
                 'artpulse_upgrade_review_invalid_type',
@@ -87,27 +89,25 @@ final class UpgradeReviewsController
             );
         }
 
-        $existing_id = UpgradeReviewRepository::find_pending($user_id, $type);
-        if (null !== $existing_id) {
-            $existing_post = get_post($existing_id);
-            if ($existing_post instanceof WP_Post) {
-                $data = self::prepare_review_summary($existing_post);
-
-                return new WP_REST_Response($data, 200);
-            }
-        }
-
         $note = $request->get_param('note');
         $args = [];
         if (is_string($note) && '' !== trim($note)) {
-            $args['post_content'] = sanitize_textarea_field($note);
+            $args['note'] = sanitize_textarea_field($note);
         }
 
         $result = UpgradeReviewRepository::create($user_id, $type, $args);
         if ($result instanceof WP_Error) {
-            $status = (int) ($result->get_error_data()['status'] ?? 500);
+            $data   = (array) $result->get_error_data();
+            $status = (int) ($data['status'] ?? ('ap_duplicate_pending' === $result->get_error_code() ? 409 : 400));
+            if ($status < 400) {
+                $status = 400;
+            }
 
-            return new WP_Error($result->get_error_code(), $result->get_error_message(), ['status' => $status > 0 ? $status : 500]);
+            return new WP_Error(
+                $result->get_error_code(),
+                $result->get_error_message(),
+                ['status' => $status]
+            );
         }
 
         $created_post = get_post((int) $result);
@@ -119,9 +119,7 @@ final class UpgradeReviewsController
             );
         }
 
-        $data = self::prepare_review_summary($created_post);
-
-        return new WP_REST_Response($data, 201);
+        return new WP_REST_Response(self::prepare_review_summary($created_post), 201);
     }
 
     public static function list_upgrade_reviews(WP_REST_Request $request)
@@ -189,33 +187,47 @@ final class UpgradeReviewsController
     private static function normalise_request_type(string $type): ?string
     {
         return match (sanitize_key($type)) {
-            'artist' => UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
-            'org', 'organisation', 'organization' => UpgradeReviewRepository::TYPE_ORG_UPGRADE,
+            'artist', 'artists' => UpgradeReviewRepository::TYPE_ARTIST,
+            'org', 'organisation', 'organization', 'organizations' => UpgradeReviewRepository::TYPE_ORG,
             default => null,
         };
     }
 
     private static function map_repository_type_to_response(string $type): string
     {
-        return match ($type) {
-            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE => 'artist',
-            default => 'org',
+        return match (sanitize_key($type)) {
+            'artist' => 'artist',
+            default  => 'org',
         };
     }
 
-    private static function verify_nonce(WP_REST_Request $request): bool
+    private static function verify_request_nonce(WP_REST_Request $request): bool
     {
-        $nonce = $request->get_header('X-WP-Nonce');
-
-        if (!$nonce) {
-            $nonce = (string) $request->get_param('_wpnonce');
+        $header_nonce = $request->get_header('X-WP-Nonce');
+        if (is_string($header_nonce) && '' !== $header_nonce) {
+            return (bool) wp_verify_nonce($header_nonce, 'wp_rest');
         }
 
-        if (!$nonce && $request->get_param('nonce')) {
-            $nonce = (string) $request->get_param('nonce');
+        $param_nonce = $request->get_param('_wpnonce');
+        if (!is_string($param_nonce) || '' === $param_nonce) {
+            $param_nonce = (string) $request->get_param('nonce');
         }
 
-        return is_string($nonce) && '' !== $nonce && wp_verify_nonce($nonce, 'wp_rest');
+        if (!is_string($param_nonce) || '' === $param_nonce) {
+            return false;
+        }
+
+        $original = $_REQUEST['_wpnonce'] ?? null;
+        $_REQUEST['_wpnonce'] = $param_nonce;
+        $result = check_ajax_referer('wp_rest', '_wpnonce', false);
+
+        if (null === $original) {
+            unset($_REQUEST['_wpnonce']);
+        } else {
+            $_REQUEST['_wpnonce'] = $original;
+        }
+
+        return false !== $result;
     }
 
     private static function format_rate_limit_error(WP_Error $error): WP_REST_Response
