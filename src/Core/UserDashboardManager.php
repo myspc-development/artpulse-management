@@ -1,7 +1,9 @@
 <?php
 namespace ArtPulse\Core;
 
+use WP_Post;
 use WP_REST_Request;
+use WP_User;
 
 class UserDashboardManager
 {
@@ -88,13 +90,28 @@ class UserDashboardManager
             ], 404);
         }
 
-        $data = RoleDashboards::prepareDashboardData($role);
+        $user_id = get_current_user_id();
+
+        $data = RoleDashboards::prepareDashboardData($role, $user_id ?: null);
 
         if (empty($data)) {
             return new \WP_REST_Response([
                 'message' => __('Unable to load dashboard data.', 'artpulse'),
             ], 404);
         }
+
+        $profile_summary = $data['profile'] ?? [];
+
+        $data['upgrade'] = [
+            'requests'    => self::getUpgradeRequestsForUser($user_id),
+            'can_request' => [
+                'artist' => self::canRequestArtistUpgrade($user_id),
+                'org'    => self::canRequestOrgUpgrade($user_id),
+            ],
+        ];
+
+        $data['profile_summary'] = $profile_summary;
+        $data['profile']          = self::buildProfileBlock($user_id, $role);
 
         return rest_ensure_response($data);
     }
@@ -393,6 +410,195 @@ class UserDashboardManager
             'fields'              => $sanitized_profile_fields,
             'membership_fields'   => $sanitized_membership_fields,
         ]);
+    }
+
+    /**
+     * Retrieve upgrade requests for the current user.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function getUpgradeRequestsForUser(int $user_id): array
+    {
+        if ($user_id <= 0) {
+            return [];
+        }
+
+        $requests = UpgradeReviewRepository::get_all_for_user($user_id);
+
+        return array_map([self::class, 'formatUpgradeRequest'], $requests);
+    }
+
+    private static function formatUpgradeRequest(WP_Post $post): array
+    {
+        $status          = UpgradeReviewRepository::get_status($post);
+        $repository_type = UpgradeReviewRepository::get_type($post);
+        $type            = self::mapRepositoryTypeToResponse($repository_type);
+        $reason          = UpgradeReviewRepository::get_reason($post);
+
+        return [
+            'id'         => (int) $post->ID,
+            'type'       => $type,
+            'status'     => $status,
+            'reason'     => $reason !== '' ? $reason : null,
+            'created_at' => self::formatDatetime($post->post_date_gmt, $post->post_date),
+            'updated_at' => self::formatDatetime($post->post_modified_gmt, $post->post_modified),
+        ];
+    }
+
+    private static function mapRepositoryTypeToResponse(string $type): string
+    {
+        return match ($type) {
+            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE => 'artist',
+            UpgradeReviewRepository::TYPE_ORG_UPGRADE    => 'org',
+            default                                      => 'org',
+        };
+    }
+
+    private static function formatDatetime(string $gmt, string $local): ?string
+    {
+        $source = $gmt;
+
+        if ('' === $source) {
+            $source = get_gmt_from_date($local);
+        }
+
+        if (!$source) {
+            return null;
+        }
+
+        return mysql_to_rfc3339($source);
+    }
+
+    private static function canRequestArtistUpgrade(int $user_id): bool
+    {
+        if ($user_id <= 0) {
+            return false;
+        }
+
+        $user = get_user_by('id', $user_id);
+
+        if (!$user instanceof WP_User) {
+            return false;
+        }
+
+        if (in_array('artist', (array) $user->roles, true)) {
+            return false;
+        }
+
+        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+
+        if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static function canRequestOrgUpgrade(int $user_id): bool
+    {
+        if ($user_id <= 0) {
+            return false;
+        }
+
+        $user = get_user_by('id', $user_id);
+
+        if (!$user instanceof WP_User) {
+            return false;
+        }
+
+        if (in_array('organization', (array) $user->roles, true)) {
+            return false;
+        }
+
+        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+
+        if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static function buildProfileBlock(int $user_id, string $role): array
+    {
+        $artist = ProfileState::for_user('artist', $user_id);
+        $org    = ProfileState::for_user('org', $user_id);
+
+        return [
+            'artist' => self::normaliseProfileState('artist', $artist, $role),
+            'org'    => self::normaliseProfileState('org', $org, $role),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     */
+    private static function normaliseProfileState(string $type, array $state, string $role): array
+    {
+        $status = isset($state['status']) ? (string) $state['status'] : '';
+        if ($status === '') {
+            $status = null;
+        }
+
+        $post_id = isset($state['post_id']) ? (int) $state['post_id'] : 0;
+        if ($post_id <= 0) {
+            $post_id = null;
+        }
+
+        $builder_url = self::buildBuilderUrl($type, $state['builder_url'] ?? null, $role);
+
+        return [
+            'exists'      => (bool) ($state['exists'] ?? false),
+            'status'      => $status,
+            'post_id'     => $post_id,
+            'builder_url' => $builder_url,
+        ];
+    }
+
+    private static function buildBuilderUrl(string $type, ?string $base_url, string $role): string
+    {
+        $page_key = 'artist' === $type ? 'artist_builder_page_id' : 'org_builder_page_id';
+
+        $base = is_string($base_url) && $base_url !== '' ? $base_url : get_page_url($page_key);
+
+        if (!$base) {
+            $base = get_missing_page_fallback($page_key);
+        }
+
+        $query_type = 'artist' === $type ? 'artist' : 'organization';
+
+        $args = [
+            'ap_builder' => $query_type,
+            'autocreate' => '1',
+        ];
+
+        $redirect = self::getDashboardRedirectUrl($role);
+        if ($redirect !== '') {
+            $args['redirect'] = $redirect;
+        }
+
+        $url = add_query_args($base, $args);
+
+        return esc_url_raw($url);
+    }
+
+    private static function getDashboardRedirectUrl(string $role): string
+    {
+        $base = get_page_url('dashboard_page_id');
+
+        if (!$base) {
+            $base = get_missing_page_fallback('dashboard_page_id');
+        }
+
+        if (!is_string($base) || $base === '') {
+            return '';
+        }
+
+        if ($role !== '') {
+            $base = add_query_args($base, ['role' => $role]);
+        }
+
+        return esc_url_raw($base);
     }
 
     public static function renderDashboard($atts)
