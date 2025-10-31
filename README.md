@@ -198,6 +198,16 @@ curl -s https://example.test/sitemap-artpulse-directories.xml \
 The curl examples confirm that canonical URLs, active letter states, and the
 directory sitemap respond with server-rendered HTML (no JavaScript required).
 
+### QA checklist
+
+Run these targeted checks before shipping upgrade workflow changes:
+
+```bash
+vendor/bin/phpunit --testsuite=unit --filter=UpgradeReviewRepositoryTest
+vendor/bin/phpunit --testsuite=integration --filter=UpgradeReviewsControllerTest
+npm run test:e2e -- tests/e2e/upgrade-artist-flow.spec.ts
+```
+
 ## Account upgrades at a glance
 
 ArtPulse supports guided upgrades for members who want to manage an artist profile or operate an organization page. The flows below are ready for end-user documentation or onboarding emails.
