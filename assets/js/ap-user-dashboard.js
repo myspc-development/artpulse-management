@@ -2,11 +2,825 @@
   const dashboardConfig = window.ArtPulseDashboards || {};
   const STRINGS = dashboardConfig.strings || {};
 
+  const API_SETTINGS = {
+    root: resolveApiRoot(),
+    nonce: resolveNonce(),
+  };
+
+  const TEXT = {
+    loading: STRINGS.loading || 'Loading…',
+    error: STRINGS.error || 'Unable to load dashboard data.',
+    retry: STRINGS.retry || 'Retry',
+    empty: STRINGS.empty || 'Nothing to display yet.',
+    profileSectionTitle: STRINGS.profileSectionTitle || STRINGS.profile || 'Profiles',
+    profileArtistTitle: STRINGS.profileArtistTitle || 'Artist profile',
+    profileOrgTitle: STRINGS.profileOrgTitle || 'Organization profile',
+    profileCreate: STRINGS.createProfile || 'Create profile',
+    profileFinish: STRINGS.finishProfile || STRINGS.editProfile || 'Finish profile',
+    profileEdit: STRINGS.editProfile || 'Edit profile',
+    profileNotStarted: STRINGS.profileNotStarted || 'Not started',
+    profileDraft: STRINGS.profileDraft || 'Draft',
+    profilePending: STRINGS.profilePending || STRINGS.upgradePendingBadge || 'Pending review',
+    profilePublished: STRINGS.profilePublished || 'Published',
+    upgradeSectionTitle: STRINGS.upgradeSectionTitle || STRINGS.upgrades || 'Membership upgrades',
+    upgradeCardTitle: STRINGS.upgradeCardTitle || 'Choose your upgrade path',
+    upgradeDescription:
+      STRINGS.upgradeDescription || STRINGS.upgradeIntro || 'Upgrade to unlock additional features and visibility.',
+    upgradeArtistCta: STRINGS.upgradeArtistCta || STRINGS.becomeArtist || 'Become an Artist',
+    upgradeOrgCta:
+      STRINGS.upgradeOrgCta || STRINGS.becomeOrganization || STRINGS.upgradeBecomeOrganization || 'Become an Organization',
+    upgradePending: STRINGS.upgradePending || STRINGS.upgradePendingBadge || 'Pending review',
+    upgradeApproved: STRINGS.upgradeApproved || STRINGS.upgradeApprovedBadge || 'Approved',
+    upgradeDenied: STRINGS.upgradeDenied || STRINGS.upgradeDeniedBadge || 'Denied',
+    upgradeUnavailable: STRINGS.upgradeUnavailable || 'Unavailable',
+    upgradeError: STRINGS.upgradeError || 'Unable to submit upgrade request.',
+  };
+
+  const PROFILE_DESCRIPTIONS = {
+    artist: {
+      none:
+        STRINGS.artistProfileEmpty ||
+        'Create your artist profile to showcase your work and unlock creator tools.',
+      draft:
+        STRINGS.artistProfileDraft || 'Keep building your artist profile to get it ready for review.',
+      pending:
+        STRINGS.artistProfilePending || 'Your artist profile is under review. We will email you once it is approved.',
+      publish:
+        STRINGS.artistProfilePublished || 'Your artist profile is live. Update it anytime to keep it fresh.',
+    },
+    org: {
+      none:
+        STRINGS.orgProfileEmpty ||
+        'Create an organization profile to highlight your collective and promote events.',
+      draft:
+        STRINGS.orgProfileDraft || 'Finish your organization profile to share it with the community.',
+      pending:
+        STRINGS.orgProfilePending || 'Your organization profile is pending review.',
+      publish:
+        STRINGS.orgProfilePublished || 'Your organization profile is live and ready to share.',
+    },
+  };
+
   function onReady(callback) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', callback);
     } else {
       callback();
+    }
+  }
+
+  function resolveApiRoot() {
+    const root = dashboardConfig.root || (window.wpApiSettings && window.wpApiSettings.root) || '';
+
+    if (!root) {
+      return '/wp-json/';
+    }
+
+    return root.endsWith('/') ? root : `${root}/`;
+  }
+
+  function resolveNonce() {
+    const settings = window.wpApiSettings || {};
+
+    if (dashboardConfig.nonce) {
+      return dashboardConfig.nonce;
+    }
+
+    if (settings.nonce) {
+      return settings.nonce;
+    }
+
+    return '';
+  }
+
+  function buildQueryString(params) {
+    if (!params) {
+      return '';
+    }
+
+    const search = new URLSearchParams();
+
+    Object.keys(params).forEach((key) => {
+      const value = params[key];
+
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+
+      search.append(key, value);
+    });
+
+    const query = search.toString();
+
+    return query ? `?${query}` : '';
+  }
+
+  function buildApiUrl(path, params) {
+    const normalizedPath = String(path || '').replace(/^\/+/g, '');
+    let url = API_SETTINGS.root + normalizedPath;
+
+    if (params) {
+      const query = buildQueryString(params);
+      if (query) {
+        url += query;
+      }
+    }
+
+    return url;
+  }
+
+  function parseJsonResponse(response) {
+    if (!response || typeof response.json !== 'function') {
+      return Promise.reject(new Error('Invalid response object.'));
+    }
+
+    if (!response.ok) {
+      return response
+        .json()
+        .catch(() => ({}))
+        .then((error) => {
+          const message = error && error.message ? error.message : 'Request failed';
+          const output = new Error(message);
+          output.data = error;
+          throw output;
+        });
+    }
+
+    return response
+      .json()
+      .catch(() => ({}));
+  }
+
+  function fetchFromApi(path, options = {}) {
+    const method = options.method || 'GET';
+    const data = options.data;
+    const headers = Object.assign({ 'X-WP-Nonce': API_SETTINGS.nonce }, options.headers || {});
+
+    if (window.wp && window.wp.apiFetch) {
+      const apiOptions = {
+        path,
+        method,
+        headers,
+      };
+
+      if (method === 'GET' && data && Object.keys(data).length) {
+        apiOptions.path = `${path}${buildQueryString(data)}`;
+      } else if (method !== 'GET' && typeof data !== 'undefined') {
+        apiOptions.data = data;
+      }
+
+      if (options.body) {
+        apiOptions.body = options.body;
+      }
+
+      return window.wp.apiFetch(apiOptions);
+    }
+
+    const fetchOptions = {
+      method,
+      headers,
+      credentials: 'same-origin',
+    };
+
+    if (method === 'GET') {
+      const url = buildApiUrl(path, data);
+      return fetch(url, fetchOptions).then(parseJsonResponse);
+    }
+
+    if (options.body) {
+      fetchOptions.body = options.body;
+    } else if (typeof data !== 'undefined') {
+      fetchOptions.body = JSON.stringify(data);
+      if (!fetchOptions.headers['Content-Type']) {
+        fetchOptions.headers['Content-Type'] = 'application/json';
+      }
+    }
+
+    const url = buildApiUrl(path);
+    return fetch(url, fetchOptions).then(parseJsonResponse);
+  }
+
+  function getDashboardData(role) {
+    const params = role ? { role } : undefined;
+    return fetchFromApi('/artpulse/v1/user/dashboard', { method: 'GET', data: params });
+  }
+
+  function postUpgradeReview(type) {
+    return fetchFromApi('/artpulse/v1/upgrade-reviews', {
+      method: 'POST',
+      data: { type },
+    });
+  }
+
+  function bindUserDashboard(container) {
+    if (!container) {
+      return;
+    }
+
+    const state = {
+      container,
+      role: container.dataset.apDashboardRole || '',
+      notice: null,
+      data: null,
+      optimisticUpgrades: {},
+      loadingPromise: null,
+    };
+
+    container.__apUserDashboardState = state;
+
+    loadUserDashboard(state, { initial: true });
+  }
+
+  function loadUserDashboard(state, options = {}) {
+    if (!state) {
+      return Promise.resolve();
+    }
+
+    if (state.loadingPromise) {
+      return state.loadingPromise;
+    }
+
+    const initial = Boolean(options.initial);
+
+    if (initial) {
+      renderUserDashboardLoading(state);
+    } else {
+      state.container.setAttribute('aria-busy', 'true');
+    }
+
+    clearUserDashboardNotice(state);
+
+    state.loadingPromise = getDashboardData(state.role || undefined)
+      .then((data) => {
+        state.loadingPromise = null;
+        state.container.classList.remove('is-loading');
+        state.container.removeAttribute('aria-busy');
+        state.data = data;
+        state.optimisticUpgrades = {};
+        renderUserDashboard(state, data);
+        return data;
+      })
+      .catch((error) => {
+        state.loadingPromise = null;
+        state.container.classList.remove('is-loading');
+        state.container.removeAttribute('aria-busy');
+        const message = extractErrorMessage(error) || TEXT.error;
+
+        if (initial) {
+          renderUserDashboardError(state, message);
+        } else {
+          showUserDashboardNotice(state, 'warning', message);
+        }
+
+        throw error;
+      });
+
+    return state.loadingPromise;
+  }
+
+  function renderUserDashboardLoading(state) {
+    const container = state && state.container;
+    if (!container) {
+      return;
+    }
+
+    container.classList.add('is-loading');
+    container.setAttribute('aria-busy', 'true');
+    clearContainer(container);
+
+    const loading = document.createElement('div');
+    loading.className = 'ap-dashboard-loading';
+    loading.textContent = TEXT.loading;
+
+    container.appendChild(loading);
+  }
+
+  function renderUserDashboard(state, data) {
+    const container = state && state.container;
+    if (!container) {
+      return;
+    }
+
+    clearContainer(container);
+
+    const notice = ensureNotice(state);
+    if (notice.parentNode !== container) {
+      container.insertBefore(notice, container.firstChild || null);
+    }
+
+    clearUserDashboardNotice(state);
+
+    const sections = [];
+    const profiles = buildUserDashboardProfileSection(state, data && data.profile);
+    if (profiles) {
+      sections.push(profiles);
+    }
+
+    const upgrades = buildUserDashboardUpgradeSection(state, data && data.upgrade);
+    if (upgrades) {
+      sections.push(upgrades);
+    }
+
+    if (sections.length === 0) {
+      container.appendChild(createUserDashboardEmptyState());
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'ap-dashboard-grid ap-user-dashboard__sections';
+      sections.forEach((section) => {
+        grid.appendChild(section);
+      });
+      container.appendChild(grid);
+    }
+
+    initProfileForms(container);
+  }
+
+  function renderUserDashboardError(state, message) {
+    const container = state && state.container;
+    if (!container) {
+      return;
+    }
+
+    state.notice = null;
+    state.data = null;
+
+    clearContainer(container);
+
+    const error = document.createElement('div');
+    error.className = 'ap-dashboard-error';
+
+    const text = document.createElement('p');
+    text.textContent = message || TEXT.error;
+    error.appendChild(text);
+
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'ap-dashboard-button ap-dashboard-button--primary';
+    retry.textContent = TEXT.retry;
+    retry.addEventListener('click', () => {
+      loadUserDashboard(state, { initial: true });
+    });
+
+    error.appendChild(retry);
+
+    container.appendChild(error);
+  }
+
+  function createUserDashboardEmptyState(message) {
+    const empty = document.createElement('div');
+    empty.className = 'ap-dashboard-empty';
+    empty.textContent = message || TEXT.empty;
+    return empty;
+  }
+
+  function buildUserDashboardProfileSection(state, profileData) {
+    const section = document.createElement('section');
+    section.className = 'ap-dashboard-section ap-dashboard-section--profiles';
+
+    const header = document.createElement('header');
+    header.className = 'ap-dashboard-section__header';
+
+    const title = document.createElement('h3');
+    title.textContent = TEXT.profileSectionTitle;
+    header.appendChild(title);
+
+    section.appendChild(header);
+
+    const artistCard = createUserProfileCard('artist', profileData && profileData.artist);
+    const orgCard = createUserProfileCard('org', profileData && profileData.org);
+
+    section.appendChild(artistCard);
+    section.appendChild(orgCard);
+
+    return section;
+  }
+
+  function createUserProfileCard(type, profileState) {
+    const normalizedType = type === 'org' ? 'org' : 'artist';
+    const card = document.createElement('article');
+    card.className = 'ap-dashboard-card ap-user-dashboard__profile-card';
+    card.dataset.apProfileType = normalizedType;
+
+    const body = document.createElement('div');
+    body.className = 'ap-dashboard-card__body';
+
+    const heading = document.createElement('h4');
+    heading.textContent = normalizedType === 'artist' ? TEXT.profileArtistTitle : TEXT.profileOrgTitle;
+    body.appendChild(heading);
+
+    const statusChip = resolveProfileStatusChip(normalizedType, profileState);
+    if (statusChip) {
+      body.appendChild(statusChip);
+    }
+
+    const description = document.createElement('p');
+    description.className = 'ap-user-dashboard__profile-description';
+    description.textContent = resolveProfileDescription(normalizedType, profileState);
+    body.appendChild(description);
+
+    card.appendChild(body);
+
+    const actions = document.createElement('div');
+    actions.className = 'ap-dashboard-card__actions';
+
+    const cta = resolveProfileCta(normalizedType, profileState);
+    const button = document.createElement('a');
+    button.className = 'ap-dashboard-button ap-dashboard-button--primary';
+    button.textContent = cta.label;
+    button.href = cta.url || '#';
+
+    if (cta.disabled) {
+      disableLinkButton(button);
+    }
+
+    actions.appendChild(button);
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  function resolveProfileStatusChip(type, profileState) {
+    const exists = profileState && profileState.exists;
+    const status = profileState && profileState.status ? String(profileState.status).toLowerCase() : '';
+
+    if (!exists && !status) {
+      const chip = document.createElement('span');
+      chip.className = 'ap-dashboard-badge ap-dashboard-badge--muted';
+      chip.textContent = TEXT.profileNotStarted;
+      return chip;
+    }
+
+    const chip = document.createElement('span');
+    chip.className = 'ap-dashboard-badge';
+
+    let label = TEXT.profileDraft;
+    let variant = 'warning';
+
+    switch (status) {
+      case 'publish':
+      case 'published':
+        label = TEXT.profilePublished;
+        variant = 'success';
+        break;
+      case 'pending':
+        label = TEXT.profilePending;
+        variant = 'info';
+        break;
+      case 'draft':
+      case 'auto-draft':
+        label = TEXT.profileDraft;
+        variant = 'warning';
+        break;
+      default:
+        if (!exists) {
+          label = TEXT.profileNotStarted;
+          variant = 'muted';
+        }
+        break;
+    }
+
+    chip.classList.add(`ap-dashboard-badge--${variant}`);
+    chip.textContent = label;
+
+    return chip;
+  }
+
+  function resolveProfileDescription(type, profileState) {
+    const copy = PROFILE_DESCRIPTIONS[type] || PROFILE_DESCRIPTIONS.artist;
+    const exists = profileState && profileState.exists;
+    const status = profileState && profileState.status ? String(profileState.status).toLowerCase() : '';
+
+    if (!exists) {
+      return copy.none;
+    }
+
+    if (status === 'publish' || status === 'published') {
+      return copy.publish;
+    }
+
+    if (status === 'pending') {
+      return copy.pending;
+    }
+
+    return copy.draft;
+  }
+
+  function resolveProfileCta(type, profileState) {
+    const exists = profileState && profileState.exists;
+    const status = profileState && profileState.status ? String(profileState.status).toLowerCase() : '';
+    const builderUrl = profileState && profileState.builder_url ? String(profileState.builder_url) : '';
+
+    let label = TEXT.profileEdit;
+
+    if (!exists) {
+      label = TEXT.profileCreate;
+    } else if (status === 'publish' || status === 'published') {
+      label = TEXT.profileEdit;
+    } else {
+      label = TEXT.profileFinish;
+    }
+
+    return {
+      label,
+      url: builderUrl || '#',
+      disabled: builderUrl === '',
+    };
+  }
+
+  function buildUserDashboardUpgradeSection(state, upgradeData) {
+    const section = document.createElement('section');
+    section.className = 'ap-dashboard-section ap-dashboard-section--upgrades';
+
+    const header = document.createElement('header');
+    header.className = 'ap-dashboard-section__header';
+
+    const title = document.createElement('h3');
+    title.textContent = TEXT.upgradeSectionTitle;
+    header.appendChild(title);
+
+    if (TEXT.upgradeDescription) {
+      const intro = document.createElement('p');
+      intro.textContent = TEXT.upgradeDescription;
+      header.appendChild(intro);
+    }
+
+    section.appendChild(header);
+
+    const card = document.createElement('article');
+    card.className = 'ap-dashboard-card ap-user-dashboard__upgrade-card';
+
+    const body = document.createElement('div');
+    body.className = 'ap-dashboard-card__body';
+
+    const heading = document.createElement('h4');
+    heading.textContent = TEXT.upgradeCardTitle;
+    body.appendChild(heading);
+
+    card.appendChild(body);
+
+    const actions = document.createElement('div');
+    actions.className = 'ap-dashboard-card__actions ap-user-dashboard__upgrade-actions';
+
+    const artistAction = createUpgradeAction(state, 'artist', upgradeData);
+    const orgAction = createUpgradeAction(state, 'org', upgradeData);
+
+    actions.appendChild(artistAction.wrapper);
+    actions.appendChild(orgAction.wrapper);
+
+    card.appendChild(actions);
+
+    section.appendChild(card);
+
+    return section;
+  }
+
+  function createUpgradeAction(state, type, upgradeData) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'ap-user-dashboard__upgrade-option';
+    wrapper.dataset.apUpgradeType = type;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'ap-dashboard-button ap-dashboard-button--primary';
+    button.textContent = type === 'artist' ? TEXT.upgradeArtistCta : TEXT.upgradeOrgCta;
+
+    const chip = document.createElement('span');
+    chip.className = 'ap-dashboard-badge';
+    chip.hidden = true;
+
+    const status = determineUpgradeStatus(state, type, upgradeData);
+    const canRequest = !upgradeData || !upgradeData.can_request || upgradeData.can_request[type] !== false;
+    const disabled = !canRequest || Boolean(status);
+
+    applyUpgradeStatusChip(chip, status || (canRequest ? '' : 'unavailable'));
+
+    if (disabled) {
+      disableButton(button);
+    }
+
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      handleUpgradeClick(state, {
+        type,
+        button,
+        chip,
+        canRequest,
+        previousStatus: status || '',
+      });
+    });
+
+    wrapper.appendChild(button);
+    wrapper.appendChild(chip);
+
+    return { wrapper, button, chip };
+  }
+
+  function determineUpgradeStatus(state, type, upgradeData) {
+    if (state && state.optimisticUpgrades && state.optimisticUpgrades[type]) {
+      return state.optimisticUpgrades[type];
+    }
+
+    const requests = upgradeData && Array.isArray(upgradeData.requests) ? upgradeData.requests : [];
+    let latest = null;
+
+    requests.forEach((request) => {
+      if (!request || request.type !== type) {
+        return;
+      }
+
+      const status = request.status ? String(request.status).toLowerCase() : '';
+      const timestamp = request.created_at ? Date.parse(request.created_at) : 0;
+
+      if (!latest || timestamp > latest.timestamp) {
+        latest = {
+          status,
+          timestamp: Number.isNaN(timestamp) ? 0 : timestamp,
+        };
+      }
+    });
+
+    return latest ? latest.status : '';
+  }
+
+  function applyUpgradeStatusChip(chip, status) {
+    if (!chip) {
+      return;
+    }
+
+    chip.className = 'ap-dashboard-badge';
+
+    if (!status) {
+      chip.hidden = true;
+      chip.textContent = '';
+      return;
+    }
+
+    let label = status;
+    let variant = 'muted';
+
+    switch (status) {
+      case 'pending':
+        label = TEXT.upgradePending;
+        variant = 'info';
+        break;
+      case 'approved':
+        label = TEXT.upgradeApproved;
+        variant = 'success';
+        break;
+      case 'denied':
+      case 'rejected':
+        label = TEXT.upgradeDenied;
+        variant = 'danger';
+        break;
+      case 'unavailable':
+        label = TEXT.upgradeUnavailable;
+        variant = 'muted';
+        break;
+      default:
+        label = status;
+        variant = 'muted';
+        break;
+    }
+
+    chip.classList.add(`ap-dashboard-badge--${variant}`);
+    chip.textContent = label;
+    chip.hidden = false;
+  }
+
+  function disableButton(button) {
+    if (!button) {
+      return;
+    }
+
+    button.disabled = true;
+    button.classList.add('is-disabled');
+    button.setAttribute('aria-disabled', 'true');
+  }
+
+  function enableButton(button) {
+    if (!button) {
+      return;
+    }
+
+    button.disabled = false;
+    button.classList.remove('is-disabled');
+    button.removeAttribute('aria-disabled');
+  }
+
+  function disableLinkButton(link) {
+    if (!link) {
+      return;
+    }
+
+    link.classList.add('is-disabled');
+    link.setAttribute('aria-disabled', 'true');
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+    });
+  }
+
+  function handleUpgradeClick(state, context) {
+    if (!context || !context.button || !context.canRequest) {
+      return;
+    }
+
+    if (context.button.dataset.apBusy === '1' || context.button.disabled) {
+      return;
+    }
+
+    context.button.dataset.apBusy = '1';
+    disableButton(context.button);
+    clearUserDashboardNotice(state);
+
+    state.optimisticUpgrades = state.optimisticUpgrades || {};
+    state.optimisticUpgrades[context.type] = 'pending';
+    applyUpgradeStatusChip(context.chip, 'pending');
+
+    postUpgradeReview(context.type)
+      .then(() => {
+        delete state.optimisticUpgrades[context.type];
+        loadUserDashboard(state, { initial: false });
+      })
+      .catch((error) => {
+        delete state.optimisticUpgrades[context.type];
+        applyUpgradeStatusChip(
+          context.chip,
+          context.previousStatus || (context.canRequest ? '' : 'unavailable')
+        );
+
+        if (context.canRequest && !context.previousStatus) {
+          enableButton(context.button);
+        }
+
+        showUserDashboardNotice(state, 'warning', extractErrorMessage(error) || TEXT.upgradeError);
+      })
+      .finally(() => {
+        delete context.button.dataset.apBusy;
+      });
+  }
+
+  function ensureNotice(state) {
+    if (state && state.notice && state.notice.parentNode === state.container) {
+      return state.notice;
+    }
+
+    const notice = state && state.notice ? state.notice : createNoticeElement();
+    state.notice = notice;
+
+    if (state && state.container && notice.parentNode !== state.container) {
+      state.container.insertBefore(notice, state.container.firstChild || null);
+    }
+
+    return notice;
+  }
+
+  function createNoticeElement() {
+    const notice = document.createElement('div');
+    notice.className = 'ap-dashboard-notice';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    notice.hidden = true;
+    return notice;
+  }
+
+  function showUserDashboardNotice(state, variant, message) {
+    if (!message) {
+      clearUserDashboardNotice(state);
+      return;
+    }
+
+    const notice = ensureNotice(state);
+    if (!notice) {
+      return;
+    }
+
+    notice.className = 'ap-dashboard-notice';
+
+    if (variant) {
+      notice.classList.add(`ap-dashboard-notice--${variant}`);
+    }
+
+    notice.innerHTML = `<p>${escapeHtml(message)}</p>`;
+    notice.hidden = false;
+  }
+
+  function clearUserDashboardNotice(state) {
+    if (!state || !state.notice) {
+      return;
+    }
+
+    state.notice.className = 'ap-dashboard-notice';
+    state.notice.innerHTML = '';
+    state.notice.hidden = true;
+  }
+
+  function clearContainer(node) {
+    if (!node) {
+      return;
+    }
+
+    while (node.firstChild) {
+      node.removeChild(node.firstChild);
     }
   }
 
@@ -35,7 +849,9 @@
 
       container.dataset.apUserDashboardBound = '1';
 
-      if (window.ArtPulseDashboardsApp && typeof window.ArtPulseDashboardsApp.init === 'function') {
+      if (container.classList.contains('ap-user-dashboard')) {
+        bindUserDashboard(container);
+      } else if (window.ArtPulseDashboardsApp && typeof window.ArtPulseDashboardsApp.init === 'function') {
         window.ArtPulseDashboardsApp.init(container);
       }
 
