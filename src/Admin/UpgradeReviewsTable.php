@@ -79,43 +79,57 @@ class UpgradeReviewsTable extends WP_List_Table
         $actions = [];
 
         if ($profile_url) {
-            $actions['view_user'] = sprintf('<a href="%s">%s</a>', esc_url($profile_url), esc_html__('View User', 'artpulse-management'));
+            $actions['view_user'] = sprintf('<a href="%s">%s</a>', esc_url($profile_url), esc_html__('View user', 'artpulse-management'));
         }
 
         $post = null;
-        if (!empty($item['post_id'])) {
-            $post = get_post((int) $item['post_id']);
+        $post_id = isset($item['post_id']) ? (int) $item['post_id'] : 0;
+        if ($post_id > 0) {
+            $post = get_post($post_id);
             if ($post instanceof WP_Post) {
+                $profile_link = get_permalink($post);
+                if ($profile_link) {
+                    $actions['open_profile'] = sprintf('<a href="%s">%s</a>', esc_url($profile_link), esc_html__('Open profile', 'artpulse-management'));
+                }
+
                 $post_link = get_edit_post_link($post);
                 if ($post_link) {
-                    $actions['view_post'] = sprintf('<a href="%s">%s</a>', esc_url($post_link), esc_html__('View Target Post', 'artpulse-management'));
+                    $actions['view_post'] = sprintf('<a href="%s">%s</a>', esc_url($post_link), esc_html__('Edit profile', 'artpulse-management'));
                 }
             }
         }
 
+        $persisted_args = $this->get_persisted_query_args();
+
         $approve_url = wp_nonce_url(
             add_query_arg(
-                [
-                    'action'    => 'ap_upgrade_review_action',
-                    'review'    => $item['ID'],
-                    'operation' => 'approve',
-                ],
+                array_merge(
+                    [
+                        'action'    => 'ap_upgrade_review_action',
+                        'review'    => $item['ID'],
+                        'operation' => 'approve',
+                    ],
+                    $persisted_args
+                ),
                 admin_url('admin-post.php')
             ),
             'ap-upgrade-review-' . $item['ID']
         );
 
-        $actions['approve'] = sprintf('<a href="%s" data-test="approve-upgrade">%s</a>', esc_url($approve_url), esc_html__('Approve', 'artpulse-management'));
+        $actions['quick_approve'] = sprintf('<a href="%s" data-test="approve-upgrade">%s</a>', esc_url($approve_url), esc_html__('Quick approve', 'artpulse-management'));
         $actions['deny']    = sprintf(
             '<a href="%s" data-test="deny-upgrade">%s</a>',
             esc_url(
                 wp_nonce_url(
                     add_query_arg(
-                        [
-                            'page'   => 'artpulse-upgrade-reviews',
-                            'view'   => 'deny',
-                            'review' => $item['ID'],
-                        ],
+                        array_merge(
+                            [
+                                'page'   => 'artpulse-upgrade-reviews',
+                                'view'   => 'deny',
+                                'review' => $item['ID'],
+                            ],
+                            $persisted_args
+                        ),
                         admin_url('admin.php')
                     ),
                     'ap-upgrade-review-' . $item['ID']
@@ -452,5 +466,28 @@ class UpgradeReviewsTable extends WP_List_Table
         $query = new \WP_Query($args);
 
         return (int) $query->found_posts;
+    }
+
+    /**
+     * @return array<string,string>
+     */
+    private function get_persisted_query_args(): array
+    {
+        $args = [];
+
+        if ('' !== $this->filter_type) {
+            $args['ap_filter_type'] = $this->filter_type;
+        }
+
+        if ('' !== $this->filter_status) {
+            $args['ap_filter_status'] = $this->filter_status;
+        }
+
+        $current_view = $this->get_current_view();
+        if ('' !== $current_view) {
+            $args['status'] = $current_view;
+        }
+
+        return $args;
     }
 }
