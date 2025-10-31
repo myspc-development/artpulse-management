@@ -2,8 +2,12 @@
 
 namespace ArtPulse\Core;
 
+use WP_Error;
 use WP_Post;
 use function sanitize_key;
+use function sanitize_text_field;
+use function sanitize_textarea_field;
+use function wp_kses_post;
 
 /**
  * Storage helper for organization upgrade review requests.
@@ -23,6 +27,122 @@ class UpgradeReviewRepository
     public const STATUS_PENDING = 'pending';
     public const STATUS_APPROVED = 'approved';
     public const STATUS_DENIED = 'denied';
+
+    public static function find_pending(int $user_id, string $type): ?int
+    {
+        if ($user_id <= 0) {
+            return null;
+        }
+
+        $normalized_type = self::normalise_type($type);
+        if (null === $normalized_type) {
+            return null;
+        }
+
+        $posts = get_posts([
+            'post_type'      => self::POST_TYPE,
+            'post_status'    => ['private', 'draft', 'publish'],
+            'posts_per_page' => 1,
+            'fields'         => 'ids',
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'meta_query'     => [
+                [
+                    'key'     => self::META_USER,
+                    'value'   => $user_id,
+                    'compare' => '=',
+                ],
+                [
+                    'key'   => self::META_TYPE,
+                    'value' => $normalized_type,
+                ],
+                [
+                    'key'   => self::META_STATUS,
+                    'value' => self::STATUS_PENDING,
+                ],
+            ],
+        ]);
+
+        if (empty($posts) || !is_array($posts)) {
+            return null;
+        }
+
+        $request_id = (int) $posts[0];
+
+        return $request_id > 0 ? $request_id : null;
+    }
+
+    /**
+     * @param array<string,mixed> $args
+     */
+    public static function create(int $user_id, string $type, array $args = []): int|WP_Error
+    {
+        if ($user_id <= 0) {
+            return new WP_Error(
+                'artpulse_upgrade_review_invalid_user',
+                __('A valid user is required to create an upgrade review request.', 'artpulse-management')
+            );
+        }
+
+        $normalized_type = self::normalise_type($type);
+        if (null === $normalized_type) {
+            return new WP_Error(
+                'artpulse_upgrade_review_invalid_type',
+                __('The supplied upgrade review type is not supported.', 'artpulse-management')
+            );
+        }
+
+        $existing_request = self::find_pending($user_id, $normalized_type);
+        if (null !== $existing_request) {
+            return new WP_Error(
+                'artpulse_upgrade_review_pending',
+                __('A pending upgrade review request already exists for this user and type.', 'artpulse-management'),
+                ['request_id' => $existing_request]
+            );
+        }
+
+        $post_id = isset($args['post_id']) ? (int) $args['post_id'] : 0;
+        $sanitized_post_id = max(0, $post_id);
+
+        $default_title = sprintf(
+            /* translators: %1$s review type, %2$d user ID. */
+            __('%1$s upgrade request for user %2$d', 'artpulse-management'),
+            self::normalise_title_fragment($normalized_type),
+            $user_id
+        );
+
+        $post_data = [
+            'post_title'  => $default_title,
+            'post_status' => 'private',
+            'post_type'   => self::POST_TYPE,
+        ];
+
+        if (isset($args['post_title']) && '' !== trim((string) $args['post_title'])) {
+            $post_data['post_title'] = sanitize_text_field((string) $args['post_title']);
+        }
+
+        if (isset($args['post_content'])) {
+            $post_data['post_content'] = wp_kses_post((string) $args['post_content']);
+        }
+
+        if (isset($args['post_excerpt'])) {
+            $post_data['post_excerpt'] = wp_kses_post((string) $args['post_excerpt']);
+        }
+
+        $request_id = wp_insert_post($post_data, true);
+
+        if (is_wp_error($request_id)) {
+            return $request_id;
+        }
+
+        update_post_meta($request_id, self::META_TYPE, $normalized_type);
+        update_post_meta($request_id, self::META_STATUS, self::STATUS_PENDING);
+        update_post_meta($request_id, self::META_USER, $user_id);
+        update_post_meta($request_id, self::META_POST, $sanitized_post_id);
+        delete_post_meta($request_id, self::META_REASON);
+
+        return (int) $request_id;
+    }
 
     /**
      * Create a pending review request linking a user to an organisation post.
@@ -94,9 +214,14 @@ class UpgradeReviewRepository
     /**
      * Retrieve the request type for a review post.
      */
-    public static function get_type(WP_Post $post): string
+    public static function get_type(WP_Post|int $post): string
     {
-        $type = get_post_meta($post->ID, self::META_TYPE, true);
+        $resolved_post = self::resolve_post($post);
+        if (!$resolved_post) {
+            return self::TYPE_ORG_UPGRADE;
+        }
+
+        $type = get_post_meta($resolved_post->ID, self::META_TYPE, true);
 
         return is_string($type) && $type !== '' ? $type : self::TYPE_ORG_UPGRADE;
     }
@@ -139,25 +264,34 @@ class UpgradeReviewRepository
     /**
      * Retrieve the user identifier assigned to the review.
      */
-    public static function get_user_id(WP_Post $post): int
+    public static function get_user_id(WP_Post|int $post): int
     {
-        return (int) get_post_meta($post->ID, self::META_USER, true);
+        $resolved_post = self::resolve_post($post);
+
+        return $resolved_post ? (int) get_post_meta($resolved_post->ID, self::META_USER, true) : 0;
     }
 
     /**
      * Retrieve the target post identifier assigned to the review.
      */
-    public static function get_post_id(WP_Post $post): int
+    public static function get_post_id(WP_Post|int $post): int
     {
-        return (int) get_post_meta($post->ID, self::META_POST, true);
+        $resolved_post = self::resolve_post($post);
+
+        return $resolved_post ? (int) get_post_meta($resolved_post->ID, self::META_POST, true) : 0;
     }
 
     /**
      * Retrieve the status of the review.
      */
-    public static function get_status(WP_Post $post): string
+    public static function get_status(WP_Post|int $post): string
     {
-        $status = get_post_meta($post->ID, self::META_STATUS, true);
+        $resolved_post = self::resolve_post($post);
+        if (!$resolved_post) {
+            return self::STATUS_PENDING;
+        }
+
+        $status = get_post_meta($resolved_post->ID, self::META_STATUS, true);
 
         return is_string($status) && $status !== '' ? $status : self::STATUS_PENDING;
     }
@@ -186,9 +320,14 @@ class UpgradeReviewRepository
         delete_post_meta($request_id, self::META_REASON);
     }
 
-    public static function get_reason(WP_Post $post): string
+    public static function get_reason(WP_Post|int $post): string
     {
-        $reason = get_post_meta($post->ID, self::META_REASON, true);
+        $resolved_post = self::resolve_post($post);
+        if (!$resolved_post) {
+            return '';
+        }
+
+        $reason = get_post_meta($resolved_post->ID, self::META_REASON, true);
         return is_string($reason) ? $reason : '';
     }
 
@@ -224,6 +363,44 @@ class UpgradeReviewRepository
         );
     }
 
+    public static function approve(int $request_id): bool
+    {
+        $post = self::get_request_post($request_id);
+        if (!$post) {
+            return false;
+        }
+
+        self::set_status($post->ID, self::STATUS_APPROVED);
+
+        do_action(
+            'artpulse/upgrade_review/approved',
+            $post->ID,
+            self::get_user_id($post),
+            self::get_type($post)
+        );
+
+        return true;
+    }
+
+    public static function deny(int $request_id, string $reason = ''): bool
+    {
+        $post = self::get_request_post($request_id);
+        if (!$post) {
+            return false;
+        }
+
+        self::set_status($post->ID, self::STATUS_DENIED, $reason);
+
+        do_action(
+            'artpulse/upgrade_review/denied',
+            $post->ID,
+            self::get_user_id($post),
+            self::get_type($post)
+        );
+
+        return true;
+    }
+
     private static function normalise_type(string $type): ?string
     {
         $key = sanitize_key($type);
@@ -235,6 +412,36 @@ class UpgradeReviewRepository
             'artist', 'artist_upgrade' => self::TYPE_ARTIST_UPGRADE,
             default => null,
         };
+    }
+
+    private static function resolve_post(WP_Post|int $post): ?WP_Post
+    {
+        if ($post instanceof WP_Post) {
+            return $post;
+        }
+
+        if ($post <= 0) {
+            return null;
+        }
+
+        $resolved_post = get_post($post);
+
+        return $resolved_post instanceof WP_Post ? $resolved_post : null;
+    }
+
+    private static function get_request_post(int $request_id): ?WP_Post
+    {
+        if ($request_id <= 0) {
+            return null;
+        }
+
+        $post = self::resolve_post($request_id);
+
+        if (!$post instanceof WP_Post || self::POST_TYPE !== $post->post_type) {
+            return null;
+        }
+
+        return $post;
     }
 
     private static function normalise_title_fragment(string $type): string
