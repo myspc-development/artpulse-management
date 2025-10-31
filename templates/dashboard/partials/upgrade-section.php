@@ -103,6 +103,24 @@
                 $badge_classes[] = 'ap-badge--' . sanitize_html_class($status);
             }
 
+            $primary_aria_label = __('View upgrade details', 'artpulse-management');
+            if ('' !== $role_label) {
+                $primary_aria_label = sprintf(
+                    /* translators: %s is the upgrade role label. */
+                    __('View details for the %s upgrade option', 'artpulse-management'),
+                    $role_label
+                );
+            }
+
+            $reopen_aria_label = __('Re-request upgrade review', 'artpulse-management');
+            if ('' !== $role_label) {
+                $reopen_aria_label = sprintf(
+                    /* translators: %s is the upgrade role label. */
+                    __('Re-request the %s upgrade review', 'artpulse-management'),
+                    $role_label
+                );
+            }
+
             $card_attributes = [
                 'class'                 => 'ap-dashboard-card ap-upgrade-widget__card',
                 'data-ap-upgrade-card' => '1',
@@ -138,7 +156,7 @@
             ?>
             <article <?php echo implode(' ', $attribute_parts); ?>>
                 <div class="ap-dashboard-card__body ap-upgrade-widget__card-body">
-                    <div class="ap-upgrade-status" data-ap-upgrade-status aria-live="polite" tabindex="-1">
+                    <div class="ap-upgrade-status" data-ap-upgrade-status aria-live="polite" aria-atomic="true" role="status" tabindex="-1">
                         <?php if ($status_label !== '') : ?>
                             <strong class="<?php echo esc_attr(implode(' ', array_filter($badge_classes))); ?>" data-ap-upgrade-badge><?php echo esc_html($status_label); ?></strong>
                         <?php endif; ?>
@@ -165,7 +183,7 @@
                 </div>
 
                 <div class="ap-dashboard-card__actions ap-upgrade-widget__card-actions" data-ap-upgrade-actions="1">
-                    <a class="ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta" href="<?php echo esc_url($url); ?>">
+                    <a class="ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta" href="<?php echo esc_url($url); ?>" aria-label="<?php echo esc_attr($primary_aria_label); ?>">
                         <?php echo esc_html($cta); ?>
                     </a>
 
@@ -173,7 +191,8 @@
                         <button type="button"
                                 class="button button-secondary ap-upgrade-widget__reopen-button"
                                 data-ap-upgrade-reopen
-                                data-id="<?php echo esc_attr((string) $review_id); ?>">
+                                data-id="<?php echo esc_attr((string) $review_id); ?>"
+                                aria-label="<?php echo esc_attr($reopen_aria_label); ?>">
                             <?php esc_html_e('Re-request review', 'artpulse-management'); ?>
                         </button>
                     <?php endif; ?>
@@ -187,6 +206,17 @@
                             }
 
                             $secondary_label = isset($secondary['label']) ? (string) $secondary['label'] : __('Learn more', 'artpulse-management');
+                            $secondary_aria_label = $role_label !== ''
+                                ? sprintf(
+                                    /* translators: %s is the upgrade role label. */
+                                    __('Learn more about the %s upgrade', 'artpulse-management'),
+                                    $role_label
+                                )
+                                : sprintf(
+                                    /* translators: %s is the secondary action label. */
+                                    __('Learn more: %s', 'artpulse-management'),
+                                    $secondary_label
+                                );
                             ?>
                             <div class="ap-upgrade-widget__secondary-action">
                                 <?php if (!empty($secondary['title'])) : ?>
@@ -197,7 +227,7 @@
                                     <p class="ap-upgrade-widget__secondary-description"><?php echo esc_html((string) $secondary['description']); ?></p>
                                 <?php endif; ?>
 
-                                <a class="ap-dashboard-button ap-dashboard-button--secondary ap-upgrade-widget__cta ap-upgrade-widget__cta--secondary" href="<?php echo esc_url($secondary_url); ?>">
+                                <a class="ap-dashboard-button ap-dashboard-button--secondary ap-upgrade-widget__cta ap-upgrade-widget__cta--secondary" href="<?php echo esc_url($secondary_url); ?>" aria-label="<?php echo esc_attr($secondary_aria_label); ?>">
                                     <?php echo esc_html($secondary_label); ?>
                                 </a>
                             </div>

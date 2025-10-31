@@ -2,14 +2,23 @@
 
 namespace ArtPulse\Tests\Core;
 
+use ArtPulse\Community\NotificationManager;
 use ArtPulse\Core\Capabilities;
 use ArtPulse\Core\UpgradeReviewHandlers;
 use ArtPulse\Core\UpgradeReviewRepository;
 use WP_Post;
 use WP_UnitTestCase;
+use function wp_strip_all_tags;
 
 class UpgradeReviewHandlersTest extends WP_UnitTestCase
 {
+    private string $notification_table;
+
+    /**
+     * @var array<int,array<string,mixed>>
+     */
+    private array $sent_mail = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -30,10 +39,20 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
 
         add_role('ap_artist', 'Artist', []);
         add_role('ap_org_manager', 'Organization Manager', []);
+
+        NotificationManager::install_notifications_table();
+
+        global $wpdb;
+        $this->notification_table = $wpdb->prefix . 'ap_notifications';
+        $wpdb->query("TRUNCATE TABLE {$this->notification_table}");
+
+        $this->sent_mail = [];
+        add_filter('wp_mail', [$this, 'capture_mail']);
     }
 
     protected function tearDown(): void
     {
+        remove_filter('wp_mail', [$this, 'capture_mail']);
         remove_role('ap_artist');
         remove_role('ap_org_manager');
 
@@ -46,6 +65,17 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
         }
 
         parent::tearDown();
+    }
+
+    /**
+     * @param array<string,mixed> $args
+     * @return array<string,mixed>
+     */
+    public function capture_mail(array $args): array
+    {
+        $this->sent_mail[] = $args;
+
+        return $args;
     }
 
     public function test_handle_approved_grants_artist_role_and_creates_profile(): void
@@ -128,5 +158,66 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
         $this->assertSame($user_id, (int) $profile->post_author);
         $this->assertSame($user_id, (int) get_post_meta($profile_id, '_ap_owner_user', true));
         $this->assertSame($profile_id, UpgradeReviewRepository::get_post_id($request_id));
+    }
+
+    public function test_handle_approved_creates_notification_and_email(): void
+    {
+        $user_id = self::factory()->user->create(['role' => 'subscriber']);
+
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        $request_id = $result['request_id'] ?? 0;
+
+        UpgradeReviewHandlers::handle_approved($request_id, $user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+
+        global $wpdb;
+        $record = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$this->notification_table} WHERE user_id = %d ORDER BY id DESC LIMIT 1",
+                $user_id
+            ),
+            ARRAY_A
+        );
+
+        $this->assertIsArray($record);
+        $this->assertSame('upgrade_request_approved', $record['type']);
+        $this->assertStringContainsString('approved', strtolower($record['content'] ?? ''));
+
+        $this->assertNotEmpty($this->sent_mail);
+        $mail = $this->sent_mail[0];
+        $this->assertSame(get_userdata($user_id)->user_email, $mail['to']);
+        $this->assertStringContainsString('approved', strtolower((string) $mail['subject']));
+        $this->assertStringContainsString('approved', strtolower(wp_strip_all_tags((string) $mail['message'])));
+    }
+
+    public function test_handle_denied_creates_notification_with_reason(): void
+    {
+        $user_id = self::factory()->user->create(['role' => 'subscriber']);
+
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $request_id = $result['request_id'] ?? 0;
+
+        $reason = 'Profile incomplete';
+        UpgradeReviewRepository::set_status($request_id, UpgradeReviewRepository::STATUS_DENIED, $reason);
+
+        UpgradeReviewHandlers::handle_denied($request_id, $user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+
+        global $wpdb;
+        $record = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$this->notification_table} WHERE user_id = %d ORDER BY id DESC LIMIT 1",
+                $user_id
+            ),
+            ARRAY_A
+        );
+
+        $this->assertIsArray($record);
+        $this->assertSame('upgrade_request_denied', $record['type']);
+        $this->assertStringContainsString('not approved', strtolower($record['content'] ?? ''));
+        $this->assertStringContainsString('Reason: ' . $reason, $record['content']);
+
+        $this->assertNotEmpty($this->sent_mail);
+        $mail = end($this->sent_mail);
+        $this->assertStringContainsString('denied', strtolower((string) $mail['subject']));
+        $this->assertStringContainsString(strtolower($reason), strtolower(wp_strip_all_tags((string) $mail['message'])));
     }
 }

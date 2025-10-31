@@ -280,6 +280,8 @@
       statusRegion.className = 'ap-upgrade-status';
       statusRegion.setAttribute('data-ap-upgrade-status', '');
       statusRegion.setAttribute('aria-live', 'polite');
+      statusRegion.setAttribute('role', 'status');
+      statusRegion.setAttribute('aria-atomic', 'true');
       statusRegion.setAttribute('tabindex', '-1');
       body.appendChild(statusRegion);
 
@@ -324,6 +326,10 @@
       link.className = 'ap-dashboard-button ap-dashboard-button--primary ap-upgrade-widget__cta';
       link.href = upgrade.url;
       link.textContent = upgrade.cta || strings.upgradeCta || 'Upgrade now';
+      const primaryAria = buildPrimaryAriaLabel(roleLabel, link.textContent);
+      if (primaryAria) {
+        link.setAttribute('aria-label', primaryAria);
+      }
       actions.appendChild(link);
 
       if (state === 'denied' && reviewId) {
@@ -333,6 +339,10 @@
         reopenButton.setAttribute('data-ap-upgrade-reopen', '1');
         reopenButton.setAttribute('data-id', String(reviewId));
         reopenButton.textContent = strings.upgradeReopen || 'Re-request review';
+        const reopenAria = buildReopenAriaLabel(roleLabel, reopenButton.textContent);
+        if (reopenAria) {
+          reopenButton.setAttribute('aria-label', reopenAria);
+        }
         actions.appendChild(reopenButton);
       }
 
@@ -363,6 +373,10 @@
           secondaryLink.className = 'ap-dashboard-button ap-dashboard-button--secondary ap-upgrade-widget__cta ap-upgrade-widget__cta--secondary';
           secondaryLink.href = secondary.url;
           secondaryLink.textContent = secondary.label || strings.upgradeLearnMore || 'Learn more';
+          const secondaryAria = buildSecondaryAriaLabel(roleLabel, secondaryLink.textContent);
+          if (secondaryAria) {
+            secondaryLink.setAttribute('aria-label', secondaryAria);
+          }
           wrapper.appendChild(secondaryLink);
 
           actions.appendChild(wrapper);
@@ -1114,6 +1128,8 @@
       container.className = 'ap-upgrade-status';
       container.setAttribute('data-ap-upgrade-status', '');
       container.setAttribute('aria-live', 'polite');
+      container.setAttribute('role', 'status');
+      container.setAttribute('aria-atomic', 'true');
       container.setAttribute('tabindex', '-1');
 
       const body = card && card.querySelector ? card.querySelector('.ap-dashboard-card__body') : null;
@@ -1134,6 +1150,9 @@
     );
 
     container.dataset.apUpgradeStatus = normalized.state;
+    container.setAttribute('aria-live', 'polite');
+    container.setAttribute('role', 'status');
+    container.setAttribute('aria-atomic', 'true');
 
     if (card && card.dataset) {
       card.dataset.apUpgradeStatus = normalized.state;
@@ -1311,6 +1330,59 @@
     }
 
     return text;
+  }
+
+  function replaceLabelPlaceholder(text, label) {
+    if (typeof text !== 'string') {
+      return '';
+    }
+
+    if (text.includes('{label}')) {
+      return text.replace('{label}', label || '');
+    }
+
+    return text;
+  }
+
+  function buildPrimaryAriaLabel(roleLabel, fallback) {
+    if (roleLabel) {
+      const template = replaceRolePlaceholder(strings.upgradePrimaryAria || '', roleLabel);
+      if (template) {
+        return template;
+      }
+
+      return `View ${roleLabel} upgrade details`;
+    }
+
+    return strings.upgradePrimaryAriaGeneric || fallback || strings.upgradeCta || 'Upgrade now';
+  }
+
+  function buildReopenAriaLabel(roleLabel, fallback) {
+    if (roleLabel) {
+      const template = replaceRolePlaceholder(strings.upgradeReopenAria || '', roleLabel);
+      if (template) {
+        return template;
+      }
+    }
+
+    return strings.upgradeReopenAriaGeneric || fallback || strings.upgradeReopen || 'Re-request review';
+  }
+
+  function buildSecondaryAriaLabel(roleLabel, label) {
+    if (roleLabel) {
+      const template = replaceRolePlaceholder(strings.upgradeSecondaryAria || '', roleLabel);
+      if (template) {
+        return template;
+      }
+    }
+
+    const generic = replaceLabelPlaceholder(strings.upgradeSecondaryAriaGeneric || '', label);
+    if (generic) {
+      return generic;
+    }
+
+    const learnMore = strings.upgradeLearnMore || 'Learn more';
+    return label ? `${learnMore}: ${label}` : learnMore;
   }
 
   function getBadgeClass(state, customClass) {

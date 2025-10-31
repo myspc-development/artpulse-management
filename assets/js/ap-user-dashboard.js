@@ -1038,12 +1038,13 @@
         path: '/artpulse/v1/user/profile',
         method: 'POST',
         data: payload,
+        headers: { 'X-WP-Nonce': API_SETTINGS.nonce },
       });
     }
 
     const settings = window.wpApiSettings || {};
-    const root = settings.root || '';
-    const nonce = settings.nonce || '';
+    const root = API_SETTINGS.root || settings.root || '';
+    const nonce = API_SETTINGS.nonce || settings.nonce || '';
     const url = root.replace(/\/?$/, '/') + 'artpulse/v1/user/profile';
 
     return fetch(url, {
