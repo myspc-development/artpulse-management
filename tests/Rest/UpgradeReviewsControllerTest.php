@@ -67,6 +67,15 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
         $this->assertSame(rest_authorization_required_code(), $response->get_status());
     }
 
+    public function test_create_review_rejects_invalid_type(): void
+    {
+        $request = $this->make_create_request('unknown');
+        $response = $this->dispatch($request);
+
+        $this->assertSame(400, $response->get_status());
+        $this->assertSame('artpulse_upgrade_review_invalid_type', $response->get_error_code());
+    }
+
     public function test_create_review_creates_pending_request(): void
     {
         $request  = $this->make_create_request('org');
@@ -98,6 +107,43 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
 
         $this->assertSame(200, $second_response->get_status());
         $this->assertSame($first_id, $second_response->get_data()['id']);
+    }
+
+    public function test_list_reviews_requires_valid_nonce(): void
+    {
+        $request = new WP_REST_Request('GET', '/artpulse/v1/upgrade-reviews');
+        $request->set_query_params([
+            'mine' => '1',
+        ]);
+
+        $response = rest_do_request($request);
+        $this->assertSame(403, $response->get_status());
+    }
+
+    public function test_list_reviews_requires_authentication(): void
+    {
+        wp_set_current_user(0);
+        $request = new WP_REST_Request('GET', '/artpulse/v1/upgrade-reviews');
+        $request->set_query_params([
+            'mine' => '1',
+        ]);
+        $request->set_header('X-WP-Nonce', $this->nonce);
+
+        $response = rest_do_request($request);
+        $this->assertSame(rest_authorization_required_code(), $response->get_status());
+    }
+
+    public function test_list_reviews_rejects_invalid_scope(): void
+    {
+        $request = new WP_REST_Request('GET', '/artpulse/v1/upgrade-reviews');
+        $request->set_query_params([
+            'mine' => '0',
+        ]);
+        $request->set_header('X-WP-Nonce', $this->nonce);
+
+        $response = rest_do_request($request);
+        $this->assertSame(400, $response->get_status());
+        $this->assertSame('artpulse_upgrade_review_invalid_scope', $response->get_error_code());
     }
 
     public function test_list_reviews_returns_all_requests(): void
