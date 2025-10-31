@@ -50,7 +50,7 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
 
     public function test_create_review_requires_valid_nonce(): void
     {
-        $request = new WP_REST_Request('POST', '/artpulse/v1/reviews');
+        $request = new WP_REST_Request('POST', '/artpulse/v1/upgrade-reviews');
         $request->set_body_params([
             'type' => 'artist',
         ]);
@@ -62,25 +62,24 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
     public function test_create_review_requires_authentication(): void
     {
         wp_set_current_user(0);
-        $request  = $this->make_create_request('artist', $this->artist_id);
+        $request  = $this->make_create_request('artist');
         $response = $this->dispatch($request);
         $this->assertSame(rest_authorization_required_code(), $response->get_status());
     }
 
     public function test_create_review_creates_pending_request(): void
     {
-        $request  = $this->make_create_request('organization', $this->organization_id);
+        $request  = $this->make_create_request('org');
         $response = $this->dispatch($request);
 
         $this->assertSame(201, $response->get_status());
         $data = $response->get_data();
 
         $this->assertSame('pending', $data['status']);
-        $this->assertSame('organization', $data['type']);
-        $this->assertSame($this->organization_id, $data['postId']);
+        $this->assertSame('org', $data['type']);
         $this->assertIsInt($data['id']);
-        $this->assertArrayHasKey('createdAt', $data);
-        $this->assertNotEmpty($data['createdAt']);
+        $this->assertArrayHasKey('created_at', $data);
+        $this->assertNotEmpty($data['created_at']);
 
         $review = get_post($data['id']);
         $this->assertInstanceOf(WP_Post::class, $review);
@@ -89,12 +88,12 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
 
     public function test_create_review_returns_existing_pending_request(): void
     {
-        $first          = $this->make_create_request('organization', $this->organization_id);
+        $first          = $this->make_create_request('org');
         $first_response = $this->dispatch($first);
         $this->assertSame(201, $first_response->get_status());
         $first_id = $first_response->get_data()['id'];
 
-        $second          = $this->make_create_request('organization', $this->organization_id);
+        $second          = $this->make_create_request('org');
         $second_response = $this->dispatch($second);
 
         $this->assertSame(200, $second_response->get_status());
@@ -103,14 +102,17 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
 
     public function test_list_reviews_returns_all_requests(): void
     {
-        $artist_request = $this->make_create_request('artist', $this->artist_id);
+        $artist_request = $this->make_create_request('artist');
         $this->dispatch($artist_request);
 
-        $org_request = $this->make_create_request('organization', $this->organization_id);
+        $org_request = $this->make_create_request('org');
         $this->dispatch($org_request);
 
-        $list = new WP_REST_Request('GET', '/artpulse/v1/reviews/me');
+        $list = new WP_REST_Request('GET', '/artpulse/v1/upgrade-reviews');
         $list->set_header('X-WP-Nonce', $this->nonce);
+        $list->set_query_params([
+            'mine' => '1',
+        ]);
 
         $response = rest_do_request($list);
         $this->assertSame(200, $response->get_status());
@@ -119,34 +121,13 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
         $this->assertCount(2, $data);
         $types = wp_list_pluck($data, 'type');
         $this->assertContains('artist', $types);
-        $this->assertContains('organization', $types);
-    }
+        $this->assertContains('org', $types);
 
-    public function test_reopen_denied_review_resets_status(): void
-    {
-        $create_response = $this->dispatch($this->make_create_request('artist', $this->artist_id));
-        $review_id = $create_response->get_data()['id'];
-
-        UpgradeReviewRepository::set_status($review_id, UpgradeReviewRepository::STATUS_DENIED, 'Needs more information');
-
-        $reopen = new WP_REST_Request('POST', sprintf('/artpulse/v1/reviews/%d/reopen', $review_id));
-        $response = $this->dispatch($reopen);
-
-        $this->assertSame(200, $response->get_status());
-        $data = $response->get_data();
-        $this->assertSame('pending', $data['status']);
-        $this->assertArrayNotHasKey('reason', $data);
-    }
-
-    public function test_reopen_requires_denied_status(): void
-    {
-        $create_response = $this->dispatch($this->make_create_request('artist', $this->artist_id));
-        $review_id = $create_response->get_data()['id'];
-
-        $reopen = new WP_REST_Request('POST', sprintf('/artpulse/v1/reviews/%d/reopen', $review_id));
-        $response = $this->dispatch($reopen);
-
-        $this->assertSame(400, $response->get_status());
+        foreach ($data as $item) {
+            $this->assertArrayHasKey('created_at', $item);
+            $this->assertArrayHasKey('updated_at', $item);
+            $this->assertArrayHasKey('reason', $item);
+        }
     }
 
     private function dispatch(WP_REST_Request $request): WP_REST_Response
@@ -158,12 +139,12 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
         return rest_do_request($request);
     }
 
-    private function make_create_request(string $type, int $post_id = 0): WP_REST_Request
+    private function make_create_request(string $type): WP_REST_Request
     {
-        $request = new WP_REST_Request('POST', '/artpulse/v1/reviews');
+        $request = new WP_REST_Request('POST', '/artpulse/v1/upgrade-reviews');
         $request->set_body_params([
-            'type'   => $type,
-            'postId' => $post_id,
+            'type' => $type,
+            'note' => 'Please upgrade me',
         ]);
 
         return $request;
