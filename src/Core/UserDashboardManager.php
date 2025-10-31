@@ -1,9 +1,13 @@
 <?php
 namespace ArtPulse\Core;
 
+use WP_Error;
 use WP_Post;
 use WP_REST_Request;
 use WP_User;
+use function is_user_logged_in;
+use function rest_authorization_required_code;
+use function wp_verify_nonce;
 
 class UserDashboardManager
 {
@@ -54,18 +58,92 @@ class UserDashboardManager
         register_rest_route('artpulse/v1', '/user/dashboard', [
             'methods'             => 'GET',
             'callback'            => [ self::class, 'getDashboardData' ],
-            'permission_callback' => function() {
-                return is_user_logged_in();
-            },
+            'permission_callback' => [ self::class, 'permissionsCheckDashboard' ],
+            'args'                => [
+                'role' => [
+                    'type'     => 'string',
+                    'required' => false,
+                ],
+            ] + self::getCommonArgs(),
         ]);
 
         register_rest_route('artpulse/v1', '/user/profile', [
             'methods'             => 'POST',
             'callback'            => [ self::class, 'updateProfile' ],
-            'permission_callback' => function() {
-                return is_user_logged_in();
-            },
+            'permission_callback' => [ self::class, 'verifyRestRequest' ],
+            'args'                => self::getCommonArgs(),
         ]);
+    }
+
+    public static function permissionsCheckDashboard(WP_REST_Request $request)
+    {
+        $verified = self::verifyRestRequest($request);
+        if ($verified !== true) {
+            return $verified;
+        }
+
+        $role = sanitize_key($request->get_param('role'));
+        if ('' !== $role && !RoleDashboards::userCanAccessRole($role)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('You do not have permission to view this dashboard.', 'artpulse-management'),
+                ['status' => 403]
+            );
+        }
+
+        return true;
+    }
+
+    public static function verifyRestRequest(WP_REST_Request $request)
+    {
+        if (!is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('Authentication required to access dashboard data.', 'artpulse-management'),
+                ['status' => rest_authorization_required_code()]
+            );
+        }
+
+        if (!self::verifyNonce($request)) {
+            return new WP_Error(
+                'rest_invalid_nonce',
+                __('Security check failed. Please refresh and try again.', 'artpulse-management'),
+                ['status' => 403]
+            );
+        }
+
+        return true;
+    }
+
+    private static function verifyNonce(WP_REST_Request $request): bool
+    {
+        $nonce = $request->get_header('X-WP-Nonce');
+
+        if (!$nonce) {
+            $nonce = (string) $request->get_param('_wpnonce');
+        }
+
+        if (!$nonce && $request->get_param('nonce')) {
+            $nonce = (string) $request->get_param('nonce');
+        }
+
+        return is_string($nonce) && '' !== $nonce && wp_verify_nonce($nonce, 'wp_rest');
+    }
+
+    private static function getCommonArgs(): array
+    {
+        return [
+            'nonce' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => __('Nonce generated via wp_create_nonce("wp_rest").', 'artpulse-management'),
+            ],
+            '_wpnonce' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => __('Nonce generated via wp_create_nonce("wp_rest").', 'artpulse-management'),
+            ],
+        ];
     }
 
     public static function getDashboardData(WP_REST_Request $request)

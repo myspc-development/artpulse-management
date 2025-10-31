@@ -3,7 +3,9 @@
 namespace Tests\Rest;
 
 use ArtPulse\Core\RoleDashboards;
+use ArtPulse\Core\UserDashboardManager;
 use WP_REST_Request;
+use function wp_create_nonce;
 class UserDashboardManagerTest extends \WP_UnitTestCase
 {
     protected $user_id;
@@ -19,6 +21,7 @@ class UserDashboardManagerTest extends \WP_UnitTestCase
         wp_set_current_user($this->user_id);
 
         RoleDashboards::register();
+        UserDashboardManager::register();
         do_action('rest_api_init');
     }
 
@@ -26,6 +29,7 @@ class UserDashboardManagerTest extends \WP_UnitTestCase
     {
         $request = new WP_REST_Request('GET', '/artpulse/v1/dashboard');
         $request->set_param('role', 'member');
+        $request->set_header('X-WP-Nonce', wp_create_nonce('wp_rest'));
         $response = rest_do_request($request);
         $this->assertSame(200, $response->get_status());
         $data = $response->get_data();
@@ -36,5 +40,14 @@ class UserDashboardManagerTest extends \WP_UnitTestCase
         $this->assertArrayHasKey('profile', $data);
         $this->assertArrayHasKey('available_roles', $data);
         $this->assertIsArray($data['available_roles']);
+    }
+
+    public function test_get_dashboard_requires_nonce(): void
+    {
+        $request = new WP_REST_Request('GET', '/artpulse/v1/dashboard');
+        $request->set_param('role', 'member');
+        $response = rest_do_request($request);
+
+        $this->assertSame(403, $response->get_status());
     }
 }

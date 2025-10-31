@@ -19,7 +19,9 @@ class EmailNotifier {
             'membership_expired',
             'payment_paid',
             'payment_failed',
-            'payment_refunded'
+            'payment_refunded',
+            'upgrade_request_approved',
+            'upgrade_request_denied'
         ];
 
         if (!in_array($type, $email_types, true)) {
@@ -55,6 +57,8 @@ class EmailNotifier {
             'payment_paid'         => 'Payment Received',
             'payment_failed'       => 'Payment Failed',
             'payment_refunded'     => 'Payment Refunded',
+            'upgrade_request_approved' => 'Your upgrade request was approved',
+            'upgrade_request_denied'   => 'Your upgrade request was denied',
         ];
         return $map[$type] ?? wp_strip_all_tags($fallback);
     }

@@ -5,7 +5,9 @@ namespace ArtPulse\Core;
 use WP_Post;
 use WP_User;
 
+use function __;
 use function sanitize_key;
+use function wp_strip_all_tags;
 
 /**
  * Handles side effects triggered when upgrade reviews are approved or denied.
@@ -31,6 +33,7 @@ class UpgradeReviewHandlers
                 Capabilities::CAP_MANAGE_PORTFOLIO,
                 Capabilities::CAP_SUBMIT_EVENTS,
             ],
+            'label'        => 'Artist',
         ],
         self::TYPE_ORGANIZATION => [
             'role'         => 'ap_org_manager',
@@ -42,6 +45,7 @@ class UpgradeReviewHandlers
                 Capabilities::CAP_MANAGE_PORTFOLIO,
                 Capabilities::CAP_SUBMIT_EVENTS,
             ],
+            'label'        => 'Organization',
         ],
     ];
 
@@ -76,11 +80,86 @@ class UpgradeReviewHandlers
         if ($profile_id > 0 && $request_id > 0) {
             update_post_meta($request_id, UpgradeReviewRepository::META_POST, $profile_id);
         }
+
+        self::notify_decision($user, $normalised_type, 'approved', $request_id, $profile_id);
     }
 
     public static function handle_denied(int $request_id, int $user_id, string $type): void
     {
-        // Stage 6 will add notifications. Nothing to do for now.
+        if ($user_id <= 0) {
+            return;
+        }
+
+        $normalised_type = self::normalise_type($type);
+        if (null === $normalised_type) {
+            return;
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (!$user instanceof WP_User) {
+            return;
+        }
+
+        $reason = '';
+        if ($request_id > 0) {
+            $reason = UpgradeReviewRepository::get_reason($request_id);
+        }
+
+        self::notify_decision($user, $normalised_type, 'denied', $request_id, 0, $reason);
+    }
+
+    private static function notify_decision(
+        WP_User $user,
+        string $type,
+        string $status,
+        int $request_id,
+        int $profile_id,
+        string $reason = ''
+    ): void {
+        if (!array_key_exists($type, self::TYPE_CONFIG)) {
+            return;
+        }
+
+        $label = (string) (self::TYPE_CONFIG[$type]['label'] ?? ucfirst($type));
+
+        $message = '';
+        if ('approved' === $status) {
+            $message = sprintf(
+                /* translators: %s is the membership upgrade label. */
+                __('Your %s upgrade request was approved.', 'artpulse-management'),
+                $label
+            );
+        } else {
+            $message = sprintf(
+                /* translators: %s is the membership upgrade label. */
+                __('Your %s upgrade request was not approved.', 'artpulse-management'),
+                $label
+            );
+
+            $reason = trim(wp_strip_all_tags($reason));
+            if ('' !== $reason) {
+                $message .= ' ' . sprintf(
+                    /* translators: %s is the moderator supplied reason. */
+                    __('Reason: %s', 'artpulse-management'),
+                    $reason
+                );
+            }
+        }
+
+        $notification_type = 'approved' === $status
+            ? 'upgrade_request_approved'
+            : 'upgrade_request_denied';
+
+        $object_id  = 'approved' === $status && $profile_id > 0 ? $profile_id : $request_id;
+        $related_id = 'approved' === $status ? $request_id : 0;
+
+        \ArtPulse\Community\NotificationManager::add(
+            (int) $user->ID,
+            $notification_type,
+            $object_id > 0 ? $object_id : null,
+            $related_id > 0 ? $related_id : null,
+            $message
+        );
     }
 
     public static function get_or_create_profile_post(int $user_id, string $type): int
