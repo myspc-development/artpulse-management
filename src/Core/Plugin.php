@@ -83,6 +83,7 @@ class Plugin
         }
         \ArtPulse\Frontend\Shared\PortfolioMediaGuard::register();
         \ArtPulse\Core\RoleUpgradeManager::register();
+        \ArtPulse\Core\UpgradeReviewHandlers::register();
         \ArtPulse\Core\RoleSetup::register();
         add_action( 'init',               [ \ArtPulse\Core\RoleSetup::class, 'maybe_upgrade' ] );
         add_action( 'init',               [ \ArtPulse\Admin\UpgradeReviewsController::class, 'register' ] );
