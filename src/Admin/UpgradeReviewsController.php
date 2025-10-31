@@ -46,77 +46,126 @@ class UpgradeReviewsController
             wp_die(esc_html__('You do not have permission to view this page.', 'artpulse-management'));
         }
 
+        if ('POST' === $_SERVER['REQUEST_METHOD'] && isset($_POST['filter_action'])) {
+            self::redirect_with_filters();
+        }
+
         self::maybe_process_bulk_action($user);
 
         $view = isset($_GET['view']) ? sanitize_key(wp_unslash($_GET['view'])) : '';
         $review_id = isset($_GET['review']) ? absint($_GET['review']) : 0;
         $bulk_reviews_raw = isset($_GET['reviews']) ? sanitize_text_field(wp_unslash($_GET['reviews'])) : '';
-        $is_bulk_deny = 'deny' === $view && '' !== $bulk_reviews_raw;
 
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Upgrade Reviews', 'artpulse-management') . '</h1>';
 
-        if ('deny' === $view && ($review_id || $is_bulk_deny)) {
-            $review_ids = [];
-            $bulk_nonce = '';
+        if ('bulk-confirm' === $view) {
+            $operation = isset($_GET['operation']) ? sanitize_key(wp_unslash($_GET['operation'])) : '';
+            $review_ids = self::normalise_review_ids(explode(',', $bulk_reviews_raw));
+            $bulk_nonce = isset($_GET['bulk_nonce']) ? sanitize_text_field(wp_unslash($_GET['bulk_nonce'])) : '';
 
-            if ($is_bulk_deny) {
-                $review_ids = self::normalise_review_ids(explode(',', $bulk_reviews_raw));
-                $bulk_nonce = isset($_GET['bulk_nonce']) ? sanitize_text_field(wp_unslash($_GET['bulk_nonce'])) : '';
-                if (empty($review_ids) || '' === $bulk_nonce || !wp_verify_nonce($bulk_nonce, self::build_bulk_nonce_action($review_ids))) {
-                    echo '<p>' . esc_html__('The selected reviews could not be loaded or the request has expired.', 'artpulse-management') . '</p>';
-                    echo '</div>';
-                    return;
-                }
-            } else {
-                $review_ids = [$review_id];
-                check_admin_referer('ap-upgrade-review-' . $review_id);
+            if (!in_array($operation, ['approve', 'deny'], true) || empty($review_ids) || '' === $bulk_nonce || !wp_verify_nonce($bulk_nonce, self::build_bulk_nonce_action($review_ids))) {
+                echo '<p>' . esc_html__('The selected reviews could not be loaded or the request has expired.', 'artpulse-management') . '</p>';
+                echo '</div>';
+                return;
             }
+
+            $reviews = self::get_reviews($review_ids);
+
+            if (empty($reviews)) {
+                echo '<p>' . esc_html__('No matching upgrade reviews were found.', 'artpulse-management') . '</p>';
+                echo '</div>';
+                return;
+            }
+
+            $heading = 'approve' === $operation
+                ? esc_html__('Approve selected upgrade requests?', 'artpulse-management')
+                : esc_html__('Deny selected upgrade requests?', 'artpulse-management');
+            $description = 'approve' === $operation
+                ? esc_html__('Please confirm you want to approve the following upgrade requests.', 'artpulse-management')
+                : esc_html__('Please confirm you want to deny the following upgrade requests.', 'artpulse-management');
+
+            echo '<h2>' . $heading . '</h2>';
+            echo '<p>' . $description . '</p>';
+            echo '<ul class="ap-upgrade-review-deny__list">';
+            foreach ($reviews as $review_post) {
+                $user_id = UpgradeReviewRepository::get_user_id($review_post);
+                $user = $user_id ? get_user_by('id', $user_id) : null;
+                $label = $user ? $user->display_name : '#' . $user_id;
+                echo '<li><strong>' . esc_html($label) . '</strong></li>';
+            }
+            echo '</ul>';
+
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="ap-upgrade-review-bulk-confirm">';
+            wp_nonce_field(self::build_bulk_nonce_action($review_ids), 'bulk_nonce');
+            echo '<input type="hidden" name="action" value="ap_upgrade_review_action" />';
+            echo '<input type="hidden" name="operation" value="' . esc_attr($operation) . '" />';
+            echo '<input type="hidden" name="bulk" value="1" />';
+
+            foreach ($review_ids as $id) {
+                echo '<input type="hidden" name="review[]" value="' . esc_attr($id) . '" />';
+            }
+
+            foreach (['status', 'ap_filter_type', 'ap_filter_status'] as $persist_key) {
+                if (!isset($_GET[$persist_key])) {
+                    continue;
+                }
+
+                $value = sanitize_text_field(wp_unslash($_GET[$persist_key]));
+                if ('' !== $value) {
+                    echo '<input type="hidden" name="' . esc_attr($persist_key) . '" value="' . esc_attr($value) . '" />';
+                }
+            }
+
+            if ('deny' === $operation) {
+                echo '<p><label for="ap-bulk-reason">' . esc_html__('Reason for denial (optional)', 'artpulse-management') . '</label></p>';
+                echo '<textarea id="ap-bulk-reason" name="reason" rows="4" class="large-text"></textarea>';
+            }
+
+            $button_label = 'approve' === $operation
+                ? esc_html__('Confirm approvals', 'artpulse-management')
+                : esc_html__('Confirm denials', 'artpulse-management');
+            submit_button($button_label);
+
+            $cancel_url = esc_url(self::build_redirect_url());
+            echo '<a class="button-link" href="' . $cancel_url . '">' . esc_html__('Cancel', 'artpulse-management') . '</a>';
+
+            echo '</form>';
+            echo '</div>';
+            return;
+        }
+
+        if ('deny' === $view && $review_id) {
+            $review_ids = [$review_id];
+            check_admin_referer('ap-upgrade-review-' . $review_id);
 
             $reviews = self::get_reviews($review_ids);
 
             if (empty($reviews)) {
                 echo '<p>' . esc_html__('Review not found.', 'artpulse-management') . '</p>';
             } else {
+                $review_post = array_shift($reviews);
+                $user_id = $review_post instanceof WP_Post ? UpgradeReviewRepository::get_user_id($review_post) : 0;
+                $user = $user_id ? get_user_by('id', $user_id) : null;
+
                 echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="ap-upgrade-review-deny">';
-
-                if ($is_bulk_deny) {
-                    wp_nonce_field(self::build_bulk_nonce_action($review_ids), 'bulk_nonce');
-                } else {
-                    $single_id = $review_ids[0];
-                    wp_nonce_field('ap-upgrade-review-' . $single_id);
-                    echo '<input type="hidden" name="review" value="' . esc_attr($single_id) . '" />';
-                }
-
+                wp_nonce_field('ap-upgrade-review-' . $review_id);
+                echo '<input type="hidden" name="review" value="' . esc_attr($review_id) . '" />';
                 echo '<input type="hidden" name="action" value="ap_upgrade_review_action" />';
                 echo '<input type="hidden" name="operation" value="deny" />';
+                foreach (['status', 'ap_filter_type', 'ap_filter_status'] as $persist_key) {
+                    if (!isset($_GET[$persist_key])) {
+                        continue;
+                    }
 
-                if ($is_bulk_deny) {
-                    echo '<input type="hidden" name="bulk" value="1" />';
-                    foreach ($review_ids as $id) {
-                        echo '<input type="hidden" name="review[]" value="' . esc_attr($id) . '" />';
+                    $value = sanitize_text_field(wp_unslash($_GET[$persist_key]));
+                    if ('' !== $value) {
+                        echo '<input type="hidden" name="' . esc_attr($persist_key) . '" value="' . esc_attr($value) . '" />';
                     }
                 }
-
-                if ($is_bulk_deny) {
-                    echo '<p>' . esc_html__('Deny upgrade requests for the following members:', 'artpulse-management') . '</p>';
-                    echo '<ul class="ap-upgrade-review-deny__list">';
-                    foreach ($reviews as $review_post) {
-                        $user_id = UpgradeReviewRepository::get_user_id($review_post);
-                        $user = $user_id ? get_user_by('id', $user_id) : null;
-                        $label = $user ? $user->display_name : '#' . $user_id;
-                        echo '<li><strong>' . esc_html($label) . '</strong></li>';
-                    }
-                    echo '</ul>';
-                } else {
-                    $review_post = array_shift($reviews);
-                    $user_id = $review_post instanceof WP_Post ? UpgradeReviewRepository::get_user_id($review_post) : 0;
-                    $user = $user_id ? get_user_by('id', $user_id) : null;
-                    echo '<p>' . esc_html__('Deny upgrade request for', 'artpulse-management') . ' <strong>' . esc_html($user ? $user->display_name : '#' . $user_id) . '</strong></p>';
-                }
-
-                echo '<p><label for="ap-deny-reason">' . esc_html__('Reason for denial', 'artpulse-management') . '</label></p>';
-                echo '<textarea id="ap-deny-reason" name="reason" rows="4" class="large-text" required></textarea>';
+                echo '<p>' . esc_html__('Deny upgrade request for', 'artpulse-management') . ' <strong>' . esc_html($user ? $user->display_name : '#' . $user_id) . '</strong></p>';
+                echo '<p><label for="ap-deny-reason">' . esc_html__('Reason for denial (optional)', 'artpulse-management') . '</label></p>';
+                echo '<textarea id="ap-deny-reason" name="reason" rows="4" class="large-text"></textarea>';
                 submit_button(__('Send denial', 'artpulse-management'));
                 echo '</form>';
             }
@@ -181,7 +230,7 @@ class UpgradeReviewsController
 
         $is_bulk = count($review_ids) > 1 || isset($_REQUEST['bulk']);
 
-        if ($is_bulk && 'deny' === $operation) {
+        if ($is_bulk) {
             check_admin_referer(self::build_bulk_nonce_action($review_ids), 'bulk_nonce');
         } else {
             $review_id = $review_ids[0];
@@ -193,11 +242,6 @@ class UpgradeReviewsController
             $status = $result['all_success'] ? ($is_bulk ? 'bulk_approved' : 'approved') : 'error';
         } else {
             $reason_raw = isset($_POST['reason']) ? wp_unslash($_POST['reason']) : '';
-            if ('' === trim($reason_raw)) {
-                wp_safe_redirect(add_query_arg('ap_status', 'error', $redirect));
-                exit;
-            }
-
             $result = self::process_reviews($review_ids, 'deny', $reason_raw);
             $status = $result['all_success'] ? ($is_bulk ? 'bulk_denied' : 'denied') : 'error';
         }
@@ -247,7 +291,7 @@ class UpgradeReviewsController
         $custom_actions['ap_review_approve'] = sprintf(
             '<a href="%s">%s</a>',
             esc_url($approve_url),
-            esc_html__('Approve', 'artpulse-management')
+            esc_html__('Quick approve', 'artpulse-management')
         );
 
         $deny_url = wp_nonce_url(
@@ -274,7 +318,7 @@ class UpgradeReviewsController
             $custom_actions['ap_review_user'] = sprintf(
                 '<a href="%s">%s</a>',
                 esc_url($user_link),
-                esc_html__('View User', 'artpulse-management')
+                esc_html__('View user', 'artpulse-management')
             );
         }
 
@@ -284,7 +328,7 @@ class UpgradeReviewsController
             $custom_actions['ap_review_post'] = sprintf(
                 '<a href="%s">%s</a>',
                 esc_url($target_link),
-                esc_html__('View Target Post', 'artpulse-management')
+                esc_html__('Open profile', 'artpulse-management')
             );
         }
 
@@ -406,10 +450,6 @@ class UpgradeReviewsController
     {
         $sanitized_reason = trim(sanitize_textarea_field($reason));
 
-        if ($sanitized_reason === '') {
-            return false;
-        }
-
         $user_id = UpgradeReviewRepository::get_user_id($review);
         $org_id  = UpgradeReviewRepository::get_post_id($review);
         $type    = UpgradeReviewRepository::get_type($review);
@@ -447,7 +487,7 @@ class UpgradeReviewsController
         $user = get_user_by('id', $user_id);
         if ($user instanceof WP_User) {
             $role_label = __('Organization', 'artpulse-management');
-        $dashboard_url = self::build_dashboard_url('organization');
+            $dashboard_url = self::build_dashboard_url('organization');
 
             if (UpgradeReviewRepository::TYPE_ARTIST_UPGRADE === $type) {
                 $role_label = __('Artist', 'artpulse-management');
@@ -543,23 +583,12 @@ class UpgradeReviewsController
             exit;
         }
 
-        if ('approve' === $operation) {
-            $result = self::process_reviews($review_ids, 'approve');
-            $status = $result['all_success'] ? 'bulk_approved' : 'error';
-            wp_safe_redirect(add_query_arg('ap_status', $status, self::build_redirect_url()));
-            exit;
-        }
-
         $action = self::build_bulk_nonce_action($review_ids);
-        $redirect = add_query_arg(
-            [
-                'page'    => 'artpulse-upgrade-reviews',
-                'view'    => 'deny',
-                'bulk'    => '1',
-                'reviews' => implode(',', $review_ids),
-            ],
-            admin_url('admin.php')
-        );
+        $redirect = self::build_redirect_url([
+            'view'      => 'bulk-confirm',
+            'operation' => $operation,
+            'reviews'   => implode(',', $review_ids),
+        ]);
 
         $redirect = wp_nonce_url($redirect, $action, 'bulk_nonce');
 
@@ -618,6 +647,29 @@ class UpgradeReviewsController
         }
 
         return $reviews;
+    }
+
+    private static function redirect_with_filters(): void
+    {
+        $args = ['page' => 'artpulse-upgrade-reviews'];
+
+        $status = isset($_POST['status']) ? sanitize_key(wp_unslash($_POST['status'])) : '';
+        if ('' !== $status) {
+            $args['status'] = $status;
+        }
+
+        $filter_type = isset($_POST['ap_filter_type']) ? sanitize_key(wp_unslash($_POST['ap_filter_type'])) : '';
+        if ('' !== $filter_type) {
+            $args['ap_filter_type'] = $filter_type;
+        }
+
+        $filter_status = isset($_POST['ap_filter_status']) ? sanitize_key(wp_unslash($_POST['ap_filter_status'])) : '';
+        if ('' !== $filter_status) {
+            $args['ap_filter_status'] = $filter_status;
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
     }
 
     private static function build_redirect_url(array $additional = []): string
