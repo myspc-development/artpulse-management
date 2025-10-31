@@ -10,10 +10,13 @@ use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
 use function get_gmt_from_date;
+use function get_post;
+use function is_user_logged_in;
 use function mysql_to_rfc3339;
+use function rest_authorization_required_code;
 use function rest_ensure_response;
 use function sanitize_key;
-use function sanitize_text_field;
+use function sanitize_textarea_field;
 use function wp_verify_nonce;
 
 final class UpgradeReviewsController
@@ -27,34 +30,20 @@ final class UpgradeReviewsController
     {
         register_rest_route(
             self::ROUTE_NAMESPACE,
-            '/reviews',
+            '/upgrade-reviews',
             [
-                'methods'             => WP_REST_Server::CREATABLE,
-                'callback'            => [self::class, 'create_review'],
-                'permission_callback' => [self::class, 'permissions_check'],
-                'args'                => self::get_create_args_schema(),
-            ]
-        );
-
-        register_rest_route(
-            self::ROUTE_NAMESPACE,
-            '/reviews/me',
-            [
-                'methods'             => WP_REST_Server::READABLE,
-                'callback'            => [self::class, 'list_reviews'],
-                'permission_callback' => [self::class, 'permissions_check'],
-                'args'                => self::get_common_args_schema(),
-            ]
-        );
-
-        register_rest_route(
-            self::ROUTE_NAMESPACE,
-            '/reviews/(?P<id>\d+)/reopen',
-            [
-                'methods'             => WP_REST_Server::CREATABLE,
-                'callback'            => [self::class, 'reopen_review'],
-                'permission_callback' => [self::class, 'permissions_check'],
-                'args'                => self::get_reopen_args_schema(),
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [self::class, 'create_upgrade_review'],
+                    'permission_callback' => [self::class, 'permissions_check'],
+                    'args'                => self::get_create_args_schema(),
+                ],
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [self::class, 'list_upgrade_reviews'],
+                    'permission_callback' => [self::class, 'permissions_check'],
+                    'args'                => self::get_list_args_schema(),
+                ],
             ]
         );
     }
@@ -80,7 +69,7 @@ final class UpgradeReviewsController
         return true;
     }
 
-    public static function create_review(WP_REST_Request $request)
+    public static function create_upgrade_review(WP_REST_Request $request)
     {
         $user_id = get_current_user_id();
 
@@ -89,152 +78,129 @@ final class UpgradeReviewsController
             return self::format_rate_limit_error($rate_error);
         }
 
-        $type = sanitize_key((string) $request->get_param('type'));
-        $post_id = (int) $request->get_param('postId');
-
-        if (!in_array($type, ['artist', 'organization'], true)) {
+        $type = self::normalise_request_type((string) $request->get_param('type'));
+        if (null === $type) {
             return new WP_Error(
-                'rest_invalid_review_type',
-                __('Invalid review type provided.', 'artpulse-management'),
+                'artpulse_upgrade_review_invalid_type',
+                __('Invalid upgrade review type provided.', 'artpulse-management'),
                 ['status' => 400]
             );
         }
 
-        if ($post_id < 0) {
-            return new WP_Error(
-                'rest_invalid_post_id',
-                __('Invalid related post identifier.', 'artpulse-management'),
-                ['status' => 400]
-            );
+        $existing_id = UpgradeReviewRepository::find_pending($user_id, $type);
+        if (null !== $existing_id) {
+            $existing_post = get_post($existing_id);
+            if ($existing_post instanceof WP_Post) {
+                $data = self::prepare_review_summary($existing_post);
+
+                return new WP_REST_Response($data, 200);
+            }
         }
 
-        $normalized_type = self::map_request_type_to_repository($type);
-        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, $normalized_type);
-        $existing_is_pending = $existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing);
+        $note = $request->get_param('note');
+        $args = [];
+        if (is_string($note) && '' !== trim($note)) {
+            $args['post_content'] = sanitize_textarea_field($note);
+        }
 
-        $result = UpgradeReviewRepository::upsert_pending($user_id, $normalized_type, $post_id);
-        $request_id = (int) ($result['request_id'] ?? 0);
+        $result = UpgradeReviewRepository::create($user_id, $type, $args);
+        if ($result instanceof WP_Error) {
+            $status = (int) ($result->get_error_data()['status'] ?? 500);
 
-        if ($request_id <= 0) {
+            return new WP_Error($result->get_error_code(), $result->get_error_message(), ['status' => $status > 0 ? $status : 500]);
+        }
+
+        $created_post = get_post((int) $result);
+        if (!$created_post instanceof WP_Post) {
             return new WP_Error(
-                'rest_review_create_failed',
-                __('Unable to create the upgrade review request.', 'artpulse-management'),
+                'artpulse_upgrade_review_missing',
+                __('Unable to locate the created upgrade review request.', 'artpulse-management'),
                 ['status' => 500]
             );
         }
 
-        $post = get_post($request_id);
-        if (!$post instanceof WP_Post) {
-            return new WP_Error(
-                'rest_review_missing',
-                __('The upgrade review request could not be located.', 'artpulse-management'),
-                ['status' => 500]
-            );
-        }
+        $data = self::prepare_review_summary($created_post);
 
-        $status_code = $existing_is_pending ? 200 : 201;
-
-        return new WP_REST_Response(self::prepare_review_data($post), $status_code);
+        return new WP_REST_Response($data, 201);
     }
 
-    public static function list_reviews(WP_REST_Request $request)
+    public static function list_upgrade_reviews(WP_REST_Request $request)
     {
+        $mine = (string) $request->get_param('mine');
+        if ('1' !== $mine && 'true' !== strtolower($mine)) {
+            return new WP_Error(
+                'artpulse_upgrade_review_invalid_scope',
+                __('Only personal upgrade review listings are supported.', 'artpulse-management'),
+                ['status' => 400]
+            );
+        }
+
         $user_id = get_current_user_id();
         $reviews = UpgradeReviewRepository::get_all_for_user($user_id);
 
-        $data = array_map([self::class, 'prepare_review_data'], $reviews);
+        $data = array_map([self::class, 'prepare_review_details'], $reviews);
 
         return rest_ensure_response($data);
     }
 
-    public static function reopen_review(WP_REST_Request $request)
+    private static function prepare_review_summary(WP_Post $post): array
     {
-        $user_id = get_current_user_id();
-        $review_id = (int) $request->get_param('id');
+        $data = self::prepare_review_details($post);
 
-        if ($review_id <= 0) {
-            return new WP_Error(
-                'rest_invalid_review_id',
-                __('Invalid review identifier.', 'artpulse-management'),
-                ['status' => 400]
-            );
-        }
-
-        $review = get_post($review_id);
-        if (!$review instanceof WP_Post || UpgradeReviewRepository::POST_TYPE !== $review->post_type) {
-            return new WP_Error(
-                'rest_review_not_found',
-                __('Review request not found.', 'artpulse-management'),
-                ['status' => 404]
-            );
-        }
-
-        if (UpgradeReviewRepository::get_user_id($review) !== $user_id) {
-            return new WP_Error(
-                'rest_forbidden',
-                __('You do not have permission to modify this review request.', 'artpulse-management'),
-                ['status' => rest_authorization_required_code()]
-            );
-        }
-
-        if (UpgradeReviewRepository::STATUS_DENIED !== UpgradeReviewRepository::get_status($review)) {
-            return new WP_Error(
-                'rest_invalid_review_status',
-                __('Only denied review requests can be reopened.', 'artpulse-management'),
-                ['status' => 400]
-            );
-        }
-
-        UpgradeReviewRepository::set_status($review_id, UpgradeReviewRepository::STATUS_PENDING, '');
-
-        $updated = get_post($review_id);
-        if (!$updated instanceof WP_Post) {
-            return new WP_Error(
-                'rest_review_not_found',
-                __('Review request not found.', 'artpulse-management'),
-                ['status' => 404]
-            );
-        }
-
-        return rest_ensure_response(self::prepare_review_data($updated));
+        return [
+            'id'         => $data['id'],
+            'type'       => $data['type'],
+            'status'     => $data['status'],
+            'created_at' => $data['created_at'],
+        ];
     }
 
-    private static function prepare_review_data(WP_Post $post): array
+    private static function prepare_review_details(WP_Post $post): array
     {
-        $status = sanitize_key(UpgradeReviewRepository::get_status($post));
-        $type = UpgradeReviewRepository::get_type($post);
-        $response_type = 'organization';
+        $status      = UpgradeReviewRepository::get_status($post);
+        $repository_type = UpgradeReviewRepository::get_type($post);
+        $type        = self::map_repository_type_to_response($repository_type);
+        $reason      = UpgradeReviewRepository::get_reason($post);
 
-        if (UpgradeReviewRepository::TYPE_ARTIST_UPGRADE === $type) {
-            $response_type = 'artist';
-        }
-
-        $post_id = (int) UpgradeReviewRepository::get_post_id($post);
-        $reason = UpgradeReviewRepository::get_reason($post);
-        $created = '';
-
-        if (!empty($post->post_date_gmt) && '0000-00-00 00:00:00' !== $post->post_date_gmt) {
-            $created = mysql_to_rfc3339($post->post_date_gmt);
-        } elseif (!empty($post->post_date) && '0000-00-00 00:00:00' !== $post->post_date) {
-            $created = mysql_to_rfc3339(get_gmt_from_date($post->post_date));
-        }
-
-        $data = [
-            'id'     => (int) $post->ID,
-            'status' => $status,
-            'type'   => $response_type,
-            'postId' => $post_id > 0 ? $post_id : null,
+        return [
+            'id'         => (int) $post->ID,
+            'type'       => $type,
+            'status'     => $status,
+            'reason'     => $reason !== '' ? $reason : null,
+            'created_at' => self::format_datetime($post->post_date_gmt, $post->post_date),
+            'updated_at' => self::format_datetime($post->post_modified_gmt, $post->post_modified),
         ];
+    }
 
-        if ('' !== $created) {
-            $data['createdAt'] = $created;
+    private static function format_datetime(string $gmt, string $local): ?string
+    {
+        $source = $gmt;
+        if ('' === $source) {
+            $source = get_gmt_from_date($local);
         }
 
-        if (UpgradeReviewRepository::STATUS_DENIED === $status && '' !== $reason) {
-            $data['reason'] = sanitize_text_field($reason);
+        if (!$source) {
+            return null;
         }
 
-        return $data;
+        return mysql_to_rfc3339($source);
+    }
+
+    private static function normalise_request_type(string $type): ?string
+    {
+        return match (sanitize_key($type)) {
+            'artist' => UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
+            'org', 'organisation', 'organization' => UpgradeReviewRepository::TYPE_ORG_UPGRADE,
+            default => null,
+        };
+    }
+
+    private static function map_repository_type_to_response(string $type): string
+    {
+        return match ($type) {
+            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE => 'artist',
+            default => 'org',
+        };
     }
 
     private static function verify_nonce(WP_REST_Request $request): bool
@@ -281,14 +247,24 @@ final class UpgradeReviewsController
             'type' => [
                 'type'        => 'string',
                 'required'    => true,
-                'enum'        => ['artist', 'organization'],
+                'enum'        => ['artist', 'org'],
                 'description' => __('Type of upgrade review request.', 'artpulse-management'),
             ],
-            'postId' => [
-                'type'        => 'integer',
+            'note' => [
+                'type'        => 'string',
                 'required'    => false,
-                'minimum'     => 1,
-                'description' => __('Related post identifier.', 'artpulse-management'),
+                'description' => __('Optional note to accompany the upgrade request.', 'artpulse-management'),
+            ],
+        ] + self::get_common_args_schema();
+    }
+
+    private static function get_list_args_schema(): array
+    {
+        return [
+            'mine' => [
+                'type'        => 'string',
+                'required'    => false,
+                'description' => __('Set to 1 to list your upgrade requests.', 'artpulse-management'),
             ],
         ] + self::get_common_args_schema();
     }
@@ -307,24 +283,5 @@ final class UpgradeReviewsController
                 'description' => __('Nonce generated via wp_create_nonce("wp_rest").', 'artpulse-management'),
             ],
         ];
-    }
-
-    private static function get_reopen_args_schema(): array
-    {
-        return [
-            'id' => [
-                'type'        => 'integer',
-                'required'    => true,
-                'minimum'     => 1,
-                'description' => __('The review request identifier to reopen.', 'artpulse-management'),
-            ],
-        ] + self::get_common_args_schema();
-    }
-
-    private static function map_request_type_to_repository(string $type): string
-    {
-        return 'artist' === $type
-            ? UpgradeReviewRepository::TYPE_ARTIST_UPGRADE
-            : UpgradeReviewRepository::TYPE_ORG_UPGRADE;
     }
 }
