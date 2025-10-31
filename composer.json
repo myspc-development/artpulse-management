@@ -27,7 +27,8 @@
     "test:int": "vendor/bin/phpunit --testsuite integration",
     "lint": "vendor/bin/phpcs --standard=WordPress --extensions=php src templates tests",
     "format": "vendor/bin/phpcbf --standard=WordPress --extensions=php src templates tests",
-    "sniff": "vendor/bin/phpcs --standard=PHPCompatibilityWP --runtime-set testVersion 8.3 ."
+    "sniff": "vendor/bin/phpcs --standard=PHPCompatibilityWP --runtime-set testVersion 8.3 .",
+    "audit:upgrades": "php bin/audit-upgrades.php"
   },
   "config": {
     "optimize-autoloader": true,
