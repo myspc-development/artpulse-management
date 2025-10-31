@@ -2,16 +2,15 @@
 
 namespace ArtPulse\Frontend;
 
-use ArtPulse\Artists\ArtistDraftCreator;
 use ArtPulse\Core\ProfileState;
-use WP_Error;
+use ArtPulse\Core\UpgradeReviewHandlers;
+use ArtPulse\Core\UpgradeReviewRepository;
 use function add_shortcode;
 use function current_user_can;
 use function esc_html__;
 use function esc_url;
 use function get_current_user_id;
 use function is_user_logged_in;
-use function is_wp_error;
 use function preg_replace;
 use function sprintf;
 use function strpos;
@@ -61,12 +60,14 @@ final class ArtistBuilderShortcode
             return;
         }
 
-        $result = ArtistDraftCreator::create_for_user($user_id);
-        if ($result instanceof WP_Error || is_wp_error($result)) {
-            return;
-        }
+        $profile_id = UpgradeReviewHandlers::get_or_create_profile_post(
+            $user_id,
+            UpgradeReviewRepository::TYPE_ARTIST
+        );
 
-        ProfileState::purge_by_post_id((int) $result);
+        if ($profile_id > 0) {
+            ProfileState::purge_by_post_id($profile_id);
+        }
     }
 
     private static function maybe_append_redirect_cta(string $markup): string

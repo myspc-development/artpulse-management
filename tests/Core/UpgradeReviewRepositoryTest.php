@@ -15,6 +15,7 @@ use function remove_all_actions;
 use function unregister_post_type;
 use function update_post_meta;
 use function wp_insert_post;
+use function wp_strip_all_tags;
 
 class UpgradeReviewRepositoryTest extends WP_UnitTestCase
 {
@@ -55,7 +56,7 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
 
         $result = UpgradeReviewRepository::create(
             $user_id,
-            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
+            UpgradeReviewRepository::TYPE_ARTIST,
             [
                 'post_title'   => 'Custom Request Title',
                 'post_content' => '<p>Please approve me</p>',
@@ -74,7 +75,7 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
         $this->assertStringNotContainsString('<script>', (string) $post->post_excerpt);
 
         $this->assertSame(
-            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
+            UpgradeReviewRepository::TYPE_ARTIST,
             get_post_meta($request_id, UpgradeReviewRepository::META_TYPE, true)
         );
         $this->assertSame(
@@ -91,40 +92,44 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
         );
     }
 
-    public function test_create_returns_error_when_pending_exists(): void
+    public function test_cannot_create_duplicate_pending_request_per_type(): void
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
-        $first = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $first = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG);
         $this->assertIsInt($first);
 
-        $second = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $second = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG);
         $this->assertInstanceOf(WP_Error::class, $second);
-        $this->assertSame('artpulse_upgrade_review_pending', $second->get_error_code());
+        $this->assertSame('ap_duplicate_pending', $second->get_error_code());
+        $this->assertSame(409, $second->get_error_data()['status'] ?? null);
         $this->assertSame($first, $second->get_error_data()['request_id'] ?? null);
+
+        $all = UpgradeReviewRepository::get_all_for_user($user_id);
+        $this->assertCount(1, $all);
     }
 
     public function test_find_pending_returns_latest_pending_request(): void
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
-        $first = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $first = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG);
         $this->assertIsInt($first);
         $this->assertSame(
             $first,
-            UpgradeReviewRepository::find_pending($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE)
+            UpgradeReviewRepository::find_pending($user_id, UpgradeReviewRepository::TYPE_ORG)
         );
 
         UpgradeReviewRepository::set_status($first, UpgradeReviewRepository::STATUS_APPROVED);
 
-        $second = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $second = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG);
         $this->assertIsInt($second);
         $this->assertSame(
             $second,
-            UpgradeReviewRepository::find_pending($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE)
+            UpgradeReviewRepository::find_pending($user_id, UpgradeReviewRepository::TYPE_ORG)
         );
 
-        $this->assertNull(UpgradeReviewRepository::find_pending(0, UpgradeReviewRepository::TYPE_ORG_UPGRADE));
+        $this->assertNull(UpgradeReviewRepository::find_pending(0, UpgradeReviewRepository::TYPE_ORG));
         $this->assertNull(UpgradeReviewRepository::find_pending($user_id, 'unknown-type'));
     }
 
@@ -140,7 +145,7 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
 
         $this->assertIsInt($request_id);
         update_post_meta($request_id, UpgradeReviewRepository::META_STATUS, UpgradeReviewRepository::STATUS_PENDING);
-        update_post_meta($request_id, UpgradeReviewRepository::META_TYPE, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        update_post_meta($request_id, UpgradeReviewRepository::META_TYPE, UpgradeReviewRepository::TYPE_ARTIST);
         update_post_meta($request_id, UpgradeReviewRepository::META_USER, $user_id);
 
         $captured = [];
@@ -162,7 +167,7 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
             [
                 'id'          => $request_id,
                 'review_user' => $user_id,
-                'type'        => UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
+                'type'        => UpgradeReviewRepository::TYPE_ARTIST,
             ],
             $captured[0]
         );
@@ -180,14 +185,14 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
 
         $this->assertIsInt($request_id);
         update_post_meta($request_id, UpgradeReviewRepository::META_STATUS, UpgradeReviewRepository::STATUS_PENDING);
-        update_post_meta($request_id, UpgradeReviewRepository::META_TYPE, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        update_post_meta($request_id, UpgradeReviewRepository::META_TYPE, UpgradeReviewRepository::TYPE_ORG);
         update_post_meta($request_id, UpgradeReviewRepository::META_USER, $user_id);
 
         $captured = [];
         add_action(
             'artpulse/upgrade_review/denied',
-            static function (int $id, int $review_user, string $type) use (&$captured): void {
-                $captured[] = compact('id', 'review_user', 'type');
+            static function (int $id, int $review_user, string $type, string $reason) use (&$captured): void {
+                $captured[] = compact('id', 'review_user', 'type', 'reason');
             }
         );
 
@@ -208,7 +213,8 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
             [
                 'id'          => $request_id,
                 'review_user' => $user_id,
-                'type'        => UpgradeReviewRepository::TYPE_ORG_UPGRADE,
+                'type'        => UpgradeReviewRepository::TYPE_ORG,
+                'reason'      => wp_strip_all_tags($reason),
             ],
             $captured[0]
         );

@@ -8,6 +8,7 @@ use function sanitize_key;
 use function sanitize_text_field;
 use function sanitize_textarea_field;
 use function wp_kses_post;
+use function wp_update_post;
 
 /**
  * Storage helper for organization upgrade review requests.
@@ -21,7 +22,15 @@ class UpgradeReviewRepository
     public const META_USER = '_ap_review_user_id';
     public const META_POST = '_ap_review_post_id';
     public const META_REASON = '_ap_review_reason';
+    public const TYPE_ORG = 'org';
+    public const TYPE_ARTIST = 'artist';
+    /**
+     * @deprecated legacy alias – use TYPE_ORG instead.
+     */
     public const TYPE_ORG_UPGRADE = 'org_upgrade';
+    /**
+     * @deprecated legacy alias – use TYPE_ARTIST instead.
+     */
     public const TYPE_ARTIST_UPGRADE = 'artist_upgrade';
 
     public const STATUS_PENDING = 'pending';
@@ -39,6 +48,8 @@ class UpgradeReviewRepository
             return null;
         }
 
+        $type_values = self::expand_type_values($normalized_type);
+
         $posts = get_posts([
             'post_type'      => self::POST_TYPE,
             'post_status'    => ['private', 'draft', 'publish'],
@@ -53,8 +64,9 @@ class UpgradeReviewRepository
                     'compare' => '=',
                 ],
                 [
-                    'key'   => self::META_TYPE,
-                    'value' => $normalized_type,
+                    'key'     => self::META_TYPE,
+                    'value'   => $type_values,
+                    'compare' => 'IN',
                 ],
                 [
                     'key'   => self::META_STATUS,
@@ -95,14 +107,17 @@ class UpgradeReviewRepository
         $existing_request = self::find_pending($user_id, $normalized_type);
         if (null !== $existing_request) {
             return new WP_Error(
-                'artpulse_upgrade_review_pending',
+                'ap_duplicate_pending',
                 __('A pending upgrade review request already exists for this user and type.', 'artpulse-management'),
-                ['request_id' => $existing_request]
+                [
+                    'request_id' => $existing_request,
+                    'status'     => 409,
+                ]
             );
         }
 
-        $post_id = isset($args['post_id']) ? (int) $args['post_id'] : 0;
-        $sanitized_post_id = max(0, $post_id);
+        $post_id          = isset($args['post_id']) ? (int) $args['post_id'] : 0;
+        $sanitized_post_id = $post_id > 0 ? $post_id : 0;
 
         $default_title = sprintf(
             /* translators: %1$s review type, %2$d user ID. */
@@ -129,6 +144,13 @@ class UpgradeReviewRepository
             $post_data['post_excerpt'] = wp_kses_post((string) $args['post_excerpt']);
         }
 
+        if (isset($args['note']) && is_string($args['note'])) {
+            $sanitised_note = sanitize_textarea_field($args['note']);
+            if ('' !== $sanitised_note) {
+                $post_data['post_content'] = $sanitised_note;
+            }
+        }
+
         $request_id = wp_insert_post($post_data, true);
 
         if (is_wp_error($request_id)) {
@@ -153,7 +175,7 @@ class UpgradeReviewRepository
             return null;
         }
 
-        $result = self::upsert_pending($user_id, self::TYPE_ORG_UPGRADE, $post_id);
+        $result = self::upsert_pending($user_id, self::TYPE_ORG, $post_id);
 
         return $result['request_id'] ?? null;
     }
@@ -218,20 +240,27 @@ class UpgradeReviewRepository
     {
         $resolved_post = self::resolve_post($post);
         if (!$resolved_post) {
-            return self::TYPE_ORG_UPGRADE;
+            return self::TYPE_ORG;
         }
 
         $type = get_post_meta($resolved_post->ID, self::META_TYPE, true);
 
-        return is_string($type) && $type !== '' ? $type : self::TYPE_ORG_UPGRADE;
+        $normalised = is_string($type) && $type !== '' ? self::normalise_type($type) : null;
+
+        return $normalised ?? self::TYPE_ORG;
     }
 
     /**
      * Return the latest review request for a user and type.
      */
-    public static function get_latest_for_user(int $user_id, string $type = self::TYPE_ORG_UPGRADE): ?WP_Post
+    public static function get_latest_for_user(int $user_id, string $type = self::TYPE_ORG): ?WP_Post
     {
         if ($user_id <= 0) {
+            return null;
+        }
+
+        $normalized_type = self::normalise_type($type);
+        if (null === $normalized_type) {
             return null;
         }
 
@@ -248,8 +277,9 @@ class UpgradeReviewRepository
                     'compare' => '=',
                 ],
                 [
-                    'key'   => self::META_TYPE,
-                    'value' => $type,
+                    'key'     => self::META_TYPE,
+                    'value'   => self::expand_type_values($normalized_type),
+                    'compare' => 'IN',
                 ],
             ],
         ]);
@@ -370,7 +400,15 @@ class UpgradeReviewRepository
             return false;
         }
 
+        $current_status = self::get_status($post);
+        if (self::STATUS_APPROVED === $current_status) {
+            self::touch($post->ID);
+
+            return true;
+        }
+
         self::set_status($post->ID, self::STATUS_APPROVED);
+        self::touch($post->ID);
 
         do_action(
             'artpulse/upgrade_review/approved',
@@ -389,16 +427,38 @@ class UpgradeReviewRepository
             return false;
         }
 
-        self::set_status($post->ID, self::STATUS_DENIED, $reason);
+        $current_status = self::get_status($post);
+        $sanitised_reason = sanitize_textarea_field($reason);
 
-        do_action(
-            'artpulse/upgrade_review/denied',
-            $post->ID,
-            self::get_user_id($post),
-            self::get_type($post)
-        );
+        if (self::STATUS_DENIED !== $current_status || $sanitised_reason !== self::get_reason($post)) {
+            self::set_status($post->ID, self::STATUS_DENIED, $sanitised_reason);
+            self::touch($post->ID);
+
+            do_action(
+                'artpulse/upgrade_review/denied',
+                $post->ID,
+                self::get_user_id($post),
+                self::get_type($post),
+                $sanitised_reason
+            );
+
+            return true;
+        }
+
+        self::touch($post->ID);
 
         return true;
+    }
+
+    private static function touch(int $request_id): void
+    {
+        if ($request_id <= 0) {
+            return;
+        }
+
+        wp_update_post([
+            'ID' => $request_id,
+        ]);
     }
 
     private static function normalise_type(string $type): ?string
@@ -406,12 +466,37 @@ class UpgradeReviewRepository
         $key = sanitize_key($type);
 
         return match ($key) {
-            self::TYPE_ORG_UPGRADE => self::TYPE_ORG_UPGRADE,
-            self::TYPE_ARTIST_UPGRADE => self::TYPE_ARTIST_UPGRADE,
-            'organization', 'organisation', 'org', 'org_upgrade' => self::TYPE_ORG_UPGRADE,
-            'artist', 'artist_upgrade' => self::TYPE_ARTIST_UPGRADE,
+            self::TYPE_ORG,
+            self::TYPE_ORG_UPGRADE,
+            'organization',
+            'organisation',
+            'org',
+            'orgs',
+            'artpulse_org',
+            'artpulse_organization',
+            'ap_org',
+            'ap_org_manager' => self::TYPE_ORG,
+            self::TYPE_ARTIST,
+            self::TYPE_ARTIST_UPGRADE,
+            'artist',
+            'artists',
+            'ap_artist',
+            'artpulse_artist' => self::TYPE_ARTIST,
             default => null,
         };
+    }
+
+    private static function expand_type_values(string $type): array
+    {
+        $values = [$type];
+
+        if (self::TYPE_ORG === $type) {
+            $values[] = self::TYPE_ORG_UPGRADE;
+        } elseif (self::TYPE_ARTIST === $type) {
+            $values[] = self::TYPE_ARTIST_UPGRADE;
+        }
+
+        return array_unique($values);
     }
 
     private static function resolve_post(WP_Post|int $post): ?WP_Post
@@ -447,7 +532,7 @@ class UpgradeReviewRepository
     private static function normalise_title_fragment(string $type): string
     {
         return match ($type) {
-            self::TYPE_ARTIST_UPGRADE => __('Artist', 'artpulse-management'),
+            self::TYPE_ARTIST => __('Artist', 'artpulse-management'),
             default => __('Organisation', 'artpulse-management'),
         };
     }

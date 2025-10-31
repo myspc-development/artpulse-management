@@ -4,23 +4,18 @@ namespace ArtPulse\Frontend;
 
 use ArtPulse\Core\Capabilities;
 use ArtPulse\Core\ProfileState;
-use ArtPulse\Core\RoleUpgradeManager;
-use WP_Error;
-use WP_User;
+use ArtPulse\Core\UpgradeReviewHandlers;
+use ArtPulse\Core\UpgradeReviewRepository;
 use function add_shortcode;
 use function current_user_can;
 use function esc_html__;
 use function esc_url;
-use function __;
 use function get_current_user_id;
-use function get_user_by;
 use function is_user_logged_in;
-use function is_wp_error;
 use function preg_replace;
 use function sprintf;
 use function strpos;
 use function user_can;
-use function wp_insert_post;
 use function wp_unslash;
 use function wp_validate_redirect;
 
@@ -67,67 +62,18 @@ final class OrgBuilderShortcode
             return;
         }
 
-        $result = self::create_org_draft($user_id);
-        if ($result instanceof WP_Error || is_wp_error($result)) {
+        if (!user_can($user_id, Capabilities::CAP_MANAGE_PORTFOLIO)) {
             return;
         }
 
-        ProfileState::purge_by_post_id((int) $result);
-    }
+        $profile_id = UpgradeReviewHandlers::get_or_create_profile_post(
+            $user_id,
+            UpgradeReviewRepository::TYPE_ORG
+        );
 
-    /**
-     * @return int|WP_Error
-     */
-    private static function create_org_draft(int $user_id)
-    {
-        if ($user_id <= 0) {
-            return new WP_Error(
-                'ap_org_autocreate_invalid_user',
-                __('You must be logged in to create an organization profile.', 'artpulse-management')
-            );
+        if ($profile_id > 0) {
+            ProfileState::purge_by_post_id($profile_id);
         }
-
-        if (!user_can($user_id, Capabilities::CAP_MANAGE_PORTFOLIO)) {
-            return new WP_Error(
-                'ap_org_autocreate_forbidden',
-                __('You do not have permission to create an organization profile.', 'artpulse-management')
-            );
-        }
-
-        $user = get_user_by('id', $user_id);
-        if (!$user instanceof WP_User) {
-            return new WP_Error(
-                'ap_org_autocreate_invalid_user',
-                __('You must be logged in to create an organization profile.', 'artpulse-management')
-            );
-        }
-
-        $display = trim((string) ($user->display_name ?: $user->user_login));
-        $title   = '' === $display
-            ? __('New organization profile', 'artpulse-management')
-            : sprintf(
-                __('Organization profile for %s', 'artpulse-management'),
-                $display
-            );
-
-        $post_id = wp_insert_post([
-            'post_type'    => 'artpulse_org',
-            'post_status'  => 'draft',
-            'post_title'   => $title,
-            'post_content' => '',
-            'post_author'  => $user_id,
-            'meta_input'   => [
-                '_ap_owner_user' => $user_id,
-            ],
-        ], true);
-
-        if ($post_id instanceof WP_Error || is_wp_error($post_id)) {
-            return $post_id;
-        }
-
-        RoleUpgradeManager::attach_owner((int) $post_id, $user_id);
-
-        return (int) $post_id;
     }
 
     private static function maybe_append_redirect_cta(string $markup): string

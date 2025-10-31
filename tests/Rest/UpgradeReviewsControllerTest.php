@@ -59,6 +59,23 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
         $this->assertSame(403, $response->get_status());
     }
 
+    public function test_rest_post_upgrade_requires_nonce_and_auth(): void
+    {
+        wp_set_current_user(0);
+        $no_auth = new WP_REST_Request('POST', '/artpulse/v1/upgrade-reviews');
+        $response = rest_do_request($no_auth);
+        $this->assertSame(rest_authorization_required_code(), $response->get_status());
+
+        wp_set_current_user($this->user_id);
+        $missing_nonce = new WP_REST_Request('POST', '/artpulse/v1/upgrade-reviews');
+        $missing_nonce->set_body_params([
+            'type' => 'artist',
+        ]);
+
+        $second_response = rest_do_request($missing_nonce);
+        $this->assertSame(403, $second_response->get_status());
+    }
+
     public function test_create_review_requires_authentication(): void
     {
         wp_set_current_user(0);
@@ -95,18 +112,17 @@ class UpgradeReviewsControllerTest extends \WP_UnitTestCase
         $this->assertSame(UpgradeReviewRepository::STATUS_PENDING, UpgradeReviewRepository::get_status($review));
     }
 
-    public function test_create_review_returns_existing_pending_request(): void
+    public function test_create_review_rejects_duplicate_pending_request(): void
     {
         $first          = $this->make_create_request('org');
         $first_response = $this->dispatch($first);
         $this->assertSame(201, $first_response->get_status());
-        $first_id = $first_response->get_data()['id'];
 
         $second          = $this->make_create_request('org');
         $second_response = $this->dispatch($second);
 
-        $this->assertSame(200, $second_response->get_status());
-        $this->assertSame($first_id, $second_response->get_data()['id']);
+        $this->assertSame(409, $second_response->get_status());
+        $this->assertSame('ap_duplicate_pending', $second_response->get_error_code());
     }
 
     public function test_list_reviews_requires_valid_nonce(): void

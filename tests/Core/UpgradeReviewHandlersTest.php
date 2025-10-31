@@ -8,6 +8,7 @@ use ArtPulse\Core\UpgradeReviewHandlers;
 use ArtPulse\Core\UpgradeReviewRepository;
 use WP_Post;
 use WP_UnitTestCase;
+use function get_posts;
 use function wp_strip_all_tags;
 
 class UpgradeReviewHandlersTest extends WP_UnitTestCase
@@ -82,11 +83,11 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
-        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST);
         $request_id = $result['request_id'] ?? null;
         $this->assertNotNull($request_id);
 
-        UpgradeReviewHandlers::handle_approved($request_id, $user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        UpgradeReviewHandlers::onApproved($request_id, $user_id, UpgradeReviewRepository::TYPE_ARTIST);
 
         $user = get_user_by('id', $user_id);
         $this->assertNotFalse($user);
@@ -102,6 +103,45 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
         $this->assertSame($user_id, (int) $profile->post_author);
         $this->assertSame($user_id, (int) get_post_meta($profile_id, '_ap_owner_user', true));
         $this->assertSame($profile_id, UpgradeReviewRepository::get_post_id($request_id));
+    }
+
+    public function test_approve_adds_caps_and_creates_profile_idempotently(): void
+    {
+        $user_id = self::factory()->user->create(['role' => 'subscriber']);
+
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST);
+        $request_id = $result['request_id'] ?? null;
+        $this->assertNotNull($request_id);
+
+        UpgradeReviewHandlers::onApproved($request_id, $user_id, UpgradeReviewRepository::TYPE_ARTIST);
+
+        $profile_id = (int) get_user_meta($user_id, '_ap_artist_post_id', true);
+        $this->assertGreaterThan(0, $profile_id);
+
+        $posts_before = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => 'any',
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'author'         => $user_id,
+        ]);
+
+        UpgradeReviewHandlers::onApproved($request_id, $user_id, UpgradeReviewRepository::TYPE_ARTIST);
+
+        $posts_after = get_posts([
+            'post_type'      => 'artpulse_artist',
+            'post_status'    => 'any',
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'author'         => $user_id,
+        ]);
+
+        $this->assertCount(count($posts_before), $posts_after);
+        $this->assertSame($profile_id, (int) get_user_meta($user_id, '_ap_artist_post_id', true));
+
+        $user = get_user_by('id', $user_id);
+        $this->assertNotFalse($user);
+        $this->assertContains('ap_artist', $user->roles);
     }
 
     public function test_get_or_create_profile_post_reuses_existing_profile(): void
@@ -122,7 +162,7 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
 
         update_user_meta($user_id, '_ap_artist_post_id', $existing_id);
 
-        $resolved_id = UpgradeReviewHandlers::get_or_create_profile_post($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        $resolved_id = UpgradeReviewHandlers::get_or_create_profile_post($user_id, UpgradeReviewRepository::TYPE_ARTIST);
         $this->assertSame($existing_id, $resolved_id);
 
         $posts = get_posts([
@@ -138,11 +178,11 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
-        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ORG);
         $request_id = $result['request_id'] ?? null;
         $this->assertNotNull($request_id);
 
-        UpgradeReviewHandlers::handle_approved($request_id, $user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        UpgradeReviewHandlers::onApproved($request_id, $user_id, UpgradeReviewRepository::TYPE_ORG);
 
         $user = get_user_by('id', $user_id);
         $this->assertNotFalse($user);
@@ -164,10 +204,10 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
-        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST);
         $request_id = $result['request_id'] ?? 0;
 
-        UpgradeReviewHandlers::handle_approved($request_id, $user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
+        UpgradeReviewHandlers::onApproved($request_id, $user_id, UpgradeReviewRepository::TYPE_ARTIST);
 
         global $wpdb;
         $record = $wpdb->get_row(
@@ -181,25 +221,29 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
         $this->assertIsArray($record);
         $this->assertSame('upgrade_request_approved', $record['type']);
         $this->assertStringContainsString('approved', strtolower($record['content'] ?? ''));
+        $this->assertStringContainsString('Builder:', $record['content']);
+        $this->assertStringContainsString('Dashboard:', $record['content']);
 
         $this->assertNotEmpty($this->sent_mail);
         $mail = $this->sent_mail[0];
         $this->assertSame(get_userdata($user_id)->user_email, $mail['to']);
         $this->assertStringContainsString('approved', strtolower((string) $mail['subject']));
-        $this->assertStringContainsString('approved', strtolower(wp_strip_all_tags((string) $mail['message'])));
+        $message = strtolower(wp_strip_all_tags((string) $mail['message']));
+        $this->assertStringContainsString('approved', $message);
+        $this->assertStringContainsString('view your dashboard', $message);
     }
 
     public function test_handle_denied_creates_notification_with_reason(): void
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
-        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $result = UpgradeReviewRepository::upsert_pending($user_id, UpgradeReviewRepository::TYPE_ORG);
         $request_id = $result['request_id'] ?? 0;
 
         $reason = 'Profile incomplete';
         UpgradeReviewRepository::set_status($request_id, UpgradeReviewRepository::STATUS_DENIED, $reason);
 
-        UpgradeReviewHandlers::handle_denied($request_id, $user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        UpgradeReviewHandlers::onDenied($request_id, $user_id, UpgradeReviewRepository::TYPE_ORG, $reason);
 
         global $wpdb;
         $record = $wpdb->get_row(
@@ -214,6 +258,7 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
         $this->assertSame('upgrade_request_denied', $record['type']);
         $this->assertStringContainsString('not approved', strtolower($record['content'] ?? ''));
         $this->assertStringContainsString('Reason: ' . $reason, $record['content']);
+        $this->assertStringContainsString('Dashboard:', $record['content']);
 
         $this->assertNotEmpty($this->sent_mail);
         $mail = end($this->sent_mail);
