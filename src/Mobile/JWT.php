@@ -2,6 +2,8 @@
 
 namespace ArtPulse\Mobile;
 
+use ArtPulse\Core\AuditLogger;
+use ArtPulse\Mobile\RefreshTokens;
 use WP_Error;
 
 class JWT
@@ -83,8 +85,14 @@ class JWT
     {
         self::ensure_initialized();
 
+        $token = trim($token);
+        if ('' === $token) {
+            return new WP_Error('ap_missing_token', __('Missing authentication token.', 'artpulse-management'), ['status' => 401]);
+        }
+
         $parts = explode('.', $token);
         if (3 !== count($parts)) {
+            self::log_validation_failure('invalid_structure');
             return new WP_Error('ap_invalid_token', __('Invalid token structure.', 'artpulse-management'), ['status' => 401]);
         }
 
@@ -94,44 +102,55 @@ class JWT
         $signature = self::base64url_decode($signature64);
 
         if (!is_array($header) || !is_array($payload) || !is_string($signature)) {
+            self::log_validation_failure('malformed_token');
             return new WP_Error('ap_invalid_token', __('Malformed token.', 'artpulse-management'), ['status' => 401]);
         }
 
         if (empty($header['alg']) || self::ALG !== $header['alg']) {
+            self::log_validation_failure('unsupported_algorithm', ['alg' => $header['alg'] ?? null]);
             return new WP_Error('ap_invalid_token', __('Unsupported token algorithm.', 'artpulse-management'), ['status' => 401]);
         }
 
-        $kid  = isset($header['kid']) && is_string($header['kid']) ? $header['kid'] : '';
-        $keys = [];
+        $kid        = isset($header['kid']) && is_string($header['kid']) ? $header['kid'] : '';
+        $keys       = [];
+        $kid_lookup = $kid;
 
         if ($kid) {
             $key = self::get_key_by_kid($kid);
             if (null !== $key) {
                 $keys[$kid] = $key;
             } else {
-                return new WP_Error('ap_invalid_token', __('Token signature mismatch.', 'artpulse-management'), ['status' => 401]);
+                self::log_validation_failure('unknown_kid', ['kid' => $kid]);
+                return new WP_Error('ap_invalid_token', __('Invalid token.', 'artpulse-management'), ['status' => 401]);
             }
         } else {
             $keys = self::get_all_keys();
         }
 
-        foreach ($keys as $key) {
+        $now = time();
+
+        foreach ($keys as $candidate_kid => $key) {
             $expected = hash_hmac('sha256', $header64 . '.' . $payload64, $key['secret'], true);
-            if (hash_equals($expected, $signature)) {
-                $now = time();
-                if (!empty($payload['nbf']) && $payload['nbf'] > $now + self::CLOCK_SKEW_FUTURE) {
-                    return new WP_Error('ap_invalid_token', __('Token not yet valid.', 'artpulse-management'), ['status' => 401]);
-                }
-
-                if (!empty($payload['exp']) && $payload['exp'] < $now - self::CLOCK_SKEW_PAST) {
-                    return new WP_Error('auth_expired', __('Token expired.', 'artpulse-management'), ['status' => 401]);
-                }
-
-                return $payload;
+            if (!hash_equals($expected, $signature)) {
+                continue;
             }
+
+            if (!empty($payload['nbf']) && $payload['nbf'] > $now + self::CLOCK_SKEW_FUTURE) {
+                self::log_validation_failure('not_yet_valid', ['kid' => $candidate_kid]);
+                return new WP_Error('ap_token_not_ready', __('Token not yet valid.', 'artpulse-management'), ['status' => 401]);
+            }
+
+            if (!empty($payload['exp']) && $payload['exp'] < $now - self::CLOCK_SKEW_PAST) {
+                self::log_validation_failure('expired', ['kid' => $candidate_kid, 'exp' => (int) $payload['exp']]);
+                return new WP_Error('ap_token_expired', __('Token expired.', 'artpulse-management'), ['status' => 401]);
+            }
+
+            return $payload;
         }
 
-        return new WP_Error('ap_invalid_token', __('Token signature mismatch.', 'artpulse-management'), ['status' => 401]);
+        self::log_validation_failure('signature_mismatch', ['kid' => $kid_lookup ?: null]);
+
+        return new WP_Error('ap_invalid_token', __('Invalid token.', 'artpulse-management'), ['status' => 401]);
     }
 
     /**
@@ -186,6 +205,47 @@ class JWT
         return [
             'kid'        => $kid,
             'fingerprint'=> substr(hash('sha256', $secret), 0, 12),
+        ];
+    }
+
+    /**
+     * Rotate the signing key, optionally revoking all active mobile sessions.
+     *
+     * @return array{previous_kid:string|null,new_kid:string,new_fingerprint:string,revoked_sessions:int}
+     */
+    public static function rotate(bool $invalidate_sessions = false): array
+    {
+        self::ensure_initialized();
+
+        $state        = self::get_state();
+        $previous_kid = isset($state['current']) ? (string) $state['current'] : null;
+        $now          = time();
+
+        if ($previous_kid && isset($state['keys'][$previous_kid])) {
+            $state['keys'][$previous_kid]['status']     = 'retired';
+            $state['keys'][$previous_kid]['retired_at'] = $now;
+        }
+
+        $new_kid    = wp_generate_uuid4();
+        $new_secret = self::random_secret();
+
+        $state['keys'][$new_kid] = self::create_key_record($new_kid, $new_secret, true);
+        $state['current']        = $new_kid;
+
+        self::save_state($state);
+
+        $revoked_sessions = 0;
+        if ($invalidate_sessions) {
+            $revoked_sessions = RefreshTokens::revoke_all_users('jwt_rotation', 'admin_rotation');
+        }
+
+        self::log_rotation($previous_kid, $new_kid, $revoked_sessions, $invalidate_sessions);
+
+        return [
+            'previous_kid'     => $previous_kid,
+            'new_kid'          => $new_kid,
+            'new_fingerprint'  => substr(hash('sha256', $new_secret), 0, 12),
+            'revoked_sessions' => $revoked_sessions,
         ];
     }
 
@@ -412,7 +472,7 @@ class JWT
         ];
 
         self::$state = $state;
-        update_option(self::OPTION_KEYS, $state);
+        update_option(self::OPTION_KEYS, $state, false);
     }
 
     /**
@@ -484,5 +544,35 @@ class JWT
     {
         $decoded = base64_decode(strtr($data, '-_', '+/'), true);
         return false === $decoded ? false : $decoded;
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    private static function log_validation_failure(string $reason, array $context = []): void
+    {
+        $context = array_filter(
+            array_merge(
+                ['reason' => $reason],
+                $context
+            ),
+            static fn ($value) => null !== $value && '' !== $value
+        );
+
+        AuditLogger::info('mobile_jwt_validation_failed', $context);
+    }
+
+    private static function log_rotation(?string $previous_kid, string $new_kid, int $revoked_sessions, bool $invalidated_sessions): void
+    {
+        $context = [
+            'admin_id'             => get_current_user_id(),
+            'previous_kid'         => $previous_kid,
+            'new_kid'              => $new_kid,
+            'revoked_sessions'     => $revoked_sessions,
+            'invalidated_sessions' => $invalidated_sessions,
+            'grace_period'         => self::RETIREMENT_GRACE,
+        ];
+
+        AuditLogger::info('mobile_jwt_rotated', $context);
     }
 }
