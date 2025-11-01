@@ -28,6 +28,10 @@ class FavoritesManager {
             );
         }
 
+        if ($owner_id && class_exists('\\ArtPulse\\Rest\\ArtistDashboardController')) {
+            \ArtPulse\Rest\ArtistDashboardController::invalidate_overview_cache((int) $owner_id);
+        }
+
         if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
             \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
         }
@@ -45,6 +49,11 @@ class FavoritesManager {
 
         if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
             \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
+
+        $owner_id = self::get_owner_user_id($object_id, $object_type);
+        if ($owner_id && class_exists('\\ArtPulse\\Rest\\ArtistDashboardController')) {
+            \ArtPulse\Rest\ArtistDashboardController::invalidate_overview_cache((int) $owner_id);
         }
     }
 
