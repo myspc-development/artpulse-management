@@ -179,6 +179,13 @@ class RoleDashboards
             'i18n'      => [
                 'loading'  => __('Loading dashboard…', 'artpulse-management'),
                 'noAccess' => __('You do not have access to this dashboard.', 'artpulse-management'),
+                'dashboardError' => __('We could not load your dashboard. Please try again.', 'artpulse-management'),
+                'favorites'      => __('Favorites', 'artpulse-management'),
+                'follows'        => __('Follows', 'artpulse-management'),
+                'upcoming'       => __('Upcoming', 'artpulse-management'),
+                'notifications'  => __('Notifications', 'artpulse-management'),
+                'upcomingEvents' => __('Upcoming Events', 'artpulse-management'),
+                'noUpcoming'     => __('No upcoming events yet.', 'artpulse-management'),
             ],
         ];
     }

@@ -27,6 +27,10 @@ class FavoritesManager {
                 sprintf('Your %s "%s" was favorited!', $object_type, $title)
             );
         }
+
+        if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
+            \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
     }
 
     public static function remove_favorite($user_id, $object_id, $object_type) {
@@ -38,6 +42,10 @@ class FavoritesManager {
             'object_type' => $object_type,
         ]);
         // No notification on unfavorite (usually)
+
+        if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
+            \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
     }
 
     public static function is_favorited($user_id, $object_id, $object_type) {
