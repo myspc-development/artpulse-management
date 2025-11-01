@@ -2,9 +2,11 @@ jQuery(document).ready(function ($) {
     $('#ap-edit-event-form').on('submit', function (e) {
         e.preventDefault();
         const form = $(this);
+        const nonceField = form.find('input[name="nonce"]');
+        const nonceValue = nonceField.val() || (typeof APEditEvent !== 'undefined' ? APEditEvent.nonce : '');
         const data = {
             action: 'ap_save_event',
-            nonce: APEditEvent.nonce,
+            nonce: nonceValue,
             post_id: form.data('post-id'),
             title: form.find('[name=\"title\"]').val(),
             content: form.find('[name=\"content\"]').val(),
@@ -26,9 +28,13 @@ $('#ap-delete-event-btn').on('click', function (e) {
     e.preventDefault();
     if (!confirm('Are you sure you want to delete this event?')) return;
 
+    const form = $('#ap-edit-event-form');
+    const nonceField = form.find('input[name="nonce"]');
+    const nonceValue = nonceField.val() || (typeof APEditEvent !== 'undefined' ? APEditEvent.nonce : '');
+
     $.post(APEditEvent.ajax_url, {
         action: 'ap_delete_event',
-        nonce: APEditEvent.nonce,
+        nonce: nonceValue,
         post_id: $(this).data('post-id')
     }, function (res) {
         if (res.success) {

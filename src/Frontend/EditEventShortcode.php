@@ -2,6 +2,12 @@
 
 namespace ArtPulse\Frontend;
 
+use function absint;
+use function sanitize_text_field;
+use function sanitize_textarea_field;
+use function wp_nonce_field;
+use function wp_unslash;
+
 class EditEventShortcode {
 
     public static function register() {
@@ -37,7 +43,8 @@ class EditEventShortcode {
 
         ob_start();
         ?>
-        <form id="ap-edit-event-form" data-post-id="<?php echo $post_id; ?>">
+        <form id="ap-edit-event-form" data-post-id="<?php echo $post_id; ?>" method="post">
+            <?php wp_nonce_field('ap_edit_event_nonce', 'nonce'); ?>
             <p>
                 <label>Title<br>
                     <input type="text" name="title" value="<?php echo $title; ?>" required>
@@ -95,18 +102,26 @@ class EditEventShortcode {
     }
 
     public static function handle_ajax() {
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => 'Permission denied.']);
+        }
+
         check_ajax_referer('ap_edit_event_nonce', 'nonce');
 
-        $post_id = intval($_POST['post_id']);
+        $post_id = isset($_POST['post_id']) ? absint(wp_unslash($_POST['post_id'])) : 0;
+        if ($post_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid event.']);
+        }
+
         if (!current_user_can('edit_post', $post_id)) {
             wp_send_json_error(['message' => 'Permission denied.']);
         }
 
-        $title = sanitize_text_field($_POST['title']);
-        $content = sanitize_textarea_field($_POST['content']);
-        $date = sanitize_text_field($_POST['date']);
-        $location = sanitize_text_field($_POST['location']);
-        $event_type = intval($_POST['event_type']);
+        $title = isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '';
+        $content = isset($_POST['content']) ? sanitize_textarea_field(wp_unslash($_POST['content'])) : '';
+        $date = isset($_POST['date']) ? sanitize_text_field(wp_unslash($_POST['date'])) : '';
+        $location = isset($_POST['location']) ? sanitize_text_field(wp_unslash($_POST['location'])) : '';
+        $event_type = isset($_POST['event_type']) ? absint(wp_unslash($_POST['event_type'])) : 0;
 
         if (!$title || !$content) {
             wp_send_json_error(['message' => 'Title and content are required.']);
@@ -127,15 +142,23 @@ class EditEventShortcode {
 
         wp_send_json_success(['message' => 'Event updated.']);
     }
-    
+
     public static function handle_ajax_delete() {
-        if (!current_user_can('delete_post', $_POST['post_id'])) {
+        if (!is_user_logged_in()) {
             wp_send_json_error(['message' => 'Permission denied.']);
         }
 
         check_ajax_referer('ap_edit_event_nonce', 'nonce');
 
-        $post_id = intval($_POST['post_id']);
+        $post_id = isset($_POST['post_id']) ? absint(wp_unslash($_POST['post_id'])) : 0;
+        if ($post_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid event.']);
+        }
+
+        if (!current_user_can('delete_post', $post_id)) {
+            wp_send_json_error(['message' => 'Permission denied.']);
+        }
+
         if (get_post_type($post_id) !== 'artpulse_event') {
             wp_send_json_error(['message' => 'Invalid event.']);
         }
