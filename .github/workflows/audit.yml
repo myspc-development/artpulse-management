@@ -1,0 +1,75 @@
+name: Audit and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  audit:
+    name: Audit and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run Composer upgrade audit
+        run: composer audit:upgrades
+
+      - name: Upload upgrade audit report
+        if: ${{ always() && hashFiles('reports/upgrade_audit.md') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: upgrade_audit
+          path: reports/upgrade_audit.md
+
+      - name: Run test suite
+        if: ${{ hashFiles('phpunit.xml', 'phpunit.xml.dist') != '' }}
+        run: composer test
+
+      - name: Comment audit summary on PR
+        if: ${{ always() && github.event_name == 'pull_request' && hashFiles('reports/upgrade_audit.md') != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'reports/upgrade_audit.md';
+            const maxLines = 100;
+            const content = fs.readFileSync(path, 'utf8').trim();
+            const lines = content.split(/\r?\n/);
+            const displayedLines = lines.slice(0, maxLines);
+            let body = '## Upgrade Audit Summary\n\n';
+            body += displayedLines.join('\n');
+            if (lines.length > maxLines) {
+              const { owner, repo } = context.repo;
+              const artifactUrl = `https://github.com/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+              body += `\n\n_Report truncated to first ${maxLines} lines. [View the full report artifact](${artifactUrl})._`;
+            }
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body,
+            });
