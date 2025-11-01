@@ -34,6 +34,13 @@
     upgradeDenied: STRINGS.upgradeDenied || STRINGS.upgradeDeniedBadge || 'Denied',
     upgradeUnavailable: STRINGS.upgradeUnavailable || 'Unavailable',
     upgradeError: STRINGS.upgradeError || 'Unable to submit upgrade request.',
+    upgradeArtistLabel: STRINGS.upgradeArtistLabel || 'Artist',
+    upgradeOrgLabel: STRINGS.upgradeOrgLabel || 'Organization',
+    upgradePendingAnnouncement:
+      STRINGS.upgradePendingAnnouncement || 'Upgrade request submitted; pending review.',
+    upgradeSubmitting: STRINGS.upgradeSubmitting || 'Submitting upgrade request…',
+    upgradeErrorAnnouncement:
+      STRINGS.upgradeErrorAnnouncement || 'Unable to submit upgrade request. Please try again.',
   };
 
   const PROFILE_DESCRIPTIONS = {
@@ -588,11 +595,20 @@
     chip.className = 'ap-dashboard-badge';
     chip.hidden = true;
 
+    const statusRegion = createUpgradeStatusRegion();
+    statusRegion.insertBefore(chip, statusRegion.firstChild || null);
+
     const status = determineUpgradeStatus(state, type, upgradeData);
     const canRequest = !upgradeData || !upgradeData.can_request || upgradeData.can_request[type] !== false;
+    const displayStatus = status || (canRequest ? '' : 'unavailable');
     const disabled = !canRequest || Boolean(status);
 
-    applyUpgradeStatusChip(chip, status || (canRequest ? '' : 'unavailable'));
+    applyUpgradeStatusChip(chip, displayStatus);
+    setUpgradeButtonLabel(button, type, displayStatus, canRequest);
+    updateUpgradeStatusRegion(statusRegion, formatUpgradeStatusMessage(type, displayStatus), {
+      state: displayStatus,
+      hasStatus: Boolean(displayStatus),
+    });
 
     if (disabled) {
       disableButton(button);
@@ -606,13 +622,14 @@
         chip,
         canRequest,
         previousStatus: status || '',
+        statusRegion,
       });
     });
 
     wrapper.appendChild(button);
-    wrapper.appendChild(chip);
+    wrapper.appendChild(statusRegion);
 
-    return { wrapper, button, chip };
+    return { wrapper, button, chip, statusRegion };
   }
 
   function determineUpgradeStatus(state, type, upgradeData) {
@@ -655,32 +672,8 @@
       return;
     }
 
-    let label = status;
-    let variant = 'muted';
-
-    switch (status) {
-      case 'pending':
-        label = TEXT.upgradePending;
-        variant = 'info';
-        break;
-      case 'approved':
-        label = TEXT.upgradeApproved;
-        variant = 'success';
-        break;
-      case 'denied':
-      case 'rejected':
-        label = TEXT.upgradeDenied;
-        variant = 'danger';
-        break;
-      case 'unavailable':
-        label = TEXT.upgradeUnavailable;
-        variant = 'muted';
-        break;
-      default:
-        label = status;
-        variant = 'muted';
-        break;
-    }
+    const label = getUpgradeStatusLabel(status) || status;
+    const variant = getUpgradeStatusVariant(status);
 
     chip.classList.add(`ap-dashboard-badge--${variant}`);
     chip.textContent = label;
@@ -735,24 +728,41 @@
     state.optimisticUpgrades = state.optimisticUpgrades || {};
     state.optimisticUpgrades[context.type] = 'pending';
     applyUpgradeStatusChip(context.chip, 'pending');
+    setUpgradeButtonLabel(context.button, context.type, 'pending', context.canRequest);
+    updateUpgradeStatusRegion(context.statusRegion, TEXT.upgradeSubmitting, {
+      state: 'loading',
+      hasStatus: true,
+    });
 
     postUpgradeReview(context.type)
       .then(() => {
         delete state.optimisticUpgrades[context.type];
+        updateUpgradeStatusRegion(context.statusRegion, TEXT.upgradePendingAnnouncement, {
+          state: 'pending',
+          hasStatus: true,
+        });
         loadUserDashboard(state, { initial: false });
       })
       .catch((error) => {
         delete state.optimisticUpgrades[context.type];
+        const fallbackStatus = context.previousStatus || (context.canRequest ? '' : 'unavailable');
         applyUpgradeStatusChip(
           context.chip,
-          context.previousStatus || (context.canRequest ? '' : 'unavailable')
+          fallbackStatus
         );
+        setUpgradeButtonLabel(context.button, context.type, fallbackStatus, context.canRequest);
 
         if (context.canRequest && !context.previousStatus) {
           enableButton(context.button);
         }
 
-        showUserDashboardNotice(state, 'warning', extractErrorMessage(error) || TEXT.upgradeError);
+        const errorMessage = resolveUpgradeErrorMessage(error);
+        updateUpgradeStatusRegion(context.statusRegion, errorMessage || TEXT.upgradeErrorAnnouncement, {
+          state: 'error',
+          hasStatus: Boolean(fallbackStatus),
+          variant: 'error',
+        });
+        showUserDashboardNotice(state, 'warning', errorMessage || TEXT.upgradeError);
       })
       .finally(() => {
         delete context.button.dataset.apBusy;
@@ -812,6 +822,160 @@
     state.notice.className = 'ap-dashboard-notice';
     state.notice.innerHTML = '';
     state.notice.hidden = true;
+  }
+
+  function createUpgradeStatusRegion() {
+    const region = document.createElement('div');
+    region.className = 'ap-user-dashboard__upgrade-status';
+    region.setAttribute('role', 'status');
+    region.setAttribute('aria-live', 'polite');
+    region.setAttribute('aria-atomic', 'true');
+    region.hidden = true;
+
+    const message = document.createElement('span');
+    message.className = 'ap-user-dashboard__upgrade-status-message';
+    message.setAttribute('data-ap-upgrade-status-text', '1');
+    region.appendChild(message);
+
+    return region;
+  }
+
+  function updateUpgradeStatusRegion(region, message, options = {}) {
+    if (!region) {
+      return;
+    }
+
+    const textNode = region.querySelector('[data-ap-upgrade-status-text]');
+    const text = typeof message === 'string' ? message.trim() : '';
+    const state = options.state || '';
+    const hasStatus = Boolean(options.hasStatus);
+
+    if (textNode) {
+      textNode.textContent = text;
+      textNode.hidden = text === '';
+    }
+
+    if (text) {
+      region.hidden = false;
+    } else if (hasStatus) {
+      region.hidden = false;
+    } else {
+      region.hidden = true;
+    }
+
+    if (region.dataset) {
+      if (state) {
+        region.dataset.apUpgradeStatus = state;
+      } else {
+        delete region.dataset.apUpgradeStatus;
+      }
+    }
+
+    region.classList.toggle('is-error', options.variant === 'error');
+  }
+
+  function getUpgradeTypeName(type) {
+    if (type === 'artist') {
+      return TEXT.upgradeArtistLabel;
+    }
+
+    if (type === 'org' || type === 'organization') {
+      return TEXT.upgradeOrgLabel;
+    }
+
+    const normalized = String(type || '').trim();
+    if (!normalized) {
+      return TEXT.upgradeArtistLabel;
+    }
+
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  }
+
+  function getUpgradeStatusLabel(status) {
+    switch (status) {
+      case 'pending':
+        return TEXT.upgradePending;
+      case 'approved':
+        return TEXT.upgradeApproved;
+      case 'denied':
+      case 'rejected':
+        return TEXT.upgradeDenied;
+      case 'unavailable':
+        return TEXT.upgradeUnavailable;
+      default:
+        return '';
+    }
+  }
+
+  function getUpgradeStatusVariant(status) {
+    switch (status) {
+      case 'pending':
+        return 'info';
+      case 'approved':
+        return 'success';
+      case 'denied':
+      case 'rejected':
+        return 'danger';
+      case 'unavailable':
+      default:
+        return 'muted';
+    }
+  }
+
+  function formatUpgradeStatusMessage(type, status) {
+    const label = getUpgradeStatusLabel(status);
+    if (!label) {
+      return '';
+    }
+
+    const typeName = getUpgradeTypeName(type);
+    return `${typeName} upgrade status: ${label}.`;
+  }
+
+  function buildUpgradeButtonLabel(type, status, canRequest) {
+    const typeName = getUpgradeTypeName(type);
+    switch (status) {
+      case 'pending':
+        return `${typeName} upgrade request pending review.`;
+      case 'approved':
+        return `${typeName} upgrade approved.`;
+      case 'denied':
+      case 'rejected':
+        return `${typeName} upgrade denied.`;
+      case 'unavailable':
+        return `${typeName} upgrade unavailable.`;
+      default:
+        return canRequest ? `Request ${typeName} upgrade` : `${typeName} upgrade unavailable.`;
+    }
+  }
+
+  function setUpgradeButtonLabel(button, type, status, canRequest) {
+    if (!button) {
+      return;
+    }
+
+    const label = buildUpgradeButtonLabel(type, status, canRequest);
+    button.setAttribute('aria-label', label);
+  }
+
+  function resolveUpgradeErrorMessage(error) {
+    if (!error) {
+      return TEXT.upgradeErrorAnnouncement;
+    }
+
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    if (error && error.data && error.data.message) {
+      return error.data.message;
+    }
+
+    if (error && error.message) {
+      return error.message;
+    }
+
+    return TEXT.upgradeErrorAnnouncement;
   }
 
   function clearContainer(node) {
