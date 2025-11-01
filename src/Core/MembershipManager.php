@@ -34,8 +34,8 @@ class MembershipManager
         // Optional: send welcome email
         wp_mail(
             $user->user_email,
-            __('Welcome to ArtPulse – Free Membership','artpulse'),
-            __('Thanks for joining! You now have Free membership.','artpulse')
+            __('Welcome to ArtPulse – Free Membership', 'artpulse-management'),
+            __('Thanks for joining! You now have Free membership.', 'artpulse-management')
         );
     }
 
@@ -130,8 +130,8 @@ class MembershipManager
                     // notify user
                     wp_mail(
                         $usr->user_email,
-                        __('Your ArtPulse membership has been cancelled','artpulse'),
-                        __('Your subscription has ended or payment failed. You are now on Free membership.','artpulse')
+                        __('Your ArtPulse membership has been cancelled', 'artpulse-management'),
+                        __('Your subscription has ended or payment failed. You are now on Free membership.', 'artpulse-management')
                     );
                 }
                 break;
@@ -166,8 +166,8 @@ class MembershipManager
             // Optionally notify
             wp_mail(
                 $user->user_email,
-                __('Your ArtPulse membership has expired','artpulse'),
-                __('Your Pro membership has expired and you have been moved to Free level.','artpulse')
+                __('Your ArtPulse membership has expired', 'artpulse-management'),
+                __('Your Pro membership has expired and you have been moved to Free level.', 'artpulse-management')
             );
         }
     }

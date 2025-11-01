@@ -16,8 +16,8 @@ class AdminColumnsArtist
         foreach ( $columns as $key => $label ) {
             if ( 'cb' === $key ) {
                 $new['cb']           = $label;
-                $new['portrait']     = __( 'Portrait', 'artpulse' );
-                $new['artist_name']  = __( 'Name',     'artpulse' );
+                $new['portrait']     = __( 'Portrait', 'artpulse-management' );
+                $new['artist_name']  = __( 'Name', 'artpulse-management' );
             }
             $new[ $key ] = $label;
         }

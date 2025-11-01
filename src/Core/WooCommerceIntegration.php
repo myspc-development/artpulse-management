@@ -94,8 +94,8 @@ class WooCommerceIntegration
 
         wp_mail(
             $user->user_email,
-            __('Your ArtPulse membership has been cancelled','artpulse'),
-            __('We detected a refund or cancellation. You have been moved to Free membership.','artpulse')
+            __('Your ArtPulse membership has been cancelled', 'artpulse-management'),
+            __('We detected a refund or cancellation. You have been moved to Free membership.', 'artpulse-management')
         );
     }
 
@@ -120,9 +120,9 @@ class WooCommerceIntegration
 
         wp_mail(
             $user->user_email,
-            sprintf( __('Your ArtPulse membership is now %s','artpulse'), $level ),
+            sprintf( __('Your ArtPulse membership is now %s', 'artpulse-management'), $level ),
             sprintf(
-                __('Thank you! Your membership level is set to %s and expires on %s.','artpulse'),
+                __('Thank you! Your membership level is set to %s and expires on %s.', 'artpulse-management'),
                 $level,
                 date_i18n( get_option('date_format'), $expiry )
             )

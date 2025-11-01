@@ -14,9 +14,9 @@ class MembershipNotifier
         if (!$user) return;
 
         $to = $user->user_email;
-        $subject = __('Welcome to Pro Membership!', 'artpulse');
+        $subject = __('Welcome to Pro Membership!', 'artpulse-management');
         $message = sprintf(
-            __("Hi %s,\n\nYour ArtPulse membership has been upgraded to Pro. Enjoy your new features!\n\nThanks,\nArtPulse Team", 'artpulse'),
+            __("Hi %s,\n\nYour ArtPulse membership has been upgraded to Pro. Enjoy your new features!\n\nThanks,\nArtPulse Team", 'artpulse-management'),
             $user->display_name
         );
 
@@ -26,9 +26,9 @@ class MembershipNotifier
     public static function sendExpiryWarningEmail($user)
     {
         $to = $user->user_email;
-        $subject = __('Your ArtPulse membership is expiring soon', 'artpulse');
+        $subject = __('Your ArtPulse membership is expiring soon', 'artpulse-management');
         $message = sprintf(
-            __("Hi %s,\n\nJust a heads up that your Pro membership will expire on %s.\nPlease renew to avoid interruption.\n\nThanks,\nArtPulse", 'artpulse'),
+            __("Hi %s,\n\nJust a heads up that your Pro membership will expire on %s.\nPlease renew to avoid interruption.\n\nThanks,\nArtPulse", 'artpulse-management'),
             $user->display_name,
             get_user_meta($user->ID, 'ap_membership_expires', true)
         );

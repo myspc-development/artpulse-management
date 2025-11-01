@@ -19,7 +19,7 @@ class PurchaseShortcode {
             return '';
         }
 
-        $label = sprintf(__('Purchase %s membership', 'artpulse'), $level);
+        $label = sprintf(__('Purchase %s membership', 'artpulse-management'), $level);
 
         return sprintf(
             '<a href="%s" class="%s">%s</a>',

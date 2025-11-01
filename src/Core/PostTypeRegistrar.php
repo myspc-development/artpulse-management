@@ -31,32 +31,32 @@ class PostTypeRegistrar
         // Register CPTs
         $post_types = [
             self::EVENT_POST_TYPE   => [
-                'label'           => __('Events', 'artpulse'),
+                'label'           => __('Events', 'artpulse-management'),
                 'rewrite'         => ['slug' => 'events'],
                 'taxonomies'      => self::EVENT_TAXONOMIES,
             ],
             'artpulse_artist'  => [
-                'label'           => __('Artists', 'artpulse'),
+                'label'           => __('Artists', 'artpulse-management'),
                 'rewrite'         => ['slug' => 'artists'],
                 'supports'        => ['title', 'editor', 'thumbnail', 'custom-fields'], // Added custom-fields support
             ],
             'artpulse_artwork' => [
-                'label'           => __('Artworks', 'artpulse'),
+                'label'           => __('Artworks', 'artpulse-management'),
                 'rewrite'         => ['slug' => 'artworks'],
                 'supports'        => ['title', 'editor', 'thumbnail', 'custom-fields'], // Added custom-fields support
             ],
             'artpulse_org'     => [
-                'label'           => __('Organizations', 'artpulse'),
+                'label'           => __('Organizations', 'artpulse-management'),
                 'rewrite'         => ['slug' => 'organizations'],
             ],
             'ap_link_request' => [
-                'label'    => __('Link Requests', 'artpulse'),
+                'label'    => __('Link Requests', 'artpulse-management'),
                 'rewrite'  => ['slug' => 'link-requests'],
                 'supports' => ['title'],
                 'public'   => false,
             ],
             UpgradeReviewRepository::POST_TYPE => [
-                'label'       => __('Upgrade Reviews', 'artpulse'),
+                'label'       => __('Upgrade Reviews', 'artpulse-management'),
                 'rewrite'     => false,
                 'supports'    => ['title'],
                 'public'      => false,
@@ -90,7 +90,7 @@ class PostTypeRegistrar
             self::EVENT_TAXONOMY,
             self::EVENT_POST_TYPE,
             [
-                'label'        => __('Event Types', 'artpulse'),
+                'label'        => __('Event Types', 'artpulse-management'),
                 'public'       => true,
                 'show_in_rest' => true,
                 'hierarchical' => true,
@@ -102,7 +102,7 @@ class PostTypeRegistrar
             'artpulse_medium',
             'artpulse_artwork',
             [
-                'label'        => __('Medium', 'artpulse'),
+                'label'        => __('Medium', 'artpulse-management'),
                 'public'       => true,
                 'show_in_rest' => true,
                 'hierarchical' => true,

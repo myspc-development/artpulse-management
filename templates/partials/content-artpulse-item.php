@@ -45,10 +45,10 @@ $excerpt   = get_the_excerpt( $post->ID );
         $is_following = $user_id && class_exists( '\\ArtPulse\\Community\\FollowManager' )
             ? \ArtPulse\Community\FollowManager::is_following( $user_id, $object_id, $object_type )
             : false;
-        $favorite_label_on  = esc_html__( 'Unfavorite', 'artpulse' );
-        $favorite_label_off = esc_html__( 'Favorite', 'artpulse' );
-        $follow_label_on    = esc_html__( 'Unfollow', 'artpulse' );
-        $follow_label_off   = esc_html__( 'Follow', 'artpulse' );
+        $favorite_label_on  = esc_html__( 'Unfavorite', 'artpulse-management' );
+        $favorite_label_off = esc_html__( 'Favorite', 'artpulse-management' );
+        $follow_label_on    = esc_html__( 'Unfollow', 'artpulse-management' );
+        $follow_label_off   = esc_html__( 'Follow', 'artpulse-management' );
         ?>
         <div class="ap-social-actions">
             <button

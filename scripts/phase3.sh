@@ -26,8 +26,8 @@ class SettingsPage
     public static function addMenu()
     {
         add_options_page(
-            __('ArtPulse Settings','artpulse'),
-            __('ArtPulse','artpulse'),
+            __('ArtPulse Settings', 'artpulse-management'),
+            __('ArtPulse', 'artpulse-management'),
             'manage_options',
             'artpulse-settings',
             [self::class, 'render']
@@ -40,7 +40,7 @@ class SettingsPage
 
         add_settings_section(
             'ap_membership_section',
-            __('Membership Settings','artpulse'),
+            __('Membership Settings', 'artpulse-management'),
             '__return_false',
             'artpulse-settings'
         );
@@ -61,7 +61,7 @@ class SettingsPage
         foreach ($fields as $name => $label) {
             add_settings_field(
                 $name,
-                __($label,'artpulse'),
+                __($label, 'artpulse-management'),
                 [self::class, 'renderField'],
                 'artpulse-settings',
                 'ap_membership_section',
@@ -94,7 +94,7 @@ class SettingsPage
 
     public static function render()
     {
-        echo '<div class="wrap"><h1>'.__('ArtPulse Settings','artpulse').'</h1>';
+        echo '<div class="wrap"><h1>'.__('ArtPulse Settings', 'artpulse-management').'</h1>';
         echo '<form method="post" action="options.php">';
         settings_fields('artpulse_settings_group');
         do_settings_sections('artpulse-settings');

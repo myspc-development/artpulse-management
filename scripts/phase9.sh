@@ -47,7 +47,7 @@ class DocumentationManager
             $content = '<div class="ap-doc">' . $parsedown->text($md) . '</div>';
             $screen->add_help_tab([
                 'id'      => 'ap-admin-help',
-                'title'   => __('Admin Help', 'artpulse'),
+                'title'   => __('Admin Help', 'artpulse-management'),
                 'content' => $content,
             ]);
         }
@@ -66,7 +66,7 @@ class DocumentationManager
             $content = '<div class="ap-doc">' . $parsedown->text($md) . '</div>';
             $screen->add_help_tab([
                 'id'      => 'ap-member-help',
-                'title'   => __('Member Help', 'artpulse'),
+                'title'   => __('Member Help', 'artpulse-management'),
                 'content' => $content,
             ]);
         }

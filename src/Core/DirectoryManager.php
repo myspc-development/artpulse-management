@@ -102,12 +102,12 @@ class DirectoryManager {
         <div class="ap-directory" data-type="<?php echo esc_attr($atts['type']); ?>" data-limit="<?php echo esc_attr($atts['limit']); ?>">
             <div class="ap-directory-filters">
                 <?php if ($atts['type'] === 'event'): ?>
-                    <label><?php _e('Filter by Event Type','artpulse'); ?>:</label>
+                    <label><?php _e('Filter by Event Type', 'artpulse-management'); ?>:</label>
                     <select class="ap-filter-event-type"></select>
                 <?php endif; ?>
-                <label><?php _e('Limit','artpulse'); ?>:</label>
+                <label><?php _e('Limit', 'artpulse-management'); ?>:</label>
                 <input type="number" class="ap-filter-limit" value="<?php echo esc_attr($atts['limit']); ?>" />
-                <button class="ap-filter-apply"><?php _e('Apply','artpulse'); ?></button>
+                <button class="ap-filter-apply"><?php _e('Apply', 'artpulse-management'); ?></button>
             </div>
             <div class="ap-directory-results" role="status" aria-live="polite"></div>
         </div>

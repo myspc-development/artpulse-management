@@ -66,10 +66,10 @@ get_header(); ?>
             $is_following = $user_id && class_exists('\\ArtPulse\\Community\\FollowManager')
               ? \ArtPulse\Community\FollowManager::is_following($user_id, $object_id, $object_type)
               : false;
-            $favorite_label_on  = esc_html__('Unfavorite', 'artpulse');
-            $favorite_label_off = esc_html__('Favorite', 'artpulse');
-            $follow_label_on    = esc_html__('Unfollow', 'artpulse');
-            $follow_label_off   = esc_html__('Follow', 'artpulse');
+            $favorite_label_on  = esc_html__('Unfavorite', 'artpulse-management');
+            $favorite_label_off = esc_html__('Favorite', 'artpulse-management');
+            $follow_label_on    = esc_html__('Unfollow', 'artpulse-management');
+            $follow_label_off   = esc_html__('Follow', 'artpulse-management');
             ?>
             <div class="ap-social-actions">
               <button
@@ -111,10 +111,10 @@ get_header(); ?>
             if ( $date || $location ) {
               echo '<ul class="portfolio-meta">';
               if ( $date ) {
-                echo '<li><strong>'. esc_html__( 'Date:', 'artpulse' ) .'</strong> '. esc_html( $date ) .'</li>';
+                echo '<li><strong>'. esc_html__( 'Date:', 'artpulse-management' ) .'</strong> '. esc_html( $date ) .'</li>';
               }
               if ( $location ) {
-                echo '<li><strong>'. esc_html__( 'Location:', 'artpulse' ) .'</strong> '. esc_html( $location ) .'</li>';
+                echo '<li><strong>'. esc_html__( 'Location:', 'artpulse-management' ) .'</strong> '. esc_html( $location ) .'</li>';
               }
               echo '</ul>';
             }

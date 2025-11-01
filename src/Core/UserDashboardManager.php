@@ -154,7 +154,7 @@ class UserDashboardManager
         if ($requested_role) {
             if (!RoleDashboards::userCanAccessRole($requested_role)) {
                 return new \WP_REST_Response([
-                    'message' => __('You do not have permission to view this dashboard.', 'artpulse'),
+                    'message' => __('You do not have permission to view this dashboard.', 'artpulse-management'),
                 ], 403);
             }
 
@@ -165,7 +165,7 @@ class UserDashboardManager
 
         if (!$role) {
             return new \WP_REST_Response([
-                'message' => __('Unable to determine an applicable dashboard.', 'artpulse'),
+                'message' => __('Unable to determine an applicable dashboard.', 'artpulse-management'),
             ], 404);
         }
 
@@ -175,7 +175,7 @@ class UserDashboardManager
 
         if (empty($data)) {
             return new \WP_REST_Response([
-                'message' => __('Unable to load dashboard data.', 'artpulse'),
+                'message' => __('Unable to load dashboard data.', 'artpulse-management'),
             ], 404);
         }
 
@@ -694,11 +694,11 @@ class UserDashboardManager
         $role = RoleDashboards::getDefaultRoleForUser();
 
         if (!$role) {
-            return '<div class="ap-dashboard-message">' . esc_html__('No dashboard is available for your account.', 'artpulse') . '</div>';
+            return '<div class="ap-dashboard-message">' . esc_html__('No dashboard is available for your account.', 'artpulse-management') . '</div>';
         }
 
         $classes = sprintf('ap-user-dashboard ap-role-dashboard ap-role-dashboard--%s', esc_attr($role));
-        $loading = esc_html__('Loading dashboard…', 'artpulse');
+        $loading = esc_html__('Loading dashboard…', 'artpulse-management');
 
         return sprintf(
             '<div class="%1$s" data-ap-dashboard-role="%2$s"><div class="ap-dashboard-loading">%3$s</div></div>',

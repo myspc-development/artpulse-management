@@ -163,8 +163,8 @@ class EnqueueAssets {
             'root'     => esc_url_raw(rest_url()),
             'nonce'    => wp_create_nonce('wp_rest'),
             'messages' => [
-                'favoriteError' => __('Unable to update favorite. Please try again.', 'artpulse'),
-                'followError'   => __('Unable to update follow. Please try again.', 'artpulse'),
+                'favoriteError' => __('Unable to update favorite. Please try again.', 'artpulse-management'),
+                'followError'   => __('Unable to update follow. Please try again.', 'artpulse-management'),
             ],
         ]);
 

@@ -16,10 +16,10 @@ class AdminColumnsEvent
         foreach ( $columns as $key => $label ) {
             if ( 'cb' === $key ) {
                 $new['cb']              = $label;
-                $new['event_banner']    = __( 'Banner',  'artpulse' );
-                $new['event_dates']     = __( 'Dates',   'artpulse' );
-                $new['event_venue']     = __( 'Venue',   'artpulse' );
-                $new['event_featured']  = __( '⭐ Featured', 'artpulse' );
+                $new['event_banner']    = __( 'Banner', 'artpulse-management' );
+                $new['event_dates']     = __( 'Dates', 'artpulse-management' );
+                $new['event_venue']     = __( 'Venue', 'artpulse-management' );
+                $new['event_featured']  = __( '⭐ Featured', 'artpulse-management' );
             }
             $new[ $key ] = $label;
         }

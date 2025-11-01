@@ -81,7 +81,7 @@ class OrganizationDashboardShortcode {
         check_ajax_referer('ap_org_dashboard_nonce', 'nonce');
 
         if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('You must be logged in to add events.', 'artpulse')]);
+            wp_send_json_error(['message' => __('You must be logged in to add events.', 'artpulse-management')]);
         }
 
         if (!isset(
@@ -91,7 +91,7 @@ class OrganizationDashboardShortcode {
             $_POST['ap_event_type'],
             $_POST['ap_event_organization']
         )) {
-            wp_send_json_error(['message' => __('Invalid event data.', 'artpulse')]);
+            wp_send_json_error(['message' => __('Invalid event data.', 'artpulse-management')]);
         }
 
         $title = sanitize_text_field(wp_unslash($_POST['ap_event_title']));
@@ -103,11 +103,11 @@ class OrganizationDashboardShortcode {
         $user_org_id = get_user_meta($user_id, 'ap_organization_id', true);
 
         if (!$org_id || (int) $user_org_id !== $org_id) {
-            wp_send_json_error(['message' => __('Invalid organization.', 'artpulse')]);
+            wp_send_json_error(['message' => __('Invalid organization.', 'artpulse-management')]);
         }
 
         if (empty($title) || empty($date) || empty($location) || empty($event_type)) {
-            wp_send_json_error(['message' => __('All fields are required.', 'artpulse')]);
+            wp_send_json_error(['message' => __('All fields are required.', 'artpulse-management')]);
         }
 
         $event_id = wp_insert_post([
@@ -117,7 +117,7 @@ class OrganizationDashboardShortcode {
         ]);
 
         if (!$event_id || is_wp_error($event_id)) {
-            wp_send_json_error(['message' => __('Failed to insert event.', 'artpulse')]);
+            wp_send_json_error(['message' => __('Failed to insert event.', 'artpulse-management')]);
         }
 
         update_post_meta($event_id, '_ap_event_date', $date);
@@ -131,7 +131,7 @@ class OrganizationDashboardShortcode {
         $html = self::get_events_list_html($org_id);
 
         wp_send_json_success([
-            'message' => __('Event submitted successfully.', 'artpulse'),
+            'message' => __('Event submitted successfully.', 'artpulse-management'),
             'updated_list_html' => $html,
         ]);
     }
@@ -140,34 +140,34 @@ class OrganizationDashboardShortcode {
         check_ajax_referer('ap_org_dashboard_nonce', 'nonce');
 
         if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('You must be logged in to delete events.', 'artpulse')]);
+            wp_send_json_error(['message' => __('You must be logged in to delete events.', 'artpulse-management')]);
         }
 
         $event_id = isset($_POST['event_id']) ? absint(wp_unslash($_POST['event_id'])) : 0;
         if (!$event_id) {
-            wp_send_json_error(['message' => __('Invalid event.', 'artpulse')]);
+            wp_send_json_error(['message' => __('Invalid event.', 'artpulse-management')]);
         }
 
         $user_id = get_current_user_id();
         $org_id = (int) get_user_meta($user_id, 'ap_organization_id', true);
         if (!$org_id) {
-            wp_send_json_error(['message' => __('No organization assigned.', 'artpulse')]);
+            wp_send_json_error(['message' => __('No organization assigned.', 'artpulse-management')]);
         }
 
         $event_org = (int) get_post_meta($event_id, '_ap_event_organization', true);
         if ($event_org !== $org_id) {
-            wp_send_json_error(['message' => __('You cannot delete this event.', 'artpulse')]);
+            wp_send_json_error(['message' => __('You cannot delete this event.', 'artpulse-management')]);
         }
 
         $deleted = wp_trash_post($event_id);
         if (!$deleted) {
-            wp_send_json_error(['message' => __('Failed to delete event.', 'artpulse')]);
+            wp_send_json_error(['message' => __('Failed to delete event.', 'artpulse-management')]);
         }
 
         $html = self::get_events_list_html($org_id);
 
         wp_send_json_success([
-            'message' => __('Event deleted.', 'artpulse'),
+            'message' => __('Event deleted.', 'artpulse-management'),
             'updated_list_html' => $html,
         ]);
     }
@@ -186,7 +186,7 @@ class OrganizationDashboardShortcode {
         ]);
 
         if (empty($events)) {
-            echo '<li class="ap-org-event-empty">' . esc_html__('No events found.', 'artpulse') . '</li>';
+            echo '<li class="ap-org-event-empty">' . esc_html__('No events found.', 'artpulse-management') . '</li>';
         } else {
             foreach ($events as $event) {
                 $moderation_state = get_post_meta($event->ID, '_ap_moderation_state', true);
@@ -214,7 +214,7 @@ class OrganizationDashboardShortcode {
                     $moderation_reason ? sprintf(' <span class="ap-org-event-reason">%1$s</span>', esc_html($moderation_reason)) : '',
                     absint($event->ID),
                     esc_attr(sprintf(__('Delete %s', 'artpulse-management'), wp_strip_all_tags($event->post_title))),
-                    esc_html__('Delete', 'artpulse')
+                    esc_html__('Delete', 'artpulse-management')
                 );
             }
         }
