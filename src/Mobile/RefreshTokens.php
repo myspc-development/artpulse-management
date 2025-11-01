@@ -417,6 +417,78 @@ class RefreshTokens
     }
 
     /**
+     * Revoke all refresh tokens for every user.
+     */
+    public static function revoke_all_users(?string $reason = null, string $trigger = 'admin_action'): int
+    {
+        global $wpdb;
+
+        $meta_key = self::META_KEY;
+        $rows     = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s",
+                $meta_key
+            ),
+            ARRAY_A
+        );
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $now           = time();
+        $total_revoked = 0;
+
+        foreach ($rows as $row) {
+            $user_id = isset($row['user_id']) ? (int) $row['user_id'] : 0;
+            if ($user_id <= 0) {
+                continue;
+            }
+
+            $records = maybe_unserialize($row['meta_value']);
+            if (!is_array($records) || empty($records)) {
+                continue;
+            }
+
+            $original_records = $records;
+            $records          = self::prune_records($records);
+            $changed          = $records !== $original_records;
+
+            foreach ($records as &$record) {
+                if (!is_array($record)) {
+                    continue;
+                }
+
+                if (empty($record['revoked_at'])) {
+                    $record['revoked_at'] = $now;
+                    if ($reason) {
+                        $record['revoked_reason'] = $reason;
+                    }
+                    $changed       = true;
+                    $total_revoked++;
+                    continue;
+                }
+
+                if ($reason && empty($record['revoked_reason'])) {
+                    $record['revoked_reason'] = $reason;
+                    $changed                  = true;
+                }
+            }
+            unset($record);
+
+            if (!$changed) {
+                continue;
+            }
+
+            $records = self::trim_history($records);
+            self::save_records($user_id, $records);
+            self::log_revocation($user_id, $trigger);
+        }
+
+        return $total_revoked;
+    }
+
+    /**
      * @param array<string, mixed> $metadata
      */
     public static function update_device_metadata(int $user_id, string $device_id, array $metadata): void

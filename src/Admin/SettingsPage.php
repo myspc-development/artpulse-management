@@ -211,7 +211,41 @@ class SettingsPage
             self::verify_admin_request();
         }
 
-        if (isset($_POST['ap_add_jwt_key']) && check_admin_referer('ap_add_jwt_key_action')) {
+        if (isset($_POST['ap_rotate_jwt'])) {
+            if (!current_user_can('manage_options')) {
+                wp_die(esc_html__('You do not have sufficient permissions to access this action.', 'artpulse-management'), 403);
+            }
+
+            check_admin_referer('ap_jwt_rotate', 'ap_jwt_rotate_nonce');
+
+            $invalidate = !empty($_POST['ap_invalidate_sessions']);
+            $result     = JWT::rotate((bool) $invalidate);
+
+            $message = sprintf(
+                /* translators: %s: fingerprint */
+                __('Signing key rotated. New fingerprint %s.', 'artpulse-management'),
+                esc_html($result['new_fingerprint'])
+            );
+
+            if ($invalidate) {
+                $revoked = (int) ($result['revoked_sessions'] ?? 0);
+                if ($revoked > 0) {
+                    $message .= ' ' . sprintf(
+                        _n(
+                            '%d mobile session was invalidated.',
+                            '%d mobile sessions were invalidated.',
+                            $revoked,
+                            'artpulse-management'
+                        ),
+                        $revoked
+                    );
+                } else {
+                    $message .= ' ' . __('No active mobile sessions required invalidation.', 'artpulse-management');
+                }
+            }
+
+            echo '<div class="notice notice-success"><p>' . esc_html($message) . '</p></div>';
+        } elseif (isset($_POST['ap_add_jwt_key']) && check_admin_referer('ap_add_jwt_key_action')) {
             $created = JWT::add_key();
             $message = sprintf(
                 /* translators: %s: fingerprint */
@@ -274,6 +308,17 @@ class SettingsPage
             <hr>
             <h2><?php esc_html_e('Mobile Authentication Keys', 'artpulse-management'); ?></h2>
             <p><?php esc_html_e('Manage the signing keys used for mobile API access tokens. Retired keys remain valid until the grace period expires.', 'artpulse-management'); ?></p>
+            <form method="post" style="margin-bottom: 10px;">
+                <?php wp_nonce_field('ap_admin_action', 'ap_admin_nonce'); ?>
+                <?php wp_nonce_field('ap_jwt_rotate', 'ap_jwt_rotate_nonce'); ?>
+                <p>
+                    <label for="ap_invalidate_sessions">
+                        <input type="checkbox" name="ap_invalidate_sessions" id="ap_invalidate_sessions" value="1" />
+                        <?php esc_html_e('Sign out all mobile devices after rotation.', 'artpulse-management'); ?>
+                    </label>
+                </p>
+                <button type="submit" name="ap_rotate_jwt" class="button button-secondary"><?php esc_html_e('Rotate Signing Key', 'artpulse-management'); ?></button>
+            </form>
             <form method="post" style="margin-bottom: 10px;">
                 <?php wp_nonce_field('ap_admin_action', 'ap_admin_nonce'); ?>
                 <?php wp_nonce_field('ap_add_jwt_key_action'); ?>

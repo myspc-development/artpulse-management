@@ -764,7 +764,7 @@ class MobileRestController
     {
         $auth = $request->get_header('authorization');
         if (!$auth || !preg_match('/Bearer\s+(.*)$/i', $auth, $matches)) {
-            return new WP_Error('ap_missing_token', __('Authentication token required.', 'artpulse-management'), ['status' => 401]);
+            return new WP_Error('ap_missing_token', __('Missing authentication token.', 'artpulse-management'), ['status' => 401]);
         }
 
         $payload = JWT::validate(trim($matches[1]));
