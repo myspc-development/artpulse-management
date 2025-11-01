@@ -1,3 +1,5 @@
+![Upgrade Audit](https://github.com/myspc-development/artpulse-management/actions/workflows/audit.yml/badge.svg)
+
 📦 ArtPulse Management Plugin
 Version: 1.1.5
 Author: Craig
@@ -168,6 +170,14 @@ Optional tools:
 phpunit for unit tests
 
 phpcs for coding standards (composer run lint)
+
+### Role Upgrades Audit
+
+Keep track of organization role upgrades with the automated audit tooling:
+
+* **Run locally:** `composer audit:upgrades`
+* **Report output:** `reports/upgrade_audit.md`
+* **CI artifact:** [Upgrade audit workflow artifacts](https://github.com/myspc-development/artpulse-management/actions/workflows/audit.yml)
 
 ### Verification
 
