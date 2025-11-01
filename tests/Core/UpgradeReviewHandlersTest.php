@@ -105,7 +105,7 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
         $this->assertSame($profile_id, UpgradeReviewRepository::get_post_id($request_id));
     }
 
-    public function test_approve_adds_caps_and_creates_profile_idempotently(): void
+    public function test_approve_grants_caps_and_creates_profile_once(): void
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
@@ -142,6 +142,9 @@ class UpgradeReviewHandlersTest extends WP_UnitTestCase
         $user = get_user_by('id', $user_id);
         $this->assertNotFalse($user);
         $this->assertContains('ap_artist', $user->roles);
+        $this->assertTrue(user_can($user_id, Capabilities::CAP_MANAGE_OWN_ARTIST));
+        $this->assertTrue(user_can($user_id, Capabilities::CAP_MANAGE_PORTFOLIO));
+        $this->assertSame($profile_id, UpgradeReviewRepository::get_post_id($request_id));
     }
 
     public function test_get_or_create_profile_post_reuses_existing_profile(): void

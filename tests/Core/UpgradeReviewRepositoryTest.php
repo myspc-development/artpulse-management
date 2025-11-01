@@ -92,21 +92,33 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
         );
     }
 
-    public function test_cannot_create_duplicate_pending_request_per_type(): void
+    public function test_create_blocks_duplicate_pending_per_type(): void
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
-        $first = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG);
-        $this->assertIsInt($first);
+        $first_artist = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ARTIST);
+        $this->assertIsInt($first_artist);
 
-        $second = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG);
-        $this->assertInstanceOf(WP_Error::class, $second);
-        $this->assertSame('ap_duplicate_pending', $second->get_error_code());
-        $this->assertSame(409, $second->get_error_data()['status'] ?? null);
-        $this->assertSame($first, $second->get_error_data()['request_id'] ?? null);
+        $duplicate_artist = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ARTIST);
+        $this->assertInstanceOf(WP_Error::class, $duplicate_artist);
+        $this->assertSame('ap_duplicate_pending', $duplicate_artist->get_error_code());
+        $this->assertSame(409, $duplicate_artist->get_error_data()['status'] ?? null);
+        $this->assertSame($first_artist, $duplicate_artist->get_error_data()['request_id'] ?? null);
+
+        $org_request = UpgradeReviewRepository::create($user_id, UpgradeReviewRepository::TYPE_ORG);
+        $this->assertIsInt($org_request);
+        $this->assertNotSame($first_artist, $org_request);
 
         $all = UpgradeReviewRepository::get_all_for_user($user_id);
-        $this->assertCount(1, $all);
+        $this->assertCount(2, $all);
+        $this->assertSame(
+            $first_artist,
+            UpgradeReviewRepository::find_pending($user_id, UpgradeReviewRepository::TYPE_ARTIST)
+        );
+        $this->assertSame(
+            $org_request,
+            UpgradeReviewRepository::find_pending($user_id, UpgradeReviewRepository::TYPE_ORG)
+        );
     }
 
     public function test_find_pending_returns_latest_pending_request(): void
@@ -133,7 +145,7 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
         $this->assertNull(UpgradeReviewRepository::find_pending($user_id, 'unknown-type'));
     }
 
-    public function test_approve_updates_status_and_triggers_action(): void
+    public function test_approve_idempotent_and_emits_action(): void
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
@@ -171,9 +183,16 @@ class UpgradeReviewRepositoryTest extends WP_UnitTestCase
             ],
             $captured[0]
         );
+
+        $this->assertTrue(UpgradeReviewRepository::approve($request_id));
+        $this->assertCount(1, $captured);
+        $this->assertSame(
+            UpgradeReviewRepository::STATUS_APPROVED,
+            get_post_meta($request_id, UpgradeReviewRepository::META_STATUS, true)
+        );
     }
 
-    public function test_deny_updates_status_and_reason_and_triggers_action(): void
+    public function test_deny_sets_reason_and_emits_action(): void
     {
         $user_id = self::factory()->user->create(['role' => 'subscriber']);
 
