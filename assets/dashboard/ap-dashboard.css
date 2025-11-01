@@ -1,2 +1,192 @@
-#ap-dashboard { min-height: 240px; }
-#ap-dashboard .ap-spinner { display: inline-block; }
+#ap-dashboard {
+  min-height: 240px;
+}
+
+#ap-dashboard .ap-dashboard__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+#ap-dashboard .ap-dashboard__loading-text {
+  font-weight: 600;
+  color: var(--ap-text-strong, #1f2933);
+}
+
+#ap-dashboard .ap-dashboard__skeleton {
+  width: 100%;
+}
+
+#ap-dashboard .ap-dashboard__skeleton-group {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+}
+
+#ap-dashboard .ap-dashboard__skeleton--stats {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+#ap-dashboard .ap-dashboard__skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--ap-surface-muted, #f5f5f7);
+}
+
+#ap-dashboard .ap-dashboard__skeleton--list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+#ap-dashboard .ap-dashboard__skeleton--chart {
+  display: flex;
+  width: 100%;
+}
+
+#ap-dashboard .ap-skeleton {
+  display: inline-block;
+  width: 100%;
+  min-height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--ap-skeleton-base, #eceff4) 0%,
+    var(--ap-skeleton-highlight, #f7f9fc) 50%,
+    var(--ap-skeleton-base, #eceff4) 100%
+  );
+  background-size: 200% 100%;
+  animation: apDashboardSkeleton 1.2s ease-in-out infinite;
+}
+
+#ap-dashboard .ap-skeleton--value {
+  height: 20px;
+  width: 60%;
+}
+
+#ap-dashboard .ap-skeleton--label {
+  height: 12px;
+  width: 40%;
+}
+
+#ap-dashboard .ap-skeleton--line {
+  height: 14px;
+}
+
+#ap-dashboard .ap-skeleton--chart {
+  height: 160px;
+  border-radius: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ap-dashboard .ap-skeleton {
+    animation: none;
+  }
+}
+
+@keyframes apDashboardSkeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+#ap-dashboard .ap-dashboard__error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--ap-error-border, #f8b4b4);
+  background: var(--ap-error-surface, #fff5f5);
+  color: var(--ap-error-text, #7f1d1d);
+}
+
+#ap-dashboard .ap-dashboard__error-icon {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+#ap-dashboard .ap-dashboard__error-button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  background: var(--ap-error, #c81e1e);
+  color: #fff;
+  cursor: pointer;
+}
+
+#ap-dashboard .ap-dashboard__error-button:focus-visible {
+  outline: 2px solid var(--ap-error, #c81e1e);
+  outline-offset: 2px;
+}
+
+#ap-dashboard .ap-dashboard__empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--ap-surface-muted, #f5f5f7);
+  color: var(--ap-text-muted, #4b5563);
+}
+
+#ap-dashboard .ap-dashboard__empty-cta {
+  font-weight: 600;
+  color: var(--ap-link, #1d4ed8);
+  text-decoration: underline;
+}
+
+#ap-dashboard .ap-dashboard__empty-cta--disabled {
+  color: var(--ap-text-muted, #9ca3af);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+#ap-dashboard .ap-dashboard__empty-cta:focus-visible {
+  outline: 2px solid var(--ap-link, #1d4ed8);
+  outline-offset: 2px;
+}
+
+#ap-dashboard .ap-dashboard__analytics-range {
+  border: 1px solid var(--ap-border, #d1d5db);
+  background: #fff;
+  color: var(--ap-text, #1f2933);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+#ap-dashboard .ap-dashboard__analytics-range.is-active {
+  background: var(--ap-primary, #1d4ed8);
+  color: #fff;
+  border-color: var(--ap-primary, #1d4ed8);
+}
+
+#ap-dashboard .ap-dashboard__analytics-range:focus-visible {
+  outline: 2px solid var(--ap-primary, #1d4ed8);
+  outline-offset: 2px;
+}
+
+#ap-dashboard .ap-dashboard__analytics-empty {
+  margin: 0;
+  color: var(--ap-text-muted, #4b5563);
+}
+
+#ap-dashboard .ap-dashboard__analytics-chart {
+  min-height: 180px;
+}
