@@ -2009,68 +2009,60 @@ class RoleDashboards
 
     private static function getArtistUpgradeReviewState(int $user_id): array
     {
-        $state = [
-            'status'     => 'none',
-            'reason'     => '',
-            'request_id' => 0,
-            'artist_id'  => 0,
-            'updated_at' => null,
-        ];
-
-        $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
-
-        if (!$request instanceof WP_Post) {
-            return $state;
-        }
-
-        $state['request_id'] = (int) $request->ID;
-        $state['artist_id']  = UpgradeReviewRepository::get_post_id($request);
-        $state['reason']     = UpgradeReviewRepository::get_reason($request);
-        $state['updated_at'] = get_post_modified_time('U', true, $request);
-
-        $status = UpgradeReviewRepository::get_status($request);
-
-        if ($status === UpgradeReviewRepository::STATUS_APPROVED) {
-            $state['status'] = 'approved';
-        } elseif ($status === UpgradeReviewRepository::STATUS_DENIED) {
-            $state['status'] = 'denied';
-        } else {
-            $state['status'] = 'pending';
-        }
-
-        return $state;
+        return self::buildUpgradeReviewState(
+            $user_id,
+            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
+            'artist_id'
+        );
     }
 
     private static function getOrgUpgradeReviewState(int $user_id): array
+    {
+        return self::buildUpgradeReviewState(
+            $user_id,
+            UpgradeReviewRepository::TYPE_ORG_UPGRADE,
+            'org_id'
+        );
+    }
+
+    /**
+     * @return array{
+     *     status:string,
+     *     reason:string,
+     *     request_id:int,
+     *     updated_at:int|null,
+     *     artist_id?:int,
+     *     org_id?:int
+     * }
+     */
+    private static function buildUpgradeReviewState(int $user_id, string $type, string $id_key): array
     {
         $state = [
             'status'     => 'none',
             'reason'     => '',
             'request_id' => 0,
-            'org_id'     => 0,
+            $id_key      => 0,
             'updated_at' => null,
         ];
 
-        $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
+        $request = UpgradeReviewRepository::get_latest_for_user($user_id, $type);
 
         if (!$request instanceof WP_Post) {
             return $state;
         }
 
         $state['request_id'] = (int) $request->ID;
-        $state['org_id']     = UpgradeReviewRepository::get_post_id($request);
+        $state[$id_key]      = UpgradeReviewRepository::get_post_id($request);
         $state['reason']     = UpgradeReviewRepository::get_reason($request);
         $state['updated_at'] = get_post_modified_time('U', true, $request);
 
         $status = UpgradeReviewRepository::get_status($request);
 
-        if ($status === UpgradeReviewRepository::STATUS_APPROVED) {
-            $state['status'] = 'approved';
-        } elseif ($status === UpgradeReviewRepository::STATUS_DENIED) {
-            $state['status'] = 'denied';
-        } else {
-            $state['status'] = 'pending';
-        }
+        $state['status'] = match ($status) {
+            UpgradeReviewRepository::STATUS_APPROVED => 'approved',
+            UpgradeReviewRepository::STATUS_DENIED   => 'denied',
+            default                                   => 'pending',
+        };
 
         return $state;
     }

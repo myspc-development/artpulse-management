@@ -12,7 +12,6 @@ use function esc_url_raw;
 use function get_missing_page_fallback;
 use function get_page_url;
 use function is_email;
-use function sanitize_key;
 use function sprintf;
 use function wp_mail;
 use function wp_strip_all_tags;
@@ -69,7 +68,7 @@ class UpgradeReviewHandlers
             return;
         }
 
-        $normalised_type = self::normalise_type($type);
+        $normalised_type = UpgradeType::normalise($type);
         if (null === $normalised_type) {
             return;
         }
@@ -98,7 +97,7 @@ class UpgradeReviewHandlers
             return;
         }
 
-        $normalised_type = self::normalise_type($type);
+        $normalised_type = UpgradeType::normalise($type);
         if (null === $normalised_type) {
             return;
         }
@@ -475,28 +474,4 @@ class UpgradeReviewHandlers
         }
     }
 
-    private static function normalise_type(string $type): ?string
-    {
-        $key = sanitize_key($type);
-
-        return match ($key) {
-            UpgradeReviewRepository::TYPE_ARTIST,
-            UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
-            'artist',
-            'artists',
-            'ap_artist',
-            'artpulse_artist' => self::TYPE_ARTIST,
-            UpgradeReviewRepository::TYPE_ORG,
-            UpgradeReviewRepository::TYPE_ORG_UPGRADE,
-            'organization',
-            'organisation',
-            'org',
-            'orgs',
-            'ap_org',
-            'ap_org_manager',
-            'artpulse_org',
-            'artpulse_organization' => self::TYPE_ORGANIZATION,
-            default => null,
-        };
-    }
 }

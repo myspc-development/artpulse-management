@@ -549,30 +549,15 @@ class UserDashboardManager
 
     private static function canRequestArtistUpgrade(int $user_id): bool
     {
-        if ($user_id <= 0) {
-            return false;
-        }
-
-        $user = get_user_by('id', $user_id);
-
-        if (!$user instanceof WP_User) {
-            return false;
-        }
-
-        if (in_array('artist', (array) $user->roles, true)) {
-            return false;
-        }
-
-        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST);
-
-        if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
-            return false;
-        }
-
-        return true;
+        return self::canRequestUpgrade($user_id, 'artist', UpgradeReviewRepository::TYPE_ARTIST);
     }
 
     private static function canRequestOrgUpgrade(int $user_id): bool
+    {
+        return self::canRequestUpgrade($user_id, 'organization', UpgradeReviewRepository::TYPE_ORG);
+    }
+
+    private static function canRequestUpgrade(int $user_id, string $role, string $review_type): bool
     {
         if ($user_id <= 0) {
             return false;
@@ -584,11 +569,11 @@ class UserDashboardManager
             return false;
         }
 
-        if (in_array('organization', (array) $user->roles, true)) {
+        if (in_array($role, (array) $user->roles, true)) {
             return false;
         }
 
-        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG);
+        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, $review_type);
 
         if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
             return false;
