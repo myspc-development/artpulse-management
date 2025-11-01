@@ -55,6 +55,7 @@ class PortfolioManager
     public static function renderLinkMetaBox($post)
     {
         $link = get_post_meta($post->ID, '_ap_portfolio_link', true);
+        wp_nonce_field('ap_portfolio_meta', 'ap_portfolio_meta_nonce');
         echo '<input type="url" name="ap_portfolio_link" value="' . esc_attr($link) . '" class="widefat" placeholder="https://..." />';
     }
 
@@ -73,6 +74,10 @@ class PortfolioManager
     public static function savePortfolioMeta($post_id)
     {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+        if (wp_is_post_revision($post_id)) return;
+
+        if (!isset($_POST['ap_portfolio_meta_nonce']) || !wp_verify_nonce($_POST['ap_portfolio_meta_nonce'], 'ap_portfolio_meta')) return;
+        if (!current_user_can('edit_post', $post_id)) return;
 
         if (isset($_POST['ap_portfolio_link'])) {
             update_post_meta($post_id, '_ap_portfolio_link', esc_url_raw($_POST['ap_portfolio_link']));
