@@ -8,7 +8,10 @@
   const i18n = Object.assign(
     {
       loading: 'Loading…',
+      loadingAnalytics: 'Loading analytics…',
+      retry: 'Retry',
       dashboardError: 'We could not load your dashboard. Please try again.',
+      analyticsError: 'We could not load analytics. Please try again.',
       favorites: 'Favorites',
       follows: 'Follows',
       upcoming: 'Upcoming',
@@ -31,13 +34,19 @@
       view: 'View',
       untitled: '(No title)',
       analytics: 'Analytics',
+      analyticsPrimary: 'Views over time',
       views: 'Views',
       rsvps: 'RSVPs',
       range7: '7 days',
       range30: '30 days',
       range90: '90 days',
       chartEmpty: 'No analytics available yet.',
-      analyticsPrimary: 'Views over time',
+      memberFavoritesEmptyTitle: 'No favorites yet',
+      memberFavoritesEmptyCta: 'Browse the directory',
+      artistArtworksEmptyTitle: 'No artworks yet',
+      artistArtworksEmptyCta: 'Create your first artwork',
+      orgEventsEmptyTitle: 'No events scheduled',
+      orgEventsEmptyCta: 'Add an event',
     },
     boot.i18n || {}
   );
@@ -49,494 +58,627 @@
     { key: 'rsvps', label: i18n.rsvps },
   ];
   const ANALYTICS_RANGES = [7, 30, 90];
+  const CACHE_TTL = 30000;
+  const analyticsCache = new Map();
 
-  renderSpinner();
+  root.setAttribute('role', 'region');
+  root.setAttribute('aria-live', 'polite');
+  root.dataset.loadingType = 'dashboard';
+  showLoading(root);
 
   const endpointRoot = boot?.endpoints?.root || '';
   if (!endpointRoot) {
-    renderError();
+    const retryButton = showError(root, i18n.dashboardError);
+    if (retryButton) {
+      retryButton.disabled = true;
+    }
     return;
   }
 
-  if (boot.role === 'org') {
+  const role = boot.role;
+  if (role === 'org') {
+    loadOrgOverview({ skipLoading: true });
+    return;
+  }
+  if (role === 'artist') {
+    loadArtistOverview({ skipLoading: true });
+    return;
+  }
+  if (role === 'member') {
+    loadMemberOverview({ skipLoading: true });
+    return;
+  }
+
+  root.innerHTML = '';
+  root.removeAttribute('aria-busy');
+
+  function loadMemberOverview(options = {}) {
+    const skipLoading = options.skipLoading === true;
+    if (!skipLoading) {
+      root.dataset.loadingType = 'dashboard';
+      showLoading(root);
+    }
+
+    fetchJSON(endpointRoot + 'me/overview')
+      .then((data) => {
+        renderMemberOverview(data);
+      })
+      .catch(() => {
+        renderOverviewError(loadMemberOverview);
+      });
+  }
+
+  function loadArtistOverview(options = {}) {
+    const skipLoading = options.skipLoading === true;
+    if (!skipLoading) {
+      root.dataset.loadingType = 'dashboard';
+      showLoading(root);
+    }
+
+    fetchJSON(endpointRoot + 'artist/overview')
+      .then((data) => {
+        renderArtistOverview(data);
+      })
+      .catch(() => {
+        renderOverviewError(loadArtistOverview);
+      });
+  }
+
+  function loadOrgOverview(options = {}) {
+    const skipLoading = options.skipLoading === true;
+    if (!skipLoading) {
+      root.dataset.loadingType = 'dashboard';
+      showLoading(root);
+    }
+
     fetchJSON(endpointRoot + 'org/overview')
       .then((data) => {
         renderOrgOverview(data);
-        return fetchJSON(endpointRoot + 'org/roster?per_page=5')
-          .then((roster) => {
-            renderRosterPreview(roster);
-          })
-          .catch(() => {
-            renderRosterPreview(null);
-          });
+        loadRosterPreview({ skipLoading: true });
       })
-      .catch(renderError);
-    return;
+      .catch(() => {
+        renderOverviewError(loadOrgOverview);
+      });
   }
 
-  if (boot.role === 'artist') {
-    fetchJSON(endpointRoot + 'artist/overview')
-      .then(renderArtistOverview)
-      .catch(renderError);
-    return;
-  }
-
-  if (boot.role !== 'member') {
-    root.innerHTML = '';
-    return;
-  }
-
-  fetchJSON(endpointRoot + 'me/overview')
-    .then(renderMemberOverview)
-    .catch(renderError);
-
-  function renderSpinner() {
-    root.innerHTML = '';
-    const spinner = document.createElement('div');
-    spinner.className = 'ap-spinner';
-    spinner.textContent = i18n.loading;
-    root.appendChild(spinner);
-  }
-
-  function renderError() {
-    root.innerHTML = '';
-    const message = document.createElement('p');
-    message.className = 'ap-dashboard__error';
-    message.textContent = i18n.dashboardError;
-    root.appendChild(message);
+  function renderOverviewError(retryFn) {
+    const retryButton = showError(root, i18n.dashboardError);
+    if (retryButton) {
+      retryButton.addEventListener('click', () => retryFn({ skipLoading: false }));
+      retryButton.addEventListener('keydown', handleButtonKeydown);
+    }
   }
 
   function renderMemberOverview(data) {
-    root.innerHTML = '';
-
     const counts = data && typeof data === 'object' ? data.counts || {} : {};
     const events = Array.isArray(data?.nextEvents) ? data.nextEvents : [];
 
-    const statsWrapper = document.createElement('div');
-    statsWrapper.className = 'ap-dashboard__stats';
+    const statsMarkup = buildStatsMarkup(
+      [
+        { key: 'favorites', label: i18n.favorites },
+        { key: 'follows', label: i18n.follows },
+        { key: 'upcoming', label: i18n.upcoming },
+        { key: 'notifications', label: i18n.notifications },
+      ],
+      counts
+    );
 
-    const statMap = [
-      { key: 'favorites', label: i18n.favorites },
-      { key: 'follows', label: i18n.follows },
-      { key: 'upcoming', label: i18n.upcoming },
-      { key: 'notifications', label: i18n.notifications },
-    ];
+    const analyticsMarkup = buildAnalyticsMarkup('member');
+    const upcomingMarkup = buildUpcomingMarkup(events);
+    const emptyCallout = shouldShowFavoritesCallout(counts)
+      ? buildEmptyPanel(
+          i18n.memberFavoritesEmptyTitle,
+          i18n.memberFavoritesEmptyCta,
+          resolveLink('directory')
+        )
+      : '';
 
-    statMap.forEach((item) => {
-      const rawValue = counts[item.key];
-      const numeric = typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
-      const value = Number.isFinite(numeric) ? numeric : 0;
-      const card = document.createElement('div');
-      card.className = 'ap-dashboard__stat';
+    const html = [statsMarkup, emptyCallout, analyticsMarkup?.html || '', upcomingMarkup]
+      .filter(Boolean)
+      .join('');
 
-      const valueEl = document.createElement('span');
-      valueEl.className = 'ap-dashboard__stat-value';
-      valueEl.textContent = String(value);
+    root.innerHTML = html;
+    root.removeAttribute('aria-busy');
+    delete root.dataset.loadingType;
 
-      const labelEl = document.createElement('span');
-      labelEl.className = 'ap-dashboard__stat-label';
-      labelEl.textContent = item.label;
-
-      card.appendChild(valueEl);
-      card.appendChild(labelEl);
-      statsWrapper.appendChild(card);
-    });
-
-    const upcomingWrapper = document.createElement('div');
-    upcomingWrapper.className = 'ap-dashboard__upcoming';
-
-    const heading = document.createElement('h2');
-    heading.className = 'ap-dashboard__section-title';
-    heading.textContent = i18n.upcomingEvents;
-    upcomingWrapper.appendChild(heading);
-
-    const list = document.createElement('ul');
-    list.className = 'ap-dashboard__event-list';
-
-    if (events.length === 0) {
-      const empty = document.createElement('li');
-      empty.className = 'ap-dashboard__event ap-dashboard__event--empty';
-      empty.textContent = i18n.noUpcoming;
-      list.appendChild(empty);
-    } else {
-      events.forEach((event) => {
-        const li = document.createElement('li');
-        li.className = 'ap-dashboard__event';
-
-        const link = document.createElement('a');
-        link.className = 'ap-dashboard__event-link';
-        link.textContent = event?.title || '';
-        if (event?.permalink) {
-          link.href = event.permalink;
-        } else {
-          link.href = '#';
-        }
-
-        const dateText = formatDate(event?.date);
-        const meta = document.createElement('span');
-        meta.className = 'ap-dashboard__event-date';
-        meta.textContent = dateText;
-
-        li.appendChild(link);
-        if (dateText) {
-          li.appendChild(meta);
-        }
-        list.appendChild(li);
-      });
+    if (analyticsMarkup?.uid) {
+      const panel = root.querySelector(`[data-analytics-uid="${analyticsMarkup.uid}"]`);
+      if (panel) {
+        initAnalyticsPanel(panel, 'member');
+      }
     }
-
-    upcomingWrapper.appendChild(list);
-
-    root.appendChild(statsWrapper);
-    const memberAnalytics = buildAnalyticsPanel('member');
-    if (memberAnalytics) {
-      root.appendChild(memberAnalytics);
-    }
-    root.appendChild(upcomingWrapper);
   }
 
   function renderArtistOverview(data) {
-    root.innerHTML = '';
-
     const counts = data && typeof data === 'object' ? data.counts || {} : {};
     const recent = data && typeof data === 'object' ? data.recent || {} : {};
 
-    const statsWrapper = document.createElement('div');
-    statsWrapper.className = 'ap-dashboard__stats';
+    const statsMarkup = buildStatsMarkup(
+      [
+        { key: 'artworks', label: i18n.artworks },
+        { key: 'events', label: i18n.events },
+        { key: 'favorites', label: i18n.favorites },
+        { key: 'follows', label: i18n.follows },
+      ],
+      counts
+    );
 
-    const statMap = [
-      { key: 'artworks', label: i18n.artworks },
-      { key: 'events', label: i18n.events },
-      { key: 'favorites', label: i18n.favorites },
-      { key: 'follows', label: i18n.follows },
-    ];
-
-    statMap.forEach((item) => {
-      const rawValue = counts[item.key];
-      const numeric = typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
-      const value = Number.isFinite(numeric) ? numeric : 0;
-      const card = document.createElement('div');
-      card.className = 'ap-dashboard__stat';
-
-      const valueEl = document.createElement('span');
-      valueEl.className = 'ap-dashboard__stat-value';
-      valueEl.textContent = String(value);
-
-      const labelEl = document.createElement('span');
-      labelEl.className = 'ap-dashboard__stat-label';
-      labelEl.textContent = item.label;
-
-      card.appendChild(valueEl);
-      card.appendChild(labelEl);
-      statsWrapper.appendChild(card);
-    });
-
-    const listsWrapper = document.createElement('div');
-    listsWrapper.className = 'ap-dashboard__lists';
+    const analyticsMarkup = buildAnalyticsMarkup('artist');
 
     const artworks = Array.isArray(recent?.artworks) ? recent.artworks : [];
     const events = Array.isArray(recent?.events) ? recent.events : [];
 
-    listsWrapper.appendChild(
-      buildRecentList(i18n.recentArtworks, artworks, i18n.noArtworks)
-    );
-    listsWrapper.appendChild(
-      buildRecentList(i18n.recentEvents, events, i18n.noEvents)
-    );
+    const listsMarkup = [
+      buildRecentList(i18n.recentArtworks, artworks, {
+        emptyTitle: i18n.artistArtworksEmptyTitle,
+        emptyCta: i18n.artistArtworksEmptyCta,
+        emptyHref: resolveLink('artworkCreate'),
+      }),
+      buildRecentList(i18n.recentEvents, events, {
+        emptyTitle: i18n.noEvents,
+      }),
+    ].join('');
 
-    root.appendChild(statsWrapper);
-    const artistAnalytics = buildAnalyticsPanel('artist');
-    if (artistAnalytics) {
-      root.appendChild(artistAnalytics);
+    const html = [statsMarkup, analyticsMarkup?.html || '', listsMarkup].join('');
+
+    root.innerHTML = html;
+    root.removeAttribute('aria-busy');
+    delete root.dataset.loadingType;
+
+    if (analyticsMarkup?.uid) {
+      const panel = root.querySelector(`[data-analytics-uid="${analyticsMarkup.uid}"]`);
+      if (panel) {
+        initAnalyticsPanel(panel, 'artist');
+      }
     }
-    root.appendChild(listsWrapper);
   }
 
   function renderOrgOverview(data) {
-    root.innerHTML = '';
-
     const counts = data && typeof data === 'object' ? data.counts || {} : {};
     const recent = data && typeof data === 'object' ? data.recent || {} : {};
 
-    const statsWrapper = document.createElement('div');
-    statsWrapper.className = 'ap-dashboard__stats';
+    const statsMarkup = buildStatsMarkup(
+      [
+        { key: 'events', label: i18n.events },
+        { key: 'artists', label: i18n.artists },
+        { key: 'submissions', label: i18n.submissions },
+      ],
+      counts
+    );
 
-    const statMap = [
-      { key: 'events', label: i18n.events },
-      { key: 'artists', label: i18n.artists },
-      { key: 'submissions', label: i18n.submissions },
-    ];
-
-    statMap.forEach((item) => {
-      const rawValue = counts[item.key];
-      const numeric = typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
-      const value = Number.isFinite(numeric) ? numeric : 0;
-      const card = document.createElement('div');
-      card.className = 'ap-dashboard__stat';
-
-      const valueEl = document.createElement('span');
-      valueEl.className = 'ap-dashboard__stat-value';
-      valueEl.textContent = String(value);
-
-      const labelEl = document.createElement('span');
-      labelEl.className = 'ap-dashboard__stat-label';
-      labelEl.textContent = item.label;
-
-      card.appendChild(valueEl);
-      card.appendChild(labelEl);
-      statsWrapper.appendChild(card);
-    });
-
-    const listsWrapper = document.createElement('div');
-    listsWrapper.className = 'ap-dashboard__lists';
+    const analyticsMarkup = buildAnalyticsMarkup('org');
 
     const recentEvents = Array.isArray(recent?.events) ? recent.events : [];
-    const recentSubmissions = Array.isArray(recent?.submissions)
-      ? recent.submissions
-      : [];
+    const recentSubmissions = Array.isArray(recent?.submissions) ? recent.submissions : [];
 
-    listsWrapper.appendChild(
-      buildRecentList(i18n.recentEvents, recentEvents, i18n.noEvents)
-    );
-    listsWrapper.appendChild(
-      buildRecentList(
-        i18n.recentSubmissions,
-        recentSubmissions,
-        i18n.noSubmissions
-      )
-    );
+    const html = [
+      statsMarkup,
+      analyticsMarkup?.html || '',
+      [
+        buildRecentList(i18n.recentEvents, recentEvents, {
+          emptyTitle: i18n.orgEventsEmptyTitle,
+          emptyCta: i18n.orgEventsEmptyCta,
+          emptyHref: resolveLink('eventCreate'),
+        }),
+        buildRecentList(i18n.recentSubmissions, recentSubmissions, {
+          emptyTitle: i18n.noSubmissions,
+        }),
+      ].join(''),
+      buildRosterPanel(),
+    ].join('');
 
-    const rosterPanel = document.createElement('div');
-    rosterPanel.className = 'ap-dashboard__panel';
-    rosterPanel.id = 'ap-dashboard-roster-preview';
+    root.innerHTML = html;
+    root.removeAttribute('aria-busy');
+    delete root.dataset.loadingType;
 
-    const rosterHeading = document.createElement('h2');
-    rosterHeading.className = 'ap-dashboard__section-title';
-    rosterHeading.textContent = i18n.rosterPreview;
-    rosterPanel.appendChild(rosterHeading);
-
-    const rosterContainer = document.createElement('div');
-    rosterContainer.className = 'ap-dashboard__roster';
-    rosterContainer.textContent = i18n.loading;
-    rosterPanel.appendChild(rosterContainer);
-
-    root.appendChild(statsWrapper);
-    const orgAnalytics = buildAnalyticsPanel('org');
-    if (orgAnalytics) {
-      root.appendChild(orgAnalytics);
+    if (analyticsMarkup?.uid) {
+      const panel = root.querySelector(`[data-analytics-uid="${analyticsMarkup.uid}"]`);
+      if (panel) {
+        initAnalyticsPanel(panel, 'org');
+      }
     }
-    root.appendChild(listsWrapper);
-    root.appendChild(rosterPanel);
+
+    const rosterContainer = root.querySelector(
+      '#ap-dashboard-roster-preview .ap-dashboard__roster'
+    );
+    if (rosterContainer) {
+      rosterContainer.dataset.loadingType = 'list';
+      showLoading(rosterContainer, i18n.loading);
+    }
   }
 
-  function buildRecentList(title, items, emptyText) {
-    const section = document.createElement('div');
-    section.className = 'ap-dashboard__panel';
+  function loadRosterPreview(options = {}) {
+    const container = root.querySelector(
+      '#ap-dashboard-roster-preview .ap-dashboard__roster'
+    );
+    if (!container) {
+      return;
+    }
 
-    const heading = document.createElement('h2');
-    heading.className = 'ap-dashboard__section-title';
-    heading.textContent = title;
-    section.appendChild(heading);
+    if (options.skipLoading !== true) {
+      container.dataset.loadingType = 'list';
+      showLoading(container, i18n.loading);
+    }
 
-    const list = document.createElement('ul');
-    list.className = 'ap-dashboard__item-list';
-
-    if (!Array.isArray(items) || items.length === 0) {
-      const empty = document.createElement('li');
-      empty.className = 'ap-dashboard__item ap-dashboard__item--empty';
-      empty.textContent = emptyText;
-      list.appendChild(empty);
-    } else {
-      items.forEach((item) => {
-        const li = document.createElement('li');
-        li.className = 'ap-dashboard__item';
-
-        const link = document.createElement('a');
-        link.className = 'ap-dashboard__item-link';
-        link.textContent = item?.title || i18n.untitled;
-        if (item?.edit_link) {
-          link.href = item.edit_link;
-        } else if (item?.permalink) {
-          link.href = item.permalink;
-        } else {
-          link.href = '#';
+    fetchJSON(endpointRoot + 'org/roster?per_page=5')
+      .then((data) => {
+        renderRosterPreview(data);
+      })
+      .catch(() => {
+        const retryButton = showError(container, i18n.dashboardError);
+        if (retryButton) {
+          retryButton.addEventListener('click', () => loadRosterPreview({ skipLoading: false }));
+          retryButton.addEventListener('keydown', handleButtonKeydown);
         }
-
-        li.appendChild(link);
-
-        const actions = document.createElement('div');
-        actions.className = 'ap-dashboard__item-actions';
-
-        if (item?.edit_link) {
-          const editLink = document.createElement('a');
-          editLink.className = 'ap-dashboard__item-action';
-          editLink.textContent = i18n.edit;
-          editLink.href = item.edit_link;
-          actions.appendChild(editLink);
-        }
-
-        if (item?.permalink) {
-          const viewLink = document.createElement('a');
-          viewLink.className = 'ap-dashboard__item-action';
-          viewLink.textContent = i18n.view;
-          viewLink.href = item.permalink;
-          viewLink.target = '_blank';
-          viewLink.rel = 'noopener noreferrer';
-          actions.appendChild(viewLink);
-        }
-
-        if (actions.childNodes.length > 0) {
-          li.appendChild(actions);
-        }
-
-        list.appendChild(li);
       });
-    }
-
-    section.appendChild(list);
-    return section;
   }
 
-  function buildAnalyticsPanel(role) {
+  function renderRosterPreview(data) {
+    const container = root.querySelector(
+      '#ap-dashboard-roster-preview .ap-dashboard__roster'
+    );
+    if (!container) {
+      return;
+    }
+
+    const items = data && Array.isArray(data.items) ? data.items : [];
+    if (items.length === 0) {
+      container.innerHTML = buildEmptyInline(i18n.noRoster);
+      container.removeAttribute('aria-busy');
+      return;
+    }
+
+    const listItems = items
+      .map((member) => {
+        const avatar = member?.avatar
+          ? `<img class="ap-dashboard__item-avatar" src="${escapeAttribute(
+              safeUrl(member.avatar)
+            )}" alt="${escapeAttribute(member?.name || '')}" width="32" height="32" />`
+          : '';
+        const name = member?.name ? escapeHTML(member.name) : escapeHTML(i18n.untitled);
+        const roleLabel = member?.role
+          ? `<span class="ap-dashboard__item-meta">${escapeHTML(member.role)}</span>`
+          : '';
+        return `<li class="ap-dashboard__item ap-dashboard__item--roster">${avatar}<span class="ap-dashboard__item-name">${name}</span>${roleLabel}</li>`;
+      })
+      .join('');
+
+    container.innerHTML = `<ul class="ap-dashboard__item-list ap-dashboard__item-list--roster">${listItems}</ul>`;
+    container.removeAttribute('aria-busy');
+  }
+
+  function buildStatsMarkup(statMap, counts) {
+    const cards = statMap
+      .map((item) => {
+        const rawValue = counts ? counts[item.key] : undefined;
+        const numeric =
+          typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
+        const value = Number.isFinite(numeric) ? numeric : 0;
+        const label = item.label || item.key;
+        return `<div class="ap-dashboard__stat" role="group" aria-label="${escapeHTML(
+          label
+        )}"><span class="ap-dashboard__stat-value">${escapeHTML(
+          formatNumber(value)
+        )}</span><span class="ap-dashboard__stat-label">${escapeHTML(label)}</span></div>`;
+      })
+      .join('');
+
+    return `<div class="ap-dashboard__stats" data-loading-type="stats" aria-live="polite">${cards}</div>`;
+  }
+
+  function buildUpcomingMarkup(events) {
+    const hasEvents = Array.isArray(events) && events.length > 0;
+    const items = hasEvents
+      ? events
+          .map((event) => {
+            const title = event?.title ? escapeHTML(event.title) : escapeHTML(i18n.untitled);
+            const href = safeUrl(event?.permalink || '');
+            const dateText = formatDate(event?.date);
+            const dateMarkup = dateText
+              ? `<span class="ap-dashboard__event-date">${escapeHTML(dateText)}</span>`
+              : '';
+            return `<li class="ap-dashboard__event"><a class="ap-dashboard__event-link" href="${escapeAttribute(
+              href
+            )}">${title}</a>${dateMarkup}</li>`;
+          })
+          .join('')
+      : `<li class="ap-dashboard__event ap-dashboard__event--empty">${buildEmptyInline(
+          i18n.noUpcoming
+        )}</li>`;
+
+    return `
+      <div class="ap-dashboard__panel ap-dashboard__upcoming" aria-live="polite">
+        <h2 class="ap-dashboard__section-title">${escapeHTML(i18n.upcomingEvents)}</h2>
+        <ul class="ap-dashboard__event-list" data-loading-type="list">${items}</ul>
+      </div>
+    `;
+  }
+
+  function buildRecentList(title, items, options = {}) {
+    const listItems = Array.isArray(items) && items.length
+      ? items
+          .map((item) => {
+            const primaryTitle = item?.title
+              ? escapeHTML(item.title)
+              : escapeHTML(i18n.untitled);
+            const editHref = safeUrl(item?.edit_link || '');
+            const viewHref = safeUrl(item?.permalink || '');
+            const primaryHref = viewHref !== '#' ? viewHref : editHref;
+            const linkHref = primaryHref !== '#' ? primaryHref : '#';
+
+            const actions = [];
+            if (editHref !== '#') {
+              actions.push(
+                `<a class="ap-dashboard__item-action" href="${escapeAttribute(
+                  editHref
+                )}">${escapeHTML(i18n.edit)}</a>`
+              );
+            }
+            if (viewHref !== '#') {
+              actions.push(
+                `<a class="ap-dashboard__item-action" href="${escapeAttribute(
+                  viewHref
+                )}" target="_blank" rel="noopener noreferrer">${escapeHTML(i18n.view)}</a>`
+              );
+            }
+            const actionsMarkup = actions.length
+              ? `<div class="ap-dashboard__item-actions">${actions.join('')}</div>`
+              : '';
+
+            return `<li class="ap-dashboard__item"><a class="ap-dashboard__item-link" href="${escapeAttribute(
+              linkHref
+            )}">${primaryTitle}</a>${actionsMarkup}</li>`;
+          })
+          .join('')
+      : `<li class="ap-dashboard__item ap-dashboard__item--empty">${buildEmptyInline(
+          options.emptyTitle || '',
+          options.emptyCta,
+          options.emptyHref
+        )}</li>`;
+
+    return `
+      <div class="ap-dashboard__panel" aria-live="polite">
+        <h2 class="ap-dashboard__section-title">${escapeHTML(title)}</h2>
+        <ul class="ap-dashboard__item-list" data-loading-type="list">${listItems}</ul>
+      </div>
+    `;
+  }
+
+  function buildRosterPanel() {
+    return `
+      <div class="ap-dashboard__panel" id="ap-dashboard-roster-preview" aria-live="polite">
+        <h2 class="ap-dashboard__section-title">${escapeHTML(i18n.rosterPreview)}</h2>
+        <div class="ap-dashboard__roster" data-loading-type="list"></div>
+      </div>
+    `;
+  }
+
+  function buildAnalyticsMarkup(role) {
     if (!endpointRoot) {
       return null;
     }
 
-    const panel = document.createElement('div');
-    panel.className = 'ap-dashboard__panel ap-dashboard__analytics';
-    panel.dataset.role = role;
-
-    const heading = document.createElement('h2');
-    heading.className = 'ap-dashboard__section-title';
-    heading.textContent = i18n.analytics;
-
-    const controls = document.createElement('div');
-    controls.className = 'ap-dashboard__analytics-controls';
-
-    const header = document.createElement('div');
-    header.className = 'ap-dashboard__analytics-header';
-    header.appendChild(heading);
-    header.appendChild(controls);
-    panel.appendChild(header);
-
-    const status = document.createElement('div');
-    status.className = 'ap-dashboard__analytics-status';
-    panel.appendChild(status);
-
-    const totals = document.createElement('div');
-    totals.className = 'ap-dashboard__stats ap-dashboard__stats--analytics';
-    panel.appendChild(totals);
-
-    const chart = document.createElement('div');
-    chart.className = 'ap-dashboard__analytics-chart';
-    panel.appendChild(chart);
-
     const defaultRange = ANALYTICS_RANGES.includes(30) ? 30 : ANALYTICS_RANGES[0];
-    const buttons = [];
-    let requestToken = 0;
+    const uid = `${role}-${Math.random().toString(36).slice(2, 10)}`;
 
-    ANALYTICS_RANGES.forEach((range) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'ap-dashboard__analytics-range';
-      button.textContent = formatRangeLabel(range);
-      button.dataset.range = String(range);
-      if (range === defaultRange) {
-        button.classList.add('is-active');
-      }
-      button.addEventListener('click', () => {
-        if (button.classList.contains('is-active')) {
-          return;
-        }
-        setRange(range);
-      });
-      controls.appendChild(button);
-      buttons.push(button);
-    });
+    const controls = ANALYTICS_RANGES.map((range) => {
+      const isActive = range === defaultRange;
+      return `<button type="button" class="ap-dashboard__analytics-range${
+        isActive ? ' is-active' : ''
+      }" data-range="${range}" aria-pressed="${isActive ? 'true' : 'false'}">${escapeHTML(
+        formatRangeLabel(range)
+      )}</button>`;
+    }).join('');
 
-    function setRange(range) {
-      buttons.forEach((btn) => {
-        if (Number(btn.dataset.range) === range) {
-          btn.classList.add('is-active');
-        } else {
-          btn.classList.remove('is-active');
-        }
-      });
+    const html = `
+      <div class="ap-dashboard__panel ap-dashboard__analytics" data-analytics-role="${escapeAttribute(
+        role
+      )}" data-analytics-default="${defaultRange}" data-analytics-uid="${uid}" aria-live="polite" aria-busy="true">
+        <div class="ap-dashboard__analytics-header">
+          <h2 class="ap-dashboard__section-title">${escapeHTML(i18n.analytics)}</h2>
+          <div class="ap-dashboard__analytics-controls" role="group" aria-label="${escapeHTML(
+            i18n.analytics
+          )}">
+            ${controls}
+          </div>
+        </div>
+        <div class="ap-dashboard__analytics-status" aria-live="polite"></div>
+        <div class="ap-dashboard__stats ap-dashboard__stats--analytics" data-loading-type="stats" aria-live="polite"></div>
+        <div class="ap-dashboard__analytics-chart" data-loading-type="chart" aria-live="polite"></div>
+      </div>
+    `;
+    return { html, uid };
+  }
 
-      panel.classList.add('is-loading');
-      status.textContent = i18n.loading;
-      totals.innerHTML = '';
-      chart.innerHTML = '';
-      panel.dataset.range = String(range);
+  function buildEmptyPanel(title, cta, href) {
+    return `
+      <div class="ap-dashboard__panel ap-dashboard__panel--empty" aria-live="polite">
+        ${buildEmptyInline(title, cta, href)}
+      </div>
+    `;
+  }
 
-      requestToken += 1;
-      const token = requestToken;
-
-      fetchAnalyticsData(role, range)
-        .then((data) => {
-          if (token !== requestToken) {
-            return;
-          }
-          panel.classList.remove('is-loading');
-          status.textContent = '';
-          renderAnalyticsTotals(totals, data?.totals);
-          renderAnalyticsChart(chart, data?.series);
-        })
-        .catch(() => {
-          if (token !== requestToken) {
-            return;
-          }
-          panel.classList.remove('is-loading');
-          status.textContent = i18n.dashboardError;
-        });
+  function buildEmptyInline(message, cta, href) {
+    const parts = [];
+    if (message) {
+      parts.push(`<span class="ap-dashboard__empty-text">${escapeHTML(message)}</span>`);
     }
-
-    setRange(defaultRange);
-
-    return panel;
-  }
-
-  function renderAnalyticsTotals(container, totals) {
-    container.innerHTML = '';
-
-    ANALYTICS_METRICS.forEach((metric) => {
-      const rawValue = totals ? totals[metric.key] : 0;
-      const numeric = typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
-      const value = Number.isFinite(numeric) ? numeric : 0;
-
-      const card = document.createElement('div');
-      card.className = 'ap-dashboard__stat ap-dashboard__stat--analytics';
-
-      const valueEl = document.createElement('span');
-      valueEl.className = 'ap-dashboard__stat-value';
-      try {
-        valueEl.textContent = value.toLocaleString();
-      } catch (e) {
-        valueEl.textContent = String(value);
+    if (cta) {
+      const safeHref = safeUrl(href);
+      if (safeHref !== '#') {
+        parts.push(
+          `<a class="ap-dashboard__empty-cta" href="${escapeAttribute(
+            safeHref
+          )}" role="button" tabindex="0">${escapeHTML(cta)}</a>`
+        );
+      } else {
+        parts.push(
+          `<span class="ap-dashboard__empty-cta ap-dashboard__empty-cta--disabled" aria-disabled="true">${escapeHTML(
+            cta
+          )}</span>`
+        );
       }
-
-      const labelEl = document.createElement('span');
-      labelEl.className = 'ap-dashboard__stat-label';
-      labelEl.textContent = metric.label || metric.key;
-
-      card.appendChild(valueEl);
-      card.appendChild(labelEl);
-      container.appendChild(card);
-    });
+    }
+    if (!parts.length) {
+      return '';
+    }
+    return `<div class="ap-dashboard__empty" role="note">${parts.join(' ')}</div>`;
   }
 
-  function renderAnalyticsChart(container, series) {
-    container.innerHTML = '';
+  function shouldShowFavoritesCallout(counts) {
+    if (!counts) {
+      return true;
+    }
+    const raw = counts.favorites;
+    const numeric = typeof raw === 'number' ? raw : parseInt(raw, 10);
+    return !Number.isFinite(numeric) || numeric <= 0;
+  }
 
-    if (!Array.isArray(series) || series.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'ap-dashboard__analytics-empty';
-      empty.textContent = i18n.chartEmpty;
-      container.appendChild(empty);
+  function initAnalyticsPanel(panel, role) {
+    const status = panel.querySelector('.ap-dashboard__analytics-status');
+    const totals = panel.querySelector('.ap-dashboard__stats');
+    const chart = panel.querySelector('.ap-dashboard__analytics-chart');
+    const controls = Array.from(panel.querySelectorAll('.ap-dashboard__analytics-range'));
+
+    if (!status || !totals || !chart || !controls.length) {
       return;
     }
 
-    const values = series.map((item) => {
+    const defaultRange =
+      Number(panel.dataset.analyticsDefault) || ANALYTICS_RANGES[0];
+    const uid = panel.dataset.analyticsUid || `${role}-${Date.now()}`;
+    panel.dataset.analyticsUid = uid;
+
+    totals.id = `ap-dashboard-analytics-totals-${uid}`;
+    chart.dataset.chartUid = uid;
+
+    let currentRange = defaultRange;
+    let requestId = 0;
+
+    const debouncedLoad = debounce((range) => {
+      fetchAndRender(range);
+    }, 200);
+
+    function fetchAndRender(range) {
+      panel.setAttribute('aria-busy', 'true');
+      status.textContent = i18n.loadingAnalytics || i18n.loading;
+      status.classList.remove('is-error');
+      totals.dataset.loadingType = 'stats';
+      chart.dataset.loadingType = 'chart';
+      showLoading(totals, i18n.loadingAnalytics || i18n.loading);
+      showLoading(chart, i18n.loadingAnalytics || i18n.loading);
+
+      const token = ++requestId;
+      fetchAnalyticsData(role, range)
+        .then((response) => {
+          if (token !== requestId) {
+            return;
+          }
+          panel.setAttribute('aria-busy', 'false');
+          status.textContent = '';
+          renderAnalyticsTotals(totals, response?.totals);
+          renderAnalyticsChart(chart, response?.series, totals.id, uid);
+        })
+        .catch(() => {
+          if (token !== requestId) {
+            return;
+          }
+          panel.setAttribute('aria-busy', 'false');
+          status.textContent = '';
+          totals.innerHTML = '';
+          const retryButton = showError(chart, i18n.analyticsError || i18n.dashboardError);
+          if (retryButton) {
+            retryButton.addEventListener('click', () => {
+              currentRange = range;
+              setActiveRange(currentRange);
+              debouncedLoad.cancel?.();
+              fetchAndRender(currentRange);
+            });
+            retryButton.addEventListener('keydown', handleButtonKeydown);
+          }
+        });
+    }
+
+    function setActiveRange(range) {
+      controls.forEach((button) => {
+        const isActive = Number(button.dataset.range) === range;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+    }
+
+    controls.forEach((button) => {
+      const range = Number(button.dataset.range);
+      button.addEventListener('click', () => {
+        if (range === currentRange) {
+          return;
+        }
+        currentRange = range;
+        setActiveRange(range);
+        debouncedLoad(range);
+      });
+      button.addEventListener('keydown', handleButtonKeydown);
+    });
+
+    setActiveRange(currentRange);
+    fetchAndRender(currentRange);
+  }
+
+  function fetchAnalyticsData(role, range) {
+    const cacheKey = `${role}:${range}`;
+    const cached = analyticsCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && now - cached.time < CACHE_TTL) {
+      return Promise.resolve(cached.data);
+    }
+
+    const target = `${endpointRoot}analytics/${role}?range=${range}`;
+    return fetchJSON(target).then((response) => {
+      analyticsCache.set(cacheKey, { time: Date.now(), data: response });
+      return response;
+    });
+  }
+
+  function renderAnalyticsTotals(container, totals) {
+    if (!container) {
+      return;
+    }
+
+    const data = totals && typeof totals === 'object' ? totals : {};
+    const cards = ANALYTICS_METRICS.map((metric) => {
+      const rawValue = data[metric.key];
+      const numeric =
+        typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
+      const value = Number.isFinite(numeric) ? numeric : 0;
+      const label = metric.label || metric.key;
+      return `<div class="ap-dashboard__stat" role="group" aria-label="${escapeHTML(
+        label
+      )}"><span class="ap-dashboard__stat-value">${escapeHTML(
+        formatNumber(value)
+      )}</span><span class="ap-dashboard__stat-label">${escapeHTML(label)}</span></div>`;
+    }).join('');
+
+    container.innerHTML = cards;
+    container.removeAttribute('aria-busy');
+  }
+
+  function renderAnalyticsChart(container, series, totalsId, uid) {
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '';
+
+    const dataSeries = Array.isArray(series) ? series : [];
+    if (dataSeries.length === 0) {
+      container.innerHTML = `<p class="ap-dashboard__analytics-empty">${escapeHTML(
+        i18n.chartEmpty
+      )}</p>`;
+      container.removeAttribute('aria-busy');
+      return;
+    }
+
+    const values = dataSeries.map((item) => {
       const raw = item ? item.views : 0;
       const numeric = typeof raw === 'number' ? raw : parseInt(raw, 10);
       return Number.isFinite(numeric) ? numeric : 0;
@@ -547,16 +689,34 @@
     const padding = 20;
     const innerWidth = width - padding * 2;
     const innerHeight = height - padding * 2;
-    const max = Math.max(...values);
+    const max = Math.max(...values, 0);
     const safeMax = max > 0 ? max : 1;
-    const step = series.length > 1 ? innerWidth / (series.length - 1) : 0;
+    const step = dataSeries.length > 1 ? innerWidth / (dataSeries.length - 1) : 0;
     const svgNS = 'http://www.w3.org/2000/svg';
 
     const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     svg.setAttribute('class', 'ap-dashboard__analytics-svg');
     svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', i18n.analyticsPrimary);
+
+    const titleId = `ap-dashboard-analytics-title-${uid}`;
+    const descId = `ap-dashboard-analytics-desc-${uid}`;
+
+    const titleEl = document.createElementNS(svgNS, 'title');
+    titleEl.setAttribute('id', titleId);
+    titleEl.textContent = i18n.analyticsPrimary || i18n.analytics;
+    svg.appendChild(titleEl);
+
+    const descEl = document.createElementNS(svgNS, 'desc');
+    descEl.setAttribute('id', descId);
+    svg.appendChild(descEl);
+
+    svg.setAttribute('aria-labelledby', titleId);
+    if (totalsId) {
+      svg.setAttribute('aria-describedby', `${descId} ${totalsId}`);
+    } else {
+      svg.setAttribute('aria-describedby', descId);
+    }
 
     const axis = document.createElementNS(svgNS, 'line');
     axis.setAttribute('x1', String(padding));
@@ -569,8 +729,8 @@
     let pathData = '';
     const points = [];
 
-    series.forEach((point, index) => {
-      const x = padding + (series.length > 1 ? step * index : innerWidth / 2);
+    dataSeries.forEach((point, index) => {
+      const x = padding + (dataSeries.length > 1 ? step * index : innerWidth / 2);
       const ratio = safeMax ? values[index] / safeMax : 0;
       const y = padding + (innerHeight - ratio * innerHeight);
       points.push({
@@ -597,7 +757,8 @@
 
       const title = document.createElementNS(svgNS, 'title');
       const label = formatAnalyticsDate(point.date);
-      title.textContent = `${label}: ${point.value}`;
+      const valueText = formatNumber(point.value);
+      title.textContent = label ? `${label}: ${valueText}` : valueText;
       circle.appendChild(title);
 
       svg.appendChild(circle);
@@ -605,23 +766,162 @@
 
     container.appendChild(svg);
 
-    const rangeSummary = document.createElement('div');
-    rangeSummary.className = 'ap-dashboard__analytics-summary';
-    const startLabel = formatAnalyticsDate(series[0]?.date);
-    const endLabel = formatAnalyticsDate(series[series.length - 1]?.date);
-    if (startLabel || endLabel) {
-      if (startLabel && endLabel && startLabel !== endLabel) {
-        rangeSummary.textContent = `${startLabel} – ${endLabel}`;
-      } else {
-        rangeSummary.textContent = startLabel || endLabel || '';
-      }
+    const startLabel = formatAnalyticsDate(dataSeries[0]?.date);
+    const endLabel = formatAnalyticsDate(dataSeries[dataSeries.length - 1]?.date);
+    let summaryText = '';
+    if (startLabel && endLabel) {
+      summaryText = startLabel === endLabel ? startLabel : `${startLabel} – ${endLabel}`;
+    } else {
+      summaryText = startLabel || endLabel || '';
+    }
+    descEl.textContent = summaryText || (i18n.analyticsPrimary || '');
+
+    if (summaryText) {
+      const rangeSummary = document.createElement('div');
+      rangeSummary.className = 'ap-dashboard__analytics-summary';
+      rangeSummary.textContent = summaryText;
       container.appendChild(rangeSummary);
+    }
+
+    container.removeAttribute('aria-busy');
+  }
+
+  function showLoading(root, text) {
+    if (!root) {
+      return;
+    }
+
+    const message = typeof text === 'string' && text ? text : i18n.loading;
+    const type = root.dataset.loadingType || '';
+    let skeleton = '';
+
+    const statsSkeleton = () =>
+      `<div class="ap-dashboard__skeleton ap-dashboard__skeleton--stats" aria-hidden="true">${Array(4)
+        .fill('')
+        .map(
+          () =>
+            '<div class="ap-dashboard__skeleton-card"><span class="ap-skeleton ap-skeleton--value"></span><span class="ap-skeleton ap-skeleton--label"></span></div>'
+        )
+        .join('')}</div>`;
+
+    const listSkeleton = () =>
+      `<ul class="ap-dashboard__skeleton ap-dashboard__skeleton--list" aria-hidden="true">${Array(3)
+        .fill('')
+        .map(() => '<li class="ap-skeleton ap-skeleton--line"></li>')
+        .join('')}</ul>`;
+
+    const chartSkeleton = () =>
+      '<div class="ap-dashboard__skeleton ap-dashboard__skeleton--chart" aria-hidden="true"><span class="ap-skeleton ap-skeleton--chart"></span></div>';
+
+    switch (type) {
+      case 'stats':
+        skeleton = statsSkeleton();
+        break;
+      case 'list':
+        skeleton = listSkeleton();
+        break;
+      case 'chart':
+        skeleton = chartSkeleton();
+        break;
+      default:
+        skeleton = `<div class="ap-dashboard__skeleton-group">${statsSkeleton()}${listSkeleton()}${chartSkeleton()}</div>`;
+        break;
+    }
+
+    root.innerHTML = `
+      <div class="ap-dashboard__loading" role="status" aria-live="polite">
+        <span class="ap-dashboard__loading-text">${escapeHTML(message)}</span>
+        ${skeleton}
+      </div>
+    `;
+    root.setAttribute('aria-busy', 'true');
+  }
+
+  function showError(root, message) {
+    if (!root) {
+      return null;
+    }
+
+    const safeMessage =
+      typeof message === 'string' && message ? message : i18n.dashboardError;
+    root.innerHTML = `
+      <div class="ap-dashboard__error" role="alert">
+        <span class="ap-dashboard__error-icon" aria-hidden="true">!</span>
+        <p class="ap-dashboard__error-message">${escapeHTML(safeMessage)}</p>
+        <button type="button" class="ap-dashboard__error-button" role="button" tabindex="0">${escapeHTML(
+          i18n.retry || 'Retry'
+        )}</button>
+      </div>
+    `;
+    root.setAttribute('aria-busy', 'false');
+
+    return root.querySelector('.ap-dashboard__error-button');
+  }
+
+  function handleButtonKeydown(event) {
+    if (!event) {
+      return;
+    }
+    const key = event.key;
+    if (key === ' ' || key === 'Spacebar') {
+      event.preventDefault();
+      if (event.currentTarget && typeof event.currentTarget.click === 'function') {
+        event.currentTarget.click();
+      }
+    } else if (key === 'Enter') {
+      event.preventDefault();
+      if (event.currentTarget && typeof event.currentTarget.click === 'function') {
+        event.currentTarget.click();
+      }
     }
   }
 
-  function fetchAnalyticsData(role, range) {
-    const target = `${endpointRoot}analytics/${role}?range=${range}`;
-    return fetchJSON(target);
+  function debounce(fn, delay) {
+    let timeoutId;
+    function debounced(...args) {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        fn.apply(this, args);
+      }, delay);
+    }
+    debounced.cancel = function () {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+    return debounced;
+  }
+
+  function formatNumber(value) {
+    if (!Number.isFinite(value)) {
+      return '0';
+    }
+    try {
+      return value.toLocaleString();
+    } catch (error) {
+      return String(value);
+    }
+  }
+
+  function fetchJSON(url) {
+    const headers = { Accept: 'application/json' };
+    if (boot?.nonces?.rest) {
+      headers['X-WP-Nonce'] = boot.nonces.rest;
+    }
+
+    return fetch(url, {
+      headers,
+      credentials: 'same-origin',
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error('Network error');
+      }
+      return response.json();
+    });
   }
 
   function formatAnalyticsDate(value) {
@@ -636,7 +936,7 @@
           month: 'short',
           day: 'numeric',
         });
-      } catch (e) {
+      } catch (error) {
         return direct.toISOString().slice(0, 10);
       }
     }
@@ -648,7 +948,7 @@
           month: 'short',
           day: 'numeric',
         });
-      } catch (e) {
+      } catch (error) {
         return fallback.toISOString().slice(0, 10);
       }
     }
@@ -684,82 +984,49 @@
         dateStyle: 'medium',
         timeStyle: 'short',
       });
-    } catch (e) {
+    } catch (error) {
       return parsed.toISOString();
     }
   }
 
-  function renderRosterPreview(data) {
-    const panel = document.getElementById('ap-dashboard-roster-preview');
-    if (!panel) {
-      return;
-    }
+  function resolveLink(type) {
+    const links = (boot && boot.links) || {};
+    const candidates = {
+      directory: [links.directory, links.explore, links.browse],
+      artworkCreate: [links.artworkCreate, links.createArtwork, links.builder, links.newArtwork],
+      eventCreate: [links.eventCreate, links.createEvent, links.eventsCreate, links.newEvent],
+    }[type] || [];
 
-    const container = panel.querySelector('.ap-dashboard__roster');
-    if (!container) {
-      return;
-    }
-
-    container.innerHTML = '';
-
-    const items = data && Array.isArray(data.items) ? data.items : [];
-    if (items.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'ap-dashboard__item ap-dashboard__item--empty';
-      empty.textContent = i18n.noRoster;
-      container.appendChild(empty);
-      return;
-    }
-
-    const list = document.createElement('ul');
-    list.className = 'ap-dashboard__item-list ap-dashboard__item-list--roster';
-
-    items.forEach((member) => {
-      const li = document.createElement('li');
-      li.className = 'ap-dashboard__item ap-dashboard__item--roster';
-
-      if (member?.avatar) {
-        const avatar = document.createElement('img');
-        avatar.className = 'ap-dashboard__item-avatar';
-        avatar.src = member.avatar;
-        avatar.alt = member?.name || '';
-        avatar.width = 32;
-        avatar.height = 32;
-        li.appendChild(avatar);
+    for (let index = 0; index < candidates.length; index += 1) {
+      const candidate = safeUrl(candidates[index]);
+      if (candidate !== '#') {
+        return candidate;
       }
-
-      const name = document.createElement('span');
-      name.className = 'ap-dashboard__item-name';
-      name.textContent = member?.name || i18n.untitled;
-      li.appendChild(name);
-
-      if (member?.role) {
-        const role = document.createElement('span');
-        role.className = 'ap-dashboard__item-meta';
-        role.textContent = member.role;
-        li.appendChild(role);
-      }
-
-      list.appendChild(li);
-    });
-
-    container.appendChild(list);
+    }
+    return '#';
   }
 
-  function fetchJSON(url) {
-    const headers = { Accept: 'application/json' };
-    if (boot?.nonces?.rest) {
-      headers['X-WP-Nonce'] = boot.nonces.rest;
+  function safeUrl(url) {
+    if (typeof url !== 'string') {
+      return '#';
     }
+    const trimmed = url.trim();
+    if (!trimmed || /^javascript:/i.test(trimmed)) {
+      return '#';
+    }
+    return trimmed;
+  }
 
-    return fetch(url, {
-      headers,
-      credentials: 'same-origin',
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error('Network error');
-      }
-      return response.json();
-    });
+  function escapeHTML(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeAttribute(value) {
+    return escapeHTML(value).replace(/\n/g, '&#10;');
   }
 })();
