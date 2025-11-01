@@ -1,8 +1,31 @@
 <?php
 namespace ArtPulse\Core;
 
+use function sanitize_title;
+
 class WooCommerceIntegration
 {
+    /**
+     * Retrieve the configured WooCommerce product ID for a membership level.
+     */
+    public static function getProductIdForLevel(string $level): int
+    {
+        $map = self::getProductIdMap();
+        $target = sanitize_title($level);
+
+        foreach ($map as $label => $product_id) {
+            if (!$product_id) {
+                continue;
+            }
+
+            if ($target === sanitize_title($label)) {
+                return (int) $product_id;
+            }
+        }
+
+        return 0;
+    }
+
     public static function register(): void
     {
         // Assign on completion
@@ -29,12 +52,7 @@ class WooCommerceIntegration
             return;
         }
 
-        $opts = get_option('artpulse_settings', []);
-        $map  = [
-            'Basic' => intval( $opts['woo_basic_product_id'] ?? 0 ),
-            'Pro'   => intval( $opts['woo_pro_product_id']   ?? 0 ),
-            'Org'   => intval( $opts['woo_org_product_id']   ?? 0 ),
-        ];
+        $map = self::getProductIdMap();
 
         foreach ( $order->get_items() as $item ) {
             $prod_id = $item->get_product_id();
@@ -109,5 +127,19 @@ class WooCommerceIntegration
                 date_i18n( get_option('date_format'), $expiry )
             )
         );
+    }
+
+    /**
+     * @return array<string,int>
+     */
+    private static function getProductIdMap(): array
+    {
+        $opts = get_option('artpulse_settings', []);
+
+        return [
+            'Basic' => intval( $opts['woo_basic_product_id'] ?? 0 ),
+            'Pro'   => intval( $opts['woo_pro_product_id']   ?? 0 ),
+            'Org'   => intval( $opts['woo_org_product_id']   ?? 0 ),
+        ];
     }
 }

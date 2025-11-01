@@ -40,6 +40,7 @@ class WooCommerceIntegrationTest extends TestCase
     {
         parent::setUp();
         Monkey\setUp();
+        Functions\when('sanitize_title')->alias(fn($value) => strtolower((string) $value));
     }
 
     protected function tearDown(): void
@@ -130,5 +131,25 @@ class WooCommerceIntegrationTest extends TestCase
         Functions\expect('wp_mail')->never();
 
         WooCommerceIntegration::handleRefundOrCancel($order_id);
+    }
+
+    public function testGetProductIdForLevelMatchesConfiguredSettings(): void
+    {
+        Functions\when('get_option')->alias(function($option, $default = []) {
+            if ('artpulse_settings' === $option) {
+                return [
+                    'woo_basic_product_id' => 111,
+                    'woo_pro_product_id'   => 222,
+                    'woo_org_product_id'   => 333,
+                ];
+            }
+
+            return $default;
+        });
+
+        $this->assertSame(111, WooCommerceIntegration::getProductIdForLevel('basic'));
+        $this->assertSame(222, WooCommerceIntegration::getProductIdForLevel('Pro'));
+        $this->assertSame(333, WooCommerceIntegration::getProductIdForLevel('ORG'));
+        $this->assertSame(0, WooCommerceIntegration::getProductIdForLevel('unknown'));
     }
 }

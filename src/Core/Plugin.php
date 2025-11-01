@@ -339,6 +339,7 @@ class Plugin
         if ( ! empty( $opts['woo_enabled'] ) ) {
             \ArtPulse\Core\WooCommerceIntegration::register();
             \ArtPulse\Core\PurchaseShortcode::register();
+            \ArtPulse\Core\MembershipCheckoutRedirector::register();
         }
     }
 
