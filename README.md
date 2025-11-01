@@ -29,6 +29,12 @@ ArtPulse Management is a powerful WordPress plugin that enables seamless managem
 🧭 Organization Onboarding — `[ap_register_organization]` shortcode to collect org sign-ups, auto-assign creators, notify admins, and promote follow/favorite actions
 🏗️ Organization Builder — `[ap_org_builder]` shortcode for approved org owners to edit profiles, manage media, preview, publish, and submit events
 
+## Continuous integration & upgrade audit
+
+GitHub Actions runs full plugin CI and an upgrade audit on every push and pull request. The audit step executes `composer audit:upgrades`,
+fails the workflow if any checklist item regresses, and writes `reports/upgrade_audit.md`. The resulting Markdown report is uploaded as an
+artifact on CI and can be reviewed locally by running the same Composer command.
+
 ## Organization upgrade workflow
 
 Members start from the dashboard upgrade card. Requesting an upgrade creates a

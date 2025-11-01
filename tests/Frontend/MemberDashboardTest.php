@@ -160,4 +160,34 @@ class MemberDashboardTest extends WP_UnitTestCase
             }
         }
     }
+
+    public function test_upgrade_widget_outputs_accessible_status_and_labels(): void
+    {
+        $section_title    = 'Upgrade options';
+        $section_intro    = 'Choose how you would like to upgrade.';
+        $section_upgrades = [
+            [
+                'url'         => home_url('/artist-upgrade/'),
+                'cta'         => 'View details',
+                'slug'        => 'artist',
+                'role_label'  => 'Artist',
+                'status'      => 'denied',
+                'denial_reason' => 'Please add more samples to your portfolio.',
+                'review_id'   => 123,
+            ],
+        ];
+
+        ob_start();
+        require dirname(__DIR__, 2) . '/templates/dashboard/partials/upgrade-section.php';
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('role="status"', $html);
+        $this->assertStringContainsString('aria-live="polite"', $html);
+        $this->assertStringContainsString('aria-atomic="true"', $html);
+        $this->assertStringContainsString('data-ap-upgrade-status="denied"', $html);
+        $this->assertStringContainsString('data-ap-upgrade-review="123"', $html);
+        $this->assertStringContainsString('data-ap-upgrade-reopen', $html);
+        $this->assertStringContainsString('tabindex="-1"', $html);
+        $this->assertMatchesRegularExpression('/aria-label="[^"]*Artist[^"]*"/', $html);
+    }
 }
