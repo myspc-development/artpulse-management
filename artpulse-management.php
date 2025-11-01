@@ -84,6 +84,7 @@ $main = new Plugin();
 // Register REST API routes
 add_action('rest_api_init', function () {
     \ArtPulse\Rest\PortfolioRestController::register();
+    \ArtPulse\Rest\MemberDashboardController::register();
 });
 
 if (defined('WP_CLI') && WP_CLI) {

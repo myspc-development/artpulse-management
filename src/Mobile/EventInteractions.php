@@ -106,6 +106,10 @@ class EventInteractions
 
         $wpdb->query($sql);
 
+        if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
+            \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
+
         return self::get_event_state($event_id, $user_id);
     }
 
@@ -125,6 +129,10 @@ class EventInteractions
             '%d',
             '%d',
         ]);
+
+        if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
+            \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
 
         return self::get_event_state($event_id, $user_id);
     }

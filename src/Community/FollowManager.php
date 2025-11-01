@@ -35,6 +35,10 @@ class FollowManager {
                 sprintf('You have a new follower on your %s "%s".', $object_type, $title)
             );
         }
+
+        if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
+            \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
     }
 
     /**
@@ -48,6 +52,10 @@ class FollowManager {
             'object_id'   => $object_id,
             'object_type' => $object_type,
         ]);
+
+        if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
+            \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
     }
 
     /**
