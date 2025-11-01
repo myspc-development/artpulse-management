@@ -35,6 +35,16 @@ foreach ($results as $section => $data) {
 
 $timestamp = gmdate('Y-m-d H:i:s') . ' UTC';
 
+$hasFailures = false;
+foreach ($results as $data) {
+    if (!$data['pass']) {
+        $hasFailures = true;
+        break;
+    }
+}
+
+$testsFailed = $phpunitResult !== null && (int) $phpunitResult['exitCode'] !== 0;
+
 $summaryLines = [];
 $summaryLines[] = sprintf('ArtPulse Upgrade Audit – %s', $timestamp);
 foreach ($results as $section => $data) {
@@ -47,7 +57,12 @@ if ($phpunitResult === null) {
     $summaryLines[] = 'PHPUnit: not executed (binary not available)';
 } else {
     $summaryLines[] = sprintf('PHPUnit: %s (exit code %d)', $phpunitResult['exitCode'] === 0 ? 'completed' : 'completed with issues', $phpunitResult['exitCode']);
+    if ($testsFailed) {
+        $summaryLines[] = 'PHPUnit failures detected during audit run.';
+    }
 }
+
+$summaryLines[] = sprintf('Audit result: %s', ($hasFailures || $testsFailed) ? 'FAIL' : 'PASS');
 
 $reportPath = $rootDir . '/reports/upgrade_audit.md';
 if (!is_dir(dirname($reportPath))) {
@@ -58,6 +73,7 @@ $markdown = [];
 $markdown[] = '# ArtPulse Upgrade Audit Report';
 $markdown[] = '';
 $markdown[] = sprintf('*Generated: %s*', $timestamp);
+$markdown[] = sprintf('*Audit result: %s*', ($hasFailures || $testsFailed) ? 'FAIL' : 'PASS');
 $markdown[] = '';
 $markdown[] = '| Checklist Item | Status | Details |';
 $markdown[] = '| --- | --- | --- |';
@@ -119,7 +135,9 @@ $summaryLines[] = sprintf('Report written to: %s', relativePath($rootDir, $repor
 
 echo implode(PHP_EOL, $summaryLines) . PHP_EOL;
 
-exit(0);
+$exitCode = ($hasFailures || $testsFailed) ? 1 : 0;
+
+exit($exitCode);
 
 function checkRepository(string $rootDir): array
 {

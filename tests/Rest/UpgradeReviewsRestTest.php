@@ -55,11 +55,17 @@ class UpgradeReviewsRestTest extends \WP_UnitTestCase
         $unauthenticated->set_header('X-WP-Nonce', $this->nonce);
         $response = rest_do_request($unauthenticated);
         $this->assertSame(rest_authorization_required_code(), $response->get_status());
+        $unauthenticated_data = $response->get_data();
+        $this->assertIsArray($unauthenticated_data);
+        $this->assertSame('rest_forbidden', $unauthenticated_data['code'] ?? null);
 
         wp_set_current_user($this->user_id);
         $missing_nonce = $this->makeCreateRequest('artist');
         $missing_nonce_response = rest_do_request($missing_nonce);
         $this->assertSame(403, $missing_nonce_response->get_status());
+        $missing_nonce_data = $missing_nonce_response->get_data();
+        $this->assertIsArray($missing_nonce_data);
+        $this->assertSame('rest_invalid_nonce', $missing_nonce_data['code'] ?? null);
 
         $valid = $this->dispatch($this->makeCreateRequest('artist'));
         $this->assertSame(201, $valid->get_status());
