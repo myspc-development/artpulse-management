@@ -2,7 +2,10 @@
 
 namespace ArtPulse\Frontend;
 
+use function absint;
+use function sanitize_text_field;
 use function wp_strip_all_tags;
+use function wp_unslash;
 
 class OrganizationDashboardShortcode {
     public static function register() {
@@ -40,7 +43,8 @@ class OrganizationDashboardShortcode {
                     role="status"
                     aria-live="polite"
                 ></div>
-                <form id="ap-org-event-form">
+                <form id="ap-org-event-form" method="post">
+                    <?php wp_nonce_field('ap_org_dashboard_nonce', 'nonce'); ?>
                     <label for="ap_event_title">Event Title</label>
                     <input id="ap_event_title" type="text" name="ap_event_title" required>
 
@@ -80,11 +84,21 @@ class OrganizationDashboardShortcode {
             wp_send_json_error(['message' => __('You must be logged in to add events.', 'artpulse')]);
         }
 
-        $title = sanitize_text_field($_POST['ap_event_title']);
-        $date = sanitize_text_field($_POST['ap_event_date']);
-        $location = sanitize_text_field($_POST['ap_event_location']);
-        $event_type = intval($_POST['ap_event_type']);
-        $org_id = intval($_POST['ap_event_organization']);
+        if (!isset(
+            $_POST['ap_event_title'],
+            $_POST['ap_event_date'],
+            $_POST['ap_event_location'],
+            $_POST['ap_event_type'],
+            $_POST['ap_event_organization']
+        )) {
+            wp_send_json_error(['message' => __('Invalid event data.', 'artpulse')]);
+        }
+
+        $title = sanitize_text_field(wp_unslash($_POST['ap_event_title']));
+        $date = sanitize_text_field(wp_unslash($_POST['ap_event_date']));
+        $location = sanitize_text_field(wp_unslash($_POST['ap_event_location']));
+        $event_type = absint(wp_unslash($_POST['ap_event_type']));
+        $org_id = absint(wp_unslash($_POST['ap_event_organization']));
         $user_id = get_current_user_id();
         $user_org_id = get_user_meta($user_id, 'ap_organization_id', true);
 
@@ -102,14 +116,17 @@ class OrganizationDashboardShortcode {
             'post_status' => 'pending'
         ]);
 
-        if (!$event_id) {
+        if (!$event_id || is_wp_error($event_id)) {
             wp_send_json_error(['message' => __('Failed to insert event.', 'artpulse')]);
         }
 
         update_post_meta($event_id, '_ap_event_date', $date);
         update_post_meta($event_id, '_ap_event_location', $location);
         update_post_meta($event_id, '_ap_event_organization', $org_id);
-        wp_set_post_terms($event_id, [$event_type], 'artpulse_event_type');
+
+        if ($event_type > 0) {
+            wp_set_post_terms($event_id, [$event_type], 'artpulse_event_type');
+        }
 
         $html = self::get_events_list_html($org_id);
 
@@ -126,7 +143,7 @@ class OrganizationDashboardShortcode {
             wp_send_json_error(['message' => __('You must be logged in to delete events.', 'artpulse')]);
         }
 
-        $event_id = isset($_POST['event_id']) ? intval($_POST['event_id']) : 0;
+        $event_id = isset($_POST['event_id']) ? absint(wp_unslash($_POST['event_id'])) : 0;
         if (!$event_id) {
             wp_send_json_error(['message' => __('Invalid event.', 'artpulse')]);
         }

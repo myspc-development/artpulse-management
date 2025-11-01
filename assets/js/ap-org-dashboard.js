@@ -3,10 +3,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const openBtn = document.getElementById('ap-add-event-btn');
   const closeBtn = document.getElementById('ap-modal-close');
   const form = document.getElementById('ap-org-event-form');
+  const nonceField = form?.querySelector('input[name="nonce"]');
   const eventsContainer = document.getElementById('ap-org-events');
   const statusBox = document.getElementById('ap-status-message');
 
   const baseStatusClass = statusBox?.className ?? '';
+
+  const getNonce = () => {
+    if (nonceField && nonceField.value) {
+      return nonceField.value;
+    }
+
+    return typeof APOrgDashboard !== 'undefined' ? APOrgDashboard.nonce : '';
+  };
 
   const clearStatus = () => {
     if (!statusBox) return;
@@ -49,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formData = new FormData(form);
     formData.append('action', 'ap_add_org_event');
-    formData.append('nonce', APOrgDashboard.nonce);
+    formData.append('nonce', getNonce());
 
     fetch(APOrgDashboard.ajax_url, {
       method: 'POST',
@@ -92,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         body: new URLSearchParams({
           action: 'ap_delete_org_event',
-          nonce: APOrgDashboard.nonce,
+          nonce: getNonce(),
           event_id: eventId
         })
       })
