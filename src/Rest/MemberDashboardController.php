@@ -352,6 +352,10 @@ class MemberDashboardController
         );
         $wpdb->query($sql);
 
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            \ArtPulse\Rest\AnalyticsController::invalidate_member_cache((int) $user_id);
+        }
+
         $unread = (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT COUNT(*) FROM {$wpdb->prefix}ap_notifications WHERE user_id = %d AND status = %s",

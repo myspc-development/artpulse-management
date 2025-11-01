@@ -64,6 +64,10 @@ class EventInteractions
             do_action('artpulse/event_liked', $event_id, $user_id);
         }
 
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            \ArtPulse\Rest\AnalyticsController::invalidate_event_caches($event_id);
+        }
+
         return self::get_event_state($event_id, $user_id);
     }
 
@@ -83,6 +87,10 @@ class EventInteractions
             '%d',
             '%d',
         ]);
+
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            \ArtPulse\Rest\AnalyticsController::invalidate_event_caches($event_id);
+        }
 
         return self::get_event_state($event_id, $user_id);
     }
@@ -110,6 +118,11 @@ class EventInteractions
             \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
         }
 
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            \ArtPulse\Rest\AnalyticsController::invalidate_member_cache((int) $user_id);
+            \ArtPulse\Rest\AnalyticsController::invalidate_event_caches($event_id);
+        }
+
         return self::get_event_state($event_id, $user_id);
     }
 
@@ -132,6 +145,11 @@ class EventInteractions
 
         if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
             \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
+        }
+
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            \ArtPulse\Rest\AnalyticsController::invalidate_member_cache((int) $user_id);
+            \ArtPulse\Rest\AnalyticsController::invalidate_event_caches($event_id);
         }
 
         return self::get_event_state($event_id, $user_id);
