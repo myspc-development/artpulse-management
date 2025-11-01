@@ -42,7 +42,7 @@ class EventSubmissionShortcode {
             'include_nonce' => true,
             'nonce_action'  => 'ap_submit_event',
             'nonce_field'   => 'ap_event_nonce',
-            'submit_label'  => __('Submit Event', 'artpulse'),
+            'submit_label'  => __('Submit Event', 'artpulse-management'),
             'submit_name'   => 'ap_submit_event',
             'extra_classes' => 'ap-event-form',
             'notices'       => self::get_fallback_notices(),
@@ -74,27 +74,27 @@ class EventSubmissionShortcode {
         ];
 
         if (empty($payload['title'])) {
-            self::add_notice(__('Please enter an event title.', 'artpulse'), 'error');
+            self::add_notice(__('Please enter an event title.', 'artpulse-management'), 'error');
             return;
         }
 
         if (empty($payload['content'])) {
-            self::add_notice(__('Please enter an event description.', 'artpulse'), 'error');
+            self::add_notice(__('Please enter an event description.', 'artpulse-management'), 'error');
             return;
         }
 
         if (empty($payload['event_date'])) {
-            self::add_notice(__('Please enter an event date.', 'artpulse'), 'error');
+            self::add_notice(__('Please enter an event date.', 'artpulse-management'), 'error');
             return;
         }
 
         if (empty($payload['event_location'])) {
-            self::add_notice(__('Please enter an event location.', 'artpulse'), 'error');
+            self::add_notice(__('Please enter an event location.', 'artpulse-management'), 'error');
             return;
         }
 
         if (!preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/', $payload['event_date'])) {
-            self::add_notice(__('Please enter a valid date in YYYY-MM-DD format.', 'artpulse'), 'error');
+            self::add_notice(__('Please enter a valid date in YYYY-MM-DD format.', 'artpulse-management'), 'error');
             return;
         }
 
@@ -113,7 +113,7 @@ class EventSubmissionShortcode {
             return;
         }
 
-        self::add_notice(__('Event submitted successfully! It is awaiting review.', 'artpulse'), 'success');
+        self::add_notice(__('Event submitted successfully! It is awaiting review.', 'artpulse-management'), 'success');
 
         if (function_exists('wc_add_notice')) {
             wp_safe_redirect(home_url('/thank-you-page'));

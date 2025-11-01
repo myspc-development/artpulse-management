@@ -15,10 +15,10 @@ while ( have_posts() ) : the_post(); ?>
     $is_following = $user_id && class_exists('\\ArtPulse\\Community\\FollowManager')
       ? \ArtPulse\Community\FollowManager::is_following($user_id, $object_id, $object_type)
       : false;
-    $favorite_label_on  = esc_html__('Unfavorite', 'artpulse');
-    $favorite_label_off = esc_html__('Favorite', 'artpulse');
-    $follow_label_on    = esc_html__('Unfollow', 'artpulse');
-    $follow_label_off   = esc_html__('Follow', 'artpulse');
+    $favorite_label_on  = esc_html__('Unfavorite', 'artpulse-management');
+    $favorite_label_off = esc_html__('Favorite', 'artpulse-management');
+    $follow_label_on    = esc_html__('Unfollow', 'artpulse-management');
+    $follow_label_off   = esc_html__('Follow', 'artpulse-management');
   ?>
   <div class="ap-social-actions">
     <button
@@ -56,13 +56,13 @@ while ( have_posts() ) : the_post(); ?>
     if($medium||$dimensions||$materials): ?>
     <ul class="portfolio-meta">
       <?php if($medium): ?>
-        <li><strong><?php esc_html_e('Medium:','artpulse'); ?></strong> <?php echo esc_html($medium); ?></li>
+        <li><strong><?php esc_html_e('Medium:', 'artpulse-management'); ?></strong> <?php echo esc_html($medium); ?></li>
       <?php endif; ?>
       <?php if($dimensions): ?>
-        <li><strong><?php esc_html_e('Dimensions:','artpulse'); ?></strong> <?php echo esc_html($dimensions); ?></li>
+        <li><strong><?php esc_html_e('Dimensions:', 'artpulse-management'); ?></strong> <?php echo esc_html($dimensions); ?></li>
       <?php endif; ?>
       <?php if($materials): ?>
-        <li><strong><?php esc_html_e('Materials:','artpulse'); ?></strong> <?php echo esc_html($materials); ?></li>
+        <li><strong><?php esc_html_e('Materials:', 'artpulse-management'); ?></strong> <?php echo esc_html($materials); ?></li>
       <?php endif; ?>
     </ul>
   <?php endif;

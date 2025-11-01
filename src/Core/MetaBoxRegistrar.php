@@ -28,7 +28,7 @@ class MetaBoxRegistrar
     {
         add_meta_box(
             'ap_event_details_metabox',           // Unique ID for the meta box
-            __('Event Details', 'artpulse'),      // Title of the meta box, translatable
+            __('Event Details', 'artpulse-management'),      // Title of the meta box, translatable
             [self::class, 'render_event_meta_box'], // Callback function to render the meta box HTML
             'artpulse_event',                     // The CPT slug this meta box appears on
             'normal',                             // Context (where on the screen: 'normal', 'side', 'advanced')
@@ -53,13 +53,13 @@ class MetaBoxRegistrar
 
         // HTML for the Event Date input field
         echo '<p>';
-        echo '<label for="ap_event_date_field">' . esc_html__('Event Date:', 'artpulse') . '</label><br>';
+        echo '<label for="ap_event_date_field">' . esc_html__('Event Date:', 'artpulse-management') . '</label><br>';
         echo '<input type="date" id="ap_event_date_field" name="ap_event_date" value="' . esc_attr($date) . '" class="widefat"/>';
         echo '</p>';
 
         // HTML for the Location input field
         echo '<p>';
-        echo '<label for="ap_event_location_field">' . esc_html__('Location:', 'artpulse') . '</label><br>';
+        echo '<label for="ap_event_location_field">' . esc_html__('Location:', 'artpulse-management') . '</label><br>';
         echo '<input type="text" id="ap_event_location_field" name="ap_event_location" value="' . esc_attr($location) . '" class="widefat"/>';
         echo '</p>';
     }

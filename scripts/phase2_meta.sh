@@ -24,7 +24,7 @@ class MetaBoxRegistrar
         // Event Details
         add_meta_box(
             'artpulse_event_details',
-            __('Event Details', 'artpulse'),
+            __('Event Details', 'artpulse-management'),
             [self::class, 'renderEventBox'],
             'artpulse_event',
             'normal',
@@ -41,10 +41,10 @@ class MetaBoxRegistrar
         $date     = get_post_meta($post->ID, '_artpulse_event_date', true);
         $location = get_post_meta($post->ID, '_artpulse_event_location', true);
 
-        echo '<p><label for="artpulse_event_date">'.__('Date','artpulse').'</label><br />';
+        echo '<p><label for="artpulse_event_date">'.__('Date', 'artpulse-management').'</label><br />';
         echo '<input type="date" id="artpulse_event_date" name="artpulse_event_date" value="'.esc_attr($date).'" /></p>';
 
-        echo '<p><label for="artpulse_event_location">'.__('Location','artpulse').'</label><br />';
+        echo '<p><label for="artpulse_event_location">'.__('Location', 'artpulse-management').'</label><br />';
         echo '<input type="text" id="artpulse_event_location" name="artpulse_event_location" value="'.esc_attr($location).'" style="width:100%;" /></p>';
     }
 

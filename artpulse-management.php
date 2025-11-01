@@ -47,6 +47,14 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
 require_once __DIR__ . '/src/helpers.php';
 require_once __DIR__ . '/src/Core/Urls.php';
 
+add_action('plugins_loaded', static function () {
+    load_plugin_textdomain(
+        'artpulse-management',
+        false,
+        dirname(plugin_basename(__FILE__)) . '/languages'
+    );
+});
+
 if (!class_exists(Plugin::class)) {
     $message = 'ArtPulse Management bootstrap aborted: Plugin class unavailable.';
     error_log($message);

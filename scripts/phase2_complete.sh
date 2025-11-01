@@ -26,7 +26,7 @@ class PostTypeRegistrar
 
         // 1) Events
         register_post_type('artpulse_event', array_merge($common, [
-            'label'           => __('Events', 'artpulse'),
+            'label'           => __('Events', 'artpulse-management'),
             'supports'        => ['title','editor','thumbnail','excerpt'],
             'rewrite'         => ['slug'=>'events'],
             'taxonomies'      => ['artpulse_event_type'],
@@ -45,7 +45,7 @@ class PostTypeRegistrar
 
         // 2) Artists
         register_post_type('artpulse_artist', array_merge($common, [
-            'label'           => __('Artists', 'artpulse'),
+            'label'           => __('Artists', 'artpulse-management'),
             'supports'        => ['title','editor','thumbnail','custom-fields'],
             'rewrite'         => ['slug'=>'artists'],
             'capability_type' => 'artpulse_artist',
@@ -63,7 +63,7 @@ class PostTypeRegistrar
 
         // 3) Artworks
         register_post_type('artpulse_artwork', array_merge($common, [
-            'label'           => __('Artworks', 'artpulse'),
+            'label'           => __('Artworks', 'artpulse-management'),
             'supports'        => ['title','editor','thumbnail','custom-fields'],
             'rewrite'         => ['slug'=>'artworks'],
             'capability_type' => 'artpulse_artwork',
@@ -81,7 +81,7 @@ class PostTypeRegistrar
 
         // 4) Organizations
         register_post_type('artpulse_org', array_merge($common, [
-            'label'           => __('Organizations', 'artpulse'),
+            'label'           => __('Organizations', 'artpulse-management'),
             'supports'        => ['title','editor','thumbnail'],
             'rewrite'         => ['slug'=>'organizations'],
             'capability_type' => 'artpulse_org',
@@ -99,11 +99,11 @@ class PostTypeRegistrar
 
         // Taxonomies
         register_taxonomy('artpulse_event_type','artpulse_event',[
-            'label'=>__('Event Types','artpulse'),
+            'label'=>__('Event Types', 'artpulse-management'),
             'public'=>true,'show_in_rest'=>true,'hierarchical'=>true,'rewrite'=>['slug'=>'event-types'],
         ]);
         register_taxonomy('artpulse_medium','artpulse_artwork',[
-            'label'=>__('Medium','artpulse'),
+            'label'=>__('Medium', 'artpulse-management'),
             'public'=>true,'show_in_rest'=>true,'hierarchical'=>true,'rewrite'=>['slug'=>'medium'],
         ]);
     }
@@ -127,13 +127,13 @@ class MetaBoxRegistrar
     public static function addMetaBoxes()
     {
         // Event
-        add_meta_box('ap_event_details', __('Event Details','artpulse'),'renderEventBox','artpulse_event');
+        add_meta_box('ap_event_details', __('Event Details', 'artpulse-management'),'renderEventBox','artpulse_event');
         // Artist
-        add_meta_box('ap_artist_bio',     __('Artist Profile','artpulse'),'renderArtistBox','artpulse_artist');
+        add_meta_box('ap_artist_bio',     __('Artist Profile', 'artpulse-management'),'renderArtistBox','artpulse_artist');
         // Artwork
-        add_meta_box('ap_artwork_info',   __('Artwork Info','artpulse'),'renderArtworkBox','artpulse_artwork');
+        add_meta_box('ap_artwork_info',   __('Artwork Info', 'artpulse-management'),'renderArtworkBox','artpulse_artwork');
         // Organization
-        add_meta_box('ap_org_info',       __('Organization Info','artpulse'),'renderOrgBox','artpulse_org');
+        add_meta_box('ap_org_info',       __('Organization Info', 'artpulse-management'),'renderOrgBox','artpulse_org');
     }
 
     public static function renderEventBox(\WP_Post $post)

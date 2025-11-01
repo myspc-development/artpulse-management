@@ -49,12 +49,12 @@ class FavoritesRestController
             'object_id' => [
                 'type'        => 'integer',
                 'required'    => true,
-                'description' => __('The ID of the object being favorited.', 'artpulse'),
+                'description' => __('The ID of the object being favorited.', 'artpulse-management'),
             ],
             'object_type' => [
                 'type'              => 'string',
                 'required'          => true,
-                'description'       => __('The object type or post type for the favorite.', 'artpulse'),
+                'description'       => __('The object type or post type for the favorite.', 'artpulse-management'),
                 'sanitize_callback' => 'sanitize_key',
             ],
         ];
@@ -103,16 +103,16 @@ class FavoritesRestController
     private static function validate_object(int $object_id, string $object_type): WP_Error|bool
     {
         if ($object_id <= 0) {
-            return new WP_Error('invalid_object', __('A valid object ID must be provided.', 'artpulse'), ['status' => 400]);
+            return new WP_Error('invalid_object', __('A valid object ID must be provided.', 'artpulse-management'), ['status' => 400]);
         }
 
         if (!post_type_exists($object_type)) {
-            return new WP_Error('invalid_object_type', __('Unsupported object type.', 'artpulse'), ['status' => 400]);
+            return new WP_Error('invalid_object_type', __('Unsupported object type.', 'artpulse-management'), ['status' => 400]);
         }
 
         $post = get_post($object_id);
         if (!$post || $post->post_type !== $object_type) {
-            return new WP_Error('object_not_found', __('The specified favorite target could not be found.', 'artpulse'), ['status' => 404]);
+            return new WP_Error('object_not_found', __('The specified favorite target could not be found.', 'artpulse-management'), ['status' => 404]);
         }
 
         return true;

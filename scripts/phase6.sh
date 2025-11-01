@@ -108,13 +108,13 @@ class UserDashboardManager
     public static function renderDashboard($atts)
     {
         if ( ! is_user_logged_in() ) {
-            return '<p>' . __('Please log in to view your dashboard.', 'artpulse') . '</p>';
+            return '<p>' . __('Please log in to view your dashboard.', 'artpulse-management') . '</p>';
         }
         ob_start(); ?>
         <div class="ap-user-dashboard">
-            <h2><?php _e('Your Membership','artpulse'); ?></h2>
+            <h2><?php _e('Your Membership', 'artpulse-management'); ?></h2>
             <div id="ap-membership-info"></div>
-            <h2><?php _e('Your Content','artpulse'); ?></h2>
+            <h2><?php _e('Your Content', 'artpulse-management'); ?></h2>
             <div id="ap-user-content"></div>
         </div>
         <?php

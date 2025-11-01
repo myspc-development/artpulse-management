@@ -284,7 +284,7 @@ class SettingsPage
             update_option('artpulse_webhook_log', $log);
             update_option('artpulse_webhook_status', 'Simulated');
             update_option('artpulse_webhook_last_event', end($log));
-            echo '<div class="notice notice-success"><p>' . esc_html__('Webhook simulated successfully.', 'artpulse') . '</p></div>';
+            echo '<div class="notice notice-success"><p>' . esc_html__('Webhook simulated successfully.', 'artpulse-management') . '</p></div>';
         }
         if (isset($_POST['ap_clear_webhook_log']) && check_admin_referer('ap_clear_webhook_log_action')) {
             delete_option('artpulse_webhook_log');
@@ -474,46 +474,46 @@ class SettingsPage
         );
         add_settings_section(
             'ap_general_section',
-            __('General Settings', 'artpulse'),
+            __('General Settings', 'artpulse-management'),
             '__return_false',
             'artpulse-settings'
         );
         $fields = [
             'basic_fee' => [
-                'label' => __('Basic Member Fee ($)', 'artpulse'),
-                'desc'  => __('Monthly cost for Basic members. Leave blank to disable.', 'artpulse'),
+                'label' => __('Basic Member Fee ($)', 'artpulse-management'),
+                'desc'  => __('Monthly cost for Basic members. Leave blank to disable.', 'artpulse-management'),
             ],
             'pro_fee' => [
-                'label' => __('Pro Artist Fee ($)', 'artpulse'),
-                'desc'  => __('Subscription price for Pro Artists.', 'artpulse'),
+                'label' => __('Pro Artist Fee ($)', 'artpulse-management'),
+                'desc'  => __('Subscription price for Pro Artists.', 'artpulse-management'),
             ],
             'org_fee' => [
-                'label' => __('Organization Fee ($)', 'artpulse'),
-                'desc'  => __('Fee charged to organizations.', 'artpulse'),
+                'label' => __('Organization Fee ($)', 'artpulse-management'),
+                'desc'  => __('Fee charged to organizations.', 'artpulse-management'),
             ],
             'currency' => [
-                'label' => __('Currency (ISO)', 'artpulse'),
-                'desc'  => __('3-letter currency code (e.g., USD, EUR, GBP).', 'artpulse'),
+                'label' => __('Currency (ISO)', 'artpulse-management'),
+                'desc'  => __('3-letter currency code (e.g., USD, EUR, GBP).', 'artpulse-management'),
             ],
             'stripe_enabled' => [
-                'label' => __('Enable Stripe Integration', 'artpulse'),
-                'desc'  => __('Enable Stripe to manage payments and subscriptions.', 'artpulse'),
+                'label' => __('Enable Stripe Integration', 'artpulse-management'),
+                'desc'  => __('Enable Stripe to manage payments and subscriptions.', 'artpulse-management'),
             ],
             'stripe_pub_key' => [
-                'label' => __('Stripe Publishable Key', 'artpulse'),
-                'desc'  => __('Used for client-side Stripe operations.', 'artpulse'),
+                'label' => __('Stripe Publishable Key', 'artpulse-management'),
+                'desc'  => __('Used for client-side Stripe operations.', 'artpulse-management'),
             ],
             'stripe_secret' => [
-                'label' => __('Stripe Secret Key', 'artpulse'),
-                'desc'  => __('Used for secure server-side API calls to Stripe.', 'artpulse'),
+                'label' => __('Stripe Secret Key', 'artpulse-management'),
+                'desc'  => __('Used for secure server-side API calls to Stripe.', 'artpulse-management'),
             ],
             'stripe_webhook_secret' => [
-                'label' => __('Stripe Webhook Secret', 'artpulse'),
-                'desc'  => __('Secret used to verify webhook calls from Stripe.', 'artpulse'),
+                'label' => __('Stripe Webhook Secret', 'artpulse-management'),
+                'desc'  => __('Secret used to verify webhook calls from Stripe.', 'artpulse-management'),
             ],
             'service_worker_enabled' => [
-                'label' => __('Enable Service Worker', 'artpulse'),
-                'desc'  => __('Adds a service worker for basic offline caching.', 'artpulse'),
+                'label' => __('Enable Service Worker', 'artpulse-management'),
+                'desc'  => __('Adds a service worker for basic offline caching.', 'artpulse-management'),
             ],
             'notification_provider' => [
                 'label'   => __('Mobile Notification Provider', 'artpulse-management'),
@@ -522,8 +522,8 @@ class SettingsPage
                 'choices' => self::getNotificationProviderChoices(),
             ],
             'approved_mobile_origins' => [
-                'label' => __('Approved Mobile Origins', 'artpulse'),
-                'desc'  => __('Enter one HTTPS origin per line to allow mobile API access.', 'artpulse'),
+                'label' => __('Approved Mobile Origins', 'artpulse-management'),
+                'desc'  => __('Enter one HTTPS origin per line to allow mobile API access.', 'artpulse-management'),
                 'type'  => 'textarea',
             ],
         ];

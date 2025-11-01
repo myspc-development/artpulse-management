@@ -20,7 +20,7 @@ class PostTypeRegistrar
     {
         // Events
         register_post_type('artpulse_event', [
-            'label'        => __('Events', 'artpulse'),
+            'label'        => __('Events', 'artpulse-management'),
             'public'       => true,
             'show_in_rest' => true,
             'supports'     => ['title','editor','thumbnail','excerpt'],
@@ -31,7 +31,7 @@ class PostTypeRegistrar
 
         // Artists
         register_post_type('artpulse_artist', [
-            'label'        => __('Artists', 'artpulse'),
+            'label'        => __('Artists', 'artpulse-management'),
             'public'       => true,
             'show_in_rest' => true,
             'supports'     => ['title','editor','thumbnail','custom-fields'],
@@ -41,7 +41,7 @@ class PostTypeRegistrar
 
         // Artworks
         register_post_type('artpulse_artwork', [
-            'label'        => __('Artworks', 'artpulse'),
+            'label'        => __('Artworks', 'artpulse-management'),
             'public'       => true,
             'show_in_rest' => true,
             'supports'     => ['title','editor','thumbnail','custom-fields'],
@@ -51,7 +51,7 @@ class PostTypeRegistrar
 
         // Organizations
         register_post_type('artpulse_org', [
-            'label'        => __('Organizations', 'artpulse'),
+            'label'        => __('Organizations', 'artpulse-management'),
             'public'       => true,
             'show_in_rest' => true,
             'supports'     => ['title','editor','thumbnail'],
@@ -61,7 +61,7 @@ class PostTypeRegistrar
 
         // Event Types taxonomy
         register_taxonomy('artpulse_event_type', 'artpulse_event', [
-            'label'        => __('Event Types', 'artpulse'),
+            'label'        => __('Event Types', 'artpulse-management'),
             'public'       => true,
             'show_in_rest' => true,
             'hierarchical' => true,
@@ -70,7 +70,7 @@ class PostTypeRegistrar
 
         // Artwork Medium taxonomy
         register_taxonomy('artpulse_medium', 'artpulse_artwork', [
-            'label'        => __('Medium', 'artpulse'),
+            'label'        => __('Medium', 'artpulse-management'),
             'public'       => true,
             'show_in_rest' => true,
             'hierarchical' => true,

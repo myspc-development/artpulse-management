@@ -6,7 +6,7 @@
  */
 
 if (empty($profile_actions_data)) {
-    echo '<p>' . esc_html__('Profile actions are currently unavailable.', 'artpulse') . '</p>';
+    echo '<p>' . esc_html__('Profile actions are currently unavailable.', 'artpulse-management') . '</p>';
 
     return;
 }
@@ -20,28 +20,28 @@ if (empty($profile_actions_data)) {
         <div class="ap-dashboard-widget__section ap-dashboard-widget__section--profile-actions">
             <?php if ($label !== '') : ?>
                 <h3 class="ap-dashboard-widget__section-title">
-                    <?php echo esc_html(sprintf(__('Manage %s profile', 'artpulse'), $label)); ?>
+                    <?php echo esc_html(sprintf(__('Manage %s profile', 'artpulse-management'), $label)); ?>
                 </h3>
             <?php endif; ?>
 
             <div class="ap-dashboard-widget__actions">
                 <?php if (!empty($create_url)) : ?>
                     <a class="ap-dashboard-button ap-dashboard-button--primary" href="<?php echo esc_url($create_url); ?>">
-                        <?php esc_html_e('Create profile', 'artpulse'); ?>
+                        <?php esc_html_e('Create profile', 'artpulse-management'); ?>
                     </a>
                 <?php else : ?>
                     <p class="ap-dashboard-widget__action-description">
-                        <?php esc_html_e('Profile creation is currently unavailable.', 'artpulse'); ?>
+                        <?php esc_html_e('Profile creation is currently unavailable.', 'artpulse-management'); ?>
                     </p>
                 <?php endif; ?>
 
                 <?php if (!empty($edit_url)) : ?>
                     <a class="ap-dashboard-button ap-dashboard-button--secondary" href="<?php echo esc_url($edit_url); ?>">
-                        <?php esc_html_e('Edit profile', 'artpulse'); ?>
+                        <?php esc_html_e('Edit profile', 'artpulse-management'); ?>
                     </a>
                 <?php else : ?>
                     <p class="ap-dashboard-widget__action-description">
-                        <?php esc_html_e('We could not find a profile to edit yet.', 'artpulse'); ?>
+                        <?php esc_html_e('We could not find a profile to edit yet.', 'artpulse-management'); ?>
                     </p>
                 <?php endif; ?>
             </div>

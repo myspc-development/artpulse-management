@@ -16,8 +16,8 @@ class AdminColumnsOrganisation
         foreach ( $columns as $key => $label ) {
             if ( 'cb' === $key ) {
                 $new['cb']             = $label;
-                $new['logo']           = __( 'Logo', 'artpulse' );
-                $new['ead_org_name']   = __( 'Name', 'artpulse' );
+                $new['logo']           = __( 'Logo', 'artpulse-management' );
+                $new['ead_org_name']   = __( 'Name', 'artpulse-management' );
             }
             $new[ $key ] = $label;
         }

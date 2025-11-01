@@ -16,14 +16,14 @@ class PortfolioManager
     {
         register_post_type('artpulse_portfolio', [
             'labels' => [
-                'name' => __('Portfolios', 'artpulse'),
-                'singular_name' => __('Portfolio', 'artpulse'),
-                'add_new' => __('Add New', 'artpulse'),
-                'add_new_item' => __('Add New Portfolio', 'artpulse'),
-                'edit_item' => __('Edit Portfolio', 'artpulse'),
-                'new_item' => __('New Portfolio', 'artpulse'),
-                'view_item' => __('View Portfolio', 'artpulse'),
-                'all_items' => __('All Portfolios', 'artpulse'),
+                'name' => __('Portfolios', 'artpulse-management'),
+                'singular_name' => __('Portfolio', 'artpulse-management'),
+                'add_new' => __('Add New', 'artpulse-management'),
+                'add_new_item' => __('Add New Portfolio', 'artpulse-management'),
+                'edit_item' => __('Edit Portfolio', 'artpulse-management'),
+                'new_item' => __('New Portfolio', 'artpulse-management'),
+                'view_item' => __('View Portfolio', 'artpulse-management'),
+                'all_items' => __('All Portfolios', 'artpulse-management'),
             ],
             'public' => true,
             'has_archive' => true,
@@ -38,7 +38,7 @@ class PortfolioManager
     public static function registerPortfolioTaxonomy()
     {
         register_taxonomy('portfolio_category', 'artpulse_portfolio', [
-            'label' => __('Portfolio Categories', 'artpulse'),
+            'label' => __('Portfolio Categories', 'artpulse-management'),
             'public' => true,
             'hierarchical' => true,
             'show_in_rest' => true,
@@ -48,8 +48,8 @@ class PortfolioManager
 
     public static function addPortfolioMetaBoxes()
     {
-        add_meta_box('ap_portfolio_link', __('External Link', 'artpulse'), [self::class, 'renderLinkMetaBox'], 'artpulse_portfolio', 'normal', 'default');
-        add_meta_box('ap_portfolio_visibility', __('Visibility', 'artpulse'), [self::class, 'renderVisibilityMetaBox'], 'artpulse_portfolio', 'side', 'default');
+        add_meta_box('ap_portfolio_link', __('External Link', 'artpulse-management'), [self::class, 'renderLinkMetaBox'], 'artpulse_portfolio', 'normal', 'default');
+        add_meta_box('ap_portfolio_visibility', __('Visibility', 'artpulse-management'), [self::class, 'renderVisibilityMetaBox'], 'artpulse_portfolio', 'side', 'default');
     }
 
     public static function renderLinkMetaBox($post)
@@ -64,9 +64,9 @@ class PortfolioManager
         $visibility = get_post_meta($post->ID, '_ap_visibility', true);
         ?>
         <select name="ap_visibility" class="widefat">
-            <option value="public" <?php selected($visibility, 'public'); ?>><?php esc_html_e('Public', 'artpulse'); ?></option>
-            <option value="private" <?php selected($visibility, 'private'); ?>><?php esc_html_e('Private (admin only)', 'artpulse'); ?></option>
-            <option value="members" <?php selected($visibility, 'members'); ?>><?php esc_html_e('Members Only', 'artpulse'); ?></option>
+            <option value="public" <?php selected($visibility, 'public'); ?>><?php esc_html_e('Public', 'artpulse-management'); ?></option>
+            <option value="private" <?php selected($visibility, 'private'); ?>><?php esc_html_e('Private (admin only)', 'artpulse-management'); ?></option>
+            <option value="members" <?php selected($visibility, 'members'); ?>><?php esc_html_e('Members Only', 'artpulse-management'); ?></option>
         </select>
         <?php
     }

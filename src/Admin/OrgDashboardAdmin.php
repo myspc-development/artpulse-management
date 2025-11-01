@@ -10,8 +10,8 @@ class OrgDashboardAdmin
     public static function register(): void
     {
         add_menu_page(
-            __('Organization Dashboard', 'artpulse'),
-            __('Org Dashboard', 'artpulse'),
+            __('Organization Dashboard', 'artpulse-management'),
+            __('Org Dashboard', 'artpulse-management'),
             'manage_options',
             'ap-org-dashboard',
             [self::class, 'render'],
@@ -22,7 +22,7 @@ class OrgDashboardAdmin
     public static function render(): void
     {
         echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('Organization Dashboard', 'artpulse') . '</h1>';
+        echo '<h1>' . esc_html__('Organization Dashboard', 'artpulse-management') . '</h1>';
 
         if (current_user_can('manage_options')) {
             self::render_org_selector();
@@ -82,30 +82,30 @@ class OrgDashboardAdmin
         ]);
 
         if (!$all_orgs) {
-            echo '<p>' . esc_html__('No published organisations found.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No published organisations found.', 'artpulse-management') . '</p>';
             return;
         }
 
         $selected_org = self::get_current_org_id();
         echo '<form method="get" style="margin-bottom:1em;">';
         echo '<input type="hidden" name="page" value="' . esc_attr('ap-org-dashboard') . '" />';
-        echo '<label for="ap-org-select"><strong>' . esc_html__('Select Organisation:', 'artpulse') . '</strong></label> ';
+        echo '<label for="ap-org-select"><strong>' . esc_html__('Select Organisation:', 'artpulse-management') . '</strong></label> ';
         echo '<select name="org_id" id="ap-org-select">';
         foreach ($all_orgs as $org) {
             $selected = selected($selected_org, $org->ID, false);
             echo '<option value="' . esc_attr((string) $org->ID) . '" ' . $selected . '>' . esc_html(get_the_title($org)) . '</option>';
         }
         echo '</select> ';
-        echo '<button type="submit" class="button button-primary">' . esc_html__('Load', 'artpulse') . '</button>';
+        echo '<button type="submit" class="button button-primary">' . esc_html__('Load', 'artpulse-management') . '</button>';
         echo '</form>';
     }
 
     private static function render_linked_artists(): void
     {
-        echo '<h2>' . esc_html__('Linked Artists', 'artpulse') . '</h2>';
+        echo '<h2>' . esc_html__('Linked Artists', 'artpulse-management') . '</h2>';
         $org_id = self::get_current_org_id();
         if (!$org_id) {
-            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse-management') . '</p>';
             return;
         }
 
@@ -121,11 +121,11 @@ class OrgDashboardAdmin
         ]);
 
         if (!$requests) {
-            echo '<p>' . esc_html__('No linked artists found.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No linked artists found.', 'artpulse-management') . '</p>';
             return;
         }
 
-        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Artist ID', 'artpulse') . '</th><th>' . esc_html__('Requested On', 'artpulse') . '</th></tr></thead><tbody>';
+        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Artist ID', 'artpulse-management') . '</th><th>' . esc_html__('Requested On', 'artpulse-management') . '</th></tr></thead><tbody>';
         foreach ($requests as $req) {
             $artist_user_id = get_post_meta($req->ID, 'artist_user_id', true);
             $requested_on   = get_post_meta($req->ID, 'requested_on', true);
@@ -136,10 +136,10 @@ class OrgDashboardAdmin
 
     private static function render_org_artworks(): void
     {
-        echo '<h2>' . esc_html__('Artworks', 'artpulse') . '</h2>';
+        echo '<h2>' . esc_html__('Artworks', 'artpulse-management') . '</h2>';
         $org_id = self::get_current_org_id();
         if (!$org_id) {
-            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse-management') . '</p>';
             return;
         }
 
@@ -154,11 +154,11 @@ class OrgDashboardAdmin
         ]);
 
         if (!$artworks) {
-            echo '<p>' . esc_html__('No artworks found for this organisation.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No artworks found for this organisation.', 'artpulse-management') . '</p>';
             return;
         }
 
-        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Artwork ID', 'artpulse') . '</th><th>' . esc_html__('Title', 'artpulse') . '</th></tr></thead><tbody>';
+        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Artwork ID', 'artpulse-management') . '</th><th>' . esc_html__('Title', 'artpulse-management') . '</th></tr></thead><tbody>';
         foreach ($artworks as $artwork) {
             echo '<tr><td>' . esc_html((string) $artwork->ID) . '</td><td>' . esc_html(get_the_title($artwork)) . '</td></tr>';
         }
@@ -167,10 +167,10 @@ class OrgDashboardAdmin
 
     private static function render_org_events(): void
     {
-        echo '<h2>' . esc_html__('Events', 'artpulse') . '</h2>';
+        echo '<h2>' . esc_html__('Events', 'artpulse-management') . '</h2>';
         $org_id = self::get_current_org_id();
         if (!$org_id) {
-            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse-management') . '</p>';
             return;
         }
 
@@ -185,11 +185,11 @@ class OrgDashboardAdmin
         ]);
 
         if (!$events) {
-            echo '<p>' . esc_html__('No events found for this organisation.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No events found for this organisation.', 'artpulse-management') . '</p>';
             return;
         }
 
-        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Event ID', 'artpulse') . '</th><th>' . esc_html__('Title', 'artpulse') . '</th></tr></thead><tbody>';
+        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Event ID', 'artpulse-management') . '</th><th>' . esc_html__('Title', 'artpulse-management') . '</th></tr></thead><tbody>';
         foreach ($events as $event) {
             echo '<tr><td>' . esc_html((string) $event->ID) . '</td><td>' . esc_html(get_the_title($event)) . '</td></tr>';
         }
@@ -198,10 +198,10 @@ class OrgDashboardAdmin
 
     private static function render_org_analytics(): void
     {
-        echo '<h2>' . esc_html__('Analytics', 'artpulse') . '</h2>';
+        echo '<h2>' . esc_html__('Analytics', 'artpulse-management') . '</h2>';
         $org_id = self::get_current_org_id();
         if (!$org_id) {
-            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse-management') . '</p>';
             return;
         }
 
@@ -216,7 +216,7 @@ class OrgDashboardAdmin
         ]);
 
         if (!$artworks) {
-            echo '<p>' . esc_html__('No analytics available.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No analytics available.', 'artpulse-management') . '</p>';
             return;
         }
 
@@ -227,31 +227,31 @@ class OrgDashboardAdmin
             $total_favorites += (int) get_post_meta($artwork->ID, 'ap_favorites', true);
         }
 
-        printf('<p>%s <strong>%d</strong></p>', esc_html__('Total Artwork Views:', 'artpulse'), $total_views);
-        printf('<p>%s <strong>%d</strong></p>', esc_html__('Total Artwork Favorites:', 'artpulse'), $total_favorites);
+        printf('<p>%s <strong>%d</strong></p>', esc_html__('Total Artwork Views:', 'artpulse-management'), $total_views);
+        printf('<p>%s <strong>%d</strong></p>', esc_html__('Total Artwork Favorites:', 'artpulse-management'), $total_favorites);
     }
 
     private static function render_billing_history(): void
     {
-        echo '<h2>' . esc_html__('Billing History', 'artpulse') . '</h2>';
+        echo '<h2>' . esc_html__('Billing History', 'artpulse-management') . '</h2>';
         $org_id = self::get_current_org_id();
         if (!$org_id) {
-            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No organisation assigned to your user.', 'artpulse-management') . '</p>';
             return;
         }
 
         $payments = get_post_meta($org_id, 'stripe_payment_ids', true);
         if (!is_array($payments) || !$payments) {
-            echo '<p>' . esc_html__('No billing history found.', 'artpulse') . '</p>';
+            echo '<p>' . esc_html__('No billing history found.', 'artpulse-management') . '</p>';
             return;
         }
 
-        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Charge ID', 'artpulse') . '</th><th>' . esc_html__('Date', 'artpulse') . '</th><th>' . esc_html__('Amount', 'artpulse') . '</th><th>' . esc_html__('Status', 'artpulse') . '</th></tr></thead><tbody>';
+        echo '<table class="widefat"><thead><tr><th>' . esc_html__('Charge ID', 'artpulse-management') . '</th><th>' . esc_html__('Date', 'artpulse-management') . '</th><th>' . esc_html__('Amount', 'artpulse-management') . '</th><th>' . esc_html__('Status', 'artpulse-management') . '</th></tr></thead><tbody>';
         foreach ($payments as $charge_id) {
             echo '<tr><td>' . esc_html((string) $charge_id) . '</td><td>-</td><td>-</td><td>-</td></tr>';
         }
         echo '</tbody></table>';
-        echo '<p><em>' . esc_html__('Tip: Integrate the Stripe API to surface full charge information.', 'artpulse') . '</em></p>';
+        echo '<p><em>' . esc_html__('Tip: Integrate the Stripe API to surface full charge information.', 'artpulse-management') . '</em></p>';
     }
 }
 

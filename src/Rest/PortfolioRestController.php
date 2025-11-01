@@ -37,7 +37,7 @@ class PortfolioRestController
     {
         $user_id = absint($request->get_param('user_id'));
         if (!$user_id || !get_user_by('id', $user_id)) {
-            return new WP_Error('invalid_user', __('Invalid user ID.', 'artpulse'), ['status' => 400]);
+            return new WP_Error('invalid_user', __('Invalid user ID.', 'artpulse-management'), ['status' => 400]);
         }
 
         $items = get_posts([

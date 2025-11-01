@@ -31,7 +31,7 @@ class SubmissionForms
                 'include_nonce' => false,
                 'nonce_action'  => 'ap_submission',
                 'nonce_field'   => 'ap_submission_nonce',
-                'submit_label'  => __('Submit', 'artpulse'),
+                'submit_label'  => __('Submit', 'artpulse-management'),
                 'submit_name'   => '',
                 'extra_classes' => '',
                 'notices'       => [],
@@ -97,7 +97,7 @@ class SubmissionForms
             ?>
 
             <p class="ap-field ap-field--file">
-                <label for="<?php echo esc_attr($field_prefix . '-images'); ?>"><?php esc_html_e('Images (max 5)', 'artpulse'); ?></label><br>
+                <label for="<?php echo esc_attr($field_prefix . '-images'); ?>"><?php esc_html_e('Images (max 5)', 'artpulse-management'); ?></label><br>
                 <input
                     id="<?php echo esc_attr($field_prefix . '-images'); ?>"
                     type="file"
@@ -124,13 +124,13 @@ class SubmissionForms
     {
         ?>
         <p class="ap-field ap-field--title">
-            <label for="<?php echo esc_attr($field_prefix . '-title'); ?>"><?php esc_html_e('Title*', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-title'); ?>"><?php esc_html_e('Title*', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-title'); ?>"
                 type="text"
                 name="title"
                 required
-                data-required="<?php esc_attr_e('Title is required', 'artpulse'); ?>"
+                data-required="<?php esc_attr_e('Title is required', 'artpulse-management'); ?>"
             />
         </p>
         <?php
@@ -143,33 +143,33 @@ class SubmissionForms
     {
         ?>
         <p class="ap-field ap-field--content">
-            <label for="<?php echo esc_attr($field_prefix . '-content'); ?>"><?php esc_html_e('Description*', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-content'); ?>"><?php esc_html_e('Description*', 'artpulse-management'); ?></label><br>
             <textarea
                 id="<?php echo esc_attr($field_prefix . '-content'); ?>"
                 name="content"
                 rows="5"
                 required
-                data-required="<?php esc_attr_e('Description is required', 'artpulse'); ?>"
+                data-required="<?php esc_attr_e('Description is required', 'artpulse-management'); ?>"
             ></textarea>
         </p>
         <p class="ap-field ap-field--date">
-            <label for="<?php echo esc_attr($field_prefix . '-date'); ?>"><?php esc_html_e('Date*', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-date'); ?>"><?php esc_html_e('Date*', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-date'); ?>"
                 type="date"
                 name="event_date"
                 required
-                data-required="<?php esc_attr_e('Date is required', 'artpulse'); ?>"
+                data-required="<?php esc_attr_e('Date is required', 'artpulse-management'); ?>"
             />
         </p>
         <p class="ap-field ap-field--location">
-            <label for="<?php echo esc_attr($field_prefix . '-location'); ?>"><?php esc_html_e('Location*', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-location'); ?>"><?php esc_html_e('Location*', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-location'); ?>"
                 type="text"
                 name="event_location"
                 required
-                data-required="<?php esc_attr_e('Location is required', 'artpulse'); ?>"
+                data-required="<?php esc_attr_e('Location is required', 'artpulse-management'); ?>"
             />
         </p>
         <?php
@@ -179,18 +179,18 @@ class SubmissionForms
         self::render_organization_field(
             'event_organization',
             $organizations,
-            __('Organization', 'artpulse'),
+            __('Organization', 'artpulse-management'),
             empty($artists),
-            __('Select an organization', 'artpulse'),
+            __('Select an organization', 'artpulse-management'),
             $selected_org
         );
 
         self::render_organization_field(
             'artist_id',
             $artists,
-            __('Artist profile', 'artpulse'),
+            __('Artist profile', 'artpulse-management'),
             empty($organizations),
-            __('Select an artist', 'artpulse'),
+            __('Select an artist', 'artpulse-management'),
             $selected_artist
         );
 
@@ -212,16 +212,16 @@ class SubmissionForms
     {
         ?>
         <p class="ap-field ap-field--content">
-            <label for="<?php echo esc_attr($field_prefix . '-bio'); ?>"><?php esc_html_e('Biography*', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-bio'); ?>"><?php esc_html_e('Biography*', 'artpulse-management'); ?></label><br>
             <textarea
                 id="<?php echo esc_attr($field_prefix . '-bio'); ?>"
                 name="artist_bio"
                 rows="6"
                 required
-                data-required="<?php esc_attr_e('Biography is required', 'artpulse'); ?>"
+                data-required="<?php esc_attr_e('Biography is required', 'artpulse-management'); ?>"
             ></textarea>
         </p>
-        <?php self::render_organization_field('artist_org', $organizations, __('Organization*', 'artpulse')); ?>
+        <?php self::render_organization_field('artist_org', $organizations, __('Organization*', 'artpulse-management')); ?>
         <?php
     }
 
@@ -232,7 +232,7 @@ class SubmissionForms
     {
         ?>
         <p class="ap-field ap-field--content">
-            <label for="<?php echo esc_attr($field_prefix . '-description'); ?>"><?php esc_html_e('Description', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-description'); ?>"><?php esc_html_e('Description', 'artpulse-management'); ?></label><br>
             <textarea
                 id="<?php echo esc_attr($field_prefix . '-description'); ?>"
                 name="content"
@@ -240,17 +240,17 @@ class SubmissionForms
             ></textarea>
         </p>
         <p class="ap-field ap-field--medium">
-            <label for="<?php echo esc_attr($field_prefix . '-medium'); ?>"><?php esc_html_e('Medium*', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-medium'); ?>"><?php esc_html_e('Medium*', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-medium'); ?>"
                 type="text"
                 name="artwork_medium"
                 required
-                data-required="<?php esc_attr_e('Medium is required', 'artpulse'); ?>"
+                data-required="<?php esc_attr_e('Medium is required', 'artpulse-management'); ?>"
             />
         </p>
         <p class="ap-field ap-field--dimensions">
-            <label for="<?php echo esc_attr($field_prefix . '-dimensions'); ?>"><?php esc_html_e('Dimensions', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-dimensions'); ?>"><?php esc_html_e('Dimensions', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-dimensions'); ?>"
                 type="text"
@@ -258,7 +258,7 @@ class SubmissionForms
             />
         </p>
         <p class="ap-field ap-field--materials">
-            <label for="<?php echo esc_attr($field_prefix . '-materials'); ?>"><?php esc_html_e('Materials', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-materials'); ?>"><?php esc_html_e('Materials', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-materials'); ?>"
                 type="text"
@@ -275,7 +275,7 @@ class SubmissionForms
     {
         ?>
         <p class="ap-field ap-field--content">
-            <label for="<?php echo esc_attr($field_prefix . '-about'); ?>"><?php esc_html_e('Organization Description', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-about'); ?>"><?php esc_html_e('Organization Description', 'artpulse-management'); ?></label><br>
             <textarea
                 id="<?php echo esc_attr($field_prefix . '-about'); ?>"
                 name="content"
@@ -283,7 +283,7 @@ class SubmissionForms
             ></textarea>
         </p>
         <p class="ap-field ap-field--website">
-            <label for="<?php echo esc_attr($field_prefix . '-website'); ?>"><?php esc_html_e('Website', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-website'); ?>"><?php esc_html_e('Website', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-website'); ?>"
                 type="url"
@@ -292,7 +292,7 @@ class SubmissionForms
             />
         </p>
         <p class="ap-field ap-field--email">
-            <label for="<?php echo esc_attr($field_prefix . '-email'); ?>"><?php esc_html_e('Contact Email', 'artpulse'); ?></label><br>
+            <label for="<?php echo esc_attr($field_prefix . '-email'); ?>"><?php esc_html_e('Contact Email', 'artpulse-management'); ?></label><br>
             <input
                 id="<?php echo esc_attr($field_prefix . '-email'); ?>"
                 type="email"
@@ -322,7 +322,7 @@ class SubmissionForms
             return;
         }
 
-        $placeholder = $placeholder ?: __('Select an organization', 'artpulse');
+        $placeholder = $placeholder ?: __('Select an organization', 'artpulse-management');
 
         if ($selected <= 0 && 1 === count($organizations)) {
             $selected = (int) ($organizations[0]['id'] ?? 0);

@@ -29,12 +29,12 @@ class FrontendMembershipPage
     public static function renderAccount()
     {
         if ( ! is_user_logged_in() ) {
-            return '<p>' . __('Please log in to view your membership account.','artpulse') . '</p>';
+            return '<p>' . __('Please log in to view your membership account.', 'artpulse-management') . '</p>';
         }
 
         ob_start(); ?>
         <div class="ap-membership-account">
-            <h2><?php _e('My Membership','artpulse'); ?></h2>
+            <h2><?php _e('My Membership', 'artpulse-management'); ?></h2>
             <div id="ap-account-info"></div>
             <div id="ap-account-actions"></div>
         </div>
@@ -53,7 +53,7 @@ class FrontendMembershipPage
 
         return rest_ensure_response([
             'level'   => $level,
-            'expires' => $expires ? date_i18n(get_option('date_format'), intval($expires)) : __('Never','artpulse'),
+            'expires' => $expires ? date_i18n(get_option('date_format'), intval($expires)) : __('Never', 'artpulse-management'),
             // Map the purchase‐shortcode links for upgrade:
             'purchase_links' => [
                 'Basic' => do_shortcode('[ap_membership_purchase level="Basic"]'),
