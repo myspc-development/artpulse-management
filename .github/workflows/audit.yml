@@ -41,7 +41,7 @@ jobs:
 
       - name: Upload upgrade audit report
         if: ${{ always() && hashFiles('reports/upgrade_audit.md') != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: upgrade_audit
           path: reports/upgrade_audit.md
