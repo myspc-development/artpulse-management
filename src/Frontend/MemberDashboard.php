@@ -101,14 +101,13 @@ class MemberDashboard
             'status'      => 'not_started',
             'reason'      => '',
             'profile_url' => '',
-            'cta'         => [
-                'label'    => __('Request artist access', 'artpulse-management'),
-                'url'      => $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'artist'),
-                'variant'  => 'secondary',
-                'disabled' => false,
-                'mode'     => 'form',
-                'upgrade_type' => 'artist',
-            ],
+            'cta'         => self::build_cta(
+                __('Request artist access', 'artpulse-management'),
+                $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'artist'),
+                'secondary',
+                'form',
+                ['upgrade_type' => 'artist']
+            ),
             'journey'     => $journey,
         ];
 
@@ -129,66 +128,43 @@ class MemberDashboard
         if (in_array('artist', (array) $user->roles, true)) {
             $state['status']      = 'approved';
             $state['profile_url'] = $dashboard_url;
-            $state['cta']         = [
-                'label'    => __('Open artist tools', 'artpulse-management'),
-                'url'      => $dashboard_url,
-                'variant'  => 'primary',
-                'disabled' => false,
-                'mode'     => 'link',
-            ];
+            $state['cta']         = self::build_cta(
+                __('Open artist tools', 'artpulse-management'),
+                $dashboard_url,
+                'primary'
+            );
 
             return $state;
         }
 
-        $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
-        $status_locked = false;
-
-        if ($request instanceof WP_Post) {
-            $state['reason'] = UpgradeReviewRepository::get_reason($request);
-
-            $profile_id = UpgradeReviewRepository::get_post_id($request);
-            if ($profile_id > 0) {
-                $permalink = get_permalink($profile_id);
-                if ($permalink) {
-                    $state['profile_url'] = esc_url_raw($permalink);
-                }
-            }
-
-            $review_status = UpgradeReviewRepository::get_status($request);
-
-            if ($review_status === UpgradeReviewRepository::STATUS_PENDING) {
-                $state['status'] = 'requested';
-                $state['cta']    = [
-                    'label'    => __('Check request status', 'artpulse-management'),
-                    'url'      => ArtistRequestStatusRoute::get_status_url('artist'),
-                    'variant'  => 'secondary',
-                    'disabled' => false,
-                    'mode'     => 'link',
-                ];
-                $status_locked = true;
-            } elseif ($review_status === UpgradeReviewRepository::STATUS_DENIED) {
-                $state['status'] = 'denied';
-                $state['cta']    = [
-                    'label'    => __('Reopen artist builder', 'artpulse-management'),
-                    'url'      => esc_url_raw($builder_url),
-                    'variant'  => 'primary',
-                    'disabled' => false,
-                    'mode'     => 'link',
-                ];
-                $status_locked = true;
-            } elseif ($review_status === UpgradeReviewRepository::STATUS_APPROVED) {
-                $state['status']      = 'approved';
-                $state['profile_url'] = $dashboard_url;
-                $state['cta']         = [
-                    'label'    => __('Open artist tools', 'artpulse-management'),
-                    'url'      => $dashboard_url,
-                    'variant'  => 'primary',
-                    'disabled' => false,
-                    'mode'     => 'link',
-                ];
-                $status_locked = true;
-            }
-        }
+        [$state, $status_locked] = self::apply_review_context(
+            $state,
+            self::get_upgrade_context($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE),
+            [
+                'status_map' => [
+                    UpgradeReviewRepository::STATUS_PENDING  => 'requested',
+                    UpgradeReviewRepository::STATUS_DENIED   => 'denied',
+                    UpgradeReviewRepository::STATUS_APPROVED => 'approved',
+                ],
+                'pending_cta' => self::build_cta(
+                    __('Check request status', 'artpulse-management'),
+                    ArtistRequestStatusRoute::get_status_url('artist'),
+                    'secondary'
+                ),
+                'denied_cta' => self::build_cta(
+                    __('Reopen artist builder', 'artpulse-management'),
+                    esc_url_raw($builder_url),
+                    'primary'
+                ),
+                'approved_cta' => self::build_cta(
+                    __('Open artist tools', 'artpulse-management'),
+                    $dashboard_url,
+                    'primary'
+                ),
+                'url_key'              => 'profile_url',
+                'approved_profile_url' => $dashboard_url,
+            ]
+        );
 
         if ($status_locked) {
             return $state;
@@ -196,25 +172,21 @@ class MemberDashboard
 
         $portfolio_status = $journey['portfolio']['status'] ?? '';
 
-        if ('draft' === $portfolio_status || 'pending' === $portfolio_status) {
+        if (in_array($portfolio_status, ['draft', 'pending'], true)) {
             $state['status'] = 'in_progress';
-            $state['cta']    = [
-                'label'    => __('Continue artist builder', 'artpulse-management'),
-                'url'      => esc_url_raw($builder_url),
-                'variant'  => 'primary',
-                'disabled' => false,
-                'mode'     => 'link',
-            ];
-        } elseif ('published' === $portfolio_status || 'scheduled' === $portfolio_status) {
+            $state['cta']    = self::build_cta(
+                __('Continue artist builder', 'artpulse-management'),
+                esc_url_raw($builder_url),
+                'primary'
+            );
+        } elseif (in_array($portfolio_status, ['published', 'scheduled'], true)) {
             $state['status']      = 'approved';
             $state['profile_url'] = $dashboard_url;
-            $state['cta']         = [
-                'label'    => __('Open artist tools', 'artpulse-management'),
-                'url'      => $dashboard_url,
-                'variant'  => 'primary',
-                'disabled' => false,
-                'mode'     => 'link',
-            ];
+            $state['cta']         = self::build_cta(
+                __('Open artist tools', 'artpulse-management'),
+                $dashboard_url,
+                'primary'
+            );
         }
 
         return $state;
@@ -223,19 +195,18 @@ class MemberDashboard
     private static function build_org_state(int $user_id, array $journey): array
     {
         $state = [
-            'status'   => 'not_started',
-            'reason'   => '',
-            'org_id'   => 0,
-            'org_url'  => '',
-            'cta'      => [
-                'label'    => __('Request organization access', 'artpulse-management'),
-                'url'      => $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
-                'variant'  => 'secondary',
-                'disabled' => false,
-                'mode'     => 'form',
-                'upgrade_type' => 'organization',
-            ],
-            'journey'  => $journey,
+            'status'  => 'not_started',
+            'reason'  => '',
+            'org_id'  => 0,
+            'org_url' => '',
+            'cta'     => self::build_cta(
+                __('Request organization access', 'artpulse-management'),
+                $journey['links']['upgrade'] ?? sprintf('#ap-journey-%s', $journey['slug'] ?? 'organization'),
+                'secondary',
+                'form',
+                ['upgrade_type' => 'organization']
+            ),
+            'journey' => $journey,
         ];
 
         if (!is_user_logged_in() || $user_id <= 0) {
@@ -252,82 +223,68 @@ class MemberDashboard
             ? (string) $journey['links']['builder']
             : self::get_org_builder_base_url();
 
+        $builder_profile_url = esc_url_raw(add_query_args($builder_url, ['step' => 'profile']));
+
         if (in_array('organization', (array) $user->roles, true)) {
             $state['status']  = 'approved';
             $state['org_url'] = $dashboard_url;
-            $state['cta']     = [
-                'label'    => __('Open organization tools', 'artpulse-management'),
-                'url'      => $dashboard_url,
-                'variant'  => 'primary',
-                'disabled' => false,
-                'mode'     => 'link',
-            ];
+            $state['cta']     = self::build_cta(
+                __('Open organization tools', 'artpulse-management'),
+                $dashboard_url,
+                'primary'
+            );
 
             return $state;
         }
 
-        $request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE);
-        if ($request instanceof WP_Post) {
-            $state['org_id']     = UpgradeReviewRepository::get_post_id($request);
-            $state['request_id'] = (int) $request->ID;
-            $state['reason']     = UpgradeReviewRepository::get_reason($request);
+        [$state, $status_locked] = self::apply_review_context(
+            $state,
+            self::get_upgrade_context($user_id, UpgradeReviewRepository::TYPE_ORG_UPGRADE),
+            [
+                'status_map' => [
+                    UpgradeReviewRepository::STATUS_PENDING  => 'requested',
+                    UpgradeReviewRepository::STATUS_DENIED   => 'denied',
+                    UpgradeReviewRepository::STATUS_APPROVED => 'approved',
+                ],
+                'pending_cta' => self::build_cta(
+                    __('Check request status', 'artpulse-management'),
+                    ArtistRequestStatusRoute::get_status_url('organization'),
+                    'secondary'
+                ),
+                'denied_cta' => self::build_cta(
+                    __('Reopen organization builder', 'artpulse-management'),
+                    $builder_profile_url,
+                    'primary'
+                ),
+                'approved_cta' => self::build_cta(
+                    __('Open organization tools', 'artpulse-management'),
+                    $dashboard_url,
+                    'primary'
+                ),
+                'url_key'              => 'org_url',
+                'id_key'               => 'org_id',
+                'request_id_key'       => 'request_id',
+                'approved_profile_url' => $dashboard_url,
+            ]
+        );
 
-            if ($state['org_id'] > 0) {
-                $permalink = get_permalink($state['org_id']);
-                if ($permalink) {
-                    $state['org_url'] = esc_url_raw($permalink);
-                }
-            }
-
-            $status = UpgradeReviewRepository::get_status($request);
-
-            if ($status === UpgradeReviewRepository::STATUS_APPROVED) {
-                $state['status'] = 'approved';
-                $state['cta']    = [
-                    'label'    => __('Open organization tools', 'artpulse-management'),
-                    'url'      => $dashboard_url,
-                    'variant'  => 'primary',
-                    'disabled' => false,
-                    'mode'     => 'link',
-                ];
-            } elseif ($status === UpgradeReviewRepository::STATUS_DENIED) {
-                $state['status'] = 'denied';
-                $state['cta']    = [
-                    'label'    => __('Reopen organization builder', 'artpulse-management'),
-                    'url'      => esc_url_raw(add_query_args($builder_url, ['step' => 'profile'])),
-                    'variant'  => 'primary',
-                    'disabled' => false,
-                    'mode'     => 'link',
-                ];
-            } else {
-                $state['status'] = 'requested';
-                $state['cta']    = [
-                    'label'    => __('Check request status', 'artpulse-management'),
-                    'url'      => ArtistRequestStatusRoute::get_status_url('organization'),
-                    'variant'  => 'secondary',
-                    'disabled' => false,
-                    'mode'     => 'link',
-                ];
-            }
+        if ($status_locked) {
+            return $state;
         }
 
         $portfolio_status = $journey['portfolio']['status'] ?? '';
         if (in_array($portfolio_status, ['draft', 'pending'], true)) {
-            $state['cta'] = [
-                'label'    => __('Continue organization builder', 'artpulse-management'),
-                'url'      => esc_url_raw(add_query_args($builder_url, ['step' => 'profile'])),
-                'variant'  => 'primary',
-                'disabled' => false,
-                'mode'     => 'link',
-            ];
+            $state['cta'] = self::build_cta(
+                __('Continue organization builder', 'artpulse-management'),
+                $builder_profile_url,
+                'primary'
+            );
         } elseif (in_array($portfolio_status, ['published', 'scheduled'], true)) {
-            $state['cta'] = [
-                'label'    => __('Open organization tools', 'artpulse-management'),
-                'url'      => $dashboard_url,
-                'variant'  => 'primary',
-                'disabled' => false,
-                'mode'     => 'link',
-            ];
+            $state['cta'] = self::build_cta(
+                __('Open organization tools', 'artpulse-management'),
+                $dashboard_url,
+                'primary'
+            );
         }
 
         return $state;
@@ -454,24 +411,62 @@ class MemberDashboard
     }
 
     /**
-     * Grant artist capabilities when requested by a member.
+     * @param array{
+     *     role:string,
+     *     review_type:string,
+     *     invalid:array{code:string,message:string},
+     *     exists:array{code:string,message:string},
+     *     pending:array{code:string,message:string}
+     * } $config
      */
-    private static function process_artist_upgrade_request(WP_User $user)
+    private static function guard_upgrade_request(WP_User $user, array $config): ?WP_Error
     {
         $user_id = (int) $user->ID;
 
         if ($user_id <= 0) {
-            return new WP_Error('ap_artist_upgrade_invalid', __('Invalid user.', 'artpulse-management'));
+            return new WP_Error($config['invalid']['code'], $config['invalid']['message']);
         }
 
-        if (in_array('artist', (array) $user->roles, true)) {
-            return new WP_Error('ap_artist_upgrade_exists', __('You already have access to the artist tools.', 'artpulse-management'));
+        if (in_array($config['role'], (array) $user->roles, true)) {
+            return new WP_Error($config['exists']['code'], $config['exists']['message']);
         }
 
-        $existing_request = UpgradeReviewRepository::get_latest_for_user($user_id, UpgradeReviewRepository::TYPE_ARTIST_UPGRADE);
-        if ($existing_request instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing_request)) {
-            return new WP_Error('ap_artist_upgrade_pending', __('Your previous request is still pending.', 'artpulse-management'));
+        $existing = UpgradeReviewRepository::get_latest_for_user($user_id, $config['review_type']);
+
+        if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
+            return new WP_Error($config['pending']['code'], $config['pending']['message']);
         }
+
+        return null;
+    }
+
+    /**
+     * Grant artist capabilities when requested by a member.
+     */
+    private static function process_artist_upgrade_request(WP_User $user)
+    {
+        $guard = self::guard_upgrade_request($user, [
+            'role'        => 'artist',
+            'review_type' => UpgradeReviewRepository::TYPE_ARTIST_UPGRADE,
+            'invalid'     => [
+                'code'    => 'ap_artist_upgrade_invalid',
+                'message' => __('Invalid user.', 'artpulse-management'),
+            ],
+            'exists'      => [
+                'code'    => 'ap_artist_upgrade_exists',
+                'message' => __('You already have access to the artist tools.', 'artpulse-management'),
+            ],
+            'pending'     => [
+                'code'    => 'ap_artist_upgrade_pending',
+                'message' => __('Your previous request is still pending.', 'artpulse-management'),
+            ],
+        ]);
+
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
+        $user_id = (int) $user->ID;
 
         $artist_id = self::create_placeholder_artist($user_id, $user);
         if (!$artist_id) {
@@ -532,20 +527,28 @@ class MemberDashboard
      */
     public static function process_upgrade_request_for_user(WP_User $user)
     {
+        $guard = self::guard_upgrade_request($user, [
+            'role'        => 'organization',
+            'review_type' => UpgradeReviewRepository::TYPE_ORG,
+            'invalid'     => [
+                'code'    => 'ap_org_upgrade_invalid_user',
+                'message' => __('Invalid user.', 'artpulse-management'),
+            ],
+            'exists'      => [
+                'code'    => 'ap_org_upgrade_exists',
+                'message' => __('You already manage an organisation.', 'artpulse-management'),
+            ],
+            'pending'     => [
+                'code'    => 'ap_org_upgrade_pending',
+                'message' => __('Your previous request is still pending.', 'artpulse-management'),
+            ],
+        ]);
+
+        if ($guard instanceof WP_Error) {
+            return $guard;
+        }
+
         $user_id = (int) $user->ID;
-
-        if ($user_id <= 0) {
-            return new WP_Error('ap_org_upgrade_invalid_user', __('Invalid user.', 'artpulse-management'));
-        }
-
-        if (in_array('organization', (array) $user->roles, true)) {
-            return new WP_Error('ap_org_upgrade_exists', __('You already manage an organisation.', 'artpulse-management'));
-        }
-
-        $existing = UpgradeReviewRepository::get_latest_for_user($user_id);
-        if ($existing instanceof WP_Post && UpgradeReviewRepository::STATUS_PENDING === UpgradeReviewRepository::get_status($existing)) {
-            return new WP_Error('ap_org_upgrade_pending', __('Your previous request is still pending.', 'artpulse-management'));
-        }
 
         $lock_key = 'ap_upgrade_lock_user_' . $user_id;
 
@@ -605,6 +608,114 @@ class MemberDashboard
         RoleUpgradeManager::attach_owner((int) $org_id, $user_id);
 
         return (int) $org_id;
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    private static function build_cta(string $label, string $url, string $variant = 'secondary', string $mode = 'link', array $extra = []): array
+    {
+        return array_merge([
+            'label'    => $label,
+            'url'      => $url,
+            'variant'  => $variant,
+            'disabled' => false,
+            'mode'     => $mode,
+        ], $extra);
+    }
+
+    /**
+     * @return array{request_id:int, post_id:int, permalink:string, status:?string, reason:string}
+     */
+    private static function get_upgrade_context(int $user_id, string $review_type): array
+    {
+        $request = UpgradeReviewRepository::get_latest_for_user($user_id, $review_type);
+
+        if (!$request instanceof WP_Post) {
+            return [
+                'request_id' => 0,
+                'post_id'    => 0,
+                'permalink'  => '',
+                'status'     => null,
+                'reason'     => '',
+            ];
+        }
+
+        $post_id = UpgradeReviewRepository::get_post_id($request);
+        $permalink = '';
+
+        if ($post_id > 0) {
+            $link = get_permalink($post_id);
+            if ($link) {
+                $permalink = esc_url_raw($link);
+            }
+        }
+
+        return [
+            'request_id' => (int) $request->ID,
+            'post_id'    => $post_id,
+            'permalink'  => $permalink,
+            'status'     => UpgradeReviewRepository::get_status($request),
+            'reason'     => UpgradeReviewRepository::get_reason($request),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>                   $state
+     * @param array{request_id:int, post_id:int, permalink:string, status:?string, reason:string} $context
+     * @param array<string, mixed>                   $config
+     *
+     * @return array{0:array<string, mixed>,1:bool}
+     */
+    private static function apply_review_context(array $state, array $context, array $config): array
+    {
+        if ($context['request_id'] <= 0) {
+            return [$state, false];
+        }
+
+        $state['reason'] = $context['reason'];
+
+        if (isset($config['request_id_key'])) {
+            $state[$config['request_id_key']] = $context['request_id'];
+        }
+
+        if (isset($config['id_key'])) {
+            $state[$config['id_key']] = $context['post_id'];
+        }
+
+        if (isset($config['url_key']) && '' !== $context['permalink']) {
+            $state[$config['url_key']] = $context['permalink'];
+        }
+
+        $status = $context['status'] ?? '';
+
+        if (isset($config['status_map'][$status])) {
+            $state['status'] = (string) $config['status_map'][$status];
+        }
+
+        if ($status === UpgradeReviewRepository::STATUS_PENDING && isset($config['pending_cta'])) {
+            $state['cta'] = $config['pending_cta'];
+
+            return [$state, true];
+        }
+
+        if ($status === UpgradeReviewRepository::STATUS_DENIED && isset($config['denied_cta'])) {
+            $state['cta'] = $config['denied_cta'];
+
+            return [$state, true];
+        }
+
+        if ($status === UpgradeReviewRepository::STATUS_APPROVED && isset($config['approved_cta'])) {
+            $state['cta'] = $config['approved_cta'];
+
+            if (isset($config['approved_profile_url'], $config['url_key'])) {
+                $state[$config['url_key']] = (string) $config['approved_profile_url'];
+            }
+
+            return [$state, true];
+        }
+
+        return [$state, false];
     }
 
     public static function send_member_email(string $slug, WP_User $user, array $context = []): void

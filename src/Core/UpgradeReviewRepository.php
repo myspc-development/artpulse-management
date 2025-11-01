@@ -43,12 +43,12 @@ class UpgradeReviewRepository
             return null;
         }
 
-        $normalized_type = self::normalise_type($type);
+        $normalized_type = UpgradeType::normalise($type);
         if (null === $normalized_type) {
             return null;
         }
 
-        $type_values = self::expand_type_values($normalized_type);
+        $type_values = UpgradeType::expand($normalized_type);
 
         $posts = get_posts([
             'post_type'      => self::POST_TYPE,
@@ -96,7 +96,7 @@ class UpgradeReviewRepository
             );
         }
 
-        $normalized_type = self::normalise_type($type);
+        $normalized_type = UpgradeType::normalise($type);
         if (null === $normalized_type) {
             return new WP_Error(
                 'artpulse_upgrade_review_invalid_type',
@@ -201,7 +201,7 @@ class UpgradeReviewRepository
             return ['request_id' => null, 'created' => false];
         }
 
-        $normalized_type = self::normalise_type($type);
+        $normalized_type = UpgradeType::normalise($type);
         if (null === $normalized_type) {
             return ['request_id' => null, 'created' => false];
         }
@@ -260,7 +260,7 @@ class UpgradeReviewRepository
 
         $type = get_post_meta($resolved_post->ID, self::META_TYPE, true);
 
-        $normalised = is_string($type) && $type !== '' ? self::normalise_type($type) : null;
+        $normalised = is_string($type) && $type !== '' ? UpgradeType::normalise($type) : null;
 
         return $normalised ?? self::TYPE_ORG;
     }
@@ -274,7 +274,7 @@ class UpgradeReviewRepository
             return null;
         }
 
-        $normalized_type = self::normalise_type($type);
+        $normalized_type = UpgradeType::normalise($type);
         if (null === $normalized_type) {
             return null;
         }
@@ -293,7 +293,7 @@ class UpgradeReviewRepository
                 ],
                 [
                     'key'     => self::META_TYPE,
-                    'value'   => self::expand_type_values($normalized_type),
+                    'value'   => UpgradeType::expand($normalized_type),
                     'compare' => 'IN',
                 ],
             ],
@@ -474,44 +474,6 @@ class UpgradeReviewRepository
         wp_update_post([
             'ID' => $request_id,
         ]);
-    }
-
-    private static function normalise_type(string $type): ?string
-    {
-        $key = sanitize_key($type);
-
-        return match ($key) {
-            self::TYPE_ORG,
-            self::TYPE_ORG_UPGRADE,
-            'organization',
-            'organisation',
-            'org',
-            'orgs',
-            'artpulse_org',
-            'artpulse_organization',
-            'ap_org',
-            'ap_org_manager' => self::TYPE_ORG,
-            self::TYPE_ARTIST,
-            self::TYPE_ARTIST_UPGRADE,
-            'artist',
-            'artists',
-            'ap_artist',
-            'artpulse_artist' => self::TYPE_ARTIST,
-            default => null,
-        };
-    }
-
-    private static function expand_type_values(string $type): array
-    {
-        $values = [$type];
-
-        if (self::TYPE_ORG === $type) {
-            $values[] = self::TYPE_ORG_UPGRADE;
-        } elseif (self::TYPE_ARTIST === $type) {
-            $values[] = self::TYPE_ARTIST_UPGRADE;
-        }
-
-        return array_unique($values);
     }
 
     private static function resolve_post(WP_Post|int $post): ?WP_Post
