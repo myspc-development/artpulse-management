@@ -175,15 +175,13 @@ class UpgradeAuditLog
         }
 
         $sql = sprintf(
-            'SELECT id, event_type, status, user_id, related_id, context, created_at FROM %s WHERE %s ORDER BY created_at DESC, id DESC LIMIT %d',
+            'SELECT id, event_type, status, user_id, related_id, context, created_at FROM %s WHERE %s ORDER BY created_at DESC, id DESC LIMIT %%d',
             $table,
-            implode(' AND ', $where),
-            $limit
+            implode(' AND ', $where)
         );
 
-        if (!empty($params)) {
-            $sql = $wpdb->prepare($sql, $params);
-        }
+        $params[] = $limit;
+        $sql      = $wpdb->prepare($sql, $params);
 
         $rows = $wpdb->get_results($sql, ARRAY_A);
         if (!is_array($rows)) {
