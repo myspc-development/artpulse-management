@@ -116,6 +116,7 @@ class Plugin
 
         \artpulse_create_custom_table();
         Activator::activate();
+        UpgradeAuditLog::install_table();
 
         $index_result = DatabaseUtils::add_letter_meta_index();
         if ( DatabaseUtils::INDEX_RESULT_FAILED === $index_result ) {
@@ -326,6 +327,7 @@ class Plugin
         \ArtPulse\Admin\AdminColumnsEvent::register();
         \ArtPulse\Admin\AdminColumnsOrganisation::register();
         \ArtPulse\Admin\QuickStartGuide::register();
+        \ArtPulse\Admin\UpgradeActivityPage::register();
 
         \ArtPulse\Taxonomies\TaxonomiesRegistrar::register();
 

@@ -182,11 +182,12 @@ class UpgradeReviewHandlers
 
         $email_body = implode(PHP_EOL . PHP_EOL, $email_lines);
 
+        $email_sent = false;
         if (is_email($user->user_email)) {
             try {
-                wp_mail($user->user_email, $email_subject, $email_body);
+                $email_sent = (bool) wp_mail($user->user_email, $email_subject, $email_body);
             } catch (\Throwable $ignored) {
-                // Swallow email transport issues.
+                $email_sent = false;
             }
         }
 
@@ -230,6 +231,7 @@ class UpgradeReviewHandlers
         $object_id  = 'approved' === $status && $profile_id > 0 ? $profile_id : $request_id;
         $related_id = 'approved' === $status ? $request_id : 0;
 
+        $notification_sent = false;
         if (class_exists('\\ArtPulse\\Community\\NotificationManager')) {
             try {
                 \ArtPulse\Community\NotificationManager::add(
@@ -239,10 +241,26 @@ class UpgradeReviewHandlers
                     $related_id > 0 ? $related_id : null,
                     $message
                 );
+                $notification_sent = true;
             } catch (\Throwable $ignored) {
-                // Ignore notification transport errors.
+                $notification_sent = false;
             }
         }
+
+        UpgradeAuditLog::log_notifications_sent(
+            (int) $user->ID,
+            $status,
+            [
+                'request_id' => $request_id,
+                'profile_id' => $profile_id,
+                'type'       => $type,
+                'channels'   => [
+                    'email' => $email_sent,
+                    'in_app'=> $notification_sent,
+                ],
+                'reason'     => $reason,
+            ]
+        );
     }
 
     public static function get_or_create_profile_post(int $user_id, string $type): int
@@ -360,6 +378,11 @@ class UpgradeReviewHandlers
         }
 
         update_user_meta($user_id, $meta_key, $post_id);
+
+        UpgradeAuditLog::log_profile_autocreated($user_id, (int) $post_id, [
+            'type'      => $normalised_type,
+            'post_type' => $post_type,
+        ]);
 
         return (int) $post_id;
     }

@@ -106,6 +106,10 @@ class UpgradeReviewRepository
 
         $existing_request = self::find_pending($user_id, $normalized_type);
         if (null !== $existing_request) {
+            UpgradeAuditLog::log_duplicate_rejected($user_id, $normalized_type, (int) $existing_request, [
+                'source' => 'create',
+            ]);
+
             return new WP_Error(
                 'ap_duplicate_pending',
                 __('A pending upgrade review request already exists for this user and type.', 'artpulse-management'),
@@ -162,6 +166,12 @@ class UpgradeReviewRepository
         update_post_meta($request_id, self::META_USER, $user_id);
         update_post_meta($request_id, self::META_POST, $sanitized_post_id);
         delete_post_meta($request_id, self::META_REASON);
+
+        UpgradeAuditLog::log_request_created($user_id, $normalized_type, (int) $request_id, [
+            'post_id'     => $sanitized_post_id,
+            'has_note'    => isset($args['note']) && '' !== trim((string) $args['note']),
+            'created_via' => 'create',
+        ]);
 
         return (int) $request_id;
     }
@@ -229,6 +239,11 @@ class UpgradeReviewRepository
         update_post_meta($request_id, self::META_USER, $user_id);
         update_post_meta($request_id, self::META_POST, max(0, $post_id));
         delete_post_meta($request_id, self::META_REASON);
+
+        UpgradeAuditLog::log_request_created($user_id, $normalized_type, (int) $request_id, [
+            'post_id'     => max(0, $post_id),
+            'created_via' => 'upsert',
+        ]);
 
         return ['request_id' => (int) $request_id, 'created' => true];
     }
