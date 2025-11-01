@@ -57,8 +57,8 @@ class EngagementDashboard
     {
         add_submenu_page(
             'artpulse-settings',
-            __('Engagement Dashboard', 'artpulse'),
-            __('Engagement', 'artpulse'),
+            __('Engagement Dashboard', 'artpulse-management'),
+            __('Engagement', 'artpulse-management'),
             'manage_options',
             'artpulse-engagement',
             [self::class, 'render']
@@ -67,6 +67,10 @@ class EngagementDashboard
 
     public static function render()
     {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'artpulse-management'));
+        }
+
         $activity_filter = sanitize_text_field($_GET['activity'] ?? '');
         $paged = max(1, intval($_GET['paged'] ?? 1));
         $per_page = 20;
@@ -150,17 +154,17 @@ class EngagementDashboard
 
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e('Member Engagement Dashboard', 'artpulse'); ?></h1>
+            <h1><?php esc_html_e('Member Engagement Dashboard', 'artpulse-management'); ?></h1>
 
             <form method="get" style="margin-bottom: 20px;">
                 <input type="hidden" name="page" value="artpulse-engagement" />
                 <select name="activity">
-                    <option value="" <?php selected($activity_filter, ''); ?>>All Users</option>
-                    <option value="active" <?php selected($activity_filter, 'active'); ?>><?php esc_html_e('Active Only', 'artpulse'); ?></option>
-                    <option value="inactive" <?php selected($activity_filter, 'inactive'); ?>><?php esc_html_e('Inactive Only', 'artpulse'); ?></option>
+                    <option value="" <?php selected($activity_filter, ''); ?>><?php esc_html_e('All Users', 'artpulse-management'); ?></option>
+                    <option value="active" <?php selected($activity_filter, 'active'); ?>><?php esc_html_e('Active Only', 'artpulse-management'); ?></option>
+                    <option value="inactive" <?php selected($activity_filter, 'inactive'); ?>><?php esc_html_e('Inactive Only', 'artpulse-management'); ?></option>
                 </select>
-                <button class="button">Filter</button>
-                <a href="<?php echo esc_url(add_query_arg(['activity' => $activity_filter, 'ap_export_csv' => 1])); ?>" class="button button-secondary">Export CSV</a>
+                <button class="button" type="submit"><?php esc_html_e('Filter', 'artpulse-management'); ?></button>
+                <a href="<?php echo esc_url(add_query_arg(['activity' => $activity_filter, 'ap_export_csv' => 1])); ?>" class="button button-secondary"><?php esc_html_e('Export CSV', 'artpulse-management'); ?></a>
             </form>
 
             <!-- Inline Data Passing -->
@@ -206,13 +210,13 @@ class EngagementDashboard
             <table class="widefat fixed striped">
                 <thead>
                 <tr>
-                    <th><?php esc_html_e('Name', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Last Login', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Artworks', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Events', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Followers', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Following', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Score', 'artpulse'); ?></th>
+                    <th><?php esc_html_e('Name', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Last Login', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Artworks', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Events', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Followers', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Following', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Score', 'artpulse-management'); ?></th>
                 </tr>
                 </thead>
                 <tbody>
@@ -236,7 +240,7 @@ class EngagementDashboard
                 <?php endforeach; ?>
                 <?php if (empty($paged_users)): ?>
                     <tr>
-                        <td colspan="7">No members found.</td>
+                        <td colspan="7"><?php esc_html_e('No members found.', 'artpulse-management'); ?></td>
                     </tr>
                 <?php endif; ?>
                 </tbody>

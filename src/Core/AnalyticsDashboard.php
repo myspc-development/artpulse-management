@@ -17,12 +17,12 @@ class AnalyticsDashboard
     public static function addMenu()
     {
         add_submenu_page(
-            'options-general.php',               // parent slug
-            __('ArtPulse Analytics','artpulse'), // page title
-            __('Analytics','artpulse'),          // menu title
-            'manage_options',                    // capability
-            'artpulse-analytics',                // menu slug
-            [ self::class, 'renderPage' ]        // callback
+            'options-general.php',
+            __('ArtPulse Analytics', 'artpulse-management'),
+            __('Analytics', 'artpulse-management'),
+            'manage_options',
+            'artpulse-analytics',
+            [ self::class, 'renderPage' ]
         );
     }
 
@@ -31,13 +31,17 @@ class AnalyticsDashboard
      */
     public static function renderPage()
     {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'artpulse-management'));
+        }
+
         $opts = get_option('artpulse_settings', []);
 
         if ( empty( $opts['analytics_embed_enabled'] ) || empty( $opts['analytics_embed_url'] ) ) {
             echo '<div class="notice notice-warning"><p>';
             esc_html_e(
                 'Please enable and configure your Analytics Dashboard Embed URL on the ArtPulse Settings page first.',
-                'artpulse'
+                'artpulse-management'
             );
             echo '</p></div>';
             return;
@@ -46,7 +50,7 @@ class AnalyticsDashboard
         $url = esc_url( $opts['analytics_embed_url'] );
         ?>
         <div class="wrap">
-          <h1><?php _e('ArtPulse Analytics','artpulse'); ?></h1>
+          <h1><?php esc_html_e('ArtPulse Analytics', 'artpulse-management'); ?></h1>
           <iframe 
             src="<?php echo $url; ?>" 
             width="100%" 

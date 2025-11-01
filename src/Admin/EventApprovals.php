@@ -49,8 +49,8 @@ class EventApprovals
     {
         $hook = add_submenu_page(
             'artpulse-settings',
-            __( 'Event Approvals', 'artpulse' ),
-            __( 'Event Approvals', 'artpulse' ),
+            __( 'Event Approvals', 'artpulse-management' ),
+            __( 'Event Approvals', 'artpulse-management' ),
             'publish_artpulse_events',
             self::MENU_SLUG,
             [ $this, 'render_page' ]
@@ -71,9 +71,10 @@ class EventApprovals
         }
 
         if ( ! $this->current_user_can_manage() ) {
-            $this->redirect_with_notice( 'no-cap' );
+            wp_die( esc_html__( 'Permission denied.', 'artpulse-management' ), 403 );
         }
 
+        check_admin_referer( 'ap_admin_action', 'ap_admin_nonce' );
         check_admin_referer( 'bulk-artpulse-event-approvals' );
 
         $ids = isset( $_REQUEST['post'] ) ? array_map( 'absint', (array) $_REQUEST['post'] ) : [];
@@ -98,13 +99,18 @@ class EventApprovals
 
     public function render_page(): void
     {
+        if ( ! $this->current_user_can_manage() ) {
+            wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'artpulse-management' ) );
+        }
+
         $table = $this->create_table();
         $table->prepare_items();
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e( 'Event Approvals', 'artpulse' ); ?></h1>
+            <h1><?php esc_html_e( 'Event Approvals', 'artpulse-management' ); ?></h1>
             <form method="post">
                 <input type="hidden" name="page" value="<?php echo esc_attr( self::MENU_SLUG ); ?>" />
+                <?php wp_nonce_field( 'ap_admin_action', 'ap_admin_nonce' ); ?>
                 <?php
                 $table->display();
                 ?>
@@ -133,43 +139,43 @@ class EventApprovals
         switch ( $notice ) {
             case 'no-cap':
                 $class   = 'notice notice-error';
-                $message = __( 'You do not have permission to manage event approvals.', 'artpulse' );
+                $message = __( 'You do not have permission to manage event approvals.', 'artpulse-management' );
                 break;
             case 'invalid-nonce':
                 $class   = 'notice notice-error';
-                $message = __( 'Security check failed. Please try again.', 'artpulse' );
+                $message = __( 'Security check failed. Please try again.', 'artpulse-management' );
                 break;
             case 'invalid-event':
                 $class   = 'notice notice-error';
-                $message = __( 'The requested event could not be found.', 'artpulse' );
+                $message = __( 'The requested event could not be found.', 'artpulse-management' );
                 break;
             case 'single-approved':
-                $message = __( 'Event approved.', 'artpulse' );
+                $message = __( 'Event approved.', 'artpulse-management' );
                 break;
             case 'single-rejected':
                 $class   = 'notice notice-warning';
-                $message = __( 'Event moved to the trash.', 'artpulse' );
+                $message = __( 'Event moved to the trash.', 'artpulse-management' );
                 break;
             case 'single-error':
                 $class   = 'notice notice-error';
-                $message = __( 'Unable to update the event. Please try again.', 'artpulse' );
+                $message = __( 'Unable to update the event. Please try again.', 'artpulse-management' );
                 break;
             case 'bulk-approved':
                 /* translators: %d is the number of events approved. */
-                $message = sprintf( __( 'Approved %d event(s).', 'artpulse' ), $count );
+                $message = sprintf( __( 'Approved %d event(s).', 'artpulse-management' ), $count );
                 break;
             case 'bulk-rejected':
                 $class   = 'notice notice-warning';
                 /* translators: %d is the number of events rejected. */
-                $message = sprintf( __( 'Rejected %d event(s).', 'artpulse' ), $count );
+                $message = sprintf( __( 'Rejected %d event(s).', 'artpulse-management' ), $count );
                 break;
             case 'bulk-none':
                 $class   = 'notice notice-warning';
-                $message = __( 'No events were selected.', 'artpulse' );
+                $message = __( 'No events were selected.', 'artpulse-management' );
                 break;
             case 'bulk-error':
                 $class   = 'notice notice-error';
-                $message = __( 'Unable to process the selected events. Please try again.', 'artpulse' );
+                $message = __( 'Unable to process the selected events. Please try again.', 'artpulse-management' );
                 break;
         }
 
@@ -201,6 +207,8 @@ class EventApprovals
             $this->redirect_with_notice( 'invalid-event' );
         }
 
+        check_admin_referer( 'ap_admin_action', 'ap_admin_nonce' );
+
         $nonce_action = $this->get_single_nonce_action( $action, $event_id );
         $nonce        = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
 
@@ -209,7 +217,7 @@ class EventApprovals
         }
 
         if ( ! $this->current_user_can_manage() ) {
-            $this->redirect_with_notice( 'no-cap' );
+            wp_die( esc_html__( 'Permission denied.', 'artpulse-management' ), 403 );
         }
 
         if ( 'approve' === $action ) {
@@ -336,33 +344,33 @@ class EventApprovals
         $author_name = $author->display_name ? $author->display_name : $author->user_login;
 
         if ( 'approved' === $status ) {
-            $subject = sprintf( __( 'Your event "%s" has been approved', 'artpulse' ), $post->post_title );
+            $subject = sprintf( __( 'Your event "%s" has been approved', 'artpulse-management' ), $post->post_title );
             $message = sprintf(
-                __( "Hi %1\$s,\n\nYour event \"%2\$s\" has been approved and is now published on %3\$s.%4\$s\n\nThanks,\n%5\$s", 'artpulse' ),
+                __( "Hi %1\$s,\n\nYour event \"%2\$s\" has been approved and is now published on %3\$s.%4\$s\n\nThanks,\n%5\$s", 'artpulse-management' ),
                 $author_name,
                 $post->post_title,
                 esc_url( home_url() ),
-                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse' ), $reason ) : '',
+                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse-management' ), $reason ) : '',
                 $blog_name
             );
             $message = apply_filters( 'artpulse_event_approval_email_body', $message, $post, $author );
         } elseif ( 'changes_requested' === $status ) {
-            $subject = sprintf( __( 'Updates requested for "%s"', 'artpulse' ), $post->post_title );
+            $subject = sprintf( __( 'Updates requested for "%s"', 'artpulse-management' ), $post->post_title );
             $message = sprintf(
-                __( "Hi %1\$s,\n\nWe need a few updates to your event \"%2\$s\" before it can be approved.%3\$s\n\nThanks,\n%4\$s", 'artpulse' ),
+                __( "Hi %1\$s,\n\nWe need a few updates to your event \"%2\$s\" before it can be approved.%3\$s\n\nThanks,\n%4\$s", 'artpulse-management' ),
                 $author_name,
                 $post->post_title,
-                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse' ), $reason ) : '',
+                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse-management' ), $reason ) : '',
                 $blog_name
             );
             $message = apply_filters( 'artpulse_event_changes_requested_email_body', $message, $post, $author );
         } else {
-            $subject = sprintf( __( 'Your event "%s" was not approved', 'artpulse' ), $post->post_title );
+            $subject = sprintf( __( 'Your event "%s" was not approved', 'artpulse-management' ), $post->post_title );
             $message = sprintf(
-                __( "Hi %1\$s,\n\nYour event \"%2\$s\" was not approved. You can review the submission and try again.%3\$s\n\nThanks,\n%4\$s", 'artpulse' ),
+                __( "Hi %1\$s,\n\nYour event \"%2\$s\" was not approved. You can review the submission and try again.%3\$s\n\nThanks,\n%4\$s", 'artpulse-management' ),
                 $author_name,
                 $post->post_title,
-                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse' ), $reason ) : '',
+                $reason ? '\n\n' . sprintf( __( 'Moderator note: %s', 'artpulse-management' ), $reason ) : '',
                 $blog_name
             );
             $message = apply_filters( 'artpulse_event_rejection_email_body', $message, $post, $author );
@@ -379,26 +387,26 @@ class EventApprovals
             return;
         }
 
-        $title   = $post->post_title ? wp_strip_all_tags( $post->post_title ) : __( 'Event', 'artpulse' );
+        $title   = $post->post_title ? wp_strip_all_tags( $post->post_title ) : __( 'Event', 'artpulse-management' );
 
         switch ( $state ) {
             case 'approved':
-                $message = sprintf( __( 'Your event "%s" has been approved.', 'artpulse' ), $title );
+                $message = sprintf( __( 'Your event "%s" has been approved.', 'artpulse-management' ), $title );
                 break;
             case 'changes_requested':
-                $message = sprintf( __( 'Updates were requested for your event "%s".', 'artpulse' ), $title );
+                $message = sprintf( __( 'Updates were requested for your event "%s".', 'artpulse-management' ), $title );
                 break;
             case 'denied':
             case 'rejected':
-                $message = sprintf( __( 'Your event "%s" was not approved.', 'artpulse' ), $title );
+                $message = sprintf( __( 'Your event "%s" was not approved.', 'artpulse-management' ), $title );
                 break;
             default:
-                $message = sprintf( __( 'The status of your event "%s" has changed.', 'artpulse' ), $title );
+                $message = sprintf( __( 'The status of your event "%s" has changed.', 'artpulse-management' ), $title );
                 break;
         }
 
         if ( '' !== $reason ) {
-            $message .= ' ' . sprintf( __( 'Reason: %s', 'artpulse' ), $reason );
+            $message .= ' ' . sprintf( __( 'Reason: %s', 'artpulse-management' ), $reason );
         }
 
         NotificationManager::add(
@@ -465,6 +473,7 @@ class EventApprovals
         ];
 
         $url = add_query_arg( $args, admin_url( 'admin-post.php' ) );
+        $url = add_query_arg( 'ap_admin_nonce', wp_create_nonce( 'ap_admin_action' ), $url );
 
         return wp_nonce_url( $url, $this->get_single_nonce_action( $action, $event_id ) );
     }
@@ -491,11 +500,11 @@ class EventApprovalListTable extends WP_List_Table
     {
         return [
             'cb'      => '<input type="checkbox" />',
-            'title'   => __( 'Title', 'artpulse' ),
-            'author'  => __( 'Author', 'artpulse' ),
-            'date'    => __( 'Date Submitted', 'artpulse' ),
-            'status'  => __( 'Status', 'artpulse' ),
-            'actions' => __( 'Actions', 'artpulse' ),
+            'title'   => __( 'Title', 'artpulse-management' ),
+            'author'  => __( 'Author', 'artpulse-management' ),
+            'date'    => __( 'Date Submitted', 'artpulse-management' ),
+            'status'  => __( 'Status', 'artpulse-management' ),
+            'actions' => __( 'Actions', 'artpulse-management' ),
         ];
     }
 
@@ -519,17 +528,17 @@ class EventApprovalListTable extends WP_List_Table
             'approve' => sprintf(
                 '<a href="%s">%s</a>',
                 esc_url( $this->approvals->get_single_action_url( 'approve', $item->ID ) ),
-                esc_html__( 'Approve', 'artpulse' )
+                esc_html__( 'Approve', 'artpulse-management' )
             ),
             'reject'  => sprintf(
                 '<a href="%s">%s</a>',
                 esc_url( $this->approvals->get_single_action_url( 'reject', $item->ID ) ),
-                esc_html__( 'Reject', 'artpulse' )
+                esc_html__( 'Reject', 'artpulse-management' )
             ),
             'view'    => sprintf(
                 '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
                 esc_url( get_permalink( $item ) ),
-                esc_html__( 'View', 'artpulse' )
+                esc_html__( 'View', 'artpulse-management' )
             ),
         ];
 
@@ -540,7 +549,7 @@ class EventApprovalListTable extends WP_List_Table
     {
         $author = get_userdata( $item->post_author );
 
-        return $author instanceof WP_User ? esc_html( $author->display_name ?: $author->user_login ) : esc_html__( 'Unknown', 'artpulse' );
+        return $author instanceof WP_User ? esc_html( $author->display_name ?: $author->user_login ) : esc_html__( 'Unknown', 'artpulse-management' );
     }
 
     protected function column_date( $item ): string
@@ -563,17 +572,17 @@ class EventApprovalListTable extends WP_List_Table
             sprintf(
                 '<a class="button button-primary" href="%s">%s</a>',
                 esc_url( $this->approvals->get_single_action_url( 'approve', $item->ID ) ),
-                esc_html__( 'Approve', 'artpulse' )
+                esc_html__( 'Approve', 'artpulse-management' )
             ),
             sprintf(
                 '<a class="button" href="%s">%s</a>',
                 esc_url( $this->approvals->get_single_action_url( 'reject', $item->ID ) ),
-                esc_html__( 'Reject', 'artpulse' )
+                esc_html__( 'Reject', 'artpulse-management' )
             ),
             sprintf(
                 '<a class="button" href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
                 esc_url( get_permalink( $item ) ),
-                esc_html__( 'View', 'artpulse' )
+                esc_html__( 'View', 'artpulse-management' )
             ),
         ];
 
@@ -583,8 +592,8 @@ class EventApprovalListTable extends WP_List_Table
     protected function get_bulk_actions(): array
     {
         return [
-            'approve' => __( 'Approve', 'artpulse' ),
-            'reject'  => __( 'Reject', 'artpulse' ),
+            'approve' => __( 'Approve', 'artpulse-management' ),
+            'reject'  => __( 'Reject', 'artpulse-management' ),
         ];
     }
 

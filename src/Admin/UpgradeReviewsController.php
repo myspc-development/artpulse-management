@@ -48,6 +48,7 @@ class UpgradeReviewsController
         }
 
         if ('POST' === $_SERVER['REQUEST_METHOD'] && isset($_POST['filter_action'])) {
+            check_admin_referer('ap_admin_action', 'ap_admin_nonce');
             self::redirect_with_filters();
         }
 
@@ -98,6 +99,7 @@ class UpgradeReviewsController
             echo '</ul>';
 
             echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="ap-upgrade-review-bulk-confirm">';
+            wp_nonce_field('ap_admin_action', 'ap_admin_nonce');
             wp_nonce_field(self::build_bulk_nonce_action($review_ids), 'bulk_nonce');
             echo '<input type="hidden" name="action" value="ap_upgrade_review_action" />';
             echo '<input type="hidden" name="operation" value="' . esc_attr($operation) . '" />';
@@ -150,6 +152,7 @@ class UpgradeReviewsController
                 $user = $user_id ? get_user_by('id', $user_id) : null;
 
                 echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="ap-upgrade-review-deny">';
+                wp_nonce_field('ap_admin_action', 'ap_admin_nonce');
                 wp_nonce_field('ap-upgrade-review-' . $review_id);
                 echo '<input type="hidden" name="review" value="' . esc_attr($review_id) . '" />';
                 echo '<input type="hidden" name="action" value="ap_upgrade_review_action" />';
@@ -198,6 +201,7 @@ class UpgradeReviewsController
         }
 
         echo '<form method="post">';
+        wp_nonce_field('ap_admin_action', 'ap_admin_nonce');
         echo '<input type="hidden" name="page" value="artpulse-upgrade-reviews" />';
         $current_status = $list_table->get_current_view();
         if ('' !== $current_status) {
@@ -216,6 +220,8 @@ class UpgradeReviewsController
         if (!$user instanceof WP_User || !user_can($user, self::CAPABILITY_MANAGE)) {
             wp_die(esc_html__('Insufficient permissions.', 'artpulse-management'));
         }
+
+        check_admin_referer('ap_admin_action', 'ap_admin_nonce');
 
         $review_ids = [];
         if (isset($_REQUEST['review'])) {
@@ -279,13 +285,16 @@ class UpgradeReviewsController
         $review_id = (int) $post->ID;
         $custom_actions = [];
 
+        $approve_args = [
+            'action'         => 'ap_upgrade_review_action',
+            'review'         => $review_id,
+            'operation'      => 'approve',
+            'ap_admin_nonce' => wp_create_nonce('ap_admin_action'),
+        ];
+
         $approve_url = wp_nonce_url(
             add_query_arg(
-                [
-                    'action'    => 'ap_upgrade_review_action',
-                    'review'    => $review_id,
-                    'operation' => 'approve',
-                ],
+                $approve_args,
                 admin_url('admin-post.php')
             ),
             'ap-upgrade-review-' . $review_id
@@ -297,13 +306,16 @@ class UpgradeReviewsController
             esc_html__('Quick approve', 'artpulse-management')
         );
 
+        $deny_args = [
+            'page'           => 'artpulse-upgrade-reviews',
+            'view'           => 'deny',
+            'review'         => $review_id,
+            'ap_admin_nonce' => wp_create_nonce('ap_admin_action'),
+        ];
+
         $deny_url = wp_nonce_url(
             add_query_arg(
-                [
-                    'page'   => 'artpulse-upgrade-reviews',
-                    'view'   => 'deny',
-                    'review' => $review_id,
-                ],
+                $deny_args,
                 admin_url('admin.php')
             ),
             'ap-upgrade-review-' . $review_id
@@ -584,12 +596,18 @@ class UpgradeReviewsController
             return;
         }
 
-        if (!isset($_POST['ap_bulk_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ap_bulk_nonce'])), 'ap-upgrade-review-bulk')) {
+        if (!isset($_POST['ap_bulk_nonce'])) {
+            return;
+        }
+
+        check_admin_referer('ap_admin_action', 'ap_admin_nonce');
+
+        if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ap_bulk_nonce'])), 'ap-upgrade-review-bulk')) {
             return;
         }
 
         if (!user_can($user, self::CAPABILITY_MANAGE)) {
-            return;
+            wp_die(esc_html__('Insufficient permissions.', 'artpulse-management'), 403);
         }
 
         $operation = self::get_bulk_operation_from_request();
