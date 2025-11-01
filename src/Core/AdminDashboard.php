@@ -11,8 +11,8 @@ class AdminDashboard
     public static function addMenus()
     {
         add_menu_page(
-            __('ArtPulse', 'artpulse'),
-            __('ArtPulse', 'artpulse'),
+            __('ArtPulse', 'artpulse-management'),
+            __('ArtPulse', 'artpulse-management'),
             'manage_options',
             'artpulse-dashboard',
             [ self::class, 'renderDashboard' ],
@@ -21,29 +21,29 @@ class AdminDashboard
         );
         add_submenu_page(
             'artpulse-dashboard',
-            __('Events','artpulse'),
-            __('Events','artpulse'),
+            __('Events', 'artpulse-management'),
+            __('Events', 'artpulse-management'),
             'edit_artpulse_events',
             'edit.php?post_type=artpulse_event'
         );
         add_submenu_page(
             'artpulse-dashboard',
-            __('Artists','artpulse'),
-            __('Artists','artpulse'),
+            __('Artists', 'artpulse-management'),
+            __('Artists', 'artpulse-management'),
             'edit_artpulse_artists',
             'edit.php?post_type=artpulse_artist'
         );
         add_submenu_page(
             'artpulse-dashboard',
-            __('Artworks','artpulse'),
-            __('Artworks','artpulse'),
+            __('Artworks', 'artpulse-management'),
+            __('Artworks', 'artpulse-management'),
             'edit_artpulse_artworks',
             'edit.php?post_type=artpulse_artwork'
         );
         add_submenu_page(
             'artpulse-dashboard',
-            __('Organizations','artpulse'),
-            __('Organizations','artpulse'),
+            __('Organizations', 'artpulse-management'),
+            __('Organizations', 'artpulse-management'),
             'edit_artpulse_orgs',
             'edit.php?post_type=artpulse_org'
         );
@@ -51,13 +51,17 @@ class AdminDashboard
 
     public static function renderDashboard()
     {
-        echo '<div class="wrap"><h1>' . __('ArtPulse Dashboard','artpulse') . '</h1>';
-        echo '<p>' . __('Quick links to manage Events, Artists, Artworks, and Organizations.','artpulse') . '</p>';
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'artpulse-management'));
+        }
+
+        echo '<div class="wrap"><h1>' . esc_html__('ArtPulse Dashboard', 'artpulse-management') . '</h1>';
+        echo '<p>' . esc_html__('Quick links to manage Events, Artists, Artworks, and Organizations.', 'artpulse-management') . '</p>';
         echo '<ul>';
-        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_event') . '">' . __('Manage Events','artpulse') . '</a></li>';
-        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_artist') . '">' . __('Manage Artists','artpulse') . '</a></li>';
-        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_artwork') . '">' . __('Manage Artworks','artpulse') . '</a></li>';
-        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_org') . '">' . __('Manage Organizations','artpulse') . '</a></li>';
+        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_event') . '">' . esc_html__('Manage Events', 'artpulse-management') . '</a></li>';
+        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_artist') . '">' . esc_html__('Manage Artists', 'artpulse-management') . '</a></li>';
+        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_artwork') . '">' . esc_html__('Manage Artworks', 'artpulse-management') . '</a></li>';
+        echo '<li><a href="' . admin_url('edit.php?post_type=artpulse_org') . '">' . esc_html__('Manage Organizations', 'artpulse-management') . '</a></li>';
         echo '</ul></div>';
     }
 }

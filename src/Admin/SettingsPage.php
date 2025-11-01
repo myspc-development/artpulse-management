@@ -15,8 +15,8 @@ class SettingsPage
     public static function addMenu()
     {
         add_menu_page(
-            __('ArtPulse', 'artpulse'),
-            __('ArtPulse', 'artpulse'),
+            __('ArtPulse', 'artpulse-management'),
+            __('ArtPulse', 'artpulse-management'),
             'manage_options',
             'artpulse-settings',
             [self::class, 'render'],
@@ -25,24 +25,24 @@ class SettingsPage
         );
         add_submenu_page(
             'artpulse-settings',
-            __('Settings', 'artpulse'),
-            __('Settings', 'artpulse'),
+            __('Settings', 'artpulse-management'),
+            __('Settings', 'artpulse-management'),
             'manage_options',
             'artpulse-settings',
             [self::class, 'render']
         );
         add_submenu_page(
             'artpulse-settings',
-            __('Members', 'artpulse'),
-            __('Members', 'artpulse'),
+            __('Members', 'artpulse-management'),
+            __('Members', 'artpulse-management'),
             'manage_options',
             'artpulse-members',
             [self::class, 'renderMembersPage']
         );
         add_submenu_page(
             'artpulse-settings',
-            __('Engagement Dashboard', 'artpulse'),
-            __('Engagement', 'artpulse'),
+            __('Engagement Dashboard', 'artpulse-management'),
+            __('Engagement', 'artpulse-management'),
             'manage_options',
             'artpulse-engagement',
             [EngagementDashboard::class, 'render']
@@ -95,6 +95,10 @@ class SettingsPage
     }
     public static function renderMembersPage()
     {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'artpulse-management'));
+        }
+
         $search_query = sanitize_text_field($_GET['ap_search'] ?? '');
         $level_filter = sanitize_text_field($_GET['ap_level'] ?? '');
         $args = [
@@ -137,30 +141,30 @@ class SettingsPage
         }
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e('ArtPulse Members', 'artpulse'); ?></h1>
+            <h1><?php esc_html_e('ArtPulse Members', 'artpulse-management'); ?></h1>
             <form method="get" style="margin-bottom: 20px;">
                 <input type="hidden" name="page" value="artpulse-members" />
-                <input type="text" name="ap_search" placeholder="<?php esc_attr_e('Search users...', 'artpulse'); ?>" value="<?php echo esc_attr($search_query); ?>" />
+                <input type="text" name="ap_search" placeholder="<?php esc_attr_e('Search users...', 'artpulse-management'); ?>" value="<?php echo esc_attr($search_query); ?>" />
                 <select name="ap_level">
-                    <option value=""><?php esc_html_e('All Levels', 'artpulse'); ?></option>
-                    <option value="free" <?php selected($level_filter, 'free'); ?>><?php esc_html_e('Free', 'artpulse'); ?></option>
-                    <option value="pro" <?php selected($level_filter, 'pro'); ?>><?php esc_html_e('Pro', 'artpulse'); ?></option>
-                    <option value="org" <?php selected($level_filter, 'org'); ?>><?php esc_html_e('Org', 'artpulse'); ?></option>
+                    <option value=""><?php esc_html_e('All Levels', 'artpulse-management'); ?></option>
+                    <option value="free" <?php selected($level_filter, 'free'); ?>><?php esc_html_e('Free', 'artpulse-management'); ?></option>
+                    <option value="pro" <?php selected($level_filter, 'pro'); ?>><?php esc_html_e('Pro', 'artpulse-management'); ?></option>
+                    <option value="org" <?php selected($level_filter, 'org'); ?>><?php esc_html_e('Org', 'artpulse-management'); ?></option>
                 </select>
-                <button type="submit" class="button"><?php esc_html_e('Filter', 'artpulse'); ?></button>
-                <button type="submit" name="ap_export_csv" class="button-secondary"><?php esc_html_e('Export CSV', 'artpulse'); ?></button>
+                <button type="submit" class="button"><?php esc_html_e('Filter', 'artpulse-management'); ?></button>
+                <button type="submit" name="ap_export_csv" class="button-secondary"><?php esc_html_e('Export CSV', 'artpulse-management'); ?></button>
             </form>
             <table class="widefat fixed striped">
                 <thead>
                 <tr>
-                    <th><?php esc_html_e('Name', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Email', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Level', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Submissions', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Last Login', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Registered', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Expires', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Actions', 'artpulse'); ?></th>
+                    <th><?php esc_html_e('Name', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Email', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Level', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Submissions', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Last Login', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Registered', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Expires', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Actions', 'artpulse-management'); ?></th>
                 </tr>
                 </thead>
                 <tbody>
@@ -179,17 +183,17 @@ class SettingsPage
                         <td><?php echo esc_html(date_i18n(get_option('date_format'), strtotime($user->user_registered))); ?></td>
                         <td><?php echo esc_html($expires ?: '—'); ?></td>
                         <td>
-                            <a href="<?php echo esc_url(get_edit_user_link($user->ID)); ?>"><?php esc_html_e('View', 'artpulse'); ?></a>
+                            <a href="<?php echo esc_url(get_edit_user_link($user->ID)); ?>"><?php esc_html_e('View', 'artpulse-management'); ?></a>
                             |
                             <a href="<?php echo esc_url(wp_nonce_url(admin_url("users.php?action=resetpassword&user={$user->ID}"), 'reset_user_password_' . $user->ID)); ?>">
-                                <?php esc_html_e('Reset Password', 'artpulse'); ?>
+                                <?php esc_html_e('Reset Password', 'artpulse-management'); ?>
                             </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($users)): ?>
                     <tr>
-                        <td colspan="8"><?php esc_html_e('No members found.', 'artpulse'); ?></td>
+                        <td colspan="8"><?php esc_html_e('No members found.', 'artpulse-management'); ?></td>
                     </tr>
                 <?php endif; ?>
                 </tbody>
@@ -199,6 +203,14 @@ class SettingsPage
     }
     public static function render()
     {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'artpulse-management'));
+        }
+
+        if ('POST' === ($_SERVER['REQUEST_METHOD'] ?? '')) {
+            self::verify_admin_request();
+        }
+
         if (isset($_POST['ap_add_jwt_key']) && check_admin_referer('ap_add_jwt_key_action')) {
             $created = JWT::add_key();
             $message = sprintf(
@@ -242,7 +254,7 @@ class SettingsPage
         }
         if (isset($_POST['ap_clear_webhook_log']) && check_admin_referer('ap_clear_webhook_log_action')) {
             delete_option('artpulse_webhook_log');
-            echo '<div class="notice notice-success"><p>' . esc_html__('Webhook log cleared.', 'artpulse') . '</p></div>';
+            echo '<div class="notice notice-success"><p>' . esc_html__('Webhook log cleared.', 'artpulse-management') . '</p></div>';
         }
         $webhook_status = get_option('artpulse_webhook_status', 'Unknown');
         $last_event     = get_option('artpulse_webhook_last_event', []);
@@ -251,7 +263,7 @@ class SettingsPage
 
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e('ArtPulse Settings', 'artpulse'); ?></h1>
+            <h1><?php esc_html_e('ArtPulse Settings', 'artpulse-management'); ?></h1>
             <form method="post" action="options.php">
                 <?php
                 settings_fields('artpulse_settings_group');
@@ -263,6 +275,7 @@ class SettingsPage
             <h2><?php esc_html_e('Mobile Authentication Keys', 'artpulse-management'); ?></h2>
             <p><?php esc_html_e('Manage the signing keys used for mobile API access tokens. Retired keys remain valid until the grace period expires.', 'artpulse-management'); ?></p>
             <form method="post" style="margin-bottom: 10px;">
+                <?php wp_nonce_field('ap_admin_action', 'ap_admin_nonce'); ?>
                 <?php wp_nonce_field('ap_add_jwt_key_action'); ?>
                 <button type="submit" name="ap_add_jwt_key" class="button button-primary"><?php esc_html_e('Add Signing Key', 'artpulse-management'); ?></button>
             </form>
@@ -294,6 +307,7 @@ class SettingsPage
                                 <?php if ('active' === $key['status']) : ?>
                                     <?php if (empty($key['is_current'])) : ?>
                                         <form method="post" style="display:inline">
+                                            <?php wp_nonce_field('ap_admin_action', 'ap_admin_nonce'); ?>
                                             <?php wp_nonce_field('ap_manage_jwt_key_action'); ?>
                                             <input type="hidden" name="ap_jwt_kid" value="<?php echo esc_attr($key['kid']); ?>" />
                                             <button type="submit" name="ap_activate_jwt_key" class="button button-link"><?php esc_html_e('Make Current', 'artpulse-management'); ?></button>
@@ -301,6 +315,7 @@ class SettingsPage
                                         |
                                     <?php endif; ?>
                                     <form method="post" style="display:inline">
+                                        <?php wp_nonce_field('ap_admin_action', 'ap_admin_nonce'); ?>
                                         <?php wp_nonce_field('ap_manage_jwt_key_action'); ?>
                                         <input type="hidden" name="ap_jwt_kid" value="<?php echo esc_attr($key['kid']); ?>" />
                                         <button type="submit" name="ap_retire_jwt_key" class="button button-link-delete" onclick="return confirm('<?php echo esc_js(__('Retire this signing key?', 'artpulse-management')); ?>');"><?php esc_html_e('Retire', 'artpulse-management'); ?></button>
@@ -316,27 +331,27 @@ class SettingsPage
             </table>
             <p class="description"><?php esc_html_e('Retired keys are automatically purged 14 days after retirement.', 'artpulse-management'); ?></p>
             <hr>
-            <h2><?php esc_html_e('System Status', 'artpulse'); ?></h2>
+            <h2><?php esc_html_e('System Status', 'artpulse-management'); ?></h2>
             <p>
-                <strong><?php esc_html_e('Webhook Status:', 'artpulse'); ?></strong>
+                <strong><?php esc_html_e('Webhook Status:', 'artpulse-management'); ?></strong>
                 <?php echo esc_html($webhook_status); ?><br>
-                <strong><?php esc_html_e('Last Webhook Event:', 'artpulse'); ?></strong>
+                <strong><?php esc_html_e('Last Webhook Event:', 'artpulse-management'); ?></strong>
                 <?php echo esc_html($last_event['type'] ?? 'None'); ?><br>
-                <strong><?php esc_html_e('Received At:', 'artpulse'); ?></strong>
+                <strong><?php esc_html_e('Received At:', 'artpulse-management'); ?></strong>
                 <?php echo esc_html($last_event['time'] ?? 'N/A'); ?>
             </p>
-            <h2><?php esc_html_e('Webhook Event Log', 'artpulse'); ?></h2>
+            <h2><?php esc_html_e('Webhook Event Log', 'artpulse-management'); ?></h2>
             <table class="widefat fixed striped">
                 <thead>
                 <tr>
-                    <th><?php esc_html_e('Timestamp', 'artpulse'); ?></th>
-                    <th><?php esc_html_e('Event Type', 'artpulse'); ?></th>
+                    <th><?php esc_html_e('Timestamp', 'artpulse-management'); ?></th>
+                    <th><?php esc_html_e('Event Type', 'artpulse-management'); ?></th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php
                 if (empty($log)) {
-                    echo '<tr><td colspan="2">' . esc_html__('No webhook events logged.', 'artpulse') . '</td></tr>';
+                    echo '<tr><td colspan="2">' . esc_html__('No webhook events logged.', 'artpulse-management') . '</td></tr>';
                 } else {
                     foreach (array_reverse($log) as $entry) {
                         echo '<tr>';
@@ -349,12 +364,14 @@ class SettingsPage
                 </tbody>
             </table>
             <form method="post" style="margin-top: 10px;">
+                <?php wp_nonce_field('ap_admin_action', 'ap_admin_nonce'); ?>
                 <?php wp_nonce_field('ap_test_webhook_action'); ?>
-                <input type="submit" name="ap_test_webhook" class="button button-secondary" value="<?php esc_attr_e('Simulate Webhook Event', 'artpulse'); ?>">
+                <input type="submit" name="ap_test_webhook" class="button button-secondary" value="<?php esc_attr_e('Simulate Webhook Event', 'artpulse-management'); ?>">
             </form>
             <form method="post" style="margin-top: 10px;">
+                <?php wp_nonce_field('ap_admin_action', 'ap_admin_nonce'); ?>
                 <?php wp_nonce_field('ap_clear_webhook_log_action'); ?>
-                <input type="submit" name="ap_clear_webhook_log" class="button button-secondary" value="<?php esc_attr_e('Clear Webhook Log', 'artpulse'); ?>">
+                <input type="submit" name="ap_clear_webhook_log" class="button button-secondary" value="<?php esc_attr_e('Clear Webhook Log', 'artpulse-management'); ?>">
             </form>
         </div>
         <?php
@@ -368,6 +385,7 @@ class SettingsPage
                 'type'              => 'boolean',
                 'default'           => true,
                 'sanitize_callback' => [self::class, 'sanitize_boolean'],
+                'capability'        => 'manage_options',
             ]
         );
 
@@ -378,6 +396,7 @@ class SettingsPage
                 'type'              => 'boolean',
                 'default'           => true,
                 'sanitize_callback' => [self::class, 'sanitize_boolean'],
+                'capability'        => 'manage_options',
             ]
         );
 
@@ -388,6 +407,7 @@ class SettingsPage
                 'type'              => 'boolean',
                 'default'           => true,
                 'sanitize_callback' => [self::class, 'sanitize_boolean'],
+                'capability'        => 'manage_options',
             ]
         );
 
@@ -398,6 +418,7 @@ class SettingsPage
                 'type'              => 'array',
                 'default'           => [],
                 'sanitize_callback' => [self::class, 'sanitize_widget_whitelist'],
+                'capability'        => 'manage_options',
             ]
         );
 
@@ -477,6 +498,15 @@ class SettingsPage
             );
         }
     }
+    private static function verify_admin_request(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Permission denied.', 'artpulse-management'), 403);
+        }
+
+        check_admin_referer('ap_admin_action', 'ap_admin_nonce');
+    }
+
     public static function sanitizeSettings($input)
     {
         $output = [];

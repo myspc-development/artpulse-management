@@ -24,8 +24,8 @@ class ProfileLinkRequestAdmin
     {
         add_submenu_page(
             'edit.php?post_type=ap_link_request',
-            __('Link Requests', 'artpulse'),
-            __('Link Requests', 'artpulse'),
+            __('Link Requests', 'artpulse-management'),
+            __('Link Requests', 'artpulse-management'),
             'edit_users',
             'edit.php?post_type=ap_link_request'
         );
@@ -36,8 +36,8 @@ class ProfileLinkRequestAdmin
      */
     public static function custom_columns(array $columns): array
     {
-        $columns['linked_user'] = __('User', 'artpulse');
-        $columns['target_post'] = __('Requested Org/Artist', 'artpulse');
+        $columns['linked_user'] = __('User', 'artpulse-management');
+        $columns['target_post'] = __('Requested Org/Artist', 'artpulse-management');
         return $columns;
     }
 

@@ -100,6 +100,7 @@ class UpgradeReviewsTable extends WP_List_Table
         }
 
         $persisted_args = $this->get_persisted_query_args();
+        $admin_nonce    = wp_create_nonce('ap_admin_action');
 
         $approve_url = wp_nonce_url(
             add_query_arg(
@@ -108,6 +109,7 @@ class UpgradeReviewsTable extends WP_List_Table
                         'action'    => 'ap_upgrade_review_action',
                         'review'    => $item['ID'],
                         'operation' => 'approve',
+                        'ap_admin_nonce' => $admin_nonce,
                     ],
                     $persisted_args
                 ),
@@ -127,6 +129,7 @@ class UpgradeReviewsTable extends WP_List_Table
                                 'page'   => 'artpulse-upgrade-reviews',
                                 'view'   => 'deny',
                                 'review' => $item['ID'],
+                                'ap_admin_nonce' => $admin_nonce,
                             ],
                             $persisted_args
                         ),
