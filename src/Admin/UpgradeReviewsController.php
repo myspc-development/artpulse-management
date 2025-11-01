@@ -5,6 +5,7 @@ namespace ArtPulse\Admin;
 use ArtPulse\Core\AuditLogger;
 use ArtPulse\Core\Capabilities;
 use ArtPulse\Core\RoleUpgradeManager;
+use ArtPulse\Core\UpgradeAuditLog;
 use ArtPulse\Core\UpgradeReviewRepository;
 use ArtPulse\Frontend\MemberDashboard;
 use WP_Post;
@@ -237,12 +238,14 @@ class UpgradeReviewsController
             check_admin_referer('ap-upgrade-review-' . $review_id);
         }
 
+        $actor_id = (int) $user->ID;
+
         if ('approve' === $operation) {
-            $result = self::process_reviews($review_ids, 'approve');
+            $result = self::process_reviews($review_ids, 'approve', $actor_id);
             $status = $result['all_success'] ? ($is_bulk ? 'bulk_approved' : 'approved') : 'error';
         } else {
             $reason_raw = isset($_POST['reason']) ? wp_unslash($_POST['reason']) : '';
-            $result = self::process_reviews($review_ids, 'deny', $reason_raw);
+            $result = self::process_reviews($review_ids, 'deny', $actor_id, $reason_raw);
             $status = $result['all_success'] ? ($is_bulk ? 'bulk_denied' : 'denied') : 'error';
         }
 
@@ -335,7 +338,7 @@ class UpgradeReviewsController
         return array_merge($custom_actions, $actions);
     }
 
-    private static function approve(WP_Post $review): bool
+    private static function approve(WP_Post $review, int $actor_id): bool
     {
         $user_id = UpgradeReviewRepository::get_user_id($review);
         $org_id  = UpgradeReviewRepository::get_post_id($review);
@@ -443,10 +446,21 @@ class UpgradeReviewsController
             'action'    => 'approved',
         ]);
 
+        UpgradeAuditLog::log_approved(
+            $user_id,
+            (int) $review->ID,
+            $actor_id,
+            [
+                'type'      => $type,
+                'post_id'   => $approved_post_id,
+                'org_id'    => $org_id,
+            ]
+        );
+
         return true;
     }
 
-    private static function deny(WP_Post $review, string $reason): bool
+    private static function deny(WP_Post $review, int $actor_id, string $reason): bool
     {
         $sanitized_reason = trim(sanitize_textarea_field($reason));
 
@@ -515,10 +529,21 @@ class UpgradeReviewsController
             'type'      => $type,
         ]);
 
+        UpgradeAuditLog::log_denied(
+            $user_id,
+            (int) $review->ID,
+            $actor_id,
+            [
+                'type'   => $type,
+                'post_id'=> $org_id,
+                'reason' => $sanitized_reason,
+            ]
+        );
+
         return true;
     }
 
-    private static function process_reviews(array $review_ids, string $operation, string $reason = ''): array
+    private static function process_reviews(array $review_ids, string $operation, int $actor_id, string $reason = ''): array
     {
         $all_success = true;
         $processed = 0;
@@ -531,9 +556,9 @@ class UpgradeReviewsController
             }
 
             if ('approve' === $operation) {
-                $result = self::approve($post);
+                $result = self::approve($post, $actor_id);
             } else {
-                $result = self::deny($post, $reason);
+                $result = self::deny($post, $actor_id, $reason);
             }
 
             if ($result) {
