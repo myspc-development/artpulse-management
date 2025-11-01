@@ -469,6 +469,17 @@ class SettingsPage
 
         register_setting(
             'artpulse_settings_group',
+            'ap_uninstall_deep_clean',
+            [
+                'type'              => 'boolean',
+                'default'           => false,
+                'sanitize_callback' => [self::class, 'sanitize_boolean'],
+                'capability'        => 'manage_options',
+            ]
+        );
+
+        register_setting(
+            'artpulse_settings_group',
             'artpulse_settings',
             ['sanitize_callback' => [self::class, 'sanitizeSettings']]
         );
@@ -542,6 +553,18 @@ class SettingsPage
                 ]
             );
         }
+
+        add_settings_field(
+            'ap_uninstall_deep_clean',
+            __('Deep clean on uninstall', 'artpulse-management'),
+            [self::class, 'renderUninstallDeepCleanField'],
+            'artpulse-settings',
+            'ap_general_section',
+            [
+                'label_for'   => 'ap_uninstall_deep_clean',
+                'description' => __('When enabled, uninstalling ArtPulse removes all plugin data including custom tables and user metadata.', 'artpulse-management'),
+            ]
+        );
     }
     private static function verify_admin_request(): void
     {
@@ -593,6 +616,21 @@ class SettingsPage
         }
         if ($desc) {
             echo '<p class="description">' . esc_html($desc) . '</p>';
+        }
+    }
+
+    public static function renderUninstallDeepCleanField(array $args): void
+    {
+        $enabled = (bool) get_option('ap_uninstall_deep_clean', false);
+        $description = $args['description'] ?? '';
+
+        echo '<label for="ap_uninstall_deep_clean">';
+        echo '<input type="checkbox" id="ap_uninstall_deep_clean" name="ap_uninstall_deep_clean" value="1"' . checked(true, $enabled, false) . ' /> ';
+        esc_html_e('Remove all plugin data during uninstall.', 'artpulse-management');
+        echo '</label>';
+
+        if ($description) {
+            echo '<p class="description">' . esc_html($description) . '</p>';
         }
     }
 
