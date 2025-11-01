@@ -43,6 +43,19 @@ class FollowManager {
         if (class_exists('\\ArtPulse\\Rest\\MemberDashboardController')) {
             \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
         }
+
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            \ArtPulse\Rest\AnalyticsController::invalidate_member_cache((int) $user_id);
+
+            if ($owner_id) {
+                \ArtPulse\Rest\AnalyticsController::invalidate_artist_cache((int) $owner_id);
+                \ArtPulse\Rest\AnalyticsController::invalidate_org_cache((int) $owner_id);
+            }
+
+            if ('artpulse_event' === $object_type) {
+                \ArtPulse\Rest\AnalyticsController::invalidate_event_caches((int) $object_id);
+            }
+        }
     }
 
     /**
@@ -61,9 +74,24 @@ class FollowManager {
             \ArtPulse\Rest\MemberDashboardController::invalidate_overview_cache((int) $user_id);
         }
 
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            \ArtPulse\Rest\AnalyticsController::invalidate_member_cache((int) $user_id);
+        }
+
         $owner_id = self::get_owner_user_id($object_id, $object_type);
         if ($owner_id && class_exists('\\ArtPulse\\Rest\\ArtistDashboardController')) {
             \ArtPulse\Rest\ArtistDashboardController::invalidate_overview_cache((int) $owner_id);
+        }
+
+        if (class_exists('\\ArtPulse\\Rest\\AnalyticsController')) {
+            if ($owner_id) {
+                \ArtPulse\Rest\AnalyticsController::invalidate_artist_cache((int) $owner_id);
+                \ArtPulse\Rest\AnalyticsController::invalidate_org_cache((int) $owner_id);
+            }
+
+            if ('artpulse_event' === $object_type) {
+                \ArtPulse\Rest\AnalyticsController::invalidate_event_caches((int) $object_id);
+            }
         }
     }
 

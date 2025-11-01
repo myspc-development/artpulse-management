@@ -30,9 +30,25 @@
       edit: 'Edit',
       view: 'View',
       untitled: '(No title)',
+      analytics: 'Analytics',
+      views: 'Views',
+      rsvps: 'RSVPs',
+      range7: '7 days',
+      range30: '30 days',
+      range90: '90 days',
+      chartEmpty: 'No analytics available yet.',
+      analyticsPrimary: 'Views over time',
     },
     boot.i18n || {}
   );
+
+  const ANALYTICS_METRICS = [
+    { key: 'views', label: i18n.views },
+    { key: 'favorites', label: i18n.favorites },
+    { key: 'follows', label: i18n.follows },
+    { key: 'rsvps', label: i18n.rsvps },
+  ];
+  const ANALYTICS_RANGES = [7, 30, 90];
 
   renderSpinner();
 
@@ -172,6 +188,10 @@
     upcomingWrapper.appendChild(list);
 
     root.appendChild(statsWrapper);
+    const memberAnalytics = buildAnalyticsPanel('member');
+    if (memberAnalytics) {
+      root.appendChild(memberAnalytics);
+    }
     root.appendChild(upcomingWrapper);
   }
 
@@ -225,6 +245,10 @@
     );
 
     root.appendChild(statsWrapper);
+    const artistAnalytics = buildAnalyticsPanel('artist');
+    if (artistAnalytics) {
+      root.appendChild(artistAnalytics);
+    }
     root.appendChild(listsWrapper);
   }
 
@@ -297,6 +321,10 @@
     rosterPanel.appendChild(rosterContainer);
 
     root.appendChild(statsWrapper);
+    const orgAnalytics = buildAnalyticsPanel('org');
+    if (orgAnalytics) {
+      root.appendChild(orgAnalytics);
+    }
     root.appendChild(listsWrapper);
     root.appendChild(rosterPanel);
   }
@@ -367,6 +395,278 @@
 
     section.appendChild(list);
     return section;
+  }
+
+  function buildAnalyticsPanel(role) {
+    if (!endpointRoot) {
+      return null;
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'ap-dashboard__panel ap-dashboard__analytics';
+    panel.dataset.role = role;
+
+    const heading = document.createElement('h2');
+    heading.className = 'ap-dashboard__section-title';
+    heading.textContent = i18n.analytics;
+
+    const controls = document.createElement('div');
+    controls.className = 'ap-dashboard__analytics-controls';
+
+    const header = document.createElement('div');
+    header.className = 'ap-dashboard__analytics-header';
+    header.appendChild(heading);
+    header.appendChild(controls);
+    panel.appendChild(header);
+
+    const status = document.createElement('div');
+    status.className = 'ap-dashboard__analytics-status';
+    panel.appendChild(status);
+
+    const totals = document.createElement('div');
+    totals.className = 'ap-dashboard__stats ap-dashboard__stats--analytics';
+    panel.appendChild(totals);
+
+    const chart = document.createElement('div');
+    chart.className = 'ap-dashboard__analytics-chart';
+    panel.appendChild(chart);
+
+    const defaultRange = ANALYTICS_RANGES.includes(30) ? 30 : ANALYTICS_RANGES[0];
+    const buttons = [];
+    let requestToken = 0;
+
+    ANALYTICS_RANGES.forEach((range) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ap-dashboard__analytics-range';
+      button.textContent = formatRangeLabel(range);
+      button.dataset.range = String(range);
+      if (range === defaultRange) {
+        button.classList.add('is-active');
+      }
+      button.addEventListener('click', () => {
+        if (button.classList.contains('is-active')) {
+          return;
+        }
+        setRange(range);
+      });
+      controls.appendChild(button);
+      buttons.push(button);
+    });
+
+    function setRange(range) {
+      buttons.forEach((btn) => {
+        if (Number(btn.dataset.range) === range) {
+          btn.classList.add('is-active');
+        } else {
+          btn.classList.remove('is-active');
+        }
+      });
+
+      panel.classList.add('is-loading');
+      status.textContent = i18n.loading;
+      totals.innerHTML = '';
+      chart.innerHTML = '';
+      panel.dataset.range = String(range);
+
+      requestToken += 1;
+      const token = requestToken;
+
+      fetchAnalyticsData(role, range)
+        .then((data) => {
+          if (token !== requestToken) {
+            return;
+          }
+          panel.classList.remove('is-loading');
+          status.textContent = '';
+          renderAnalyticsTotals(totals, data?.totals);
+          renderAnalyticsChart(chart, data?.series);
+        })
+        .catch(() => {
+          if (token !== requestToken) {
+            return;
+          }
+          panel.classList.remove('is-loading');
+          status.textContent = i18n.dashboardError;
+        });
+    }
+
+    setRange(defaultRange);
+
+    return panel;
+  }
+
+  function renderAnalyticsTotals(container, totals) {
+    container.innerHTML = '';
+
+    ANALYTICS_METRICS.forEach((metric) => {
+      const rawValue = totals ? totals[metric.key] : 0;
+      const numeric = typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
+      const value = Number.isFinite(numeric) ? numeric : 0;
+
+      const card = document.createElement('div');
+      card.className = 'ap-dashboard__stat ap-dashboard__stat--analytics';
+
+      const valueEl = document.createElement('span');
+      valueEl.className = 'ap-dashboard__stat-value';
+      try {
+        valueEl.textContent = value.toLocaleString();
+      } catch (e) {
+        valueEl.textContent = String(value);
+      }
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'ap-dashboard__stat-label';
+      labelEl.textContent = metric.label || metric.key;
+
+      card.appendChild(valueEl);
+      card.appendChild(labelEl);
+      container.appendChild(card);
+    });
+  }
+
+  function renderAnalyticsChart(container, series) {
+    container.innerHTML = '';
+
+    if (!Array.isArray(series) || series.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'ap-dashboard__analytics-empty';
+      empty.textContent = i18n.chartEmpty;
+      container.appendChild(empty);
+      return;
+    }
+
+    const values = series.map((item) => {
+      const raw = item ? item.views : 0;
+      const numeric = typeof raw === 'number' ? raw : parseInt(raw, 10);
+      return Number.isFinite(numeric) ? numeric : 0;
+    });
+
+    const width = 320;
+    const height = 160;
+    const padding = 20;
+    const innerWidth = width - padding * 2;
+    const innerHeight = height - padding * 2;
+    const max = Math.max(...values);
+    const safeMax = max > 0 ? max : 1;
+    const step = series.length > 1 ? innerWidth / (series.length - 1) : 0;
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('class', 'ap-dashboard__analytics-svg');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', i18n.analyticsPrimary);
+
+    const axis = document.createElementNS(svgNS, 'line');
+    axis.setAttribute('x1', String(padding));
+    axis.setAttribute('y1', String(height - padding));
+    axis.setAttribute('x2', String(width - padding));
+    axis.setAttribute('y2', String(height - padding));
+    axis.setAttribute('class', 'ap-dashboard__analytics-axis');
+    svg.appendChild(axis);
+
+    let pathData = '';
+    const points = [];
+
+    series.forEach((point, index) => {
+      const x = padding + (series.length > 1 ? step * index : innerWidth / 2);
+      const ratio = safeMax ? values[index] / safeMax : 0;
+      const y = padding + (innerHeight - ratio * innerHeight);
+      points.push({
+        x,
+        y,
+        value: values[index],
+        date: point?.date || '',
+      });
+      pathData += `${index === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)} `;
+    });
+
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', pathData.trim());
+    path.setAttribute('fill', 'none');
+    path.setAttribute('class', 'ap-dashboard__analytics-path');
+    svg.appendChild(path);
+
+    points.forEach((point) => {
+      const circle = document.createElementNS(svgNS, 'circle');
+      circle.setAttribute('cx', point.x.toFixed(2));
+      circle.setAttribute('cy', point.y.toFixed(2));
+      circle.setAttribute('r', '3');
+      circle.setAttribute('class', 'ap-dashboard__analytics-point');
+
+      const title = document.createElementNS(svgNS, 'title');
+      const label = formatAnalyticsDate(point.date);
+      title.textContent = `${label}: ${point.value}`;
+      circle.appendChild(title);
+
+      svg.appendChild(circle);
+    });
+
+    container.appendChild(svg);
+
+    const rangeSummary = document.createElement('div');
+    rangeSummary.className = 'ap-dashboard__analytics-summary';
+    const startLabel = formatAnalyticsDate(series[0]?.date);
+    const endLabel = formatAnalyticsDate(series[series.length - 1]?.date);
+    if (startLabel || endLabel) {
+      if (startLabel && endLabel && startLabel !== endLabel) {
+        rangeSummary.textContent = `${startLabel} – ${endLabel}`;
+      } else {
+        rangeSummary.textContent = startLabel || endLabel || '';
+      }
+      container.appendChild(rangeSummary);
+    }
+  }
+
+  function fetchAnalyticsData(role, range) {
+    const target = `${endpointRoot}analytics/${role}?range=${range}`;
+    return fetchJSON(target);
+  }
+
+  function formatAnalyticsDate(value) {
+    if (!value) {
+      return '';
+    }
+
+    const direct = new Date(value);
+    if (!Number.isNaN(direct.getTime())) {
+      try {
+        return direct.toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+        });
+      } catch (e) {
+        return direct.toISOString().slice(0, 10);
+      }
+    }
+
+    const fallback = new Date(`${value}T00:00:00`);
+    if (!Number.isNaN(fallback.getTime())) {
+      try {
+        return fallback.toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+        });
+      } catch (e) {
+        return fallback.toISOString().slice(0, 10);
+      }
+    }
+
+    return String(value);
+  }
+
+  function formatRangeLabel(range) {
+    switch (range) {
+      case 7:
+        return i18n.range7 || '7 days';
+      case 30:
+        return i18n.range30 || '30 days';
+      case 90:
+        return i18n.range90 || '90 days';
+      default:
+        return `${range} ${range === 1 ? 'day' : 'days'}`;
+    }
   }
 
   function formatDate(value) {
