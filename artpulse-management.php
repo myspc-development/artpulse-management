@@ -86,6 +86,7 @@ add_action('rest_api_init', function () {
     \ArtPulse\Rest\PortfolioRestController::register();
     \ArtPulse\Rest\MemberDashboardController::register();
     \ArtPulse\Rest\ArtistDashboardController::register();
+    \ArtPulse\Rest\OrganizationDashboardController::register();
 });
 
 if (defined('WP_CLI') && WP_CLI) {

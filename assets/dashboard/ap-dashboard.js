@@ -16,11 +16,17 @@
       upcomingEvents: 'Upcoming Events',
       noUpcoming: 'No upcoming events yet.',
       artworks: 'Artworks',
+      artists: 'Artists',
       events: 'Events',
       recentArtworks: 'Recent Artworks',
       recentEvents: 'Recent Events',
       noArtworks: 'No artworks yet.',
       noEvents: 'No events yet.',
+      submissions: 'Submissions',
+      recentSubmissions: 'Recent Submissions',
+      noSubmissions: 'No submissions yet.',
+      rosterPreview: 'Team Members',
+      noRoster: 'No members yet.',
       edit: 'Edit',
       view: 'View',
       untitled: '(No title)',
@@ -33,6 +39,22 @@
   const endpointRoot = boot?.endpoints?.root || '';
   if (!endpointRoot) {
     renderError();
+    return;
+  }
+
+  if (boot.role === 'org') {
+    fetchJSON(endpointRoot + 'org/overview')
+      .then((data) => {
+        renderOrgOverview(data);
+        return fetchJSON(endpointRoot + 'org/roster?per_page=5')
+          .then((roster) => {
+            renderRosterPreview(roster);
+          })
+          .catch(() => {
+            renderRosterPreview(null);
+          });
+      })
+      .catch(renderError);
     return;
   }
 
@@ -206,6 +228,79 @@
     root.appendChild(listsWrapper);
   }
 
+  function renderOrgOverview(data) {
+    root.innerHTML = '';
+
+    const counts = data && typeof data === 'object' ? data.counts || {} : {};
+    const recent = data && typeof data === 'object' ? data.recent || {} : {};
+
+    const statsWrapper = document.createElement('div');
+    statsWrapper.className = 'ap-dashboard__stats';
+
+    const statMap = [
+      { key: 'events', label: i18n.events },
+      { key: 'artists', label: i18n.artists },
+      { key: 'submissions', label: i18n.submissions },
+    ];
+
+    statMap.forEach((item) => {
+      const rawValue = counts[item.key];
+      const numeric = typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
+      const value = Number.isFinite(numeric) ? numeric : 0;
+      const card = document.createElement('div');
+      card.className = 'ap-dashboard__stat';
+
+      const valueEl = document.createElement('span');
+      valueEl.className = 'ap-dashboard__stat-value';
+      valueEl.textContent = String(value);
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'ap-dashboard__stat-label';
+      labelEl.textContent = item.label;
+
+      card.appendChild(valueEl);
+      card.appendChild(labelEl);
+      statsWrapper.appendChild(card);
+    });
+
+    const listsWrapper = document.createElement('div');
+    listsWrapper.className = 'ap-dashboard__lists';
+
+    const recentEvents = Array.isArray(recent?.events) ? recent.events : [];
+    const recentSubmissions = Array.isArray(recent?.submissions)
+      ? recent.submissions
+      : [];
+
+    listsWrapper.appendChild(
+      buildRecentList(i18n.recentEvents, recentEvents, i18n.noEvents)
+    );
+    listsWrapper.appendChild(
+      buildRecentList(
+        i18n.recentSubmissions,
+        recentSubmissions,
+        i18n.noSubmissions
+      )
+    );
+
+    const rosterPanel = document.createElement('div');
+    rosterPanel.className = 'ap-dashboard__panel';
+    rosterPanel.id = 'ap-dashboard-roster-preview';
+
+    const rosterHeading = document.createElement('h2');
+    rosterHeading.className = 'ap-dashboard__section-title';
+    rosterHeading.textContent = i18n.rosterPreview;
+    rosterPanel.appendChild(rosterHeading);
+
+    const rosterContainer = document.createElement('div');
+    rosterContainer.className = 'ap-dashboard__roster';
+    rosterContainer.textContent = i18n.loading;
+    rosterPanel.appendChild(rosterContainer);
+
+    root.appendChild(statsWrapper);
+    root.appendChild(listsWrapper);
+    root.appendChild(rosterPanel);
+  }
+
   function buildRecentList(title, items, emptyText) {
     const section = document.createElement('div');
     section.className = 'ap-dashboard__panel';
@@ -292,6 +387,63 @@
     } catch (e) {
       return parsed.toISOString();
     }
+  }
+
+  function renderRosterPreview(data) {
+    const panel = document.getElementById('ap-dashboard-roster-preview');
+    if (!panel) {
+      return;
+    }
+
+    const container = panel.querySelector('.ap-dashboard__roster');
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '';
+
+    const items = data && Array.isArray(data.items) ? data.items : [];
+    if (items.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'ap-dashboard__item ap-dashboard__item--empty';
+      empty.textContent = i18n.noRoster;
+      container.appendChild(empty);
+      return;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'ap-dashboard__item-list ap-dashboard__item-list--roster';
+
+    items.forEach((member) => {
+      const li = document.createElement('li');
+      li.className = 'ap-dashboard__item ap-dashboard__item--roster';
+
+      if (member?.avatar) {
+        const avatar = document.createElement('img');
+        avatar.className = 'ap-dashboard__item-avatar';
+        avatar.src = member.avatar;
+        avatar.alt = member?.name || '';
+        avatar.width = 32;
+        avatar.height = 32;
+        li.appendChild(avatar);
+      }
+
+      const name = document.createElement('span');
+      name.className = 'ap-dashboard__item-name';
+      name.textContent = member?.name || i18n.untitled;
+      li.appendChild(name);
+
+      if (member?.role) {
+        const role = document.createElement('span');
+        role.className = 'ap-dashboard__item-meta';
+        role.textContent = member.role;
+        li.appendChild(role);
+      }
+
+      list.appendChild(li);
+    });
+
+    container.appendChild(list);
   }
 
   function fetchJSON(url) {
