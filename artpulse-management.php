@@ -46,6 +46,10 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
 
 require_once __DIR__ . '/src/helpers.php';
 require_once __DIR__ . '/src/Core/Urls.php';
+require_once __DIR__ . '/src/Core/RoleGate.php';
+require_once __DIR__ . '/src/Core/RoleDashboards.php';
+
+add_action( 'init', [ 'ArtPulse\\Core\\RoleDashboards', 'init' ], 20 );
 
 add_action('plugins_loaded', static function () {
     load_plugin_textdomain(

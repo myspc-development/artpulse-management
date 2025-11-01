@@ -30,6 +30,159 @@ use function wp_verify_nonce;
 
 class RoleDashboards
 {
+    private static $shortcode_assets_registered = false;
+
+    public static function init(): void
+    {
+        remove_shortcode('ap_member_dashboard');
+        remove_shortcode('ap_artist_dashboard');
+        remove_shortcode('ap_organization_dashboard');
+
+        add_action('wp_enqueue_scripts', [self::class, 'register_shortcode_assets']);
+
+        add_shortcode('ap_member_dashboard', [self::class, 'render_member_dashboard_shortcode']);
+        add_shortcode('ap_artist_dashboard', [self::class, 'render_artist_dashboard_shortcode']);
+        add_shortcode('ap_org_dashboard', [self::class, 'render_org_dashboard_shortcode']);
+        add_shortcode('ap_organization_dashboard', [self::class, 'render_org_dashboard_shortcode']);
+        add_shortcode('ap_dashboard', [self::class, 'render_router_shortcode']);
+    }
+
+    public static function register_shortcode_assets(): void
+    {
+        if (self::$shortcode_assets_registered) {
+            return;
+        }
+
+        $plugin_dir  = defined('ARTPULSE_PLUGIN_DIR') ? ARTPULSE_PLUGIN_DIR : dirname(dirname(__DIR__)) . '/';
+        $plugin_file = defined('ARTPULSE_PLUGIN_FILE') ? ARTPULSE_PLUGIN_FILE : $plugin_dir . 'artpulse-management.php';
+
+        $base_dir = $plugin_dir . 'assets/dashboard/';
+        $base_url = plugins_url('assets/dashboard/', $plugin_file);
+
+        $js_path  = $base_dir . 'ap-dashboard.js';
+        $css_path = $base_dir . 'ap-dashboard.css';
+
+        $version = defined('ARTPULSE_VERSION') ? ARTPULSE_VERSION : '1.0.0';
+
+        wp_register_script(
+            'ap-dashboard',
+            $base_url . 'ap-dashboard.js',
+            ['wp-api-fetch'],
+            file_exists($js_path) ? filemtime($js_path) : $version,
+            true
+        );
+
+        wp_register_style(
+            'ap-dashboard',
+            $base_url . 'ap-dashboard.css',
+            [],
+            file_exists($css_path) ? filemtime($css_path) : $version
+        );
+
+        self::$shortcode_assets_registered = true;
+    }
+
+    public static function render_member_dashboard_shortcode($atts = [], $content = '', $tag = ''): string
+    {
+        return self::render_dashboard_shortcode('member');
+    }
+
+    public static function render_artist_dashboard_shortcode($atts = [], $content = '', $tag = ''): string
+    {
+        return self::render_dashboard_shortcode('artist');
+    }
+
+    public static function render_org_dashboard_shortcode($atts = [], $content = '', $tag = ''): string
+    {
+        return self::render_dashboard_shortcode('org');
+    }
+
+    public static function render_router_shortcode($atts = [], $content = '', $tag = ''): string
+    {
+        $roles = ['org', 'artist', 'member'];
+
+        foreach ($roles as $role) {
+            if (RoleGate::user_can_access($role)) {
+                return self::render_dashboard_shortcode($role);
+            }
+        }
+
+        return self::render_unauthorized_message();
+    }
+
+    private static function render_dashboard_shortcode(string $role): string
+    {
+        if (!RoleGate::user_can_access($role)) {
+            return self::render_unauthorized_message();
+        }
+
+        self::register_shortcode_assets();
+
+        $payload = self::build_boot_payload($role);
+        wp_localize_script('ap-dashboard', 'AP_BOOT', $payload);
+        wp_enqueue_script('ap-dashboard');
+        wp_enqueue_style('ap-dashboard');
+
+        return sprintf(
+            '<div id="ap-dashboard" data-role="%s"></div>',
+            esc_attr($role)
+        );
+    }
+
+    private static function render_unauthorized_message(): string
+    {
+        if (!is_user_logged_in()) {
+            $redirect = function_exists('get_permalink') ? get_permalink() : home_url();
+            $redirect = $redirect ?: home_url();
+            $login_url = wp_login_url((string) $redirect);
+            $login_link = sprintf(
+                '<a href="%s">%s</a>',
+                esc_url($login_url),
+                esc_html__('Log in', 'artpulse-management')
+            );
+
+            $content = sprintf(
+                '<p>%s %s</p>',
+                esc_html__('Please log in to access this dashboard.', 'artpulse-management'),
+                $login_link
+            );
+
+            return wp_kses_post($content);
+        }
+
+        return sprintf(
+            '<p>%s</p>',
+            esc_html__('You do not have access to this dashboard.', 'artpulse-management')
+        );
+    }
+
+    private static function build_boot_payload(string $role): array
+    {
+        $user_id = get_current_user_id();
+        $user    = wp_get_current_user();
+
+        return [
+            'role'      => $role,
+            'user'      => [
+                'id'     => $user_id,
+                'name'   => $user instanceof \WP_User ? $user->display_name : '',
+                'avatar' => $user_id ? get_avatar_url($user_id, ['size' => 64]) : '',
+            ],
+            'nonces'    => [
+                'rest'      => wp_create_nonce('wp_rest'),
+                'dashboard' => wp_create_nonce('ap_dashboard'),
+            ],
+            'endpoints' => [
+                'root' => esc_url_raw(rest_url('artpulse/v1/')),
+                'me'   => esc_url_raw(rest_url('artpulse/v1/me')),
+            ],
+            'i18n'      => [
+                'loading'  => __('Loading dashboard…', 'artpulse-management'),
+                'noAccess' => __('You do not have access to this dashboard.', 'artpulse-management'),
+            ],
+        ];
+    }
+
     private const ROLE_CONFIG = [
         'member' => [
             'shortcode'   => 'ap_member_dashboard',
